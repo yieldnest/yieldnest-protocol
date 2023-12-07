@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
+import {IDepositContract} from "./interfaces/IDepositContract.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives mETH.
@@ -12,7 +16,7 @@ interface StakingEvents {
 
 }
 
-contract DepositPool is IDepositPool, StakingEvents {
+contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, StakingEvents {
 
     // Errors.
     error DoesNotReceiveETH();
@@ -38,6 +42,7 @@ contract DepositPool is IDepositPool, StakingEvents {
 
 
     IynETH ynETH;
+    IDepositContract depositContract;
     // Storage variables
     uint256 public minimumStakeBound;
     uint256 public maximumynETHSupply;
@@ -52,6 +57,32 @@ contract DepositPool is IDepositPool, StakingEvents {
     /// the percentage change in a financial instrument. This is a constant value set as 10000 which represents
     /// 100% in basis point terms.
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+
+    /// @notice Configuration for contract initialization.
+    struct Init {
+        address admin;
+        IynETH ynETH;
+        IDepositContract depositContract;
+    }
+
+    constructor() {
+        _disableInitializers();
+    }
+
+
+        /// @notice Initializes the contract.
+    /// @dev MUST be called during the contract upgrade to set up the proxies state.
+    function initialize(Init memory init) external initializer {
+        __AccessControl_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+
+
+        ynETH = init.ynETH;
+        depositContract = init.depositContract;
+
+        minimumStakeBound = 0.1 ether;
+    }
 
 
     function stake(uint256 minynETHAmount) external payable {
