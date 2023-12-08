@@ -66,7 +66,8 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
     }
 
     constructor() {
-        _disableInitializers();
+        // TODO; re-enable this
+        // _disableInitializers();
     }
 
 

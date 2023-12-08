@@ -38,15 +38,26 @@ async function main() {
 
     console.log("Contracts initialized successfully");
 
+
     console.log("Verifying contracts on etherscan");
-    await hre.run("verify:verify", {
-        address: ynETHContract.address,
-        constructorArguments: [],
-    });
-    await hre.run("verify:verify", {
-        address: depositPool.address,
-        constructorArguments: [],
-    });
+    async function retryVerify(contractName, contractAddress, constructorArguments) {
+        while (true) {
+            try {
+                await hre.run("verify:verify", {
+                    address: contractAddress,
+                    constructorArguments: constructorArguments,
+                });
+                console.log(`${contractName} verified successfully`);
+                break;
+            } catch (error) {
+                console.error(`Error verifying ${contractName}, retrying in 10 seconds`, error);
+                await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+        }
+    }
+
+    await retryVerify("ynETHContract", ynETHContract.address, []);
+    await retryVerify("depositPool", depositPool.address, []);
     console.log("Contracts verified successfully");
 }
 

@@ -28,7 +28,8 @@ contract ynETH is Initializable, AccessControlUpgradeable, ERC20PermitUpgradeabl
     }
 
     constructor() {
-        _disableInitializers();
+        // TODO: re-enable tihs
+        // _disableInitializers();
     }
 
     /// @notice Inititalizes the contract.
