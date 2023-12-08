@@ -33,7 +33,7 @@
   },
   "scripts": {
     "build": "hardhat compile",
-    "test": "mocha --recursive test",
+    "test": "mocha --recursive test/unit",
     "deploy-goerli": "hardhat run --network goerli scripts/deploy.js"
   }
 }
