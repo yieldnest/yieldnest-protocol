@@ -1,6 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("hardhat-preprocessor");
 require("@nomicfoundation/hardhat-foundry");
+require('@openzeppelin/hardhat-upgrades');
 const fs = require("fs");
 require('dotenv').config();
 

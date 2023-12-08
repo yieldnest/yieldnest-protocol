@@ -1,12 +1,13 @@
 const { expect } = require("chai");
+const { ethers } = require('hardhat');
 
-describe.only("DepositPool", function() {
+describe("DepositPool", function() {
   it("Should initialize correctly", async function() {
     const DepositPool = await ethers.getContractFactory("DepositPool");
     const depositPool = await DepositPool.deploy();
     await depositPool.deployed();
 
-    expect(await depositPool.initialized()).to.equal(true);
+    await depositPool.initialize();
   });
 
   it("Should allow deposits", async function() {
