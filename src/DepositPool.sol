@@ -82,11 +82,11 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         ynETH = init.ynETH;
         depositContract = init.depositContract;
 
-        minimumStakeBound = 0.1 ether;
+        minimumStakeBound = 0.00001 ether;
     }
 
 
-    function stake(uint256 minynETHAmount) external payable {
+    function deposit(uint256 minynETHAmount) external payable {
  
 
         if (msg.value < minimumStakeBound) {

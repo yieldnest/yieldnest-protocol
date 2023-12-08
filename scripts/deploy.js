@@ -1,5 +1,6 @@
 
 const hre = require("hardhat");
+const fs = require('fs');
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
@@ -59,6 +60,15 @@ async function main() {
     await retryVerify("ynETHContract", ynETHContract.address, []);
     await retryVerify("depositPool", depositPool.address, []);
     console.log("Contracts verified successfully");
+
+    const addresses = {
+        ynETHContract: ynETHContract.address,
+        depositPool: depositPool.address
+    };
+
+    fs.writeFileSync('goerli-addresses.json', JSON.stringify(addresses, null, 2));
+    console.log("Addresses written to goerli-addresses.json");
+
 }
 
 main()
