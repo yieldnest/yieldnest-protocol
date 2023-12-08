@@ -12,8 +12,22 @@ async function setup() {
   const depositPool = await deployTransparentUpgradeableProxy(DepositPoolFactory, 'DepositPool', [], deployer);
   await depositPool.deployed();
 
-  // await ynETH.initialize(deployer.address);
-  // await depositPool.initialize(deployer.address);
+  const MockDepositContractFactory = await ethers.getContractFactory('MockDepositContract');
+  const depositContract = await MockDepositContractFactory.deploy();
+  await depositContract.deployed();
+
+  await ynETH.initialize({
+    admin: deployer.address,
+    depositPool: depositPool.address,
+  });
+  
+  await depositPool.initialize({
+    admin: deployer.address,
+    ynETH: ynETH.address,
+    depositContract: depositContract.address
+  });
+
+  console.log('Done');
 
   return {
     ynETH,

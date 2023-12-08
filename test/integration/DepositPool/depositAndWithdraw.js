@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const setup = require('../setup');
+const { ethers } = require('hardhat');
 
 describe('DepositPool integration tests', function () {
   let contracts;
