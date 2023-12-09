@@ -83,6 +83,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         depositContract = init.depositContract;
 
         minimumStakeBound = 0.00001 ether;
+        maximumynETHSupply = 100000000 ether;
     }
 
 

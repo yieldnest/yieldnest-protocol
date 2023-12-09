@@ -15,7 +15,7 @@ describe('DepositPool integration tests', function () {
 
   it('should deposit and receive ynETH', async function () {
     const depositAmount = ethers.utils.parseEther('1');
-    await contracts.depositPool.connect(addr1).deposit(depositAmount);
+    await contracts.depositPool.connect(addr1).deposit(0, {value: depositAmount});
     const balance = await contracts.ynETH.balanceOf(addr1.address);
     expect(balance).to.be.above(0);
   });
