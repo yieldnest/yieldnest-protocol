@@ -15,7 +15,7 @@ interface StakingEvents {
     event Staked(address indexed staker, uint256 ethAmount, uint256 mETHAmount);
 
 }
-
+ 
 contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, StakingEvents {
 
     // Errors.
@@ -45,8 +45,6 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
     IDepositContract public depositContract;
     // Storage variables
     uint256 public minimumStakeBound;
-    uint256 public maximumynETHSupply;
-    bool public isStakingPaused;
 
     /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
     /// amount of mETH received when staking, meaning there is no surprise for users when staking or unstaking.
@@ -83,7 +81,6 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         depositContract = init.depositContract;
 
         minimumStakeBound = 0.00001 ether;
-        maximumynETHSupply = 100000000 ether;
     }
 
 
@@ -95,9 +92,6 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         }
 
         uint256 ynETHMintAmount = ethToynETH(msg.value);
-        if (ynETHMintAmount + ynETH.totalSupply() > maximumynETHSupply) {
-            revert MaximumynETHSupplyExceeded();
-        }
         if (ynETHMintAmount < minynETHAmount) {
             revert StakeBelowMinimumynETHAmount(ynETHMintAmount, minynETHAmount);
         }

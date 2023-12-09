@@ -2,6 +2,8 @@ require("@nomicfoundation/hardhat-toolbox");
 require("hardhat-preprocessor");
 require("@nomicfoundation/hardhat-foundry");
 require('@openzeppelin/hardhat-upgrades');
+require('hardhat-contract-sizer');
+
 const fs = require("fs");
 require('dotenv').config();
 
