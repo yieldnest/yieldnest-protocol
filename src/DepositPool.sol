@@ -41,8 +41,8 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
     error InvalidWithdrawalCredentialsWrongAddress(address);
 
 
-    IynETH ynETH;
-    IDepositContract depositContract;
+    IynETH public ynETH;
+    IDepositContract public depositContract;
     // Storage variables
     uint256 public minimumStakeBound;
     uint256 public maximumynETHSupply;
