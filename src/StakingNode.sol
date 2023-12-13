@@ -2,6 +2,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
+import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 
 
@@ -9,7 +10,7 @@ interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
 }
 
-contract StakingNode is StakingNodeEvents {
+contract StakingNode is IStakingNode, StakingNodeEvents {
 
     address public stakingNodesManager;
     address public eigenPod;
