@@ -30,7 +30,17 @@ contract StakingNodesManager is
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
 
-    address[] nodes;
+    address[] public nodes;
+    uint maxNodeCount;
+
+     //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    constructor() {
+        // Only 1 eigenpod to start with
+        maxNodeCount = 1;
+    }
 
 
     function registerValidators(
@@ -82,13 +92,17 @@ contract StakingNodesManager is
     }
 
 
-    function createStakingNode(bool _createEigenPod) internal returns (address) {
+    function createStakingNode() public returns (address) {
+
+        require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
+
         BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
         node.initialize(address(this));
-        if (_createEigenPod) {
-            node.createEigenPod();
-        }
+ 
+        node.createEigenPod();
+
+        nodes.push(address(node));
 
         return address(node);
     }
