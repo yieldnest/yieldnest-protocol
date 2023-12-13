@@ -100,7 +100,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         ynETH.mint(msg.sender, ynETHMintAmount);
     }    
 
-        /// @notice Converts from ynETH to ETH using the current exchange rate.
+    /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
     function ethToynETH(uint256 ethAmount) public view returns (uint256) {
         // 1:1 exchange rate on the first stake.

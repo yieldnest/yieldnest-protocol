@@ -1,11 +1,48 @@
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+import "./interfaces/eigenlayer/IEigenPodManager.sol";
+import "./interfaces/IStakingNodesManager.sol";
 
-contract StakingNode is Initializable, AccessControlUpgradeable {
 
+interface StakingNodeEvents {
+     event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
+}
+
+contract StakingNode is StakingNodeEvents {
+
+    address public stakingNodesManager;
+    address public eigenPod;
+
+     //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    constructor() {
+    }
+
+    ///  To receive the rewards from the execution layer, it should have 'receive()' function.
+    receive() external payable {}
+
+     function initialize(address _stakingNodesManager) external {
+        require(stakingNodesManager == address(0), "already initialized");
+        require(_stakingNodesManager != address(0), "No zero addresses");
+        stakingNodesManager = _stakingNodesManager;
+    }
+
+    function createEigenPod() public {
+        if (eigenPod != address(0x0)) return; // already have pod
+
+        IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
+        eigenPodManager.createPod();
+        eigenPod = address(eigenPodManager.getPod(address(this)));
+        emit EigenPodCreated(address(this), eigenPod);
+    }
+
+    /**
+      Beacons slot value is defined here:
+      https://github.com/OpenZeppelin/openzeppelin-contracts/blob/afb20119b33072da041c97ea717d3ce4417b5e01/contracts/proxy/ERC1967/ERC1967Upgrade.sol#L142
+     */
     function implementation() public view returns (address) {
         bytes32 slot = bytes32(uint256(keccak256('eip1967.proxy.beacon')) - 1);
         address implementationVariable;
