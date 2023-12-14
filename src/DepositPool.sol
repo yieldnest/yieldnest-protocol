@@ -8,11 +8,11 @@ import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 interface StakingEvents {
-    /// @notice Emitted when a user stakes ETH and receives mETH.
+    /// @notice Emitted when a user stakes ETH and receives ynETH.
     /// @param staker The address of the user staking ETH.
     /// @param ethAmount The amount of ETH staked.
-    /// @param mETHAmount The amount of mETH received.
-    event Staked(address indexed staker, uint256 ethAmount, uint256 mETHAmount);
+    /// @param ynETHAmount The amount of ynETH received.
+    event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
 
 }
  
@@ -34,7 +34,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
     error PreviouslyUsedValidator();
     error ZeroAddress();
     error InvalidDepositRoot(bytes32);
-    error StakeBelowMinimumynETHAmount(uint256 methAmount, uint256 expectedMinimum);
+    error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error UnstakeBelowMinimumETHAmount(uint256 ethAmount, uint256 expectedMinimum);
     error InvalidWithdrawalCredentialsWrongLength(uint256);
     error InvalidWithdrawalCredentialsNotETH1(bytes12);
@@ -42,13 +42,12 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
 
     IynETH public ynETH;
-    IDepositContract public depositContract;
     address public stakingNodesManager;
     // Storage variables
     uint256 public minimumStakeBound;
 
     /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
-    /// amount of mETH received when staking, meaning there is no surprise for users when staking or unstaking.
+    /// amount of ynETH received when staking, meaning there is no surprise for users when staking or unstaking.
     /// @dev The value is in basis points (1/10000).
     uint16 public exchangeAdjustmentRate;
 
@@ -61,7 +60,6 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
     struct Init {
         address admin;
         IynETH ynETH;
-        IDepositContract depositContract;
         address stakingNodesManager;
     }
 
@@ -80,7 +78,6 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
 
         ynETH = init.ynETH;
-        depositContract = init.depositContract;
         stakingNodesManager = init.stakingNodesManager;
 
         minimumStakeBound = 0.00001 ether;
@@ -128,9 +125,11 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         );
     }
 
-        /// @notice The total amount of ETH controlled by the protocol.
+    /// @notice The total amount of ETH controlled by the protocol.
     /// @dev Sums over the balances of various contracts and the beacon chain information from the oracle.
     function totalControlled() public view returns (uint256) {
+        // TODO: implement correctly a report how much ETH is in the system
+        // ETH sits in the DepositPool, on the Beacon Chain
         return address(this).balance;
     }
 
