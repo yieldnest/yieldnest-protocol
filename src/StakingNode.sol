@@ -12,8 +12,9 @@ interface StakingNodeEvents {
 
 contract StakingNode is IStakingNode, StakingNodeEvents {
 
-    address public stakingNodesManager;
+    IStakingNodesManager public stakingNodesManager;
     address public eigenPod;
+    IDelegationManager delegationManager;
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -25,11 +26,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     ///  To receive the rewards from the execution layer, it should have 'receive()' function.
     receive() external payable {}
 
-     function initialize(address _stakingNodesManager) external {
-        require(stakingNodesManager == address(0), "already initialized");
-        require(_stakingNodesManager != address(0), "No zero addresses");
+    function initialize(Init memory init) external {
+        require(address(stakingNodesManager) == address(0), "already initialized");
+        require(address(init.stakingNodesManager) != address(0), "No zero addresses");
 
-        stakingNodesManager = _stakingNodesManager;
+        stakingNodesManager = init.stakingNodesManager;
+        delegationManager = init.delegationManager;
     }
 
     function createEigenPod() public {
@@ -39,6 +41,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         eigenPodManager.createPod();
         eigenPod = address(eigenPodManager.getPod(address(this)));
         emit EigenPodCreated(address(this), eigenPod);
+    }
+
+
+    function delegate() public {
+
+        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry = ISignatureUtils.SignatureWithExpiry('', 0);
+        bytes32 approverSalt;
+        delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
     }
 
     /**

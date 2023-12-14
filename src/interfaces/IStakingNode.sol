@@ -1,9 +1,20 @@
 pragma solidity ^0.8.0;
 
+import "./IStakingNodesManager.sol";
+import "./eigenlayer/IDelegationManager.sol";
+
 interface IStakingNode {
-    function stakingNodesManager() external view returns (address);
+
+    /// @notice Configuration for contract initialization.
+    struct Init {
+        address admin;
+        IStakingNodesManager stakingNodesManager;
+        IDelegationManager delegationManager;
+    }
+
+    function stakingNodesManager() external view returns (IStakingNodesManager);
     function eigenPod() external view returns (address);
-    function initialize(address _stakingNodesManager) external;
+    function initialize(Init memory init) external;
     function createEigenPod() external;
     function implementation() external view returns (address);
 }
