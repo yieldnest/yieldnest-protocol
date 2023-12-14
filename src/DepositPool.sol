@@ -43,6 +43,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
     IynETH public ynETH;
     IDepositContract public depositContract;
+    address public stakingNodesManager;
     // Storage variables
     uint256 public minimumStakeBound;
 
@@ -61,6 +62,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         address admin;
         IynETH ynETH;
         IDepositContract depositContract;
+        address stakingNodesManager;
     }
 
     constructor() {
@@ -79,6 +81,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
         ynETH = init.ynETH;
         depositContract = init.depositContract;
+        stakingNodesManager = init.stakingNodesManager;
 
         minimumStakeBound = 0.00001 ether;
     }
@@ -129,6 +132,12 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
     /// @dev Sums over the balances of various contracts and the beacon chain information from the oracle.
     function totalControlled() public view returns (uint256) {
         return address(this).balance;
+    }
+
+    function withdrawETH(uint ethAmount) public {
+        require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
+        require(address(this).balance >= ethAmount, "Insufficient balance");
+        payable(msg.sender).transfer(ethAmount);
     }
 
 }

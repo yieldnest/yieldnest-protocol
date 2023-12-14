@@ -9,6 +9,8 @@ import "./StakingNode.sol";
 import "./libraries/DepositRootGenerator.sol";
 import "./interfaces/IDepositContract.sol";
 import "./interfaces/IStakingNode.sol";
+import "./interfaces/IDepositPool.sol";
+
 
 interface StakingNodesManagerEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -27,6 +29,7 @@ contract StakingNodesManager is
     UpgradeableBeacon private upgradableBeacon;
     address public eigenPodManager;
     IDepositContract public depositContractEth2;
+    IDepositPool public depositPool; // Added depositPool variable
 
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
@@ -35,6 +38,7 @@ contract StakingNodesManager is
     uint maxNodeCount;
 
     uint constant DEFAULT_NODE_INDEX  = 0;
+    uint DEFAULT_VALIDATOR_STAKE = 32 ether;
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -45,6 +49,7 @@ contract StakingNodesManager is
         address admin;
         uint maxNodeCount;
         IDepositContract depositContract;
+        IDepositPool _depositPool; // Added depositPool to Init struct
     }
 
     constructor() {
@@ -56,16 +61,20 @@ contract StakingNodesManager is
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         depositContractEth2 = init.depositContract;
+        depositPool = init._depositPool; // Initialized depositPool
         maxNodeCount = init.maxNodeCount;
     }
 
     function registerValidators(
         bytes32 _depositRoot,
         DepositData[] calldata _depositData
-    ) public nonReentrant verifyDepositState(_depositRoot) {
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant verifyDepositState(_depositRoot) {
+
+        uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
+        depositPool.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
         for (uint x = 0; x < _depositData.length; ++x) {
-            _registerValidator(_depositData[x], 32 ether);
+            _registerValidator(_depositData[x], DEFAULT_VALIDATOR_STAKE);
         }
     }
 
