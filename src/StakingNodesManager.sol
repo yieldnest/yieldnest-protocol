@@ -12,7 +12,7 @@ import "./interfaces/IStakingNode.sol";
 
 interface StakingNodesManagerEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
-     event ValidatorRegistered();
+     event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
 }
 
 
@@ -23,6 +23,7 @@ contract StakingNodesManager is
     ReentrancyGuardUpgradeable,
     StakingNodesManagerEvents {
 
+    address public implementationContract;
     UpgradeableBeacon private upgradableBeacon;
     address public eigenPodManager;
     IDepositContract public depositContractEth2;
@@ -33,40 +34,51 @@ contract StakingNodesManager is
     address[] public nodes;
     uint maxNodeCount;
 
+    uint constant DEFAULT_NODE_INDEX  = 0;
+
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
     //--------------------------------------------------------------------------------------
 
-    constructor() {
-        // Only 1 eigenpod to start with
-        maxNodeCount = 1;
+    /// @notice Configuration for contract initialization.
+    struct Init {
+        address admin;
+        uint maxNodeCount;
+        IDepositContract depositContract;
     }
 
+    constructor() {
+    }
+
+    function initialize(Init memory init) external {
+        __AccessControl_init();
+       __ReentrancyGuard_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        depositContractEth2 = init.depositContract;
+        maxNodeCount = init.maxNodeCount;
+    }
 
     function registerValidators(
         bytes32 _depositRoot,
-        uint256[] calldata _validatorId,
         DepositData[] calldata _depositData
     ) public nonReentrant verifyDepositState(_depositRoot) {
-        require(_validatorId.length <= maxBatchDepositSize, "Too many validators");
-        require(_validatorId.length == _depositData.length, "Array lengths must match");
 
-        for (uint256 x; x < _validatorId.length; ++x) {
-            _registerValidator(_validatorId[x], _depositData[x], 32 ether);
+        for (uint x = 0; x < _depositData.length; ++x) {
+            _registerValidator(_depositData[x], 32 ether);
         }
     }
 
-    /// @notice Creates validator object, mints NFTs, sets NB variables and deposits into beacon chain
-    /// @param nodeId ID of the validator to register
+    /// @notice Creates validator object and deposits into beacon chain
     /// @param _depositData Data structure to hold all data needed for depositing to the beacon chain
     /// however, instead of the validator key, it will include the IPFS hash
     /// containing the validator key encrypted by the corresponding node operator's public key
     function _registerValidator(
-        uint256 nodeId, 
         DepositData calldata _depositData, 
         uint256 _depositAmount
     ) internal {
-        // require(bidIdToStakerInfo[_validatorId].staker == _staker, "Not deposit owner");
+
+        uint256 nodeId = getNextNodeIdToUse();
         bytes memory withdrawalCredentials = getWithdrawalCredentials(nodeId);
         bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(_depositData.publicKey, _depositData.signature, withdrawalCredentials, _depositAmount);
         require(depositDataRoot == _depositData.depositDataRoot, "Deposit data root mismatch");
@@ -75,7 +87,17 @@ contract StakingNodesManager is
         depositContractEth2.deposit{value: _depositAmount}(_depositData.publicKey, withdrawalCredentials, _depositData.signature, depositDataRoot);
 
 
-        emit ValidatorRegistered();
+        emit ValidatorRegistered(
+            nodeId,
+            _depositData.signature,
+            _depositData.publicKey,
+            depositDataRoot
+        );
+    }
+
+    function getNextNodeIdToUse() internal view returns (uint) {
+        // Use only 1 node with eigenpod to start with
+        return DEFAULT_NODE_INDEX;
     }
 
     function getWithdrawalCredentials(uint256 nodeId) public view returns (bytes memory) {
@@ -105,6 +127,15 @@ contract StakingNodesManager is
         nodes.push(address(node));
 
         return address(node);
+    }
+
+
+    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(DEFAULT_ADMIN_ROLE) public {
+        require(implementationContract == address(0), "Address already set");
+        require(_implementationContract != address(0), "No zero addresses");
+
+        implementationContract = _implementationContract;
+        upgradableBeacon = new UpgradeableBeacon(implementationContract, address(this));      
     }
 
     //--------------------------------------------------------------------------------------

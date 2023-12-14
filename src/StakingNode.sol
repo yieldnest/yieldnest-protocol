@@ -28,6 +28,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
      function initialize(address _stakingNodesManager) external {
         require(stakingNodesManager == address(0), "already initialized");
         require(_stakingNodesManager != address(0), "No zero addresses");
+
         stakingNodesManager = _stakingNodesManager;
     }
 
