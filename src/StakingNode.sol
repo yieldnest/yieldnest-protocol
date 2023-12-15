@@ -14,7 +14,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
     IStakingNodesManager public stakingNodesManager;
     address public eigenPod;
-    IDelegationManager delegationManager;
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -31,7 +30,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         require(address(init.stakingNodesManager) != address(0), "No zero addresses");
 
         stakingNodesManager = init.stakingNodesManager;
-        delegationManager = init.delegationManager;
     }
 
     function createEigenPod() public {
@@ -46,6 +44,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
     function delegate() public {
 
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry = ISignatureUtils.SignatureWithExpiry('', 0);
         bytes32 approverSalt;
         delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);

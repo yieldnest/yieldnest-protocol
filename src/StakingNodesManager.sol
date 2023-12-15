@@ -10,7 +10,7 @@ import "./libraries/DepositRootGenerator.sol";
 import "./interfaces/IDepositContract.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IDepositPool.sol";
-
+import "./interfaces/eigenlayer/IDelegationManager.sol";
 
 interface StakingNodesManagerEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -30,6 +30,7 @@ contract StakingNodesManager is
     address public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDepositPool public depositPool; // Added depositPool variable
+    IDelegationManager public delegationManager;
 
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
@@ -129,7 +130,11 @@ contract StakingNodesManager is
 
         BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
-        node.initialize(address(this));
+
+       
+        node.initialize(
+            IStakingNode.Init(IStakingNodesManager(address(this)))
+        );
  
         node.createEigenPod();
 

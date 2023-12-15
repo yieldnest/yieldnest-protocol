@@ -19,26 +19,8 @@ interface StakingEvents {
 contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, StakingEvents {
 
     // Errors.
-    error DoesNotReceiveETH();
-    error InvalidConfiguration();
-    error MaximumValidatorDepositExceeded();
-    error MaximumynETHSupplyExceeded();
     error MinimumStakeBoundNotSatisfied();
-    error MinimumUnstakeBoundNotSatisfied();
-    error MinimumValidatorDepositNotSatisfied();
-    error NotEnoughDepositETH();
-    error NotEnoughUnallocatedETH();
-    error NotReturnsAggregator();
-    error NotUnstakeRequestsManager();
-    error Paused();
-    error PreviouslyUsedValidator();
-    error ZeroAddress();
-    error InvalidDepositRoot(bytes32);
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
-    error UnstakeBelowMinimumETHAmount(uint256 ethAmount, uint256 expectedMinimum);
-    error InvalidWithdrawalCredentialsWrongLength(uint256);
-    error InvalidWithdrawalCredentialsNotETH1(bytes12);
-    error InvalidWithdrawalCredentialsWrongAddress(address);
 
 
     IynETH public ynETH;

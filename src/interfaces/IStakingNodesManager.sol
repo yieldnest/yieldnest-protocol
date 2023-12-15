@@ -1,5 +1,7 @@
 pragma solidity ^0.8.0;
 
+import "./eigenlayer/IDelegationManager.sol";
+
 interface IStakingNodesManager {
 
     struct DepositData {
@@ -9,6 +11,8 @@ interface IStakingNodesManager {
     }
 
     function eigenPodManager() external view returns (address);
+
+    function delegationManager() external view returns (IDelegationManager);
 }
 
 

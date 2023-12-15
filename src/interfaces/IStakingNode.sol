@@ -7,9 +7,7 @@ interface IStakingNode {
 
     /// @notice Configuration for contract initialization.
     struct Init {
-        address admin;
         IStakingNodesManager stakingNodesManager;
-        IDelegationManager delegationManager;
     }
 
     function stakingNodesManager() external view returns (IStakingNodesManager);
