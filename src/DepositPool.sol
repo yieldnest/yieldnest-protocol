@@ -6,6 +6,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "./interfaces/IOracle.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -24,14 +25,18 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
 
     IynETH public ynETH;
+    IOracle public oracle;
+    uint public allocatedETHForDeposits;
     address public stakingNodesManager;
     // Storage variables
-    uint256 public minimumStakeBound;
+    uint public minimumStakeBound;
 
     /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
     /// amount of ynETH received when staking, meaning there is no surprise for users when staking or unstaking.
     /// @dev The value is in basis points (1/10000).
     uint16 public exchangeAdjustmentRate;
+
+    uint totalDepositedInValidators;
 
     /// @dev A basis point (often denoted as bp, 1bp = 0.01%) is a unit of measure used in finance to describe
     /// the percentage change in a financial instrument. This is a constant value set as 10000 which represents
@@ -43,6 +48,7 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
         address admin;
         IynETH ynETH;
         address stakingNodesManager;
+        IOracle oracle; // YieldNest oracle
     }
 
     constructor() {
@@ -68,7 +74,6 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
     function deposit(uint256 minynETHAmount) external payable {
  
-
         if (msg.value < minimumStakeBound) {
             revert MinimumStakeBoundNotSatisfied();
         }
@@ -109,16 +114,25 @@ contract DepositPool is Initializable, AccessControlUpgradeable, IDepositPool, S
 
     /// @notice The total amount of ETH controlled by the protocol.
     /// @dev Sums over the balances of various contracts and the beacon chain information from the oracle.
-    function totalControlled() public view returns (uint256) {
-        // TODO: implement correctly a report how much ETH is in the system
-        // ETH sits in the DepositPool, on the Beacon Chain
-        return address(this).balance;
+    function totalControlled() public view returns (uint) {
+        IOracle.Answer memory answer = oracle.latestAnswer();
+        uint total = 0;
+        total += address(this).balance;
+        total += allocatedETHForDeposits;
+        /// The total ETH sent to the beacon chain should be reduced by the deposits processed by the off-chain
+        /// oracle as it will be included in the currentTotalValidatorBalance from that moment forward.
+        total += totalDepositedInValidators - answer.cumulativeProcessedDepositAmount;
+        total += answer.currentTotalValidatorBalance;
+        // TODO: add the balances processed as withdrawal
+        return total;
     }
 
     function withdrawETH(uint ethAmount) public {
         require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
         require(address(this).balance >= ethAmount, "Insufficient balance");
         payable(msg.sender).transfer(ethAmount);
+
+        totalDepositedInValidators += ethAmount;
     }
 
 }
