@@ -2,38 +2,39 @@ const { ethers } = require('hardhat');
 
 
 async function setup() {
-  console.log('Getting signers');
   const [deployer, stakingNodeManagerSigner] = await ethers.getSigners();
 
-  console.log('Deploying ynETH');
   const ynETHFactory = await ethers.getContractFactory('ynETH');
   const ynETH = await deployTransparentUpgradeableProxy(ynETHFactory, 'ynETH', [], deployer);
   await ynETH.deployed();
 
-  console.log('Deploying DepositPool');
   const DepositPoolFactory = await ethers.getContractFactory('DepositPool');
   const depositPool = await deployTransparentUpgradeableProxy(DepositPoolFactory, 'DepositPool', [], deployer);
   await depositPool.deployed();
 
-  console.log('Deploying MockDepositContract');
   const MockDepositContractFactory = await ethers.getContractFactory('MockDepositContract');
   const depositContract = await MockDepositContractFactory.deploy();
   await depositContract.deployed();
 
-  console.log('Initializing ynETH');
+  const OracleFactory = await ethers.getContractFactory('Oracle');
+  const oracle = await OracleFactory.deploy();
+  await oracle.deployed();
+
+  await oracle.initialize({
+    stakingNodesManager: stakingNodeManagerSigner.address
+  });
+
   await ynETH.initialize({
     admin: deployer.address,
     depositPool: depositPool.address,
   });
 
-  console.log('Initializing DepositPool');
   await depositPool.initialize({
     admin: deployer.address,
     ynETH: ynETH.address,
-    stakingNodesManager: stakingNodeManagerSigner.address
+    stakingNodesManager: stakingNodeManagerSigner.address,
+    oracle: oracle.address
   });
-
-  console.log('Done');
 
   return {
     ynETH,
