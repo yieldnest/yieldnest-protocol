@@ -1,44 +1,62 @@
 
 const hre = require("hardhat");
 const fs = require('fs');
+const contractAddresses = require('./contractAddresses');
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
 
+    // set deployer to be the manager 
+    const stakingNodesManager = deployer;
+
+    const networkName = hre.network.name;
+
+    const gasPrice = await hre.ethers.provider.getGasPrice();
+    const fastGasPrice = gasPrice.mul(2);
+    const overrides = {
+        gasPrice: fastGasPrice
+    };
+
+    const { WETH_ADDRESS } = contractAddresses[networkName];
+
     console.log("Deploying contracts with the account:", deployer.address);
+
+    const Oracle = await hre.ethers.getContractFactory("Oracle");
+    const oracle = await Oracle.deploy();
+    await oracle.deployed();
+
+    console.log("Oracle deployed to:", oracle.address);
 
     const ynETH = await hre.ethers.getContractFactory("ynETH");
     const ynETHContract = await ynETH.deploy();
     await ynETHContract.deployed();
 
-    const DepositPool = await hre.ethers.getContractFactory("DepositPool");
-    const depositPool = await DepositPool.deploy();
-    await depositPool.deployed();
-
     console.log("ynETH deployed to:", ynETHContract.address);
-    console.log("DepositPool deployed to:", depositPool.address);
+
 
     const ynETHInitializeParams = {
         admin: deployer.address,
-        depositPool: depositPool.address
+        ynETH: ynETHContract.address,
+        oracle: oracle.address,
+        wETH: WETH_ADDRESS,
+        stakingNodesManager: stakingNodesManager.address
     };
 
     console.log("Initializing ynETHContract with params:", ynETHInitializeParams);
     await ynETHContract.initialize(ynETHInitializeParams);
-    console.log("ynETHContract initialized successfully");
 
-    const depositPoolInitializeParams = {
-        admin: deployer.address,
-        ynETH: ynETHContract.address,
-        depositContract: depositPool.address
+    console.log("ynETH initialized successfully");
+
+    const oracleInitializeParams = {
+        stakingNodesManager: stakingNodesManager.address
     };
 
-    console.log("Initializing depositPool with params:", depositPoolInitializeParams);
-    await depositPool.initialize(depositPoolInitializeParams);
-    console.log("depositPool initialized successfully");
+    console.log("Initializing Oracle with params:", oracleInitializeParams);
+    await oracle.initialize(oracleInitializeParams);
+
+    console.log("Oracle initialized successfully");
 
     console.log("Contracts initialized successfully");
-
 
     console.log("Verifying contracts on etherscan");
     async function retryVerify(contractName, contractAddress, constructorArguments) {
@@ -58,7 +76,7 @@ async function main() {
     }
 
     await retryVerify("ynETHContract", ynETHContract.address, []);
-    await retryVerify("depositPool", depositPool.address, []);
+    await retryVerify("Oracle", oracle.address, []);
     console.log("Contracts verified successfully");
 
     const addresses = {
