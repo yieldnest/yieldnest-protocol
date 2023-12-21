@@ -3,7 +3,7 @@
 
 # Basic multisig-based flow
 
-
+```
 ynETH ERC4626
        |
  withdrawETH
@@ -27,3 +27,5 @@ ynETH ERC4626
   +--------+
   |eigenPod|
   +--------+
+
+```
