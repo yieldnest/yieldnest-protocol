@@ -9,6 +9,7 @@ import {AccessControlUpgradeable} from
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import "hardhat/console.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -67,14 +68,14 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
         stakingNodesManager = init.stakingNodesManager;
     }
 
+    function depositETH(address receiver)  public payable returns (uint shares) {
 
-    function depositETH(address receiver) public payable returns (uint shares) {
+        console.log("depositETH DEBUG", msg.value);
 
-        uint assets = msg.value;
-        IWETH(asset()).deposit{value: msg.value}();
+        IWETH(address(asset())).deposit{value: msg.value}();
 
-        return deposit(assets, receiver);
-    }    
+        return deposit(msg.value, receiver);
+    }
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.

@@ -8,7 +8,16 @@ const fs = require("fs");
 require('dotenv').config();
 
 const config = {
-  solidity: "0.8.21",
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.21"
+      },
+      {
+        version: "0.4.24"
+      }
+    ]
+  },
   networks: {
     goerli: {
       url: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,

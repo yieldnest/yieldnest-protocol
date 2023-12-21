@@ -8,37 +8,31 @@ async function setup() {
   const ynETH = await deployTransparentUpgradeableProxy(ynETHFactory, 'ynETH', [], deployer);
   await ynETH.deployed();
 
-  const DepositPoolFactory = await ethers.getContractFactory('DepositPool');
-  const depositPool = await deployTransparentUpgradeableProxy(DepositPoolFactory, 'DepositPool', [], deployer);
-  await depositPool.deployed();
-
   const MockDepositContractFactory = await ethers.getContractFactory('MockDepositContract');
   const depositContract = await MockDepositContractFactory.deploy();
   await depositContract.deployed();
 
+  console.log("Deploying Oracle contract");
   const OracleFactory = await ethers.getContractFactory('Oracle');
   const oracle = await OracleFactory.deploy();
   await oracle.deployed();
 
-  await oracle.initialize({
-    stakingNodesManager: stakingNodeManagerSigner.address
-  });
+  const WETHFactory = await ethers.getContractFactory('WETH');
+  const weth = await WETHFactory.deploy();
+  await weth.deployed();
 
+  console.log("Initializing ynETH contract");
   await ynETH.initialize({
     admin: deployer.address,
-    depositPool: depositPool.address,
-  });
-
-  await depositPool.initialize({
-    admin: deployer.address,
-    ynETH: ynETH.address,
     stakingNodesManager: stakingNodeManagerSigner.address,
-    oracle: oracle.address
+    oracle: oracle.address,
+    wETH: weth.address
   });
 
+  console.log("Returning deployed contracts");
   return {
     ynETH,
-    depositPool
+    weth
   };
 }
 
