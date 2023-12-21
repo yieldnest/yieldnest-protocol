@@ -22,13 +22,13 @@ async function main() {
     console.log("Deploying contracts with the account:", deployer.address);
 
     const Oracle = await hre.ethers.getContractFactory("Oracle");
-    const oracle = await Oracle.deploy();
+    const oracle = await Oracle.deploy(overrides);
     await oracle.deployed();
 
     console.log("Oracle deployed to:", oracle.address);
 
     const ynETH = await hre.ethers.getContractFactory("ynETH");
-    const ynETHContract = await ynETH.deploy();
+    const ynETHContract = await ynETH.deploy(overrides);
     await ynETHContract.deployed();
 
     console.log("ynETH deployed to:", ynETHContract.address);
@@ -43,8 +43,8 @@ async function main() {
     };
 
     console.log("Initializing ynETHContract with params:", ynETHInitializeParams);
-    await ynETHContract.initialize(ynETHInitializeParams);
-
+    const ynETHInitTx = await ynETHContract.initialize(ynETHInitializeParams, overrides);
+    await ynETHInitTx.wait();
     console.log("ynETH initialized successfully");
 
     const oracleInitializeParams = {
@@ -52,7 +52,8 @@ async function main() {
     };
 
     console.log("Initializing Oracle with params:", oracleInitializeParams);
-    await oracle.initialize(oracleInitializeParams);
+    const oracleInitTx = await oracle.initialize(oracleInitializeParams, overrides);
+    await oracleInitTx.wait();
 
     console.log("Oracle initialized successfully");
 
@@ -81,7 +82,7 @@ async function main() {
 
     const addresses = {
         ynETHContract: ynETHContract.address,
-        depositPool: depositPool.address
+        oracle: oracle.address
     };
 
     fs.writeFileSync('goerli-addresses.json', JSON.stringify(addresses, null, 2));
