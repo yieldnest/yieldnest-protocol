@@ -1,76 +1,132 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
+import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {IDepositContract} from "./interfaces/IDepositContract.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {
-    ERC20PermitUpgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
+import "./interfaces/IOracle.sol";
+import "./interfaces/IWETH.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
-import {IynETH} from "./interfaces/IynETH.sol";
-import {IDepositPool} from "./interfaces/IDepositPool.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+interface StakingEvents {
+    /// @notice Emitted when a user stakes ETH and receives ynETH.
+    /// @param staker The address of the user staking ETH.
+    /// @param ethAmount The amount of ETH staked.
+    /// @param ynETHAmount The amount of ynETH received.
+    event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
 
-/// @title ynETH
-/// @notice ynETH is the ERC20 LSD token for the protocol.
-contract ynETH is Initializable, AccessControlUpgradeable, ERC20PermitUpgradeable, IynETH {
+}
+ 
+contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, StakingEvents {
+
     // Errors.
-    error NotDepositPoolContract();
+    error MinimumStakeBoundNotSatisfied();
+    error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
 
-    /// @notice The deposit pool contract which has permissions to mint and burn tokens.
-    IDepositPool public depositPoolContract;
+    IOracle public oracle;
+    uint public allocatedETHForDeposits;
+    address public stakingNodesManager;
+    // Storage variables
+
+    /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
+    /// amount of ynETH received when staking, meaning there is no surprise for users when staking or unstaking.
+    /// @dev The value is in basis points (1/10000).
+    uint16 public exchangeAdjustmentRate;
+
+    uint totalDepositedInValidators;
+
+    /// @dev A basis point (often denoted as bp, 1bp = 0.01%) is a unit of measure used in finance to describe
+    /// the percentage change in a financial instrument. This is a constant value set as 10000 which represents
+    /// 100% in basis point terms.
+    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
-        IDepositPool depositPool;
+        address stakingNodesManager;
+        IOracle oracle; // YieldNest oracle
+        IWETH wETH;
     }
 
-    constructor() {
-        // TODO: re-enable tihs
+    constructor(
+    ) {
+        // TODO; re-enable this
         // _disableInitializers();
     }
 
-    /// @notice Inititalizes the contract.
+
+        /// @notice Initializes the contract.
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
-        __ERC20_init("ynETH", "ynETH");
-        __ERC20Permit_init("ynETH");
+        __ERC4626_init(IERC20(address(init.wETH)));
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
-        depositPoolContract = init.depositPool;
+        stakingNodesManager = init.stakingNodesManager;
     }
 
-    /// @inheritdoc IynETH
-    /// @dev Expected to be called during the deposit operation.
-    function mint(address depositor, uint256 amount) external {
-        if (msg.sender != address(depositPoolContract)) {
-            revert NotDepositPoolContract();
+
+    function depositETH(address receiver) public payable returns (uint shares) {
+
+        uint assets = msg.value;
+        IWETH(asset()).deposit{value: msg.value}();
+
+        return deposit(assets, receiver);
+    }    
+
+    /// @notice Converts from ynETH to ETH using the current exchange rate.
+    /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
+    function convertToShares(uint256 ethAmount) override public view returns (uint256) {
+        // 1:1 exchange rate on the first stake.
+        // Using `ynETH.totalSupply` over `totalControlled` to check if the protocol is in its bootstrap phase since
+        // the latter can be manipulated, for example by transferring funds to the `ExecutionLayerReturnsReceiver`, and
+        // therefore be non-zero by the time the first stake is made
+        if (totalSupply() == 0) {
+            return ethAmount;
         }
 
-        _mint(depositor, amount);
+        // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
+        // This rounds down to zero in the case of `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply <
+        // totalControlled`.
+        // While this scenario is theoretically possible, it can only be realised feasibly during the protocol's
+        // bootstrap phase and if `totalControlled` and `ynETHSupply` can be changed independently of each other. Since
+        // the former is permissioned, and the latter is not permitted by the protocol, this cannot be exploited by an
+        // attacker.
+        return Math.mulDiv(
+            ethAmount,
+            totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
+            totalControlled() * uint256(_BASIS_POINTS_DENOMINATOR)
+        );
     }
 
-    /// @inheritdoc IynETH
-    /// @dev Expected to be called when a user has claimed their unstake request.
-    function burn(uint256 amount) external {
-        if (msg.sender != address(depositPoolContract)) {
-            revert NotDepositPoolContract();
-        }
-
-        _burn(msg.sender, amount);
+    function totalAssets() override public view returns (uint) {
+        return totalControlled();
     }
 
-    /// @dev See {IERC20Permit-nonces}.
-    function nonces(address owner)
-        public
-        view
-        virtual
-        override(ERC20PermitUpgradeable, IERC20Permit)
-        returns (uint256)
-    {
-        return ERC20PermitUpgradeable.nonces(owner);
+    /// @notice The total amount of ETH controlled by the protocol.
+    /// @dev Sums over the balances of various contracts and the beacon chain information from the oracle.
+    function totalControlled() public view returns (uint) {
+        IOracle.Answer memory answer = oracle.latestAnswer();
+        uint total = 0;
+        // allocated ETH for deposits
+        total += address(this).balance;
+
+        /// The total ETH sent to the beacon chain should be reduced by the deposits processed by the off-chain
+        /// oracle as it will be included in the currentTotalValidatorBalance from that moment forward.
+        total += totalDepositedInValidators - answer.cumulativeProcessedDepositAmount;
+        total += answer.currentTotalValidatorBalance;
+        // TODO: add the balances processed as withdrawal
+        return total;
     }
+
+    function withdrawETH(uint ethAmount) public {
+        require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
+        require(address(this).balance >= ethAmount, "Insufficient balance");
+        payable(msg.sender).transfer(ethAmount);
+
+        totalDepositedInValidators += ethAmount;
+    }
+
 }

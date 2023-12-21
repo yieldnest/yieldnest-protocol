@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "@fei-protocol/erc4626": "^0.0.0",
     "@openzeppelin/contracts": "^5.0.0",
     "@openzeppelin/contracts-upgradeable": "^5.0.0",
     "hardhat": "^2.12.6",
