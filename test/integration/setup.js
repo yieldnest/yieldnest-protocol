@@ -2,7 +2,7 @@ const { ethers } = require('hardhat');
 
 
 async function setup() {
-  const [deployer, stakingNodeManagerSigner] = await ethers.getSigners();
+  const [deployer, stakingNodesManagerSigner] = await ethers.getSigners();
 
   const ynETHFactory = await ethers.getContractFactory('ynETH');
   const ynETH = await deployTransparentUpgradeableProxy(ynETHFactory, 'ynETH', [], deployer);
@@ -24,7 +24,7 @@ async function setup() {
   console.log("Initializing ynETH contract");
   await ynETH.initialize({
     admin: deployer.address,
-    stakingNodesManager: stakingNodeManagerSigner.address,
+    stakingNodesManager: stakingNodesManagerSigner.address,
     oracle: oracle.address,
     wETH: weth.address
   });
@@ -32,7 +32,8 @@ async function setup() {
   console.log("Returning deployed contracts");
   return {
     ynETH,
-    weth
+    weth,
+    stakingNodesManager: stakingNodesManagerSigner
   };
 }
 

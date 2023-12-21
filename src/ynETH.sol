@@ -9,6 +9,7 @@ import {AccessControlUpgradeable} from
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import "hardhat/console.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -134,6 +135,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
     function withdrawETH(uint ethAmount) public {
         require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
         require(address(this).balance >= ethAmount, "Insufficient balance");
+        
         payable(msg.sender).transfer(ethAmount);
 
         totalDepositedInValidators += ethAmount;
