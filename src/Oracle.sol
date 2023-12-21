@@ -4,6 +4,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IDepositPool.sol";
 import "./interfaces/IStakingNodesManager.sol";
+import "hardhat/console.sol";
 
 contract Oracle is Initializable, IOracle {
 

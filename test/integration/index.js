@@ -1,5 +1,5 @@
 describe('Integration Tests', function () {
-    require('./DepositPool');
+    require('./ynETH');
    });
    
    

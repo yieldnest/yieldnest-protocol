@@ -9,7 +9,6 @@ import {AccessControlUpgradeable} from
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
-import "hardhat/console.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -58,7 +57,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
     }
 
 
-        /// @notice Initializes the contract.
+    /// @notice Initializes the contract.
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
@@ -66,20 +65,30 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         stakingNodesManager = init.stakingNodesManager;
+        oracle = init.oracle;
     }
 
-    function depositETH(address receiver)  public payable returns (uint shares) {
+    function depositETH(address receiver) public payable returns (uint shares) {
 
-        console.log("depositETH DEBUG", msg.value);
+        require(msg.value > 0, "msg.value == 0");
 
-        IWETH(address(asset())).deposit{value: msg.value}();
+        uint assets = msg.value;
 
-        return deposit(msg.value, receiver);
+        uint256 maxAssets = maxDeposit(receiver);
+
+        if (assets > maxAssets) {
+            revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
+        }
+        uint256 shares = previewDeposit(assets);
+
+        _mint(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
-    function convertToShares(uint256 ethAmount) override public view returns (uint256) {
+    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) override internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Using `ynETH.totalSupply` over `totalControlled` to check if the protocol is in its bootstrap phase since
         // the latter can be manipulated, for example by transferring funds to the `ExecutionLayerReturnsReceiver`, and
