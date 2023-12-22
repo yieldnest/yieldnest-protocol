@@ -45,8 +45,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     function delegate() public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry = ISignatureUtils.SignatureWithExpiry('', 0);
+
+        // Only supports empty approverSignatureAndExpiry and approverSalt
+        // this applies when no IDelegationManager.OperatorDetails.delegationApprover is specified by operator
+        // TODO: add support for operators that require signatures
+        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
         bytes32 approverSalt;
+
         delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
     }
 

@@ -96,7 +96,6 @@ contract StakingNodesManager is
         // Deposit to the Beacon Chain
         depositContractEth2.deposit{value: _depositAmount}(_depositData.publicKey, withdrawalCredentials, _depositData.signature, depositDataRoot);
 
-
         emit ValidatorRegistered(
             nodeId,
             _depositData.signature,
