@@ -8,7 +8,7 @@ import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";git 
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -87,6 +87,8 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
         totalDepositedInPool += msg.value;
         emit Deposit(msg.sender, receiver, assets, shares);
     }
+
+    // TODO: solve for deposit and mint to adjust to new variables
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.

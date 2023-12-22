@@ -38,6 +38,12 @@ describe.only('DepositPool integration tests', function () {
 
     const finalBalance = await ethers.provider.getBalance(contracts.stakingNodesManager.address);
     expect(finalBalance).to.be.equal(initialBalance.add(depositAmount));
+
+    const totalSupplyAfterWithdrawal = await contracts.ynETH.totalSupply();
+    expect(totalSupplyAfterWithdrawal).to.be.equal(totalSupply.sub(depositAmount));
+
+    const totalAssetsAfterWithdrawal = await contracts.ynETH.totalAssets();
+    expect(totalAssetsAfterWithdrawal).to.be.equal(totalAssets.sub(depositAmount));
   });
 
   it.only('should make three sequential deposits and assert balance and totalSupply after each deposit', async function () {
