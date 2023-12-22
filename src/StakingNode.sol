@@ -41,7 +41,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         emit EigenPodCreated(address(this), eigenPod);
     }
 
-
     function delegate() public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();

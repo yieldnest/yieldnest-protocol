@@ -8,8 +8,7 @@ import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
-import "hardhat/console.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";git 
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -36,6 +35,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
     /// @dev The value is in basis points (1/10000).
     uint16 public exchangeAdjustmentRate;
 
+    uint totalDepositedInPool;
     uint totalDepositedInValidators;
 
     /// @dev A basis point (often denoted as bp, 1bp = 0.01%) is a unit of measure used in finance to describe
@@ -84,6 +84,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
 
         _mint(receiver, shares);
 
+        totalDepositedInPool += msg.value;
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
@@ -105,6 +106,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
         // bootstrap phase and if `totalControlled` and `ynETHSupply` can be changed independently of each other. Since
         // the former is permissioned, and the latter is not permitted by the protocol, this cannot be exploited by an
         // attacker.
+
         return Math.mulDiv(
             ethAmount,
             totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
@@ -122,7 +124,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
         IOracle.Answer memory answer = oracle.latestAnswer();
         uint total = 0;
         // allocated ETH for deposits
-        total += address(this).balance;
+        total += totalDepositedInPool;
 
         /// The total ETH sent to the beacon chain should be reduced by the deposits processed by the off-chain
         /// oracle as it will be included in the currentTotalValidatorBalance from that moment forward.
@@ -134,11 +136,12 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
 
     function withdrawETH(uint ethAmount) public {
         require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
-        require(address(this).balance >= ethAmount, "Insufficient balance");
-        
+        require(totalDepositedInPool >= ethAmount, "Insufficient balance");
+
         payable(msg.sender).transfer(ethAmount);
 
         totalDepositedInValidators += ethAmount;
+        totalDepositedInPool -= ethAmount;
     }
 
 }
