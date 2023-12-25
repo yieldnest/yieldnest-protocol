@@ -7,9 +7,9 @@ library depositRootGenerator {
     function generateDepositRoot(
         bytes calldata pubkey,
         bytes calldata signature,
-        bytes calldata withdrawal_credentials,
+        bytes memory withdrawal_credentials,
         uint256 _amountIn
-    ) public pure returns (bytes32) {
+    ) internal pure returns (bytes32) {
 
         uint deposit_amount = _amountIn / GWEI;
         bytes memory amount = to_little_endian_64(uint64(deposit_amount));

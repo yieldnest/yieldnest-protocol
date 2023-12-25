@@ -36,10 +36,10 @@ contract StakingNodesManager is
     uint128 public stakeAmount;
 
     address[] public nodes;
-    uint maxNodeCount;
+    uint public maxNodeCount;
 
     uint constant DEFAULT_NODE_INDEX  = 0;
-    uint DEFAULT_VALIDATOR_STAKE = 32 ether;
+    uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -50,19 +50,14 @@ contract StakingNodesManager is
         address admin;
         uint maxNodeCount;
         IDepositContract depositContract;
-        IDepositPool _depositPool; // Added depositPool to Init struct
     }
-
-    constructor() {
-    }
-
-    function initialize(Init memory init) external {
+    
+    function initialize(Init memory init) external initializer {
         __AccessControl_init();
        __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         depositContractEth2 = init.depositContract;
-        depositPool = init._depositPool; // Initialized depositPool
         maxNodeCount = init.maxNodeCount;
     }
 
@@ -162,5 +157,13 @@ contract StakingNodesManager is
             require(_depositRoot == onchainDepositRoot, "deposit root changed");
         }
         _;
+    }
+
+    function fooTest() public view returns (uint) {
+        return 3;
+    }
+
+    function fooTest2() public view returns (uint) {
+        return 3;
     }
 }

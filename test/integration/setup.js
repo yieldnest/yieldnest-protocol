@@ -1,12 +1,9 @@
-const { ethers } = require('hardhat');
+const { ethers, upgrades } = require('hardhat');
+const {getContractAt} = require("@nomiclabs/hardhat-ethers/internal/helpers");
 
 
 async function setup() {
-  const [deployer, stakingNodesManagerSigner] = await ethers.getSigners();
-
-  const ynETHFactory = await ethers.getContractFactory('ynETH');
-  const ynETH = await deployTransparentUpgradeableProxy(ynETHFactory, 'ynETH', [], deployer);
-  await ynETH.deployed();
+  const [deployer] = await ethers.getSigners();
 
   const MockDepositContractFactory = await ethers.getContractFactory('MockDepositContract');
   const depositContract = await MockDepositContractFactory.deploy();
@@ -21,28 +18,77 @@ async function setup() {
   const weth = await WETHFactory.deploy();
   await weth.deployed();
 
-  console.log("Initializing ynETH contract");
-  await ynETH.initialize({
-    admin: deployer.address,
-    stakingNodesManager: stakingNodesManagerSigner.address,
-    oracle: oracle.address,
-    wETH: weth.address
-  });
+  console.log("Deploying StakingNodesManager contract");
+  const StakingNodesManagerFactory = await ethers.getContractFactory('StakingNodesManager');
+
+  const stakingNodesManager = await deployAndInitializeTransparentUpgradeableProxy(
+      StakingNodesManagerFactory,
+      'StakingNodesManager',
+      [],
+      deployer,
+      [{
+        admin: deployer.address,
+        maxNodeCount: 10,
+        depositContract: depositContract.address
+      }]
+  );
+  await stakingNodesManager.deployed();
+
+  console.log("Initializing StakingNodesManager contract");
+
+
+  const ynETHFactory = await ethers.getContractFactory('ynETH');
+  const ynETH = await deployAndInitializeTransparentUpgradeableProxy(
+      ynETHFactory,
+      'ynETH',
+      [],
+      deployer,
+      [{
+        admin: deployer.address,
+        stakingNodesManager: stakingNodesManager.address,
+        oracle: oracle.address,
+        wETH: weth.address
+      }]
+  );
+  await ynETH.deployed();
 
   console.log("Returning deployed contracts");
   return {
     ynETH,
     weth,
-    stakingNodesManager: stakingNodesManagerSigner
+    stakingNodesManager
   };
 }
 
-async function deployTransparentUpgradeableProxy(factory, name, args, admin) {
-  const implementation = await factory.deploy(...args);
-  await implementation.deployed();
-  const TransparentUpgradeableProxyFactory = await ethers.getContractFactory('TransparentUpgradeableProxy');
-  const proxy = await TransparentUpgradeableProxyFactory.deploy(implementation.address, admin.address, []);
-  return await ethers.getContractAt(name, proxy.address);
+async function getProxyAdminAddress() {
+  // Calculate the storage slot for the ProxyAdmin address
+  const adminSlotHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("eip1967.proxy.admin"));
+  const adminStorageSlot = ethers.utils.hexZeroPad(ethers.utils.hexStripZeros(ethers.BigNumber.from(adminSlotHash).sub(1)), 32);
+
+  // Read the storage slot from the proxy contract
+  const adminAddress = await provider.getStorageAt(proxyAddress, adminStorageSlot);
+
+  // Convert the storage slot data to an Ethereum address format
+  const proxyAdminAddress = ethers.utils.getAddress(ethers.utils.hexStripZeros(adminAddress));
+  console.log('ProxyAdmin Address:', proxyAdminAddress);
+  return proxyAdminAddress;
+}
+
+async function deployAndInitializeTransparentUpgradeableProxy(factory, name, args, admin, initArgs) {
+
+  const instance = await upgrades.deployProxy(factory, initArgs);
+
+  const contractInstance = await ethers.getContractAt(name, instance.address);
+
+  return contractInstance;
+
+  const upgraded = await upgrades.upgradeProxy(
+    await instance.address, factory, {
+      call: { fn: 'initialize', args: initArgs}
+    }
+  );
+
+  return instance;
 }
 
 module.exports = setup;

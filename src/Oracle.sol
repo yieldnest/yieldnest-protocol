@@ -14,7 +14,11 @@ contract Oracle is Initializable, IOracle {
         IStakingNodesManager stakingNodesManager;
     }
 
-    function initialize(Init memory init) public {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(Init memory init) public initializer {
         stakingNodesManager = init.stakingNodesManager;
     }
 
