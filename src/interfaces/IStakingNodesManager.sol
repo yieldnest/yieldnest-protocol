@@ -10,7 +10,7 @@ interface IStakingNodesManager {
         bytes32 depositDataRoot;
     }
 
-    function eigenPodManager() external view returns (address);
+    function eigenPodManager() external view returns (IEigenPodManager);
 
     function delegationManager() external view returns (IDelegationManager);
 }

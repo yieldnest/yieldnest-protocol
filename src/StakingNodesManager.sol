@@ -11,6 +11,7 @@ import "./interfaces/IDepositContract.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IDepositPool.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
+import "./interfaces/eigenlayer/IEigenPodManager.sol";
 
 interface StakingNodesManagerEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -27,7 +28,7 @@ contract StakingNodesManager is
 
     address public implementationContract;
     UpgradeableBeacon private upgradableBeacon;
-    address public eigenPodManager;
+    IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDepositPool public depositPool; // Added depositPool variable
     IDelegationManager public delegationManager;
@@ -50,6 +51,7 @@ contract StakingNodesManager is
         address admin;
         uint maxNodeCount;
         IDepositContract depositContract;
+        IEigenPodManager eigenPodManager;
     }
     
     function initialize(Init memory init) external initializer {
@@ -59,6 +61,7 @@ contract StakingNodesManager is
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         depositContractEth2 = init.depositContract;
         maxNodeCount = init.maxNodeCount;
+        eigenPodManager = init.eigenPodManager;
     }
 
     function registerValidators(
