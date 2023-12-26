@@ -28,6 +28,7 @@ async function main() {
     "method": "GET"
     });
 
+
     const validators = await validatorsResponse.json();
 
     console.log(JSON.stringify(validators, null, 2));
@@ -51,30 +52,45 @@ async function main() {
     })
 
 
-    const rawMessage = "I confirm I would like to stake 1 validator(s) and this request is valid until 1703530364.";
+    const validUntil = Math.floor(Date.now() / 1000) / + 3600;
+
+    const rawMessage = `I confirm I would like to stake 1 validator(s) and this request is valid until ${validUntil}.`;
+
+    // const rawMessage = "I confirm I would like to stake 1 validator(s) and this request is valid until 1703530364.";
 
     function prependEthereumSignedMessage(rawMessage) {
         return `\x19Ethereum Signed Message:\n${rawMessage.length}${rawMessage}`;
     }
 
-    const message = prependEthereumSignedMessage("I confirm I would like to stake 1 validator(s) and this request is valid until 1703530364.");
+    const message = prependEthereumSignedMessage(rawMessage);
     const messageHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(message));
     console.log(`Message Hash: ${messageHash}`);
 
 
     const signingKey = new ethers.utils.SigningKey('0x' + process.env.PRIVATE_KEY);
-    const signature = signingKey.signDigest(messageHash);
-    console.log(`Signature: ${ethers.utils.hexlify(signature)}`);
+    const signature = signingKey.signDigest(messageHash).compact;
+    console.log(`Signature: ${signature}`);
 
+
+    // const body = {
+    //     "depositor_address": "0xA1237efe3159197537f41F510F01D09394780f08",
+    //     "withdrawal_address": "0xA1237efe3159197537f41F510F01D09394780f08",
+    //     "deposit_count": 1,
+    //     "signed_message": {
+    //         "message_hash": "0x153c15c5ebe2039b9aaf019f345a521eb20997cf37628e702d8c0918b4b618e8",
+    //         "signature": "0xf26e5d2c7808cdd412df2100b611b9ac1141c7171977e8e999d3a3b7e00b7ac675a5b998d16aa3ab4aab8bcad6552f58b756596ae0dea0f3753326fbc119afe91b",
+    //         "valid_until": 1703530364
+    //     }
+    // };
 
     const body = {
-        "depositor_address": "0xA1237efe3159197537f41F510F01D09394780f08",
-        "withdrawal_address": "0xA1237efe3159197537f41F510F01D09394780f08",
+        "depositor_address": walletAddress,
+        "withdrawal_address": walletAddress,
         "deposit_count": 1,
         "signed_message": {
-            "message_hash": "0x153c15c5ebe2039b9aaf019f345a521eb20997cf37628e702d8c0918b4b618e8",
-            "signature": "0xf26e5d2c7808cdd412df2100b611b9ac1141c7171977e8e999d3a3b7e00b7ac675a5b998d16aa3ab4aab8bcad6552f58b756596ae0dea0f3753326fbc119afe91b",
-            "valid_until": 1703530364
+            "message_hash": messageHash,
+            "signature": signature,
+            "valid_until": validUntil
         }
     };
 
