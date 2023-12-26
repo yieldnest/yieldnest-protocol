@@ -7,8 +7,10 @@ async function main() {
     const [deployer] = await hre.ethers.getSigners();
 
 
+    console.log(`Deployer address: ${deployer.address}`);
+
     
-    const walletAddress = "0xA1237efe3159197537f41F510F01D09394780f08";
+    const walletAddress = deployer.address;
     const walletUrl = `https://fee-pool-api-goerli.oracle.ethereum.fish/wallet/${walletAddress}/validators?limit=40&offset=0`;
     const validatorsResponse = await fetch(walletUrl, {
     "headers": {
@@ -31,7 +33,7 @@ async function main() {
 
     const validators = await validatorsResponse.json();
 
-    console.log(JSON.stringify(validators, null, 2));
+    //console.log(JSON.stringify(validators, null, 2));
 
     const options = await fetch("https://fee-pool-api-goerli.oracle.ethereum.fish/staking/prepare-deposit", {
         "headers": {
