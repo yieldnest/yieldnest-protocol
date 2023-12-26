@@ -158,12 +158,4 @@ contract StakingNodesManager is
         }
         _;
     }
-
-    function fooTest() public view returns (uint) {
-        return 3;
-    }
-
-    function fooTest2() public view returns (uint) {
-        return 3;
-    }
 }
