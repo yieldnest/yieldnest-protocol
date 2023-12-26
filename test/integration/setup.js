@@ -5,6 +5,11 @@ const {getContractAt} = require("@nomiclabs/hardhat-ethers/internal/helpers");
 async function setup() {
   const [deployer] = await ethers.getSigners();
 
+  console.log("Deploying MockEigenPodManager contract");
+  const MockEigenPodManagerFactory = await ethers.getContractFactory('MockEigenPodManager');
+  const mockEigenPodManager = await MockEigenPodManagerFactory.deploy();
+  await mockEigenPodManager.deployed();
+
   const MockDepositContractFactory = await ethers.getContractFactory('MockDepositContract');
   const depositContract = await MockDepositContractFactory.deploy();
   await depositContract.deployed();
@@ -29,7 +34,8 @@ async function setup() {
       [{
         admin: deployer.address,
         maxNodeCount: 10,
-        depositContract: depositContract.address
+        depositContract: depositContract.address,
+        eigenPodManager: mockEigenPodManager.address
       }]
   );
   await stakingNodesManager.deployed();
