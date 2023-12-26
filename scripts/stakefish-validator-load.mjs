@@ -52,11 +52,11 @@ async function main() {
     })
 
 
-    const validUntil = Math.floor(Date.now() / 1000) / + 3600;
+    const validUntil =  Math.floor(Date.now() / 1000) + 3600;
 
     const rawMessage = `I confirm I would like to stake 1 validator(s) and this request is valid until ${validUntil}.`;
 
-    // const rawMessage = "I confirm I would like to stake 1 validator(s) and this request is valid until 1703530364.";
+    // const rawMessage = "I confirm I would like to stake 1 validator(s) and this request is valid until 1703589132.";
 
     function prependEthereumSignedMessage(rawMessage) {
         return `\x19Ethereum Signed Message:\n${rawMessage.length}${rawMessage}`;
@@ -93,6 +93,8 @@ async function main() {
             "valid_until": validUntil
         }
     };
+
+    console.log(body)
 
     const responseDeposit = await fetch("https://fee-pool-api-goerli.oracle.ethereum.fish/staking/prepare-deposit", {
         "headers": {
