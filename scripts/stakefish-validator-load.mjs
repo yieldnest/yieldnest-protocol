@@ -54,11 +54,11 @@ async function main() {
     })
 
 
-    const validUntil =  Math.floor(Date.now() / 1000) + 3600;
+    const validUntil =  Math.floor(Date.now() / 1000) + 60;
 
     const rawMessage = `I confirm I would like to stake 1 validator(s) and this request is valid until ${validUntil}.`;
 
-    // const rawMessage = "I confirm I would like to stake 1 validator(s) and this request is valid until 1703589132.";
+    //const rawMessage = "I confirm I would like to stake 1 validator(s) and this request is valid until 1703589132.";
 
     function prependEthereumSignedMessage(rawMessage) {
         return `\x19Ethereum Signed Message:\n${rawMessage.length}${rawMessage}`;
@@ -70,7 +70,14 @@ async function main() {
 
 
     const signingKey = new ethers.utils.SigningKey('0x' + process.env.PRIVATE_KEY);
-    const signature = signingKey.signDigest(messageHash).compact;
+
+
+    const signatureFull = signingKey.signDigest(messageHash);
+
+    console.log(signatureFull);
+    const signature = signatureFull.compact + signatureFull.v.toString(16);
+
+
     console.log(`Signature: ${signature}`);
 
 
@@ -84,6 +91,17 @@ async function main() {
     //         "valid_until": 1703530364
     //     }
     // };
+
+    const body2 = {
+        "depositor_address": "0xA1237efe3159197537f41F510F01D09394780f08",
+        "withdrawal_address": "0xA1237efe3159197537f41F510F01D09394780f08",
+        "deposit_count": 1,
+        "signed_message": {
+            "message_hash": "0x87f4c4bfb4277157a7f5b3506eb9c4e04878b5b87d3ec7be816d24be8a507496",
+            "signature": "0x6136d5f9bcc3f86c908710edd445c7bdb523a989c6ab9af502a4a350da22911858825cf1ad0499724b7e589a3ad8487805f13464a17e1bb2e0ace22aa5277f691b",
+            "valid_until": 1703589132
+        }
+    };
 
     const body = {
         "depositor_address": walletAddress,
