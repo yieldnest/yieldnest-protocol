@@ -23,6 +23,14 @@ async function setup() {
   const weth = await WETHFactory.deploy();
   await weth.deployed();
 
+  const EmptyYnETHFactory = await ethers.getContractFactory('EmptyYnETH');
+  let ynETH = await deployProxy(EmptyYnETHFactory, 'ynETH', deployer);
+
+
+  console.log({
+    ynETH: ynETH.address
+  });
+
   console.log("Deploying StakingNodesManager contract");
   const StakingNodesManagerFactory = await ethers.getContractFactory('StakingNodesManager');
 
@@ -35,7 +43,8 @@ async function setup() {
         admin: deployer.address,
         maxNodeCount: 10,
         depositContract: depositContract.address,
-        eigenPodManager: mockEigenPodManager.address
+        eigenPodManager: mockEigenPodManager.address,
+        ynETH: ynETH.address
       }]
   );
   await stakingNodesManager.deployed();
@@ -50,11 +59,10 @@ async function setup() {
   stakingNodesManager.registerStakingNodeImplementationContract(stakingNode.address);
 
   const ynETHFactory = await ethers.getContractFactory('ynETH');
-  const ynETH = await deployAndInitializeTransparentUpgradeableProxy(
+  ynETH = await upgradeProxy(
+      ynETH,
       ynETHFactory,
       'ynETH',
-      [],
-      deployer,
       [{
         admin: deployer.address,
         stakingNodesManager: stakingNodesManager.address,
@@ -94,13 +102,29 @@ async function deployAndInitializeTransparentUpgradeableProxy(factory, name, arg
 
   return contractInstance;
 
+}
+
+async function deployProxy(factory, name, admin) {
+
+  const instance = await upgrades.deployProxy(factory);
+
+  const contractInstance = await ethers.getContractAt(name, instance.address);
+
+  return contractInstance;
+}
+
+async function upgradeProxy(proxy, factory, name, initArgs) {
   const upgraded = await upgrades.upgradeProxy(
-    await instance.address, factory, {
-      call: { fn: 'initialize', args: initArgs}
-    }
+      proxy.address, factory, {
+        call: { fn: 'initialize', args: initArgs}
+      }
   );
 
-  return instance;
+  console.log(`Upgraded ${name}`);
+
+  // const contractInstance = await ethers.getContractAt(name, proxy.address);
+
+  return upgraded;
 }
 
 module.exports = setup;

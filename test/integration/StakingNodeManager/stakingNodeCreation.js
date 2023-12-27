@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const setup = require('../setup');
 const { ethers } = require('hardhat');
 
-describe.only('StakingNode creation and usage', function () {
+describe('StakingNode creation and usage', function () {
   let contracts;
   let owner;
   let addr1;
@@ -48,24 +48,24 @@ describe.only('StakingNode creation and usage', function () {
     expect(stakingNodesManagerAddress2).to.equal(contracts.stakingNodesManager.address);
   });
 
-  it.only('should register validators', async function () {
+  it('should register validators', async function () {
 
     const depositAmount = ethers.utils.parseEther('64');
     await contracts.ynETH.connect(addr1).depositETH(addr1.address, {value: depositAmount});
     const balance = await contracts.ynETH.balanceOf(addr1.address);
     expect(balance).to.be.equal(depositAmount);
 
-    const stakingNode1 = await contracts.stakingNodesManager.createStakingNode();
+    await contracts.stakingNodesManager.createStakingNode();
 
 
     const depositData = [
       {
-        pubkey: '0x' + '00'.repeat(48),
-        withdrawalCredentials: '0x' + '00'.repeat(32),
+        publicKey: '0x' + '00'.repeat(48),
         signature: '0x' + '00'.repeat(96),
         depositDataRoot: '0x' + '00'.repeat(32)
       }
     ];
+
     const depositRoot = '0x' + '00'.repeat(32);
     await contracts.stakingNodesManager.registerValidators(depositRoot, depositData);
 

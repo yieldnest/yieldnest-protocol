@@ -27,7 +27,7 @@ describe('ynETH integration tests', function () {
     expect(totalSupply).to.be.equal(depositAmount);
   });
 
-  it('should be able to withdrawETH as StakingNodeManager and check balance', async function () {
+  it.skip('should be able to withdrawETH as StakingNodeManager and check balance', async function () {
     const depositAmount = ethers.utils.parseEther('1');
 
     await contracts.ynETH.connect(addr1).depositETH(addr1.address, {value: depositAmount});

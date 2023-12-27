@@ -10,6 +10,7 @@ import "./libraries/DepositRootGenerator.sol";
 import "./interfaces/IDepositContract.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IDepositPool.sol";
+import "./interfaces/IynETH.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "hardhat/console.sol";
@@ -31,8 +32,8 @@ contract StakingNodesManager is
     UpgradeableBeacon private upgradableBeacon;
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
-    IDepositPool public depositPool; // Added depositPool variable
     IDelegationManager public delegationManager;
+    IynETH public ynETH;
 
     bytes[] public validators;
 
@@ -56,6 +57,7 @@ contract StakingNodesManager is
         uint maxNodeCount;
         IDepositContract depositContract;
         IEigenPodManager eigenPodManager;
+        IynETH ynETH;
     }
     
     function initialize(Init memory init) external initializer {
@@ -66,6 +68,7 @@ contract StakingNodesManager is
         depositContractEth2 = init.depositContract;
         maxNodeCount = init.maxNodeCount;
         eigenPodManager = init.eigenPodManager;
+        ynETH = init.ynETH;
     }
 
     function registerValidators(
@@ -74,7 +77,9 @@ contract StakingNodesManager is
     ) public onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant verifyDepositState(_depositRoot) {
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
-        depositPool.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
+
+        console.log("ynETH", address(ynETH));
+        ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
         for (uint x = 0; x < _depositData.length; ++x) {
             _registerValidator(_depositData[x], DEFAULT_VALIDATOR_STAKE);

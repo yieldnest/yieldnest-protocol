@@ -19,7 +19,7 @@ interface StakingEvents {
 
 }
  
-contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, StakingEvents {
+contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingEvents {
 
     // Errors.
     error MinimumStakeBoundNotSatisfied();
@@ -137,7 +137,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
         return total;
     }
 
-    function withdrawETH(uint ethAmount) public {
+    function withdrawETH(uint ethAmount) public override {
         require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
