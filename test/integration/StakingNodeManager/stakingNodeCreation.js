@@ -23,7 +23,11 @@ describe.only('DepositPool integration tests', function () {
 
     const stakingNodeAddress = await contracts.stakingNodesManager.nodes(0);
 
+    const stakingNodeInstance = await ethers.getContractAt('StakingNode', stakingNodeAddress);
+    const eigenPodAddress = await stakingNodeInstance.eigenPod();
 
+    const stakingNodesManagerAddress = await stakingNodeInstance.stakingNodesManager();
+    expect(stakingNodesManagerAddress).to.equal(contracts.stakingNodesManager.address);
 
   });
 
