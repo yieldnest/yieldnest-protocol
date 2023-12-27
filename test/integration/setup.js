@@ -42,6 +42,12 @@ async function setup() {
 
   console.log("Initializing StakingNodesManager contract");
 
+  console.log("Deploying StakingNode contract");
+  const StakingNodeFactory = await ethers.getContractFactory('StakingNode');
+  const stakingNode = await StakingNodeFactory.deploy();
+  await stakingNode.deployed();
+
+  stakingNodesManager.registerStakingNodeImplementationContract(stakingNode.address);
 
   const ynETHFactory = await ethers.getContractFactory('ynETH');
   const ynETH = await deployAndInitializeTransparentUpgradeableProxy(

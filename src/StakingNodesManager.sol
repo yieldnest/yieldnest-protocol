@@ -12,6 +12,7 @@ import "./interfaces/IStakingNode.sol";
 import "./interfaces/IDepositPool.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
+import "hardhat/console.sol";
 
 interface StakingNodesManagerEvents {
      event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -128,7 +129,6 @@ contract StakingNodesManager is
         BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
 
-       
         node.initialize(
             IStakingNode.Init(IStakingNodesManager(address(this)))
         );

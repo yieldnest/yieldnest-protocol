@@ -17,10 +17,11 @@ describe.only('DepositPool integration tests', function () {
     await ethers.provider.send('hardhat_reset', []);
   });
 
-  it('should create StakingNode', async function () {
+  it.only('should create StakingNode', async function () {
 
-    const stakingNode = await contracts.stakingNodeManager.createStakingNode({from: owner});
-    expect(stakingNode).to.exist;
+    const stakingNode = await contracts.stakingNodesManager.createStakingNode();
+
+    const stakingNodeAddress = await contracts.stakingNodesManager.nodes(0);
 
 
 

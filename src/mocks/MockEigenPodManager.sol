@@ -5,6 +5,8 @@ import "./MockEigenPod.sol";
 
 contract MockEigenPodManager is IEigenPodManager {
 
+    mapping(address => address) private _ownerToPod;
+
     /**
      * @notice Creates an EigenPod for the sender.
      * @dev Function will revert if the `msg.sender` already has an EigenPod.
@@ -13,6 +15,8 @@ contract MockEigenPodManager is IEigenPodManager {
     function createPod() external override returns (address) {
         MockEigenPod pod = new MockEigenPod();
         pod.initialize(msg.sender);
+
+        _ownerToPod[msg.sender] = address(pod);
         return address(pod);
     }
 
@@ -55,7 +59,7 @@ contract MockEigenPodManager is IEigenPodManager {
 
     /// @notice Returns the address of the `podOwner`'s EigenPod (whether it is deployed yet or not).
     function getPod(address podOwner) external view override returns (IEigenPod) {
-        revert("getPod is not supported");
+        return IEigenPod(_ownerToPod[podOwner]);
     }
 
     /// @notice The ETH2 Deposit Contract
