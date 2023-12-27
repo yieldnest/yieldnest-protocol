@@ -63,6 +63,7 @@ contract ynETH is ERC4626Upgradeable, AccessControlUpgradeable, IDepositPool, St
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
         __ERC4626_init(IERC20(address(init.wETH)));
+        __ERC20_init("ynETH", "ynETH");
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         stakingNodesManager = init.stakingNodesManager;
