@@ -72,6 +72,7 @@ async function setup() {
   );
   await ynETH.deployed();
 
+
   console.log("Returning deployed contracts");
   return {
     ynETH,

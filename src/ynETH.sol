@@ -141,7 +141,7 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
-        payable(msg.sender).transfer(ethAmount);
+        payable(stakingNodesManager).transfer(ethAmount);
 
         totalDepositedInValidators += ethAmount;
         totalDepositedInPool -= ethAmount;
