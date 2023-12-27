@@ -11,7 +11,6 @@ contract MockDepositContract is IDepositContract {
         bytes32 deposit_data_root
     ) external payable override {
         // Mock implementation, does nothing
-        revert("Not Callable");
     }
 
 

@@ -13,7 +13,6 @@ import "./interfaces/IDepositPool.sol";
 import "./interfaces/IynETH.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
-import "hardhat/console.sol";
 
 interface StakingNodesManagerEvents {
      event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -78,7 +77,6 @@ contract StakingNodesManager is
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
 
-        console.log("ynETH", address(ynETH));
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
         for (uint x = 0; x < _depositData.length; ++x) {
@@ -113,9 +111,19 @@ contract StakingNodesManager is
         );
     }
 
-    function getNextNodeIdToUse() internal view returns (uint) {
+    function getNextNodeIdToUse() public view returns (uint) {
         // Use only 1 node with eigenpod to start with
+        // TODO: create logic for selecting from a set of N
         return DEFAULT_NODE_INDEX;
+    }
+
+    function generateDepositRoot(
+        bytes calldata publicKey,
+        bytes calldata signature,
+        bytes memory withdrawalCredentials,
+        uint256 depositAmount
+    ) public view returns (bytes32) {
+        return depositRootGenerator.generateDepositRoot(publicKey, signature, withdrawalCredentials, depositAmount);
     }
 
     function getWithdrawalCredentials(uint256 nodeId) public view returns (bytes memory) {
@@ -130,7 +138,6 @@ contract StakingNodesManager is
     function generateWithdrawalCredentials(address _address) public pure returns (bytes memory) {   
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), _address);
     }
-
 
     function createStakingNode() public returns (IStakingNode) {
 
@@ -152,7 +159,6 @@ contract StakingNodesManager is
         return node;
     }
 
-
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(DEFAULT_ADMIN_ROLE) public {
         require(implementationContract == address(0), "Address already set");
         require(_implementationContract != address(0), "No zero addresses");
@@ -165,7 +171,9 @@ contract StakingNodesManager is
         return validators;
     }
 
+    // Receive
     receive() external payable {
+        require(msg.sender == address(ynETH));
     }
 
     //--------------------------------------------------------------------------------------
