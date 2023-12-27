@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const setup = require('../setup');
 const { ethers } = require('hardhat');
 
-describe.only('DepositPool integration tests', function () {
+describe.only('StakingNode creation and usage', function () {
   let contracts;
   let owner;
   let addr1;
@@ -17,7 +17,7 @@ describe.only('DepositPool integration tests', function () {
     await ethers.provider.send('hardhat_reset', []);
   });
 
-  it.only('should create StakingNode', async function () {
+  it('should create StakingNode', async function () {
 
     const stakingNode = await contracts.stakingNodesManager.createStakingNode();
 
@@ -31,6 +31,20 @@ describe.only('DepositPool integration tests', function () {
 
   });
 
-  it('should be able to withdrawETH as StakingNodeManager and check balance', async function () {
+  it('should create 2 StakingNodes', async function () {
+
+    const stakingNode1 = await contracts.stakingNodesManager.createStakingNode();
+    const stakingNodeAddress1 = await contracts.stakingNodesManager.nodes(0);
+    const stakingNodeInstance1 = await ethers.getContractAt('StakingNode', stakingNodeAddress1);
+    const eigenPodAddress1 = await stakingNodeInstance1.eigenPod();
+    const stakingNodesManagerAddress1 = await stakingNodeInstance1.stakingNodesManager();
+    expect(stakingNodesManagerAddress1).to.equal(contracts.stakingNodesManager.address);
+
+    const stakingNode2 = await contracts.stakingNodesManager.createStakingNode();
+    const stakingNodeAddress2 = await contracts.stakingNodesManager.nodes(1);
+    const stakingNodeInstance2 = await ethers.getContractAt('StakingNode', stakingNodeAddress2);
+    const eigenPodAddress2 = await stakingNodeInstance2.eigenPod();
+    const stakingNodesManagerAddress2 = await stakingNodeInstance2.stakingNodesManager();
+    expect(stakingNodesManagerAddress2).to.equal(contracts.stakingNodesManager.address);
   });
 });
