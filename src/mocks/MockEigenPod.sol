@@ -5,6 +5,8 @@ import "../interfaces/eigenlayer/IEigenPod.sol";
 
 contract MockEigenPod is IEigenPod {
 
+    address public owner;
+
     /// @notice The max amount of eth, in gwei, that can be restaked per validator
     function MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR() external view returns(uint64) {}
 
@@ -14,7 +16,9 @@ contract MockEigenPod is IEigenPod {
     function withdrawableRestakedExecutionLayerGwei() external view returns(uint64) {}
 
     /// @notice Used to initialize the pointers to contracts crucial to the pod's functionality, in beacon proxy construction from EigenPodManager
-    function initialize(address owner) external {}
+    function initialize(address _owner) external {
+        owner = _owner;
+    }
 
     /// @notice Called by EigenPodManager when the owner wants to create another ETH validator.
     function stake(bytes calldata pubkey, bytes calldata signature, bytes32 depositDataRoot) external payable {}
@@ -31,7 +35,9 @@ contract MockEigenPod is IEigenPod {
     function eigenPodManager() external view returns (IEigenPodManager) {}
 
     /// @notice The owner of this EigenPod
-    function podOwner() external view returns (address) {}
+    function podOwner() external view returns (address) {
+        return owner;
+    }
 
     /// @notice an indicator of whether or not the podOwner has ever "fully restaked" by successfully calling `verifyCorrectWithdrawalCredentials`.
     function hasRestaked() external view returns (bool) {}

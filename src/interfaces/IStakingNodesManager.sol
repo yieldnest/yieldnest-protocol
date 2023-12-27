@@ -1,6 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "./eigenlayer/IDelegationManager.sol";
+import "./eigenlayer/IEigenPodManager.sol";
 
 interface IStakingNodesManager {
 

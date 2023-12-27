@@ -17,14 +17,13 @@ describe.only('DepositPool integration tests', function () {
     await ethers.provider.send('hardhat_reset', []);
   });
 
-  it('should deposit and receive ynETH', async function () {
-    const depositAmount = ethers.utils.parseEther('1');
-    await contracts.ynETH.connect(addr1).depositETH(addr1.address, {value: depositAmount});
-    const balance = await contracts.ynETH.balanceOf(addr1.address);
-    expect(balance).to.be.equal(depositAmount);
+  it('should create StakingNode', async function () {
 
-    const totalSupply = await contracts.ynETH.totalSupply();
-    expect(totalSupply).to.be.equal(depositAmount);
+    const stakingNode = await contracts.stakingNodeManager.createStakingNode({from: owner});
+    expect(stakingNode).to.exist;
+
+
+
   });
 
   it('should be able to withdrawETH as StakingNodeManager and check balance', async function () {

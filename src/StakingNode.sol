@@ -13,7 +13,7 @@ interface StakingNodeEvents {
 contract StakingNode is IStakingNode, StakingNodeEvents {
 
     IStakingNodesManager public stakingNodesManager;
-    address public eigenPod;
+    IEigenPod public eigenPod;
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -32,13 +32,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         stakingNodesManager = init.stakingNodesManager;
     }
 
-    function createEigenPod() public {
-        if (eigenPod != address(0x0)) return; // already have pod
+    function createEigenPod() public returns (IEigenPod) {
+        if (address(eigenPod) != address(0x0)) return IEigenPod(address(0)); // already have pod
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
         eigenPodManager.createPod();
-        eigenPod = address(eigenPodManager.getPod(address(this)));
-        emit EigenPodCreated(address(this), eigenPod);
+        eigenPod = eigenPodManager.getPod(address(this));
+        emit EigenPodCreated(address(this), address(eigenPod));
+
+        return eigenPod;
     }
 
     function delegate() public {

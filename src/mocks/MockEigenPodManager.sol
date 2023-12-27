@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "../interfaces/eigenlayer/IEigenPodManager.sol";
+import "./MockEigenPod.sol";
 
 contract MockEigenPodManager is IEigenPodManager {
 
@@ -10,7 +11,9 @@ contract MockEigenPodManager is IEigenPodManager {
      * @dev Returns EigenPod address 
      */
     function createPod() external override returns (address) {
-        revert("createPod is not supported");
+        MockEigenPod pod = new MockEigenPod();
+        pod.initialize(msg.sender);
+        return address(pod);
     }
 
     /**

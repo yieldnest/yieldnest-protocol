@@ -14,7 +14,7 @@ import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
 
 interface StakingNodesManagerEvents {
-     event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
+     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
      event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
 }
 
@@ -109,7 +109,7 @@ contract StakingNodesManager is
 
     function getWithdrawalCredentials(uint256 nodeId) public view returns (bytes memory) {
 
-        address eigenPodAddress = IStakingNode(nodes[nodeId]).eigenPod();
+        address eigenPodAddress = address(IStakingNode(nodes[nodeId]).eigenPod());
         return generateWithdrawalCredentials(eigenPodAddress);
     }
 
@@ -121,7 +121,7 @@ contract StakingNodesManager is
     }
 
 
-    function createStakingNode() public returns (address) {
+    function createStakingNode() public returns (IStakingNode) {
 
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
 
@@ -133,11 +133,13 @@ contract StakingNodesManager is
             IStakingNode.Init(IStakingNodesManager(address(this)))
         );
  
-        node.createEigenPod();
+        IEigenPod eigenPod = node.createEigenPod();
 
         nodes.push(address(node));
 
-        return address(node);
+        emit StakingNodeCreated(address(node), address(eigenPod));
+
+        return node;
     }
 
 
