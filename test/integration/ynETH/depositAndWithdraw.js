@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const setup = require('../setup');
 const { ethers } = require('hardhat');
 
-describe.only('DepositPool integration tests', function () {
+describe('ynETH integration tests', function () {
   let contracts;
   let owner;
   let addr1;
@@ -46,7 +46,7 @@ describe.only('DepositPool integration tests', function () {
     expect(totalAssetsAfterWithdrawal).to.be.equal(totalAssets.sub(depositAmount));
   });
 
-  it.only('should make three sequential deposits and assert balance and totalSupply after each deposit', async function () {
+  it('should make three sequential deposits and assert balance and totalSupply after each deposit', async function () {
     const depositAmount = ethers.utils.parseEther('1');
 
     let shares = await contracts.ynETH.previewDeposit(depositAmount);
