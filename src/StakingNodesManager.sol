@@ -34,6 +34,9 @@ contract StakingNodesManager is
     IDepositPool public depositPool; // Added depositPool variable
     IDelegationManager public delegationManager;
 
+    bytes[] public validators;
+
+
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
 
@@ -95,6 +98,8 @@ contract StakingNodesManager is
         // Deposit to the Beacon Chain
         depositContractEth2.deposit{value: _depositAmount}(_depositData.publicKey, withdrawalCredentials, _depositData.signature, depositDataRoot);
 
+        validators.push(_depositData.publicKey);
+
         emit ValidatorRegistered(
             nodeId,
             _depositData.signature,
@@ -149,6 +154,10 @@ contract StakingNodesManager is
 
         implementationContract = _implementationContract;
         upgradableBeacon = new UpgradeableBeacon(implementationContract, address(this));      
+    }
+
+    function getAllValidators() public view returns (bytes[] memory) {
+        return validators;
     }
 
     //--------------------------------------------------------------------------------------

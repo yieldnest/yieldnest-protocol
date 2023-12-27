@@ -14,6 +14,8 @@ interface IStakingNodesManager {
     function eigenPodManager() external view returns (IEigenPodManager);
 
     function delegationManager() external view returns (IDelegationManager);
+
+    function getAllValidators() external view returns (bytes[] memory);
 }
 
 
