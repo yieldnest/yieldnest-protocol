@@ -2,22 +2,24 @@
 const hre = require("hardhat");
 const fs = require('fs');
 const contractAddresses = require('./contractAddresses');
+const { deployAndInitializeTransparentUpgradeableProxy, deployProxy, upgradeProxy } = require('./utils');
+
+
 
 async function main() {
     const [deployer] = await hre.ethers.getSigners();
 
     // set deployer to be the manager 
-    const stakingNodesManager = deployer;
 
     const networkName = hre.network.name;
 
     const gasPrice = await hre.ethers.provider.getGasPrice();
-    const fastGasPrice = gasPrice.mul(2);
+    const fastGasPrice = gasPrice.mul(3);
     const overrides = {
         gasPrice: fastGasPrice
     };
 
-    const { WETH_ADDRESS } = contractAddresses[networkName];
+    const { WETH_ADDRESS, DEPOSIT_2_ADDRESS, EIGENLAYER_EIGENPOD_MANAGER_ADDRESS, EIGENLAYER_DELEGATION_MANAGER_ADDRESS, EIGENLAYER_STRATEGY_MANAGER_ADDRESS } = contractAddresses[networkName];
 
     console.log("Deploying contracts with the account:", deployer.address);
 
@@ -27,25 +29,58 @@ async function main() {
 
     console.log("Oracle deployed to:", oracle.address);
 
-    const ynETH = await hre.ethers.getContractFactory("ynETH");
-    const ynETHContract = await ynETH.deploy(overrides);
-    await ynETHContract.deployed();
-
-    console.log("ynETH deployed to:", ynETHContract.address);
-
-
-    const ynETHInitializeParams = {
-        admin: deployer.address,
-        ynETH: ynETHContract.address,
-        oracle: oracle.address,
-        wETH: WETH_ADDRESS,
-        stakingNodesManager: stakingNodesManager.address
-    };
-
-    console.log("Initializing ynETHContract with params:", ynETHInitializeParams);
-    const ynETHInitTx = await ynETHContract.initialize(ynETHInitializeParams, overrides);
-    await ynETHInitTx.wait();
-    console.log("ynETH initialized successfully");
+    const WETHFactory = await ethers.getContractFactory('WETH');
+    const weth = await WETHFactory.deploy();
+    await weth.deployed();
+  
+    const EmptyYnETHFactory = await ethers.getContractFactory('EmptyYnETH');
+    let ynETH = await deployProxy(EmptyYnETHFactory, 'ynETH', deployer);
+  
+  
+    console.log({
+      ynETH: ynETH.address
+    });
+  
+    console.log("Deploying StakingNodesManager contract");
+    const StakingNodesManagerFactory = await ethers.getContractFactory('StakingNodesManager');
+  
+    const stakingNodesManager = await deployAndInitializeTransparentUpgradeableProxy(
+        StakingNodesManagerFactory,
+        'StakingNodesManager',
+        [],
+        deployer,
+        [{
+          admin: deployer.address,
+          maxNodeCount: 10,
+          depositContract: DEPOSIT_2_ADDRESS,
+          eigenPodManager: EIGENLAYER_EIGENPOD_MANAGER_ADDRESS,
+          ynETH: ynETH.address
+        }]
+    );
+    await stakingNodesManager.deployed();
+  
+    console.log("Initializing StakingNodesManager contract");
+  
+    console.log("Deploying StakingNode contract");
+    const StakingNodeFactory = await ethers.getContractFactory('StakingNode');
+    const stakingNode = await StakingNodeFactory.deploy();
+    await stakingNode.deployed();
+  
+    stakingNodesManager.registerStakingNodeImplementationContract(stakingNode.address);
+  
+    const ynETHFactory = await ethers.getContractFactory('ynETH');
+    ynETH = await upgradeProxy(
+        ynETH,
+        ynETHFactory,
+        'ynETH',
+        [{
+          admin: deployer.address,
+          stakingNodesManager: stakingNodesManager.address,
+          oracle: oracle.address,
+          wETH: weth.address
+        }]
+    );
+    await ynETH.deployed();
 
     const oracleInitializeParams = {
         stakingNodesManager: stakingNodesManager.address
