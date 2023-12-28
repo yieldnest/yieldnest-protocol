@@ -17,7 +17,7 @@ async function deployAndInitializeTransparentUpgradeableProxy(factory, name, arg
   async function getProxyImplementation(proxy) {
     const slot = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
     const storageValue = await ethers.provider.getStorageAt(proxy.address, slot);
-    return storageValue;
+    return '0x' + storageValue.slice(26);
 
   }
   
