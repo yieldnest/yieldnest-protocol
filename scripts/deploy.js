@@ -93,7 +93,7 @@ async function deploy() {
     };
 
     console.log("Initializing Oracle with params:", oracleInitializeParams);
-    const oracleInitTx = await oracle.initialize(oracleInitializeParams, overrides);
+    const oracleInitTx = await oracle.initialize(oracleInitializeParams);
     await oracleInitTx.wait();
 
     console.log("Oracle initialized successfully");

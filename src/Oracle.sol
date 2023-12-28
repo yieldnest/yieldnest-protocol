@@ -15,7 +15,7 @@ contract Oracle is Initializable, IOracle {
     }
 
     constructor() {
-        _disableInitializers();
+       //  _disableInitializers();
     }
 
     function initialize(Init memory init) public initializer {
