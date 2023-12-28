@@ -48,7 +48,7 @@ describe('StakingNode creation and usage', function () {
     expect(stakingNodesManagerAddress2).to.equal(contracts.stakingNodesManager.address);
   });
 
-  it.only('should register validators', async function () {
+  it('should register validators', async function () {
 
     const { stakingNodesManager } = contracts;
     const depositAmount = ethers.utils.parseEther('32');

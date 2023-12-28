@@ -37,6 +37,6 @@
     "build": "hardhat compile",
     "test": "mocha --recursive test/unit",
     "test-integration": "mocha --recursive test/integration",
-    "deploy-goerli": "hardhat run --network goerli scripts/deploy.js"
+    "deploy-goerli": "hardhat run --network goerli scripts/deployGoerli.js"
   }
 }
