@@ -3,7 +3,7 @@ import hre from "hardhat";
 
 import fetch from 'node-fetch';
 
-async function main() {
+async function getStakeFishValidators() {
     const [deployer] = await hre.ethers.getSigners();
 
 
@@ -136,13 +136,16 @@ async function main() {
     });
 
 
+    const validator = await responseDeposit.json();
 
-    console.log({
-        responseDeposit: await responseDeposit.json()
-    })
+    return [validator];
 }
 
-main()
+export {
+    getStakeFishValidators
+}
+
+getStakeFishValidators()
     .then(() => process.exit(0))
     .catch(error => {
         console.error(error);
