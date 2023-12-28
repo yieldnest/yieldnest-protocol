@@ -2,7 +2,7 @@
 const hre = require("hardhat");
 const fs = require('fs');
 const contractAddresses = require('./contractAddresses');
-const { deployAndInitializeTransparentUpgradeableProxy, deployProxy, upgradeProxy, getProxyImplementation } = require('./utils');
+const { deployAndInitializeTransparentUpgradeableProxy, deployProxy, upgradeProxy, getProxyImplementation, retryVerify } = require('./utils');
 
 const { deploy } = require('./deploy');
 
@@ -10,33 +10,18 @@ async function main() {
 
     const { ynETH, oracle, stakingNodesManager } = await deploy();
     console.log("Verifying contracts on etherscan");
-    async function retryVerify(contractName, contractAddress, constructorArguments) {
-        while (true) {
-            try {
-                await hre.run("verify:verify", {
-                    address: contractAddress,
-                    constructorArguments: constructorArguments,
-                });
-                console.log(`${contractName} verified successfully`);
-                break;
-            } catch (error) {
-                console.error(`Error verifying ${contractName}, retrying in 10 seconds`, error);
-                await new Promise(resolve => setTimeout(resolve, 10000));
-            }
-        }
-    }
 
     const ynETHImpl = await getProxyImplementation(ynETH);
     const stakingNodesManagerImpl = await getProxyImplementation(stakingNodesManager);
 
     console.log({
-        ynETHImpl: ynETHImpl.address,
-        stakingNodesManagerImpl: stakingNodesManagerImpl.address
+        ynETHImpl: ynETHImpl,
+        stakingNodesManagerImpl: stakingNodesManagerImpl
     })
 
-    await retryVerify("ynETH", ynETHImpl.address, []);
+    await retryVerify("ynETH", ynETHImpl, []);
     await retryVerify("Oracle", oracle.address, []);
-    await retryVerify("StakingNodesManager", stakingNodesManagerImpl.address, []);
+    await retryVerify("StakingNodesManager", stakingNodesManagerImpl, []);
     console.log("Contracts verified successfully");
 
     const addresses = {
