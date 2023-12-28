@@ -37,7 +37,7 @@
     "build": "hardhat compile",
     "test": "mocha --recursive test/unit",
     "test-integration": "mocha --recursive test/integration",
-    "test-fork": "mocha --recursive test/fork",
+    "test-fork": "TEST_ENV_FORK=https://goerli.infura.io/v3/0755a63409454181863b2938a61d2210 mocha --recursive test/fork",
     "deploy-goerli": "hardhat run --network goerli scripts/deployGoerli.js"
   }
 }

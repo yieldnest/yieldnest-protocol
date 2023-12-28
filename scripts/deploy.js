@@ -1,5 +1,7 @@
 
 const hre = require("hardhat");
+
+const { ethers } = require("hardhat");
 const fs = require('fs');
 const contractAddresses = require('./contractAddresses');
 const { deployAndInitializeTransparentUpgradeableProxy, deployProxy, upgradeProxy } = require('./utils');
@@ -10,13 +12,17 @@ async function deploy() {
 
     // set deployer to be the manager 
 
-    const networkName = hre.network.name;
+    const networkName = hre.network.name === 'hardhat' ? 'goerli' : hre.network.name;
+
+    console.log(`Network ${networkName}`);
 
     const gasPrice = await hre.ethers.provider.getGasPrice();
     const fastGasPrice = gasPrice.mul(3);
     const overrides = {
         gasPrice: fastGasPrice
     };
+
+
 
     const { WETH_ADDRESS, DEPOSIT_2_ADDRESS, EIGENLAYER_EIGENPOD_MANAGER_ADDRESS, EIGENLAYER_DELEGATION_MANAGER_ADDRESS, EIGENLAYER_STRATEGY_MANAGER_ADDRESS } = contractAddresses[networkName];
 

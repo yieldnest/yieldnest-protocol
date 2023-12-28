@@ -1,4 +1,4 @@
-const { upgrades } = require("hardhat");
+const { upgrades, ethers } = require("hardhat");
 
 async function deployAndInitializeTransparentUpgradeableProxy(factory, name, args, admin, initArgs) {
 

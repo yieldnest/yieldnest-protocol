@@ -7,6 +7,22 @@ require('hardhat-contract-sizer');
 const fs = require("fs");
 require('dotenv').config();
 
+const networks = {
+  hardhat: {
+    gasPrice: 0,
+    initialBaseFeePerGas: 0
+  },
+  goerli: {
+    url: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+    accounts: [`0x${process.env.PRIVATE_KEY}`]
+  }
+};
+
+if (process.env.TEST_ENV_FORK) {
+  networks.hardhat.forking = { url: process.env.TEST_ENV_FORK };
+}
+
+
 const config = {
   solidity: {
     compilers: [
@@ -18,16 +34,7 @@ const config = {
       }
     ]
   },
-  networks: {
-    hardhat: {
-      gasPrice: 0,
-      initialBaseFeePerGas: 0
-    },
-    goerli: {
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
-      accounts: [`0x${process.env.PRIVATE_KEY}`]
-    }
-  },
+  networks,
   etherscan: {
     customChains: [
       {
