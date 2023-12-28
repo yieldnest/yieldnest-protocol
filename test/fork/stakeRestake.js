@@ -14,6 +14,8 @@ describe('YieldNest fork tests', function () {
 
 
   it('deploy all contracts', async function () {
+
+    console.log(`Owners ${owner.address}`);
     contracts = await deploy();
   });
 });

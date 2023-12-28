@@ -15,6 +15,7 @@ async function deploy() {
     const networkName = hre.network.name === 'hardhat' ? 'goerli' : hre.network.name;
 
     console.log(`Network ${networkName}`);
+    console.log(`deployer address: ${deployer.address}`);
 
     const gasPrice = await hre.ethers.provider.getGasPrice();
     const fastGasPrice = gasPrice.mul(3);
