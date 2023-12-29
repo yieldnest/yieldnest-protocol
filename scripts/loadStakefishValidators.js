@@ -1,58 +1,40 @@
-import fs from 'fs';
-import hre from "hardhat";
+const fs = require('fs');
+const hre = require('hardhat');
 
-import fetch from 'node-fetch';
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
-async function getStakeFishValidators() {
+async function getStakeFishValidatorsOnce() {
     const [deployer] = await hre.ethers.getSigners();
 
 
     console.log(`Deployer address: ${deployer.address}`);
 
+    // console.log('Fetch validators');
     
     const walletAddress = deployer.address;
-    const walletUrl = `https://fee-pool-api-goerli.oracle.ethereum.fish/wallet/${walletAddress}/validators?limit=40&offset=0`;
-    const validatorsResponse = await fetch(walletUrl, {
-    "headers": {
-        "accept": "application/json, text/plain, */*",
-        "accept-language": "en-US,en;q=0.5",
-        "sec-ch-ua": "\"Brave\";v=\"119\", \"Chromium\";v=\"119\", \"Not?A_Brand\";v=\"24\"",
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": "\"macOS\"",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "cross-site",
-        "sec-gpc": "1",
-        "Referer": "https://stake.fish/",
-        "Referrer-Policy": "no-referrer-when-downgrade"
-    },
-    "body": null,
-    "method": "GET"
-    });
+    // const walletUrl = `https://fee-pool-api-goerli.oracle.ethereum.fish/wallet/${walletAddress}/validators?limit=40&offset=0`;
+    // const validatorsResponse = await fetch(walletUrl, {
+    // "headers": {
+    //     "accept": "application/json, text/plain, */*",
+    //     "accept-language": "en-US,en;q=0.5",
+    //     "sec-ch-ua": "\"Brave\";v=\"119\", \"Chromium\";v=\"119\", \"Not?A_Brand\";v=\"24\"",
+    //     "sec-ch-ua-mobile": "?0",
+    //     "sec-ch-ua-platform": "\"macOS\"",
+    //     "sec-fetch-dest": "empty",
+    //     "sec-fetch-mode": "cors",
+    //     "sec-fetch-site": "cross-site",
+    //     "sec-gpc": "1",
+    //     "Referer": "https://stake.fish/",
+    //     "Referrer-Policy": "no-referrer-when-downgrade"
+    // },
+    // "body": null,
+    // "method": "GET"
+    // });
 
 
-    const validators = await validatorsResponse.json();
+    // const validators = await validatorsResponse.json();
 
-    //console.log(JSON.stringify(validators, null, 2));
-
-    const options = await fetch("https://fee-pool-api-goerli.oracle.ethereum.fish/staking/prepare-deposit", {
-        "headers": {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "cross-site",
-            "Referer": "https://stake.fish/",
-            "Referrer-Policy": "no-referrer-when-downgrade"
-        },
-        "body": null,
-        "method": "OPTIONS"
-    });
-    
-    console.log({
-        options
-    })
-
+    // console.log(JSON.stringify(validators, null, 2));
 
     const validUntil =  Math.floor(Date.now() / 1000) + 60;
 
@@ -94,7 +76,7 @@ async function getStakeFishValidators() {
 
     const body2 = {
         "depositor_address": "0xA1237efe3159197537f41F510F01D09394780f08",
-        "withdrawal_address": "0xA1237efe3159197537f41F510F01D09394780f08",
+        "withdrawal_address": "0x0091626e15caFd0F6Bc96dE7F12CEe444c0a212d",
         "deposit_count": 1,
         "signed_message": {
             "message_hash": "0x87f4c4bfb4277157a7f5b3506eb9c4e04878b5b87d3ec7be816d24be8a507496",
@@ -114,7 +96,7 @@ async function getStakeFishValidators() {
         }
     };
 
-    console.log(body)
+    console.log('Requesting validator with body', body);
 
     const responseDeposit = await fetch("https://fee-pool-api-goerli.oracle.ethereum.fish/staking/prepare-deposit", {
         "headers": {
@@ -136,19 +118,45 @@ async function getStakeFishValidators() {
     });
 
 
-    const validator = await responseDeposit.json();
+    const validatorResponse = await responseDeposit.json();
 
-    return [validator];
+    if (validatorResponse.detail === 'Message has not been signed by depositor wallet') {
+        throw new Error('API Error: Message has not been signed by depositor wallet');
+    }
+
+    validatorResponse.depositDataRoot = validatorResponse.deposit_data_roots[0];
+
+    return [validatorResponse];
 }
 
-export {
+async function getStakeFishValidators() {
+
+    let validators;
+    while (true) {
+
+        try {
+            validators = await getStakeFishValidatorsOnce();
+
+            console.log('Validators', validators);
+            return validators;
+        } catch (e) {
+            console.error(e);
+            console.log('Failed once. Trying again.')
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            continue;
+        }
+    }
+
+}
+
+module.exports = {
     getStakeFishValidators
 }
 
-getStakeFishValidators()
-    .then(() => process.exit(0))
-    .catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
+// getStakeFishValidators()
+//     .then(() => process.exit(0))
+//     .catch(error => {
+//         console.error(error);
+//         process.exit(1);
+//     });
 
