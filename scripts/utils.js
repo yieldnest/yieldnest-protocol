@@ -36,11 +36,17 @@ async function deployAndInitializeTransparentUpgradeableProxy(factory, name, arg
   async function upgradeProxy(proxy, factory, name, initArgs) {
 
     console.log(`Upgrade proxy for ${name}`)
-    const upgraded = await upgrades.upgradeProxy(
-        proxy.address, factory, {
-          call: { fn: 'initialize', args: initArgs}
-        }
-    );
+    
+    let upgraded;
+    if (initArgs) {
+        upgraded = await upgrades.upgradeProxy(
+            proxy.address, factory, {
+              call: { fn: 'initialize', args: initArgs}
+            }
+        );
+    } else {
+        upgraded = await upgrades.upgradeProxy(proxy.address, factory);
+    }
   
     console.log(`Upgraded ${name}`);
   

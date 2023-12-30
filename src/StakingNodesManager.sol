@@ -171,6 +171,11 @@ contract StakingNodesManager is
         return validators;
     }
 
+    function nodesLength() public view returns (uint256) {
+        return nodes.length;
+    }
+
+
     // Receive
     receive() external payable {
         require(msg.sender == address(ynETH));

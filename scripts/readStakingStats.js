@@ -10,7 +10,7 @@ async function main() {
     }
 
     const StakingNodesManager = await ethers.getContractAt('StakingNodesManager', stakingNodesManagerAddress);
-    const nodeCount = 1 //await StakingNodesManager.maxNodeCount();
+    const nodeCount = await StakingNodesManager.nodesLength();
 
     console.log(`Total nodes: ${nodeCount}`);
 

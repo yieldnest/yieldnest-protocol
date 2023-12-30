@@ -7,6 +7,7 @@ require('hardhat-contract-sizer');
 const fs = require("fs");
 require('dotenv').config();
 
+
 const networks = {
   hardhat: {
     gasPrice: 0,
