@@ -47,6 +47,26 @@ async function main() {
         });
     }
 
+    const nodeId = await stakingNodesManager.getNextNodeIdToUse();
+    console.log('Getting withdrawal credentials...', nodeId);
+    const withdrawalCredentials = await stakingNodesManager.getWithdrawalCredentials(nodeId);
+
+    console.log('Generating deposit data root for each deposit data...');
+    for (const data of validatorData) {
+    
+        const amount = ethers.utils.parseEther('32');
+        const depositRoot = await stakingNodesManager.generateDepositRoot(data.publicKey, data.signature, withdrawalCredentials, amount);
+
+        console.log({
+            depositRoot,
+            data: data.depositDataRoot
+        })
+
+       // const depositDataRoot = await stakingNodesManager.generateDepositRoot(data.publicKey, data.signature, withdrawalCredentials, amount);
+       data.depositDataRoot = depositRoot;
+    }
+
+
     console.log(`Pushing validator data:`, validatorData);
 
     await stakingNodesManager.registerValidators(depositRoot, validatorData);
