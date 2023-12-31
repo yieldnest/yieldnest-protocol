@@ -70,6 +70,21 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
     }
 
+    function queueWithdrawals(uint shares) public onlyAdmin {
+    
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        IDelegationManager.QueuedWithdrawalParams[] memory queuedWithdrawalParams = new IDelegationManager.QueuedWithdrawalParams[](1);
+        queuedWithdrawalParams[0] = IDelegationManager.QueuedWithdrawalParams({
+            strategies: new IStrategy[](1),
+            shares: new uint256[](1),
+            withdrawer: address(this)
+        });
+        queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
+        queuedWithdrawalParams[0].shares[0] = shares;
+        delegationManager.queueWithdrawals(queuedWithdrawalParams);
+    }
+
     /// @dev Validates the withdrawal credentials for a withdrawal
     /// This enables the EigenPodManager to validate the withdrawal credentials and allocate the OD with shares
     function verifyWithdrawalCredentials(
