@@ -16,6 +16,8 @@ interface IStakingNodesManager {
     function delegationManager() external view returns (IDelegationManager);
 
     function getAllValidators() external view returns (bytes[] memory);
+
+    function isStakingNodesAdmin(address) external view returns (bool);
 }
 
 

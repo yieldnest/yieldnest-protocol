@@ -111,7 +111,7 @@ contract StakingNodesManager is
         );
     }
 
-    function getNextNodeIdToUse() public view returns (uint) {
+    function getNextNodeIdToUse() public pure returns (uint) {
         // Use only 1 node with eigenpod to start with
         // TODO: create logic for selecting from a set of N
         return DEFAULT_NODE_INDEX;
@@ -122,7 +122,7 @@ contract StakingNodesManager is
         bytes calldata signature,
         bytes memory withdrawalCredentials,
         uint256 depositAmount
-    ) public view returns (bytes32) {
+    ) public pure returns (bytes32) {
         return depositRootGenerator.generateDepositRoot(publicKey, signature, withdrawalCredentials, depositAmount);
     }
 
@@ -173,6 +173,11 @@ contract StakingNodesManager is
 
     function nodesLength() public view returns (uint256) {
         return nodes.length;
+    }
+
+    function isStakingNodesAdmin(address _address) public view returns (bool) {
+        // TODO: define specific admin
+        return hasRole(DEFAULT_ADMIN_ROLE, _address);
     }
 
 

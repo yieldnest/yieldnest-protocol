@@ -4,6 +4,7 @@ import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
+import "./interfaces/eigenlayer/IDelegationManager.sol";
 
 
 interface StakingNodeEvents {
@@ -12,8 +13,21 @@ interface StakingNodeEvents {
 
 contract StakingNode is IStakingNode, StakingNodeEvents {
 
+    // Errors.
+    error NotStakingNodesAdmin();
+
     IStakingNodesManager public stakingNodesManager;
     IEigenPod public eigenPod;
+
+    /// @dev Monitors the balance that was committed to validators but hasn't been re-committed to EigenLayer yet
+    //uint256 public stakedButNotVerifiedEth;
+
+
+    /// @dev Allows only a whitelisted address to configure the contract
+    modifier onlyAdmin() {
+        if(!stakingNodesManager.isStakingNodesAdmin(msg.sender)) revert NotStakingNodesAdmin();
+        _;
+    }
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -54,6 +68,28 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         bytes32 approverSalt;
 
         delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
+    }
+
+    /// @dev Validates the withdrawal credentials for a withdrawal
+    /// This enables the EigenPodManager to validate the withdrawal credentials and allocate the OD with shares
+    function verifyWithdrawalCredentials(
+        uint64 oracleTimestamp,
+        IEigenPod.StateRootProof calldata stateRootProof,
+        uint40[] calldata validatorIndices,
+        bytes[] calldata withdrawalCredentialProofs,
+        bytes32[][] calldata validatorFields
+    ) external onlyAdmin {
+        eigenPod.verifyWithdrawalCredentials(
+            oracleTimestamp,
+            stateRootProof,
+            validatorIndices,
+            withdrawalCredentialProofs,
+            validatorFields
+        );
+
+        // Decrement the staked but not verified ETH
+        // uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex, proofs.balanceRoot);
+        //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
     }
 
     /**
