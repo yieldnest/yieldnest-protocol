@@ -54,7 +54,8 @@ async function registerValidators() {
 
     console.log(`Pushing validator data:`, validatorData);
 
-    await stakingNodesManager.registerValidators(depositRoot, validatorData);
+    const tx = await stakingNodesManager.registerValidators(depositRoot, validatorData);
+    await tx.wait();
 
     console.log('Done');
 

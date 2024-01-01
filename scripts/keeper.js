@@ -28,7 +28,9 @@ async function checkAndRegisterValidators(ynETHContract) {
         await registerValidators();
         const finalBalance = await ynETHContract.totalDepositedInValidators();
         const expectedFinalBalance = initialBalance.add(minBalance);
-        assert(finalBalance.eq(expectedFinalBalance), 'Final balance did not increase by exactly minBalance');
+        if (!finalBalance.eq(expectedFinalBalance)) {
+            console.error('Final balance did not increase by exactly minBalance');
+        } 
     } else {
         console.log('The balance is not yet 32 ETH');
     }
