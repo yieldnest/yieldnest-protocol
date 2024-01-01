@@ -32,6 +32,11 @@ async function main() {
         console.log(`Max Restaked Balance Gwei per Validator for EigenPod ${i}: ${maxRestakedBalanceGwei}`);
         const nonBeaconChainETHBalanceWei = await eigenPod.nonBeaconChainETHBalanceWei();
         console.log(`Non Beacon Chain ETH Balance Wei for EigenPod ${i}: ${nonBeaconChainETHBalanceWei}`);
+
+        const hasRestaked = await eigenPod.hasRestaked();
+        console.log(`Has Restaked for EigenPod ${i}: ${hasRestaked}`);
+        const eigenPodManager = await eigenPod.eigenPodManager();
+        console.log(`EigenPod Manager for EigenPod ${i}: ${eigenPodManager}`);
     }
 }
 

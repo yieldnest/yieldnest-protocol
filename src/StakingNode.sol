@@ -70,6 +70,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
     }
 
+    function completeWithdrawal(
+        IDelegationManager.Withdrawal[] calldata withdrawals,
+        IERC20[][] calldata tokens,
+        uint256[] calldata middlewareTimesIndexes,
+        bool[] calldata receiveAsTokens
+    ) external onlyAdmin {
+
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+    }
+
     function queueWithdrawals(uint shares) public onlyAdmin {
     
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
@@ -83,6 +95,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
         queuedWithdrawalParams[0].shares[0] = shares;
         delegationManager.queueWithdrawals(queuedWithdrawalParams);
+    }
+
+    function undelegate() public onlyAdmin {
+        
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        delegationManager.undelegate(address(this));
     }
 
     /// @dev Validates the withdrawal credentials for a withdrawal
@@ -102,9 +120,31 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             validatorFields
         );
 
+        // TODO: reenable this using the contract's new functions from the latest version
+
         // Decrement the staked but not verified ETH
         // uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex, proofs.balanceRoot);
         //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
+    }
+
+
+    function verifyAndProcessWithdrawals(
+        uint64 oracleTimestamp,
+        IEigenPod.StateRootProof calldata stateRootProof,
+        IEigenPod.WithdrawalProof[] calldata withdrawalProofs,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields,
+        bytes32[][] calldata withdrawalFields
+    ) external onlyAdmin {
+        eigenPod.verifyAndProcessWithdrawals(
+            oracleTimestamp,
+            stateRootProof,
+            withdrawalProofs,
+            validatorFieldsProofs,
+            validatorFields,
+            withdrawalFields
+        );
+
     }
 
     /**
