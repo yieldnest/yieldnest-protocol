@@ -1,4 +1,4 @@
-const { upgradeProxy, getProxyImplementation } = require('./utils');
+const { upgradeProxy, getProxyImplementation, retryVerify } = require('./utils');
 const fs = require('fs');
 
 
@@ -44,6 +44,9 @@ async function upgradeContract({ contractName }) {
 
     const newImplementation = await getProxyImplementation(upgraded);
     console.log(`New implementation address: ${newImplementation}`);
+
+    console.log('Starting verification process...');
+    await retryVerify(contractName, newImplementation, []);
 }
 
 module.exports = {

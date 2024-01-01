@@ -35,8 +35,8 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     /// @dev The value is in basis points (1/10000).
     uint16 public exchangeAdjustmentRate;
 
-    uint totalDepositedInPool;
-    uint totalDepositedInValidators;
+    uint public totalDepositedInPool;
+    uint public totalDepositedInValidators;
 
     /// @dev A basis point (often denoted as bp, 1bp = 0.01%) is a unit of measure used in finance to describe
     /// the percentage change in a financial instrument. This is a constant value set as 10000 which represents
