@@ -30,7 +30,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         _;
     }
 
-     //--------------------------------------------------------------------------------------
+    //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -47,6 +47,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         stakingNodesManager = init.stakingNodesManager;
         nodeId = init.nodeId;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
+    //--------------------------------------------------------------------------------------
+
 
     function createEigenPod() public returns (IEigenPod) {
         if (address(eigenPod) != address(0x0)) return IEigenPod(address(0)); // already have pod
@@ -70,39 +75,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         bytes32 approverSalt;
 
         delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
-    }
-
-    function completeWithdrawal(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        IERC20[][] calldata tokens,
-        uint256[] calldata middlewareTimesIndexes,
-        bool[] calldata receiveAsTokens
-    ) external onlyAdmin {
-
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
-    }
-
-    function queueWithdrawals(uint shares) public onlyAdmin {
-    
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-
-        IDelegationManager.QueuedWithdrawalParams[] memory queuedWithdrawalParams = new IDelegationManager.QueuedWithdrawalParams[](1);
-        queuedWithdrawalParams[0] = IDelegationManager.QueuedWithdrawalParams({
-            strategies: new IStrategy[](1),
-            shares: new uint256[](1),
-            withdrawer: address(this)
-        });
-        queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
-        queuedWithdrawalParams[0].shares[0] = shares;
-        delegationManager.queueWithdrawals(queuedWithdrawalParams);
-    }
-
-    function undelegate() public onlyAdmin {
-        
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        delegationManager.undelegate(address(this));
     }
 
     /// @dev Validates the withdrawal credentials for a withdrawal
@@ -129,6 +101,43 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
+    //--------------------------------------------------------------------------------------
+
+
+    /*
+    *  Withdrawal Flow:
+    *
+    *  1. queueWithdrawals() - Admin queues withdrawals
+    *  2. undelegate() - Admin undelegates
+    *  3. verifyAndProcessWithdrawals() - Admin verifies and processes withdrawals
+    *  4. completeWithdrawal() - Admin completes withdrawal
+    *
+    */
+
+
+    function queueWithdrawals(uint shares) public onlyAdmin {
+    
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        IDelegationManager.QueuedWithdrawalParams[] memory queuedWithdrawalParams = new IDelegationManager.QueuedWithdrawalParams[](1);
+        queuedWithdrawalParams[0] = IDelegationManager.QueuedWithdrawalParams({
+            strategies: new IStrategy[](1),
+            shares: new uint256[](1),
+            withdrawer: address(this)
+        });
+        queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
+        queuedWithdrawalParams[0].shares[0] = shares;
+        delegationManager.queueWithdrawals(queuedWithdrawalParams);
+    }
+
+    function undelegate() public onlyAdmin {
+        
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        delegationManager.undelegate(address(this));
+    }
+
     function verifyAndProcessWithdrawals(
         uint64 oracleTimestamp,
         IEigenPod.StateRootProof calldata stateRootProof,
@@ -137,9 +146,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         bytes32[][] calldata validatorFields,
         bytes32[][] calldata withdrawalFields
     ) external onlyAdmin {
-
-        uint256 balanceBefore = address(this).balance;
-        
+    
         eigenPod.verifyAndProcessWithdrawals(
             oracleTimestamp,
             stateRootProof,
@@ -148,6 +155,20 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             validatorFields,
             withdrawalFields
         );
+    }
+
+    function completeWithdrawal(
+        IDelegationManager.Withdrawal[] calldata withdrawals,
+        IERC20[][] calldata tokens,
+        uint256[] calldata middlewareTimesIndexes,
+        bool[] calldata receiveAsTokens
+    ) external onlyAdmin {
+
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        uint256 balanceBefore = address(this).balance;
+
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
 
         uint256 balanceAfter = address(this).balance;
         uint256 fundsWithdrawn = balanceAfter - balanceBefore;
