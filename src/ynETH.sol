@@ -153,6 +153,7 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
 
     function processWithdrawnETH() public payable onlyStakingNodesManager {
         totalDepositedInValidators -= msg.value;
+        totalDepositedInPool += msg.value;
     }
 
 }
