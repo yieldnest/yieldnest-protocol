@@ -18,6 +18,8 @@ interface IStakingNodesManager {
     function getAllValidators() external view returns (bytes[] memory);
 
     function isStakingNodesAdmin(address) external view returns (bool);
+
+    function processWithdrawnETH(uint nodeId) external payable;
 }
 
 

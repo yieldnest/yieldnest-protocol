@@ -150,7 +150,7 @@ interface IDelegationManager is ISignatureUtils {
 
     /// @notice A view function to get the beaconChainETHStrategy
     function beaconChainETHStrategy() external view returns (IStrategy);
-    
+
     /**
      * @notice Registers the caller as an operator in EigenLayer.
      * @param registeringOperatorDetails is the `OperatorDetails` for the operator.

@@ -18,6 +18,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
     IStakingNodesManager public stakingNodesManager;
     IEigenPod public eigenPod;
+    uint nodeId;
 
     /// @dev Monitors the balance that was committed to validators but hasn't been re-committed to EigenLayer yet
     //uint256 public stakedButNotVerifiedEth;
@@ -44,6 +45,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         require(address(init.stakingNodesManager) != address(0), "No zero addresses");
 
         stakingNodesManager = init.stakingNodesManager;
+        nodeId = init.nodeId;
     }
 
     function createEigenPod() public returns (IEigenPod) {
@@ -127,7 +129,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
     }
 
-
     function verifyAndProcessWithdrawals(
         uint64 oracleTimestamp,
         IEigenPod.StateRootProof calldata stateRootProof,
@@ -136,6 +137,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         bytes32[][] calldata validatorFields,
         bytes32[][] calldata withdrawalFields
     ) external onlyAdmin {
+
+        uint256 balanceBefore = address(this).balance;
+        
         eigenPod.verifyAndProcessWithdrawals(
             oracleTimestamp,
             stateRootProof,
@@ -145,6 +149,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             withdrawalFields
         );
 
+        uint256 balanceAfter = address(this).balance;
+        uint256 fundsWithdrawn = balanceAfter - balanceBefore;
+
+        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
     }
 
     /**

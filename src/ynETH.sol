@@ -43,6 +43,11 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     /// 100% in basis point terms.
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
+    modifier onlyStakingNodesManager() {
+        require(msg.sender == stakingNodesManager, "Caller is not the stakingNodesManager");
+        _;
+    }
+
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
@@ -81,7 +86,7 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         if (assets > maxAssets) {
             revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
         }
-        uint256 shares = previewDeposit(assets);
+        shares = previewDeposit(assets);
 
         _mint(receiver, shares);
 
@@ -137,14 +142,17 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         return total;
     }
 
-    function withdrawETH(uint ethAmount) public override {
-        require(msg.sender == stakingNodesManager, "Only StakingNodesManager can call this function");
+    function withdrawETH(uint ethAmount) public onlyStakingNodesManager override {
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
         payable(stakingNodesManager).transfer(ethAmount);
 
         totalDepositedInValidators += ethAmount;
         totalDepositedInPool -= ethAmount;
+    }
+
+    function processWithdrawnETH() public payable onlyStakingNodesManager {
+        totalDepositedInValidators -= msg.value;
     }
 
 }

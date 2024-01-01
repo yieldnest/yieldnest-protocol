@@ -7,4 +7,6 @@ import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IER
 interface IynETH is IERC20 {
 
     function withdrawETH(uint ethAmount) external;
+
+    function processWithdrawnETH() external payable;
 }

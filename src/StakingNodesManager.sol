@@ -146,8 +146,10 @@ contract StakingNodesManager is
         BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
 
+        uint nodeId = nodes.length;
+
         node.initialize(
-            IStakingNode.Init(IStakingNodesManager(address(this)))
+            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
         );
  
         IEigenPod eigenPod = node.createEigenPod();
@@ -165,6 +167,12 @@ contract StakingNodesManager is
 
         implementationContract = _implementationContract;
         upgradableBeacon = new UpgradeableBeacon(implementationContract, address(this));      
+    }
+
+    function processWithdrawnETH(uint nodeId) external payable {
+        require(nodes[nodeId] == msg.sender, "msg.sender does not match nodeId");
+
+        ynETH.processWithdrawnETH{value: msg.value}();
     }
 
     function getAllValidators() public view returns (bytes[] memory) {
