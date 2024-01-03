@@ -5,8 +5,6 @@ import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
-import "hardhat/console.sol";
-
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -21,7 +19,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
     IStakingNodesManager public stakingNodesManager;
     IEigenPod public eigenPod;
-    uint nodeId;
+    uint public nodeId;
 
     /// @dev Monitors the balance that was committed to validators but hasn't been re-committed to EigenLayer yet
     //uint256 public stakedButNotVerifiedEth;
@@ -67,7 +65,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         return eigenPod;
     }
 
-    function delegate(address operator) public onlyAdmin {
+    function delegate(address operator) public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
@@ -77,9 +75,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
         bytes32 approverSalt;
 
-        console.log("Delegate to", operator);
-
-        //delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
+        delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
 
         emit Delegated(operator, approverSignatureAndExpiry, approverSalt);
     }
@@ -106,6 +102,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         // Decrement the staked but not verified ETH
         // uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex, proofs.balanceRoot);
         //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
+    }
+
+    function testFoo() public view returns (uint) {
+        return 12412515;
     }
 
     //--------------------------------------------------------------------------------------

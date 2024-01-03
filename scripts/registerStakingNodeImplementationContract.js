@@ -1,5 +1,6 @@
 const hre = require("hardhat");
 const fs = require('fs');
+const { retryVerify } = require('./utils');
 
 async function main() {
     const StakingNode = await hre.ethers.getContractFactory("StakingNode");
@@ -18,6 +19,10 @@ async function main() {
 
     await stakingNodeManager.registerStakingNodeImplementationContract(stakingNode.address);
     console.log("StakingNode implementation contract registered");
+
+    console.log("Retry verify for new deployment: ");
+    await retryVerify('StakingNode', stakingNode.address, []);
+
 }
 
 main()
