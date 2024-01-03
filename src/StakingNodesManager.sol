@@ -163,8 +163,6 @@ contract StakingNodesManager is
 
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(DEFAULT_ADMIN_ROLE) public {
 
-        // TODO: fix this so it can be reset
-        require(implementationContract == address(0), "Address already set");
         require(_implementationContract != address(0), "No zero addresses");
 
         implementationContract = _implementationContract;

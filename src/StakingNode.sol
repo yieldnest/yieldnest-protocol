@@ -5,10 +5,13 @@ import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
+import "hardhat/console.sol";
 
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
+
+     event Delegated(address indexed operator, ISignatureUtils.SignatureWithExpiry approverSignatureAndExpiry, bytes32 approverSalt);
 }
 
 contract StakingNode is IStakingNode, StakingNodeEvents {
@@ -64,7 +67,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         return eigenPod;
     }
 
-    function delegate() public {
+    function delegate(address operator) public onlyAdmin {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
@@ -74,7 +77,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
         bytes32 approverSalt;
 
-        delegationManager.delegateTo(msg.sender, approverSignatureAndExpiry, approverSalt);
+        console.log("Delegate to", operator);
+
+        //delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
+
+        emit Delegated(operator, approverSignatureAndExpiry, approverSalt);
     }
 
     /// @dev Validates the withdrawal credentials for a withdrawal

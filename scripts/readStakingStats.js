@@ -9,7 +9,22 @@ async function main() {
         process.exit(1);
     }
 
+    const ynViewerAddress = goerliAddresses['ynViewer'];
+    if (!ynViewerAddress) {
+        console.error('No ynViewer found in goerli-addresses.json');
+        process.exit(1);
+    }
+    const ynViewer = await ethers.getContractAt('ynViewer', ynViewerAddress);
+    const validators = await ynViewer.getAllValidators();
+
     const StakingNodesManager = await ethers.getContractAt('StakingNodesManager', stakingNodesManagerAddress);
+
+    console.log(`Total validators: ${validators.length}`);
+
+    validators.forEach((validatorAddress, i) => {
+        console.log(`Validator ${i}: ${validatorAddress}`);
+    });
+
     const nodeCount = await StakingNodesManager.nodesLength();
 
     console.log(`Total nodes: ${nodeCount}`);

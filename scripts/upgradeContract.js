@@ -23,7 +23,7 @@ async function upgradeContract({ contractName }) {
     }
     console.log(`Contract address found: ${contractAddress}`);
 
-    const factory = await ethers.getContractFactory(contractName);
+    const factory = await ethers.getContractFactory(`Testnet${contractName}`);
     console.log('Contract factory obtained');
 
     const contract = await ethers.getContractAt('TransparentUpgradeableProxy', contractAddress);
