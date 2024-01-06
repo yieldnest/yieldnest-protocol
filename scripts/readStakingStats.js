@@ -35,9 +35,6 @@ async function main() {
 
         const stakingNode = await ethers.getContractAt('StakingNode', nodeAddress);
 
-        const testFoo = await stakingNode.testFoo();
-        console.log(`Test Foo for Node ${i}: ${testFoo}`);
-
         const eigenPodAddress = await stakingNode.eigenPod();
         console.log(`EigenPod address: ${eigenPodAddress}`);
         const eigenPod = await ethers.getContractAt('IEigenPod', eigenPodAddress);

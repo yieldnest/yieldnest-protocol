@@ -19,8 +19,14 @@ async function registerValidators() {
     console.log('Getting withdrawal credentials...', nodeId);
     const withdrawalCredentials = await stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-    const validators = await getStakeFishValidators();
+    const nodeAddress = await stakingNodesManager.nodes(nodeId);
+    console.log(`Node ${nodeId}: ${nodeAddress}`);
 
+    const stakingNode = await ethers.getContractAt('StakingNode', nodeAddress);
+
+    const eigenPodAddress = await stakingNode.eigenPod();
+
+    const validators = await getStakeFishValidators({ withdrawalAddress: eigenPodAddress });
 
     console.log(`Obtained validators: ${validators.length}`);
 
