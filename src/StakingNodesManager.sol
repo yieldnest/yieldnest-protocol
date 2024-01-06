@@ -55,8 +55,9 @@ contract StakingNodesManager is
         address admin;
         uint maxNodeCount;
         IDepositContract depositContract;
-        IEigenPodManager eigenPodManager;
         IynETH ynETH;
+        IEigenPodManager eigenPodManager;
+        IDelegationManager delegationManager;
     }
     
     function initialize(Init memory init) external initializer {
@@ -68,6 +69,7 @@ contract StakingNodesManager is
         maxNodeCount = init.maxNodeCount;
         eigenPodManager = init.eigenPodManager;
         ynETH = init.ynETH;
+        delegationManager = init.delegationManager;
     }
 
     function registerValidators(

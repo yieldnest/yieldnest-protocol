@@ -12,6 +12,10 @@ async function main() {
     const networkName = hre.network.name === 'hardhat' ? 'goerli' : hre.network.name;
     const existingAddresses = require('./contractAddresses')[networkName];
     const delegationManagerAddress = existingAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS;
+
+    console.log({
+        delegationManagerAddress
+    })
     await stakingNodesManager.setDelegationManager(delegationManagerAddress);
 }
 
