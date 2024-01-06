@@ -4,10 +4,7 @@ const fs = require('fs');
 const hre = require("hardhat");
 
 async function registerValidators() {
-    const validators = await getStakeFishValidators();
 
-
-    console.log(`Obtained validators: ${validators.length}`);
 
 
     const addresses = JSON.parse(fs.readFileSync('goerli-addresses.json', 'utf8'));
@@ -17,6 +14,15 @@ async function registerValidators() {
     });
 
     const stakingNodesManager = await hre.ethers.getContractAt("StakingNodesManager", addresses.stakingNodesManager);
+
+    const nodeId = await stakingNodesManager.getNextNodeIdToUse();
+    console.log('Getting withdrawal credentials...', nodeId);
+    const withdrawalCredentials = await stakingNodesManager.getWithdrawalCredentials(nodeId);
+
+    const validators = await getStakeFishValidators();
+
+
+    console.log(`Obtained validators: ${validators.length}`);
 
 
     const depositRoot = '0x' + '00'.repeat(32);
@@ -31,10 +37,6 @@ async function registerValidators() {
             depositDataRoot: validator.depositDataRoot
         });
     }
-
-    const nodeId = await stakingNodesManager.getNextNodeIdToUse();
-    console.log('Getting withdrawal credentials...', nodeId);
-    const withdrawalCredentials = await stakingNodesManager.getWithdrawalCredentials(nodeId);
 
     console.log('Generating deposit data root for each deposit data...');
     for (const data of validatorData) {

@@ -3,10 +3,11 @@ const hre = require('hardhat');
 
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
-async function getStakeFishValidatorsOnce() {
+async function getStakeFishValidatorsOnce({ withdrawalAddress}) {
     const [deployer] = await hre.ethers.getSigners();
 
 
+    console.log(`Withdrawal address: ${withdrawalAddress}`);
     console.log(`Deployer address: ${deployer.address}`);
 
     // console.log('Fetch validators');
@@ -76,7 +77,7 @@ async function getStakeFishValidatorsOnce() {
 
     const body2 = {
         "depositor_address": "0xA1237efe3159197537f41F510F01D09394780f08",
-        "withdrawal_address": "0x0091626e15caFd0F6Bc96dE7F12CEe444c0a212d",
+        "withdrawal_address": withdrawalAddress,
         "deposit_count": 1,
         "signed_message": {
             "message_hash": "0x87f4c4bfb4277157a7f5b3506eb9c4e04878b5b87d3ec7be816d24be8a507496",
@@ -129,13 +130,13 @@ async function getStakeFishValidatorsOnce() {
     return [validatorResponse];
 }
 
-async function getStakeFishValidators() {
+async function getStakeFishValidators(params) {
 
     let validators;
     while (true) {
 
         try {
-            validators = await getStakeFishValidatorsOnce();
+            validators = await getStakeFishValidatorsOnce(params);
 
             console.log('Validators', validators);
             return validators;
