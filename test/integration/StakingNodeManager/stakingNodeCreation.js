@@ -86,7 +86,7 @@ describe('StakingNode creation and usage', function () {
 
   });
 
-  it.only('should upgrade StakingNode implementation', async function () {
+  it('should upgrade StakingNode implementation', async function () {
     const { stakingNodesManager } = contracts;
 
 

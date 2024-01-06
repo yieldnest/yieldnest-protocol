@@ -165,8 +165,12 @@ contract StakingNodesManager is
 
         require(_implementationContract != address(0), "No zero addresses");
 
+        if (implementationContract == address(0)) {
+            upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
+        } else {
+           upgradableBeacon.upgradeTo(_implementationContract);
+        }
         implementationContract = _implementationContract;
-        upgradableBeacon = new UpgradeableBeacon(implementationContract, address(this));      
     }
 
     function processWithdrawnETH(uint nodeId) external payable {
