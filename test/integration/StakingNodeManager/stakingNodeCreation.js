@@ -86,4 +86,38 @@ describe('StakingNode creation and usage', function () {
 
   });
 
+  it.only('should upgrade StakingNode implementation', async function () {
+    const { stakingNodesManager } = contracts;
+
+
+    console.log('Creating staking node...');
+    const stakingNode = await contracts.stakingNodesManager.createStakingNode();
+    const stakingNodeAddress = await contracts.stakingNodesManager.nodes(0);
+    const stakingNodeInstance = await ethers.getContractAt('StakingNode', stakingNodeAddress);
+    const eigenPodAddress = await stakingNodeInstance.eigenPod();
+    console.log('EigenPod address: ', eigenPodAddress);
+
+    const MockStakingNodeFactory = await ethers.getContractFactory('MockStakingNode');
+    const mockStakingNode = await MockStakingNodeFactory.deploy();
+    await mockStakingNode.deployed();
+
+    console.log('Upgrading StakingNode implementation...');
+    await stakingNodesManager.registerStakingNodeImplementationContract(mockStakingNode.address);
+
+    const upgradedImplementationAddress = await stakingNodesManager.implementationContract();
+    expect(upgradedImplementationAddress).to.equal(mockStakingNode.address);
+
+    console.log('Fetching EigenPod address after upgrade...');
+    const newEigenPodAddress = await stakingNodeInstance.eigenPod();
+    console.log('New EigenPod address: ', newEigenPodAddress);
+    expect(newEigenPodAddress).to.equal(eigenPodAddress);
+
+    console.log('Loading MockStakingNode at stakingNodeInstance address...');
+    const mockStakingNodeInstance = await ethers.getContractAt('MockStakingNode', stakingNodeAddress);
+    console.log('Calling redundant function...');
+    const redundantFunctionResult = await mockStakingNodeInstance.redundantFunction();
+    console.log('Redundant function result: ', redundantFunctionResult);
+    expect(redundantFunctionResult).to.equal(1234567);
+  });
+
 });
