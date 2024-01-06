@@ -8,7 +8,7 @@ const { deploy } = require('./deploy');
 
 async function main() {
 
-    const { ynETH, oracle, stakingNodesManager } = await deploy();
+    const { ynETH, oracle, stakingNodesManager, ynViewer } = await deploy();
     console.log("Verifying contracts on etherscan");
 
     const ynETHImpl = await getProxyImplementation(ynETH);
@@ -22,6 +22,7 @@ async function main() {
     await retryVerify("ynETH", ynETHImpl, []);
     await retryVerify("Oracle", oracle.address, []);
     await retryVerify("StakingNodesManager", stakingNodesManagerImpl, []);
+    await retryVerify("ynViewer", ynViewer.address, [ynETH.address, stakingNodesManager.address, oracle.address]);
     console.log("Contracts verified successfully");
 
     const addresses = {

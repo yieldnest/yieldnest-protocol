@@ -100,7 +100,12 @@ async function deploy() {
 
     console.log("Contracts initialized successfully");
 
-    return { ynETH, oracle, stakingNodesManager };
+
+    const ynViewerContract = await hre.ethers.getContractFactory('ynViewer');
+    const ynViewer = await ynViewerContract.deploy(ynETH.address, stakingNodesManager.address, oracle.address);
+
+
+    return { ynETH, oracle, stakingNodesManager, ynViewer };
 }
 
 

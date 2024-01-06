@@ -104,10 +104,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
     }
 
-    function testFoo() public view returns (uint) {
-        return 12412515;
-    }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
     //--------------------------------------------------------------------------------------

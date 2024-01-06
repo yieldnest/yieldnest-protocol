@@ -33,7 +33,7 @@ async function main() {
         const nodeAddress = await StakingNodesManager.nodes(i);
         console.log(`Node ${i}: ${nodeAddress}`);
 
-        const stakingNode = await ethers.getContractAt('IStakingNode', nodeAddress);
+        const stakingNode = await ethers.getContractAt('StakingNode', nodeAddress);
 
         const testFoo = await stakingNode.testFoo();
         console.log(`Test Foo for Node ${i}: ${testFoo}`);

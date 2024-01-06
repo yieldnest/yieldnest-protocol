@@ -18,9 +18,12 @@ async function main() {
     await retryVerify('ynViewer', ynViewer.address, [ynETH, stakingNodesManager, oracle]);
 }
 
-main()
-    .then(() => process.exit(0))
-    .catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
+if (require.main === module) {
+    main()
+        .then(() => process.exit(0))
+        .catch(error => {
+            console.error(error);
+            process.exit(1);
+        });
+}
+
