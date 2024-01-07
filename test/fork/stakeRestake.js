@@ -48,19 +48,22 @@ describe('YieldNest fork tests', function () {
     console.log('Getting StakingNode contract at node address...');
     const stakingNode = await ethers.getContractAt('StakingNode', nodeAddress);
 
-    const eigenPodAddress = await stakingNode.eigenPod();
-    console.log(`EigenPod address: ${eigenPodAddress}`);
+    console.log('Getting Eigenpod address...');
+    const eigenpodAddress = await stakingNode.eigenPod();
+    console.log(`Eigenpod address: ${eigenpodAddress}`);
 
-    console.log('Reading testFoo...');
-    const testFoo = await stakingNode.testFoo();
-    console.log(`testFoo: ${testFoo}`);
+    console.log('Loading DelegationManager using stakingNodesManager...');
+    const delegationManagerAddress = await stakingNodesManager.delegationManager();
+    const delegationManager = await ethers.getContractAt('IDelegationManager', delegationManagerAddress);
+    console.log('Calling delegatedTo for eigenpodAddress...');
+    const delegatedTo = await delegationManager.delegatedTo(eigenpodAddress);
+    console.log(`Delegated to: ${delegatedTo}`);
 
 
-    const nodeId = await stakingNode.nodeId();
-    console.log(`Node ID: ${nodeId}`);
-    const delegateAddress = '0x234649b2D3c67E74f073F9C95Fa8b10846c93a6b';
-    await stakingNode.connect(admin).delegate(delegateAddress);
-    console.log(`Delegated to: ${delegateAddress}`);
+    console.log('Calling queueWithdrawals with 32 ether...');
+    const tx = await stakingNode.connect(admin).queueWithdrawals(ethers.utils.parseEther("32"));
+    await tx.wait();
+    console.log('Withdrawals queued successfully.');
 
   });
 });
