@@ -6,28 +6,69 @@ require('dotenv').config();
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 
+async function getValidators({ apiKey }) {
 
-async function getStakeFishValidators() {
+    const url = "https://hubble.figment.io/api/v1/prime/eth2_staking/provision";
+
+    const options = {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Authorization': apiKey,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ eth2_network_name: "goerli" })
+    };
+
+    const response = await fetch(url, options);
+    const data = await response.json();
+
+    return data;
+}
+
+async function getNetworkState({ apiKey }) {
+
+    const url = 'https://eth-network.datahub.figment.io/v3/ethereum/network_overview?history=false&chain_id=goerli';
+
+
+    const options = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `${apiKey}`
+        }
+    };
+
+    const response = await fetch(url, options);
+    const data = await response.json();
+
+    return data;
+}
+
+
+
+async function getFigmentValidators() {
     const [deployer] = await hre.ethers.getSigners();
+    const apiKey = process.env.FIGMENT_API_KEY;
 
-    const sdk = require('api')('@figment-api/v1.0#11wm1w2lnt40b50');
+    console.log(`Figment API Key: |${apiKey}|`);
 
-    console.log(`Figment API Key: |${process.env.FIGMENT_API_KEY}|`);
+    const networkState = await getNetworkState({ apiKey });
 
-    console.log(`Response: ${await sdk.getV3EthereumNetwork_overview({history: 'false', chain_id: 'mainnet', authorization: 'your-api-key-here' }) }`);
+    console.log(`Data: ${JSON.stringify(networkState)}`);
 
-    const data = await sdk.getApiV1PrimeEth2_stakingValidators({'page[number]': '1', authorization: process.env.FIGMENT_API_KEY })
-    console.log({
-        data
-    });
+
+    const validators = await getValidators({ apiKey });
+
+    console.log(validators);
 }
 
 module.exports = {
-    getStakeFishValidators
+    getFigmentValidators
 }
 
 if (require.main === module) {
-    getStakeFishValidators()
+    getFigmentValidators()
         .then(() => process.exit(0))
         .catch(error => {
             console.error(error);

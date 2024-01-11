@@ -5,6 +5,7 @@ import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
+import "hardhat/console.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -132,6 +133,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         });
         queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
         queuedWithdrawalParams[0].shares[0] = shares;
+
+        console.log("queuedWithdrawalParams[0].strategies[0]", address(queuedWithdrawalParams[0].strategies[0]));
+        console.log("queuedWithdrawalParams[0].withdrawer", queuedWithdrawalParams[0].withdrawer);
+
         delegationManager.queueWithdrawals(queuedWithdrawalParams);
     }
 

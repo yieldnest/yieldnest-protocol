@@ -56,7 +56,7 @@ describe('YieldNest fork tests', function () {
     const delegationManagerAddress = await stakingNodesManager.delegationManager();
     const delegationManager = await ethers.getContractAt('IDelegationManager', delegationManagerAddress);
     console.log('Calling delegatedTo for eigenpodAddress...');
-    const delegatedTo = await delegationManager.delegatedTo(eigenpodAddress);
+    const delegatedTo = await delegationManager.delegatedTo(nodeAddress);
     console.log(`Delegated to: ${delegatedTo}`);
 
 
