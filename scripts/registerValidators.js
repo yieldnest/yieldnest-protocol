@@ -1,5 +1,7 @@
 const { retryVerify, getProxyImplementation } = require('./utils');
 const { getStakeFishValidators } = require('./loadStakefishValidators');
+const { getFigmentValidators } = require('./loadFigmentValidators');
+
 const fs = require('fs');
 const hre = require("hardhat");
 
@@ -26,9 +28,11 @@ async function registerValidators() {
 
     const eigenPodAddress = await stakingNode.eigenPod();
 
-    const validators = await getStakeFishValidators({ withdrawalAddress: eigenPodAddress });
+    const validators = await getFigmentValidators({ withdrawalAddress: eigenPodAddress, count: 1 });
 
     console.log(`Obtained validators: ${validators.length}`);
+
+    console.log(validators)
 
 
     const depositRoot = '0x' + '00'.repeat(32);
@@ -38,8 +42,8 @@ async function registerValidators() {
     for (const validator of validators) {
         
         validatorData.push({
-            publicKey: validator.pubkeys,
-            signature: validator.signatures,
+            publicKey: validator.publicKey,
+            signature: validator.signature,
             depositDataRoot: validator.depositDataRoot
         });
     }
@@ -48,6 +52,8 @@ async function registerValidators() {
     for (const data of validatorData) {
     
         const amount = ethers.utils.parseEther('32');
+
+        console.log(data)
         const depositRoot = await stakingNodesManager.generateDepositRoot(data.publicKey, data.signature, withdrawalCredentials, amount);
 
         console.log({
@@ -61,6 +67,8 @@ async function registerValidators() {
 
 
     console.log(`Pushing validator data:`, validatorData);
+
+    return;
 
     const tx = await stakingNodesManager.registerValidators(depositRoot, validatorData);
     await tx.wait();

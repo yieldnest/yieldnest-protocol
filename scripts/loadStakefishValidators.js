@@ -138,7 +138,15 @@ async function getStakeFishValidators(params) {
         try {
             validators = await getStakeFishValidatorsOnce(params);
 
+            validators = validators.map(v => {
+                return {
+                    publicKey: v.pubkeys,
+                    signature: v.signatures,
+                    depositDataRoot: v.depositDataRoot
+                }
+            });
             console.log('Validators', validators);
+
             return validators;
         } catch (e) {
             console.error(e);

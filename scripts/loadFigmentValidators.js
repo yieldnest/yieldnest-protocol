@@ -32,6 +32,7 @@ async function requestValidators({ apiKey, count, withdrawalAddress }) {
 }
 
 async function listValidators ({ apiKey, withdrawalAddress }) {
+
         const urlParams = {
             withdrawal_address: withdrawalAddress,
             eth2_network_name: "goerli",
@@ -86,7 +87,6 @@ async function pollForValidators({ apiKey, withdrawalAddress, validatorCount }) 
 
     while (true) {
         const listedValidators = await listValidators({ apiKey, withdrawalAddress }); 
-        console.log(JSON.stringify(listedValidators, null, 2));
 
         validators = listedValidators.data;
 
@@ -97,12 +97,21 @@ async function pollForValidators({ apiKey, withdrawalAddress, validatorCount }) 
         await new Promise(resolve => setTimeout(resolve, 5000));
     }
 
-    return validators;
+    const processedValidators = validators.map(v => {
+        return {
+            publicKey: '0x' + v.attributes.pubkey,
+            signature: '0x' + v.attributes.signature,
+            depositDataRoot: '0x' + v.attributes.deposit_data_root
+        }
+    })
+
+
+    return processedValidators;
 }
 
 
 
-async function getFigmentValidators() {
+async function getFigmentValidators({ withdrawalAddress, count }) {
     const [deployer] = await hre.ethers.getSigners();
     const apiKey = process.env.FIGMENT_API_KEY;
 
@@ -113,29 +122,31 @@ async function getFigmentValidators() {
     console.log(`Data: ${JSON.stringify(networkState)}`);
 
 
-    const withdrawalAddress = "0x27Bf18B87c52Efd24E7Cc20F36c18Ef7Eb64ae95";
-    const validatorCount = 1;
+    withdrawalAddress =  withdrawalAddress || "0x27Bf18B87c52Efd24E7Cc20F36c18Ef7Eb64ae95";
+    const validatorCount = count;
 
     let validators = await pollForValidators({ apiKey, withdrawalAddress, validatorCount: 0 });
 
-    const extraValidatorsNeededCount = Math.min(0, validatorCount - validators.length);
+    console.log(`Validators length: ${validators.length}. Needed ${validatorCount}`);
+
+    const extraValidatorsNeededCount = Math.max(0, validatorCount - validators.length);
 
     if (extraValidatorsNeededCount === 0) {
 
-        console.log(`Loaded ${validators.length}`);
+        console.log(`Loaded ${validators.length}. Finished.`);
         return validators;
     }
 
-
+    console.log(`Insufficient validators. Need extra ${extraValidatorsNeededCount}. Requesting validators.`);
 
     const futureValidators = await requestValidators({ apiKey, withdrawalAddress, count: extraValidatorsNeededCount });
 
-    console.log(futureValidators);
 
     validators = await pollForValidators({ apiKey, withdrawalAddress, validatorCount });
 
 
     console.log(`Loaded ${validators.length}`);
+
 
     return validators;
 

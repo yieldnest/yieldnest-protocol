@@ -3,6 +3,19 @@ const { ethers } = require("hardhat");
 
 async function main() {
     const goerliAddresses = JSON.parse(fs.readFileSync('./goerli-addresses.json', 'utf8'));
+
+    const ynETHAddress = goerliAddresses['ynETH'];
+    if (!ynETHAddress) {
+        console.error('No ynETH found in goerli-addresses.json');
+        process.exit(1);
+    }
+    const ynETH = await ethers.getContractAt('ynETH', ynETHAddress);
+    const ethBalance = await ethers.provider.getBalance(ynETHAddress);
+    console.log(`ETH balance of ynETH: ${(ethers.utils.formatEther(ethBalance)).toString()}`);
+
+    const totalAssets = await ynETH.totalAssets();
+    console.log(`Total assets of ynETH: ${(ethers.utils.formatEther(totalAssets)).toString()}`);
+
     const stakingNodesManagerAddress = goerliAddresses['stakingNodesManager'];
     if (!stakingNodesManagerAddress) {
         console.error('No stakingNodesManager found in goerli-addresses.json');
