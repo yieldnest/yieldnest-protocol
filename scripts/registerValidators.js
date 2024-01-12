@@ -56,19 +56,15 @@ async function registerValidators() {
         console.log(data)
         const depositRoot = await stakingNodesManager.generateDepositRoot(data.publicKey, data.signature, withdrawalCredentials, amount);
 
-        console.log({
-            depositRoot,
-            data: data.depositDataRoot
-        })
+        if (depositRoot !== data.depositDataRoot) {
+            throw new Error(`Mismatch between depositRoot and depositDataRoot: ${depositRoot} != ${data.depositDataRoot}`);
+        }
 
-       // const depositDataRoot = await stakingNodesManager.generateDepositRoot(data.publicKey, data.signature, withdrawalCredentials, amount);
        data.depositDataRoot = depositRoot;
     }
 
 
     console.log(`Pushing validator data:`, validatorData);
-
-    return;
 
     const tx = await stakingNodesManager.registerValidators(depositRoot, validatorData);
     await tx.wait();
