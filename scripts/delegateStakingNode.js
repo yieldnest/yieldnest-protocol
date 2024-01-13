@@ -29,10 +29,6 @@ async function main() {
     const stakingNode = await ethers.getContractAt('StakingNode', nodeAddress);
 
 
-    const tempCallResult = await stakingNode.tempCall();
-    console.log(`tempCall result: ${tempCallResult}`);
-
-
     const eigenPodAddress = await stakingNode.eigenPod();
     console.log(`EigenPod address: ${eigenPodAddress}`);
     const delegateAddress = '0x234649b2D3c67E74f073F9C95Fa8b10846c93a6b';
