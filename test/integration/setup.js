@@ -22,6 +22,10 @@ async function setup() {
   const weth = await WETHFactory.deploy();
   await weth.deployed();
 
+  const MockDelegationManagerFactory = await ethers.getContractFactory('MockDelegationManager');
+  const mockDelegationManager = await MockDelegationManagerFactory.deploy();
+  await mockDelegationManager.deployed();
+
   const EmptyYnETHFactory = await ethers.getContractFactory('EmptyYnETH');
   let ynETH = await deployProxy(EmptyYnETHFactory, 'ynETH', deployer);
 
@@ -37,7 +41,8 @@ async function setup() {
         maxNodeCount: 10,
         depositContract: depositContract.address,
         eigenPodManager: mockEigenPodManager.address,
-        ynETH: ynETH.address
+        ynETH: ynETH.address,
+        delegationManager: mockDelegationManager.address
       }]
   );
   await stakingNodesManager.deployed();

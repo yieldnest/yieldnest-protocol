@@ -6,6 +6,8 @@ import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "hardhat/console.sol";
+import "./external/eigenlayer/BeaconChainProofs.sol";
+
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -23,12 +25,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     uint public nodeId;
 
     /// @dev Monitors the balance that was committed to validators but hasn't been re-committed to EigenLayer yet
-    //uint256 public stakedButNotVerifiedEth;
+    uint256 public unverifiedStakedETH;
 
 
     /// @dev Allows only a whitelisted address to configure the contract
     modifier onlyAdmin() {
         if(!stakingNodesManager.isStakingNodesAdmin(msg.sender)) revert NotStakingNodesAdmin();
+        _;
+    }
+
+    modifier onlyStakingNodesManager() {
+        require(msg.sender == address(stakingNodesManager), "Only StakingNodesManager can call this function");
         _;
     }
 
@@ -101,8 +108,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         // TODO: reenable this using the contract's new functions from the latest version
 
         // Decrement the staked but not verified ETH
-        // uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex, proofs.balanceRoot);
-        //stakedButNotVerifiedEth -= (validatorCurrentBalanceGwei * GWEI_TO_WEI);
+
+        for (uint i = 0; i < validatorIndices.length; i++) {
+            
+            uint40 validatorIndex = validatorIndices[i];
+
+            // TODO: check if this is correct
+            uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getBalanceAtIndex(stateRootProof.beaconStateRoot, validatorIndex);
+
+            unverifiedStakedETH -= (validatorCurrentBalanceGwei * 1e9);
+        }
+
     }
 
     //--------------------------------------------------------------------------------------
@@ -166,23 +182,75 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     }
 
     function completeWithdrawal(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        IERC20[][] calldata tokens,
-        uint256[] calldata middlewareTimesIndexes,
-        bool[] calldata receiveAsTokens
+        uint shares,
+        uint32 startBlock
     ) external onlyAdmin {
 
+        /*
+            struct Withdrawal {
+        // The address that originated the Withdrawal
+        address staker;
+        // The address that the staker was delegated to at the time that the Withdrawal was created
+        address delegatedTo;
+        // The address that can complete the Withdrawal + will receive funds when completing the withdrawal
+        address withdrawer;
+        // Nonce used to guarantee that otherwise identical withdrawals have unique hashes
+        uint256 nonce;
+        // Block number when the Withdrawal was created
+        uint32 startBlock;
+        // Array of strategies that the Withdrawal contains
+        IStrategy[] strategies;
+        // Array containing the amount of shares in each Strategy in the `strategies` array
+        uint256[] shares;
+    }
+        */
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        uint[] memory sharesArray = new uint[](1);
+        sharesArray[0] = shares;
+
+        IStrategy[] memory strategiesArray = new IStrategy[](1);
+        strategiesArray[0] = delegationManager.beaconChainETHStrategy();
+
+        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+            staker: address(this),
+            delegatedTo: delegationManager.delegatedTo(address(this)),
+            withdrawer: address(this),
+            nonce: 0, // TODO: fix
+            startBlock: startBlock,
+            strategies: strategiesArray,
+            shares:  sharesArray
+        });
 
         uint256 balanceBefore = address(this).balance;
 
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = IERC20(0x0000000000000000000000000000000000000000);
+
+        // middlewareTimesIndexes is 0, since it's unused
+        // https://github.com/Layr-Labs/eigenlayer-contracts/blob/5fd029069b47bf1632ec49b71533045cf00a45cd/src/contracts/core/DelegationManager.sol#L556
+        delegationManager.completeQueuedWithdrawal(withdrawal, tokens, 0, true);
 
         uint256 balanceAfter = address(this).balance;
         uint256 fundsWithdrawn = balanceAfter - balanceBefore;
 
         stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
     }
+
+
+    /// @dev Gets the amount of ETH staked in the EigenLayer
+    function getStakedETHBalance() external view returns (uint256) {
+        // TODO: Once withdrawals are enabled, allow this to handle pending withdraws and a potential negative share balance in the EigenPodManager ownershares
+        // TODO: Once upgraded to M2, add back in staked verified ETH, e.g. + uint256(strategyManager.stakerStrategyShares(address(this), strategyManager.beaconChainETHStrategy()))
+        return unverifiedStakedETH + address(eigenPod).balance;
+    }
+
+    /// @dev Stake ETH in the EigenLayer
+    /// Only the Restake Manager should call this function
+    function stakeEth( uint amount) external payable onlyStakingNodesManager {
+        unverifiedStakedETH += amount;
+    }
+
 
     /**
       Beacons slot value is defined here:

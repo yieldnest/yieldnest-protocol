@@ -17,4 +17,7 @@ interface IStakingNode {
     function initialize(Init memory init) external;
     function createEigenPod() external returns (IEigenPod);
     function implementation() external view returns (address);
+
+    function stakeEth(uint amount) external payable;   
+
 }
