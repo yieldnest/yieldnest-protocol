@@ -186,24 +186,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         uint32 startBlock
     ) external onlyAdmin {
 
-        /*
-            struct Withdrawal {
-        // The address that originated the Withdrawal
-        address staker;
-        // The address that the staker was delegated to at the time that the Withdrawal was created
-        address delegatedTo;
-        // The address that can complete the Withdrawal + will receive funds when completing the withdrawal
-        address withdrawer;
-        // Nonce used to guarantee that otherwise identical withdrawals have unique hashes
-        uint256 nonce;
-        // Block number when the Withdrawal was created
-        uint32 startBlock;
-        // Array of strategies that the Withdrawal contains
-        IStrategy[] strategies;
-        // Array containing the amount of shares in each Strategy in the `strategies` array
-        uint256[] shares;
-    }
-        */
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
         uint[] memory sharesArray = new uint[](1);
@@ -245,12 +227,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         return unverifiedStakedETH + address(eigenPod).balance;
     }
 
-    /// @dev Stake ETH in the EigenLayer
-    /// Only the Restake Manager should call this function
+    /// @dev Record staked ETH 
     function stakeEth( uint amount) external payable onlyStakingNodesManager {
         unverifiedStakedETH += amount;
     }
-
 
     /**
       Beacons slot value is defined here:
