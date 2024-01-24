@@ -16,6 +16,10 @@ const networks = {
   goerli: {
     url: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
     accounts: [`0x${process.env.PRIVATE_KEY}`]
+  },
+  mainnet: {
+    url: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
+    accounts: [`0x${process.env.PRIVATE_KEY}`]
   }
 };
 
@@ -28,7 +32,7 @@ const config = {
   solidity: {
     compilers: [
       {
-        version: "0.8.21"
+        version: "0.8.22"
       },
       {
         version: "0.4.24"
@@ -44,6 +48,14 @@ const config = {
         urls: {
           apiURL: "https://api.goerli.etherscan.io/api",
           browserURL: "goerli.etherscan.io/",
+        },
+      },
+      {
+        network: "mainnet",
+        chainId: 1,
+        urls: {
+          apiURL: "https://api.etherscan.io/api",
+          browserURL: "etherscan.io/",
         },
       },
     ],
