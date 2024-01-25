@@ -73,7 +73,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         return eigenPod;
     }
 
-    function delegate(address operator) public {
+     /**
+     * @notice  Kicks off a delayed withdraw of the ETH before any restaking has been done (EigenPod.hasRestaked() == false)
+     * @dev    To initiate the withdrawal process before any restaking actions have been taken
+     * you will need to execute claimQueuedWithdrawals after the necessary time has passed as per the requirements of EigenLayer's
+     * DelayedWithdrawalRouter. The funds will reside in the DelayedWithdrawalRouter once they are queued for withdrawal.
+     */
+    function withdrawBeforeRestaking() external onlyAdmin {
+        eigenPod.withdrawBeforeRestaking();
+    }
+
+
+    function delegate(address operator) public onlyAdmin {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
