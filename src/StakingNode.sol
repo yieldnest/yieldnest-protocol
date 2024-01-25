@@ -57,10 +57,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         nodeId = init.nodeId;
     }
 
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
-    //--------------------------------------------------------------------------------------
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EIGENPOD CREATION   ------------------------------
+    //--------------------------------------------------------------------------------------
 
     function createEigenPod() public returns (IEigenPod) {
         if (address(eigenPod) != address(0x0)) return IEigenPod(address(0)); // already have pod
@@ -73,6 +73,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         return eigenPod;
     }
 
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EXPEDITED WITHDRAWAL   --------------------
+    //--------------------------------------------------------------------------------------
+
      /**
      * @notice  Kicks off a delayed withdraw of the ETH before any restaking has been done (EigenPod.hasRestaked() == false)
      * @dev    To initiate the withdrawal process before any restaking actions have been taken
@@ -83,6 +88,22 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         eigenPod.withdrawBeforeRestaking();
     }
 
+    /// @notice Retrieves and processes withdrawals that have been queued in the EigenPod, transferring them to the StakingNode.
+    /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
+    /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
+    ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public {
+
+        // only claim if we have active unclaimed withdrawals
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        if (delayedWithdrawalRouter.getUserDelayedWithdrawals(address(this)).length > 0) {
+            delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);
+        }
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
+    //--------------------------------------------------------------------------------------
 
     function delegate(address operator) public onlyAdmin {
 

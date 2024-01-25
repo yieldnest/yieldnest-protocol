@@ -32,6 +32,7 @@ contract StakingNodesManager is
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
+    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IynETH public ynETH;
 
     bytes[] public validators;
@@ -58,6 +59,7 @@ contract StakingNodesManager is
         IynETH ynETH;
         IEigenPodManager eigenPodManager;
         IDelegationManager delegationManager;
+        IDelayedWithdrawalRouter delayedWithdrawalRouter;
     }
     
     function initialize(Init memory init) external initializer {
@@ -70,6 +72,7 @@ contract StakingNodesManager is
         eigenPodManager = init.eigenPodManager;
         ynETH = init.ynETH;
         delegationManager = init.delegationManager;
+        delayedWithdrawalRouter = init.delayedWithdrawalRouter;
     }
 
     function registerValidators(
