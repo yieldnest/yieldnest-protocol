@@ -129,16 +129,16 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     /// @notice The total amount of ETH controlled by the protocol.
     /// @dev Sums over the balances of various contracts and the beacon chain information from the oracle.
     function totalControlled() public view returns (uint) {
-        IOracle.Answer memory answer = oracle.latestAnswer();
+        IOracle.Report memory report = oracle.latestReport();
         uint total = 0;
         // allocated ETH for deposits
         total += totalDepositedInPool;
 
         /// The total ETH sent to the beacon chain should be reduced by the deposits processed by the off-chain
         /// oracle as it will be included in the currentTotalValidatorBalance from that moment forward.
-        total += totalDepositedInValidators - answer.cumulativeProcessedDepositAmount;
-        total += answer.currentTotalValidatorBalance;
-        // TODO: add the balances processed as withdrawal
+        total += totalDepositedInValidators - report.cumulativeProcessedDepositAmount;
+        total += report.currentTotalValidatorBalance;
+        // TODO: handle the balances processed as withdrawal
         return total;
     }
 

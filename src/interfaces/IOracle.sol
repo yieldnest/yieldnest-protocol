@@ -5,10 +5,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 interface IOracle {
 
-    struct Answer {
+    struct Report {
         uint cumulativeProcessedDepositAmount;
         uint currentTotalValidatorBalance;
     }
 
-    function latestAnswer() external view returns (Answer memory);
+    function latestReport() external view returns (Report memory);
 }

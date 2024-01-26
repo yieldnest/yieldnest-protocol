@@ -28,7 +28,7 @@ contract Oracle is Initializable, IOracle {
       1. Beacon Chain balances 
       2. Eigen Layer balances
     */
-    function latestAnswer() public view returns (Answer memory answer) {
+    function latestReport() public view returns (Report memory report) {
         // TODO: implement with full values
     }
 }
