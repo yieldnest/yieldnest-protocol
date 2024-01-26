@@ -24,8 +24,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     IEigenPod public eigenPod;
     uint public nodeId;
 
-    /// @dev Monitors the balance that was committed to validators but hasn't been re-committed to EigenLayer yet
-    uint256 public unverifiedStakedETH;
+    /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
+    uint256 public totalETHStaked;
 
 
     /// @dev Allows only a whitelisted address to configure the contract
@@ -121,7 +121,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     }
 
     /// @dev Validates the withdrawal credentials for a withdrawal
-    /// This enables the EigenPodManager to validate the withdrawal credentials and allocate the OD with shares
+    /// This activates the activation of the staked funds within EigenLayer
     function verifyWithdrawalCredentials(
         uint64 oracleTimestamp,
         IEigenPod.StateRootProof calldata stateRootProof,
@@ -136,21 +136,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             withdrawalCredentialProofs,
             validatorFields
         );
-
-        // TODO: reenable this using the contract's new functions from the latest version
-
-        // Decrement the staked but not verified ETH
-
-        for (uint i = 0; i < validatorIndices.length; i++) {
-            
-            uint40 validatorIndex = validatorIndices[i];
-
-            // TODO: check if this is correct
-            uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getBalanceAtIndex(stateRootProof.beaconStateRoot, validatorIndex);
-
-            unverifiedStakedETH -= (validatorCurrentBalanceGwei * 1e9);
-        }
-
     }
 
     //--------------------------------------------------------------------------------------
@@ -181,10 +166,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         });
         queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
         queuedWithdrawalParams[0].shares[0] = shares;
-
-        console.log("queuedWithdrawalParams[0].strategies[0]", address(queuedWithdrawalParams[0].strategies[0]));
-        console.log("queuedWithdrawalParams[0].withdrawer", queuedWithdrawalParams[0].withdrawer);
-
+        
         delegationManager.queueWithdrawals(queuedWithdrawalParams);
     }
 
@@ -251,17 +233,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
     }
 
-
-    /// @dev Gets the amount of ETH staked in the EigenLayer
-    function getStakedETHBalance() external view returns (uint256) {
-        // TODO: Once withdrawals are enabled, allow this to handle pending withdraws and a potential negative share balance in the EigenPodManager ownershares
-        // TODO: Once upgraded to M2, add back in staked verified ETH, e.g. + uint256(strategyManager.stakerStrategyShares(address(this), strategyManager.beaconChainETHStrategy()))
-        return unverifiedStakedETH + address(eigenPod).balance;
-    }
-
-    /// @dev Record staked ETH 
-    function stakeEth( uint amount) external payable onlyStakingNodesManager {
-        unverifiedStakedETH += amount;
+    /// @dev Record total staked ETH for this StakingNode
+    function increaseTotalETHStaked( uint amount) external payable onlyStakingNodesManager {
+        totalETHStaked += amount;
     }
 
     /**

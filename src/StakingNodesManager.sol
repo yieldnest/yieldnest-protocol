@@ -108,7 +108,7 @@ contract StakingNodesManager is
 
         validators.push(_depositData.publicKey);
 
-        IStakingNode(nodes[nodeId]).stakeEth(_depositAmount);
+        IStakingNode(nodes[nodeId]).increaseTotalETHStaked(_depositAmount);
 
         emit ValidatorRegistered(
             nodeId,

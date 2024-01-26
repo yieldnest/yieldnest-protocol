@@ -18,6 +18,6 @@ interface IStakingNode {
     function createEigenPod() external returns (IEigenPod);
     function implementation() external view returns (address);
 
-    function stakeEth(uint amount) external payable;   
+    function increaseTotalETHStaked(uint amount) external payable;   
 
 }
