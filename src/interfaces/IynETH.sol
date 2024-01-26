@@ -9,4 +9,6 @@ interface IynETH is IERC20 {
     function withdrawETH(uint ethAmount) external;
 
     function processWithdrawnETH() external payable;
+
+    function receiveRewards() external payable;
 }

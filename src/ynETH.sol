@@ -137,6 +137,10 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         return total;
     }
 
+    function receiveRewards() external payable {
+        totalDepositedInPool += msg.value;
+    }
+
     function withdrawETH(uint ethAmount) public onlyStakingNodesManager override {
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
