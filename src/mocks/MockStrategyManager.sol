@@ -36,7 +36,7 @@ contract MockStrategyManager is IStrategyManager {
     }
 
     function stakerStrategyShares(address user, IStrategy strategy) external pure override returns (uint256 shares) {
-        revert("MockStrategyManager: stakerStrategyShares not implemented");
+        return 0;
     }
 
     function getDeposits(address staker) external pure override returns (IStrategy[] memory, uint256[] memory) {

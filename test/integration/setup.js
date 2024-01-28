@@ -46,7 +46,7 @@ async function setup() {
       deployer,
       [{
         admin: deployer.address,
-        maxNodeCount: 10,
+        maxNodeCount: 20,
         depositContract: depositContract.address,
         eigenPodManager: mockEigenPodManager.address,
         ynETH: ynETH.address,

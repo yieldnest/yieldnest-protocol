@@ -73,5 +73,31 @@ describe('ynETH integration tests', function () {
     expect(balance).to.be.equal(depositAmount.mul(3));
     expect(totalSupply).to.be.equal(depositAmount.mul(3));
   });
+  
+  it.only('should make deposit and check totalAssets after', async function () {
+    const depositAmount = ethers.utils.parseEther('1');
+
+    // create all staking nodes possible
+    for (let i = 0; i < 19; i++) {
+      await contracts.stakingNodesManager.createStakingNode();
+    }
+
+    const nodes = await contracts.stakingNodesManager.getAllNodes();
+    console.log('Nodes:', nodes);
+
+    let shares = await contracts.ynETH.previewDeposit(depositAmount);
+    console.log({ depositAmount: depositAmount.toString(), shares: shares.toString() });
+    await contracts.ynETH.connect(addr1).depositETH(addr1.address, {value: depositAmount});
+    let balance = await contracts.ynETH.balanceOf(addr1.address);
+    let totalSupply = await contracts.ynETH.totalSupply();
+    expect(balance).to.be.equal(depositAmount);
+    expect(totalSupply).to.be.equal(depositAmount);
+
+
+    const totalAssetsGasEstimate = await contracts.ynETH.estimateGas.totalAssets();
+    console.log(`Gas estimate for totalAssets: ${totalAssetsGasEstimate}`);
+    let totalAssets = await contracts.ynETH.totalAssets();
+    expect(totalAssets).to.be.equal(depositAmount);
+  });
 
 });
