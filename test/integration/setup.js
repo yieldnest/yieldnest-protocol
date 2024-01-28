@@ -26,6 +26,10 @@ async function setup() {
   const mockDelegationManager = await MockDelegationManagerFactory.deploy();
   await mockDelegationManager.deployed();
 
+  const MockDelayedWithdrawalRouterFactory = await ethers.getContractFactory('MockDelayedWithdrawalRouter');
+  const mockDelayedWithdrawalRouter = await MockDelayedWithdrawalRouterFactory.deploy();
+  await mockDelayedWithdrawalRouter.deployed();
+
   const EmptyYnETHFactory = await ethers.getContractFactory('EmptyYnETH');
   let ynETH = await deployProxy(EmptyYnETHFactory, 'ynETH', deployer);
 
@@ -42,7 +46,8 @@ async function setup() {
         depositContract: depositContract.address,
         eigenPodManager: mockEigenPodManager.address,
         ynETH: ynETH.address,
-        delegationManager: mockDelegationManager.address
+        delegationManager: mockDelegationManager.address,
+        delayedWithdrawalRouter: mockDelayedWithdrawalRouter.address
       }]
   );
   await stakingNodesManager.deployed();
