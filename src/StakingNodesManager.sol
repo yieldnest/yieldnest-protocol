@@ -195,6 +195,10 @@ contract StakingNodesManager is
         return validators;
     }
 
+    function getAllNodes() public view returns (address[] memory) {
+        return nodes;
+    }
+
     function nodesLength() public view returns (uint256) {
         return nodes.length;
     }

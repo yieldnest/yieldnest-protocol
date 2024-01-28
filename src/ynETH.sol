@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: MIT
 import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+
 import {IynETH} from "./interfaces/IynETH.sol";
 import {IDepositContract} from "./interfaces/IDepositContract.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -27,7 +30,7 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
 
     IOracle public oracle;
     uint public allocatedETHForDeposits;
-    address public stakingNodesManager;
+    IStakingNodesManager public stakingNodesManager;
     // Storage variables
 
     /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
@@ -36,7 +39,6 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     uint16 public exchangeAdjustmentRate;
 
     uint public totalDepositedInPool;
-    uint public totalDepositedInValidators;
 
     /// @dev A basis point (often denoted as bp, 1bp = 0.01%) is a unit of measure used in finance to describe
     /// the percentage change in a financial instrument. This is a constant value set as 10000 which represents
@@ -44,14 +46,14 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
     modifier onlyStakingNodesManager() {
-        require(msg.sender == stakingNodesManager, "Caller is not the stakingNodesManager");
+        require(msg.sender == address(stakingNodesManager), "Caller is not the stakingNodesManager");
         _;
     }
 
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
-        address stakingNodesManager;
+        IStakingNodesManager stakingNodesManager;
         IOracle oracle; // YieldNest oracle
         IWETH wETH;
     }
@@ -127,8 +129,17 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
         /// The total ETH sent to the beacon chain 
-        total += totalDepositedInValidators;
+        total += totalDepositedInValidators();
         return total;
+    }
+
+    function totalDepositedInValidators() internal view returns (uint) {
+        address[]  memory nodes = stakingNodesManager.getAllNodes();
+        uint totalDeposited = 0;
+        for (uint i = 0; i < nodes.length; i++) {
+            totalDeposited += IStakingNode(nodes[i]).getETHBalance();
+        }
+        return totalDeposited;
     }
 
     function receiveRewards() external payable {
@@ -138,14 +149,11 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     function withdrawETH(uint ethAmount) public onlyStakingNodesManager override {
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
-        payable(stakingNodesManager).transfer(ethAmount);
-
-        totalDepositedInValidators += ethAmount;
+        payable(address(stakingNodesManager)).transfer(ethAmount);
         totalDepositedInPool -= ethAmount;
     }
 
     function processWithdrawnETH() public payable onlyStakingNodesManager {
-        totalDepositedInValidators -= msg.value;
         totalDepositedInPool += msg.value;
     }
 
