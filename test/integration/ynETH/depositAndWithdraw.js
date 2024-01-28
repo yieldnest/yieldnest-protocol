@@ -87,11 +87,15 @@ describe('ynETH integration tests', function () {
 
     let shares = await contracts.ynETH.previewDeposit(depositAmount);
     console.log({ depositAmount: depositAmount.toString(), shares: shares.toString() });
+
     await contracts.ynETH.connect(addr1).depositETH(addr1.address, {value: depositAmount});
     let balance = await contracts.ynETH.balanceOf(addr1.address);
     let totalSupply = await contracts.ynETH.totalSupply();
     expect(balance).to.be.equal(depositAmount);
     expect(totalSupply).to.be.equal(depositAmount);
+
+    const gasEstimate = await contracts.ynETH.connect(addr1).estimateGas.depositETH(addr1.address, {value: depositAmount});
+    console.log(`Gas estimate for depositETH: ${gasEstimate}`);
 
 
     const totalAssetsGasEstimate = await contracts.ynETH.estimateGas.totalAssets();
