@@ -118,17 +118,11 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         return Math.mulDiv(
             ethAmount,
             totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalControlled() * uint256(_BASIS_POINTS_DENOMINATOR)
+            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR)
         );
     }
 
     function totalAssets() override public view returns (uint) {
-        return totalControlled();
-    }
-
-    /// @notice The total amount of ETH controlled by the protocol.
-    /// @dev Sums over the balances of various contracts and the beacon chain information from the oracle.
-    function totalControlled() public view returns (uint) {
         uint total = 0;
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
