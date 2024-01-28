@@ -9,6 +9,7 @@ interface IStakingNode {
     /// @notice Configuration for contract initialization.
     struct Init {
         IStakingNodesManager stakingNodesManager;
+        IStrategyManager strategyManager;
         uint nodeId;
     }
 
@@ -18,6 +19,6 @@ interface IStakingNode {
     function createEigenPod() external returns (IEigenPod);
     function implementation() external view returns (address);
 
-    function increaseTotalETHStaked(uint amount) external payable;   
+    function allocateStakedETH(uint amount) external payable;   
 
 }

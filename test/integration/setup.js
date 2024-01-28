@@ -26,6 +26,10 @@ async function setup() {
   const mockDelegationManager = await MockDelegationManagerFactory.deploy();
   await mockDelegationManager.deployed();
 
+  const MockStrategyManagerFactory = await ethers.getContractFactory('MockStrategyManager');
+  const mockStrategyManager = await MockStrategyManagerFactory.deploy();
+  await mockStrategyManager.deployed();
+
   const MockDelayedWithdrawalRouterFactory = await ethers.getContractFactory('MockDelayedWithdrawalRouter');
   const mockDelayedWithdrawalRouter = await MockDelayedWithdrawalRouterFactory.deploy();
   await mockDelayedWithdrawalRouter.deployed();
@@ -47,7 +51,8 @@ async function setup() {
         eigenPodManager: mockEigenPodManager.address,
         ynETH: ynETH.address,
         delegationManager: mockDelegationManager.address,
-        delayedWithdrawalRouter: mockDelayedWithdrawalRouter.address
+        delayedWithdrawalRouter: mockDelayedWithdrawalRouter.address,
+        strategyManager: mockStrategyManager.address
       }]
   );
   await stakingNodesManager.deployed();

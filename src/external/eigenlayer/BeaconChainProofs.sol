@@ -7,6 +7,7 @@ library BeaconChainProofs {
 
      /// @notice The number of slots each epoch in the beacon chain
     uint64 internal constant SLOTS_PER_EPOCH = 32;
+    uint256 internal constant VALIDATOR_BALANCE_INDEX = 2;
     
     /// @notice This struct contains the merkle proofs and leaves needed to verify a partial/full withdrawal
     struct WithdrawalProof {
@@ -46,5 +47,11 @@ library BeaconChainProofs {
         return
             Endian.fromLittleEndianUint64(withdrawalProof.slotRoot) / SLOTS_PER_EPOCH;
     }
+
+    function getEffectiveBalanceGwei(bytes32[] memory validatorFields) internal pure returns (uint64) {
+        return 
+            Endian.fromLittleEndianUint64(validatorFields[VALIDATOR_BALANCE_INDEX]);
+    }
+
 
 }

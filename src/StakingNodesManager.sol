@@ -27,12 +27,15 @@ contract StakingNodesManager is
     ReentrancyGuardUpgradeable,
     StakingNodesManagerEvents {
 
-    address public implementationContract;
-    UpgradeableBeacon private upgradableBeacon;
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
     IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    IStrategyManager public strategyManager;
+
+    address public implementationContract;
+    UpgradeableBeacon private upgradableBeacon;
+
     IynETH public ynETH;
 
     bytes[] public validators;
@@ -60,6 +63,7 @@ contract StakingNodesManager is
         IEigenPodManager eigenPodManager;
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
+        IStrategyManager strategyManager;
     }
     
     function initialize(Init memory init) external initializer {
@@ -73,6 +77,7 @@ contract StakingNodesManager is
         ynETH = init.ynETH;
         delegationManager = init.delegationManager;
         delayedWithdrawalRouter = init.delayedWithdrawalRouter;
+        strategyManager = init.strategyManager;
     }
 
     function registerValidators(
@@ -108,7 +113,7 @@ contract StakingNodesManager is
 
         validators.push(_depositData.publicKey);
 
-        IStakingNode(nodes[nodeId]).increaseTotalETHStaked(_depositAmount);
+        IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
 
         emit ValidatorRegistered(
             nodeId,
@@ -156,7 +161,7 @@ contract StakingNodesManager is
         uint nodeId = nodes.length;
 
         node.initialize(
-            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
+            IStakingNode.Init(IStakingNodesManager(address(this)), strategyManager, nodeId)
         );
  
         IEigenPod eigenPod = node.createEigenPod();

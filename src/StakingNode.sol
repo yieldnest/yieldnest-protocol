@@ -20,12 +20,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     // Errors.
     error NotStakingNodesAdmin();
 
+    IStrategy public constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
+    uint256 public constant GWEI_TO_WEI = 1e9;
+
     IStakingNodesManager public stakingNodesManager;
+    IStrategyManager public strategyManager;
     IEigenPod public eigenPod;
     uint public nodeId;
 
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
-    uint256 public totalETHStaked;
+    uint256 public totalETHNotRestaked;
 
 
     /// @dev Allows only a whitelisted address to configure the contract
@@ -54,6 +58,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         require(address(init.stakingNodesManager) != address(0), "No zero addresses");
 
         stakingNodesManager = init.stakingNodesManager;
+        strategyManager = init.strategyManager;
         nodeId = init.nodeId;
     }
 
@@ -136,6 +141,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             withdrawalCredentialProofs,
             validatorFields
         );
+
+        for (uint i = 0; i < validatorIndices.length; i++) {
+
+            // TODO: check if this is correct
+            uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getEffectiveBalanceGwei(validatorFields[i]);
+
+            totalETHNotRestaked -= (validatorCurrentBalanceGwei * 1e9);
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -153,7 +166,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     *
     */
 
-
     function queueWithdrawals(uint shares) public onlyAdmin {
     
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
@@ -164,7 +176,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             shares: new uint256[](1),
             withdrawer: address(this)
         });
-        queuedWithdrawalParams[0].strategies[0] = delegationManager.beaconChainETHStrategy();
+        queuedWithdrawalParams[0].strategies[0] = beaconChainETHStrategy;
         queuedWithdrawalParams[0].shares[0] = shares;
         
         delegationManager.queueWithdrawals(queuedWithdrawalParams);
@@ -206,7 +218,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         sharesArray[0] = shares;
 
         IStrategy[] memory strategiesArray = new IStrategy[](1);
-        strategiesArray[0] = delegationManager.beaconChainETHStrategy();
+        strategiesArray[0] = beaconChainETHStrategy;
 
         IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
             staker: address(this),
@@ -234,8 +246,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     }
 
     /// @dev Record total staked ETH for this StakingNode
-    function increaseTotalETHStaked( uint amount) external payable onlyStakingNodesManager {
-        totalETHStaked += amount;
+    function allocateStakedETH( uint amount) external payable onlyStakingNodesManager {
+        totalETHNotRestaked += amount;
+    }
+
+    function getETHBalance() public view returns (uint) {
+
+        // 1 Beacon Chain ETH strategy share = 1 ETH
+        return totalETHNotRestaked + strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
     }
 
     /**
