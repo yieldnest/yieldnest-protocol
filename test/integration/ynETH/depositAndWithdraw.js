@@ -74,7 +74,7 @@ describe('ynETH integration tests', function () {
     expect(totalSupply).to.be.equal(depositAmount.mul(3));
   });
   
-  it.only('should make deposit and check totalAssets after', async function () {
+  it('should make deposit and check totalAssets after', async function () {
     const depositAmount = ethers.utils.parseEther('1');
 
     // create all staking nodes possible

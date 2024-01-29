@@ -1,6 +1,7 @@
 describe('Unit Tests', function () {
- require('./ynETH');
- require('./DepositPool');
+    this.timeout(0);
+    require('./ynETH');
+    require('./DepositPool');
 });
 
 

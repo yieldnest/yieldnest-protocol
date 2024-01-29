@@ -13,6 +13,9 @@ import "./interfaces/IDepositPool.sol";
 import "./interfaces/IynETH.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
+import "forge-std/StdMath.sol";
+
+
 
 interface StakingNodesManagerEvents {
      event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -87,10 +90,44 @@ contract StakingNodesManager is
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
 
+        validateDepositDataAllocation(_depositData);
+
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
         for (uint x = 0; x < _depositData.length; ++x) {
             _registerValidator(_depositData[x], DEFAULT_VALIDATOR_STAKE);
+        }
+    }
+
+    function validateDepositDataAllocation(DepositData[] calldata _depositData) public {
+        uint[] memory nodeBalances = new uint[](nodes.length);
+        uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
+        uint totalBalance = 0;
+        for (uint i = 0; i < nodes.length; i++) {
+            nodeBalances[i] = IStakingNode(nodes[i]).getETHBalance();
+            newNodeBalances[i] = nodeBalances[i]; // Assigning the value from nodeBalances to newNodeBalances
+            totalBalance += nodeBalances[i];
+        }
+
+        if (totalBalance == 0) {
+            return;
+        }
+        uint averageBalance = totalBalance / nodes.length;
+
+        uint newTotalBalance = totalBalance;
+        for (uint i = 0; i < _depositData.length; i++) {
+            uint nodeId = _depositData[i].nodeId;
+            newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
+            newTotalBalance += DEFAULT_VALIDATOR_STAKE;
+        }
+        uint newAverageBalance = newTotalBalance / nodes.length;
+        // End Generation Here
+
+        for (uint i = 0; i < nodes.length; i++) {
+            require(
+                stdMath.abs(int256(nodeBalances[i]) - int256(averageBalance)) >= stdMath.abs(int256(newNodeBalances[i]) - int256(newAverageBalance)),
+                "New setup does not decrease the absolute difference between the balance and the average balance"
+            );
         }
     }
 
@@ -103,7 +140,7 @@ contract StakingNodesManager is
         uint256 _depositAmount
     ) internal {
 
-        uint256 nodeId = getNextNodeIdToUse();
+        uint256 nodeId = _depositData.nodeId;
         bytes memory withdrawalCredentials = getWithdrawalCredentials(nodeId);
         bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(_depositData.publicKey, _depositData.signature, withdrawalCredentials, _depositAmount);
         require(depositDataRoot == _depositData.depositDataRoot, "Deposit data root mismatch");
@@ -121,12 +158,6 @@ contract StakingNodesManager is
             _depositData.publicKey,
             depositDataRoot
         );
-    }
-
-    function getNextNodeIdToUse() public pure returns (uint) {
-        // Use only 1 node with eigenpod to start with
-        // TODO: create logic for selecting from a set of N
-        return DEFAULT_NODE_INDEX;
     }
 
     function generateDepositRoot(

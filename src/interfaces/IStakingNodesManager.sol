@@ -11,6 +11,7 @@ interface IStakingNodesManager {
         bytes publicKey;
         bytes signature;
         bytes32 depositDataRoot;
+        uint nodeId;
     }
 
     function eigenPodManager() external view returns (IEigenPodManager);

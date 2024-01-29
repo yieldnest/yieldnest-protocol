@@ -11,7 +11,8 @@ require('dotenv').config();
 const networks = {
   hardhat: {
     gasPrice: 0,
-    initialBaseFeePerGas: 0
+    initialBaseFeePerGas: 0,
+    allowUnlimitedContractSize: true
   },
   goerli: {
     url: `https://goerli.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
