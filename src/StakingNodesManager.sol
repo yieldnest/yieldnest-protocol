@@ -20,6 +20,7 @@ import "forge-std/StdMath.sol";
 interface StakingNodesManagerEvents {
      event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
      event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event MaxNodeCountUpdated(uint maxNodeCount);
 }
 
 
@@ -214,6 +215,13 @@ contract StakingNodesManager is
            upgradableBeacon.upgradeTo(_implementationContract);
         }
         implementationContract = _implementationContract;
+    }
+
+    /// @notice Sets the maximum number of staking nodes allowed
+    /// @param _maxNodeCount The maximum number of staking nodes
+    function setMaxNodeCount(uint _maxNodeCount) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        maxNodeCount = _maxNodeCount;
+        emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
     function processWithdrawnETH(uint nodeId) external payable {
