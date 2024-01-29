@@ -27,10 +27,11 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     // Errors.
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
+    error Paused();
 
-    IOracle public oracle;
-    uint public allocatedETHForDeposits;
     IStakingNodesManager public stakingNodesManager;
+    uint public allocatedETHForDeposits;
+    bool public isDepositETHPaused;
     // Storage variables
 
     /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
@@ -54,7 +55,6 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     struct Init {
         address admin;
         IStakingNodesManager stakingNodesManager;
-        IOracle oracle; // YieldNest oracle
         IWETH wETH;
     }
 
@@ -74,10 +74,13 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         stakingNodesManager = init.stakingNodesManager;
-        oracle = init.oracle;
     }
 
     function depositETH(address receiver) public payable returns (uint shares) {
+
+        if (isDepositETHPaused) {
+            revert Paused();
+        }
 
         require(msg.value > 0, "msg.value == 0");
 
@@ -155,6 +158,13 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
 
     function processWithdrawnETH() public payable onlyStakingNodesManager {
         totalDepositedInPool += msg.value;
+    }
+
+    event DepositETHPausedUpdated(bool isPaused);
+
+    function toggleDepositETHPause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isDepositETHPaused = !isDepositETHPaused;
+        emit DepositETHPausedUpdated(isDepositETHPaused);
     }
 
 }

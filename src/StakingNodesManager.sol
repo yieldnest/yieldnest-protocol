@@ -100,7 +100,7 @@ contract StakingNodesManager is
         }
     }
 
-    function validateDepositDataAllocation(DepositData[] calldata _depositData) public {
+    function validateDepositDataAllocation(DepositData[] calldata _depositData) public view {
         uint[] memory nodeBalances = new uint[](nodes.length);
         uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
         uint totalBalance = 0;
