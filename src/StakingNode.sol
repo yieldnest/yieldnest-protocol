@@ -253,7 +253,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     function getETHBalance() public view returns (uint) {
 
         // 1 Beacon Chain ETH strategy share = 1 ETH
-        return totalETHNotRestaked + strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        // TODO: handle the withdrawal situation - this means that ETH will reside in the eigenpod at some point
+        uint consensusLayerRewards = address(eigenPod).balance;
+        return totalETHNotRestaked + consensusLayerRewards + strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
     }
 
     /**
