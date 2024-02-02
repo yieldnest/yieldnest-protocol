@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 import "./eigenlayer/IDelegationManager.sol";
 import "./eigenlayer/IEigenPodManager.sol";
 import "./eigenlayer/IDelayedWithdrawalRouter.sol";
+import "./IStakingNode.sol";
+
 
 
 interface IStakingNodesManager {
@@ -22,7 +24,7 @@ interface IStakingNodesManager {
 
     function getAllValidators() external view returns (bytes[] memory);
 
-    function getAllNodes() external view returns (address[] memory);
+    function getAllNodes() external view returns (IStakingNode[] memory);
 
     function isStakingNodesAdmin(address) external view returns (bool);
 

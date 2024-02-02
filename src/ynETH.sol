@@ -140,10 +140,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     }
 
     function totalDepositedInValidators() internal view returns (uint) {
-        address[]  memory nodes = stakingNodesManager.getAllNodes();
+        IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
         uint totalDeposited = 0;
         for (uint i = 0; i < nodes.length; i++) {
-            totalDeposited += IStakingNode(nodes[i]).getETHBalance();
+            totalDeposited += nodes[i].getETHBalance();
         }
         return totalDeposited;
     }

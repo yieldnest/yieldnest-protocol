@@ -51,7 +51,7 @@ contract StakingNodesManager is
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
 
-    address[] public nodes;
+    IStakingNode[] public nodes;
     uint public maxNodeCount;
 
     uint constant DEFAULT_NODE_INDEX  = 0;
@@ -220,7 +220,7 @@ contract StakingNodesManager is
  
         IEigenPod eigenPod = node.createEigenPod();
 
-        nodes.push(address(node));
+        nodes.push(node);
 
         emit StakingNodeCreated(address(node), address(eigenPod));
 
@@ -252,7 +252,7 @@ contract StakingNodesManager is
 
 
     function processWithdrawnETH(uint nodeId) external payable {
-        require(nodes[nodeId] == msg.sender, "msg.sender does not match nodeId");
+        require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
 
         ynETH.processWithdrawnETH{value: msg.value}();
     }
@@ -261,7 +261,7 @@ contract StakingNodesManager is
         return validators;
     }
 
-    function getAllNodes() public view returns (address[] memory) {
+    function getAllNodes() public view returns (IStakingNode[] memory) {
         return nodes;
     }
 
