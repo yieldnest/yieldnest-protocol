@@ -7,10 +7,13 @@ import "./RewardsReceiver.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
 
 
-contract RewardsDistributor is Initializable, AccessControlUpgradeable {
-
+interface RewardsDistributorEvents {
     event FeesCollected(uint256 amount);
     event FeeReceiverSet(address ewReceiver);
+}
+
+
+contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsDistributorEvents {
 
     error InvalidConfiguration();
     error NotOracle();
@@ -90,7 +93,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable {
         }
         _;
     }
-    
+
     /// @notice Sets the fees receiver wallet for the protocol.
     /// @param newReceiver The new fees receiver wallet.
     function setFeesReceiver(address payable newReceiver)
