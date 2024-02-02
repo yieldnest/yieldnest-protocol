@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
 import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
@@ -98,7 +100,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
-    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
+    function _convertToShares(uint256 ethAmount, Math.Rounding /* rounding */) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Using `ynETH.totalSupply` over `totalControlled` to check if the protocol is in its bootstrap phase since
         // the latter can be manipulated, for example by transferring funds to the `ExecutionLayerReturnsReceiver`, and
@@ -145,6 +147,11 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
             totalDeposited += IStakingNode(nodes[i]).getETHBalance();
         }
         return totalDeposited;
+    }
+
+
+    receive() external payable {
+        revert("ynETH: Cannot receive ETH directly");
     }
 
     function receiveRewards() external payable {
