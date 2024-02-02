@@ -19,6 +19,7 @@ interface StakingEvents {
     /// @param ethAmount The amount of ETH staked.
     /// @param ynETHAmount The amount of ynETH received.
     event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
+    event DepositETHPausedUpdated(bool isPaused);
 
 }
  
@@ -159,8 +160,6 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     function processWithdrawnETH() public payable onlyStakingNodesManager {
         totalDepositedInPool += msg.value;
     }
-
-    event DepositETHPausedUpdated(bool isPaused);
 
     function toggleDepositETHPause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         isDepositETHPaused = !isDepositETHPaused;

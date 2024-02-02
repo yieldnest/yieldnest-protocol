@@ -59,17 +59,16 @@ describe('StakingNode creation and usage', function () {
     console.log('Creating staking node...');
     await contracts.stakingNodesManager.createStakingNode();
 
-
+    const nodeId = '0';
 
     const depositData = [
       {
         publicKey: '0x' + '00'.repeat(48),
         signature: '0x' + '00'.repeat(96),
+        nodeId
       }
     ];
 
-    console.log('Getting next node ID to use...');
-    const nodeId = await stakingNodesManager.getNextNodeIdToUse();
     console.log('Getting withdrawal credentials...', nodeId);
     const withdrawalCredentials = await stakingNodesManager.getWithdrawalCredentials(nodeId);
 

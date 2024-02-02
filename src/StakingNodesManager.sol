@@ -23,7 +23,6 @@ interface StakingNodesManagerEvents {
     event MaxNodeCountUpdated(uint maxNodeCount);
 }
 
-
 contract StakingNodesManager is
     IStakingNodesManager,
     Initializable,
@@ -43,7 +42,6 @@ contract StakingNodesManager is
     IynETH public ynETH;
 
     bytes[] public validators;
-
 
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
