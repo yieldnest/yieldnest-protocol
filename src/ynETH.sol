@@ -77,6 +77,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         rewardsDistributor = init.rewardsDistributor;
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  DEPOSITS   ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     function depositETH(address receiver) public payable returns (uint shares) {
 
         if (isDepositETHPaused) {
@@ -144,6 +148,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         return totalDeposited;
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------
+    //--------------------------------------------------------------------------------------
+
     receive() external payable {
         revert("ynETH: Cannot receive ETH directly");
     }
@@ -169,7 +177,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         emit DepositETHPausedUpdated(isDepositETHPaused);
     }
 
-    
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS   ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     modifier onlyStakingNodesManager() {
         require(msg.sender == address(stakingNodesManager), "Caller is not the stakingNodesManager");
         _;

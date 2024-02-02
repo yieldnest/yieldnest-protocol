@@ -87,6 +87,16 @@ contract StakingNodesManager is
         strategyManager = init.strategyManager;
     }
 
+
+    // Receive
+    receive() external payable {
+        require(msg.sender == address(ynETH));
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VALIDATOR REGISTRATION  --------------------------
+    //--------------------------------------------------------------------------------------
+
     function registerValidators(
         bytes32 _depositRoot,
         DepositData[] calldata _depositData
@@ -190,6 +200,11 @@ contract StakingNodesManager is
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), _address);
     }
 
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STAKING NODE CREATION  ---------------------------
+    //--------------------------------------------------------------------------------------
+
     function createStakingNode() public returns (IStakingNode) {
 
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
@@ -231,6 +246,11 @@ contract StakingNodesManager is
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIEWS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
     function processWithdrawnETH(uint nodeId) external payable {
         require(nodes[nodeId] == msg.sender, "msg.sender does not match nodeId");
 
@@ -252,11 +272,6 @@ contract StakingNodesManager is
     function isStakingNodesAdmin(address _address) public view returns (bool) {
         // TODO: define specific admin
         return hasRole(DEFAULT_ADMIN_ROLE, _address);
-    }
-
-    // Receive
-    receive() external payable {
-        require(msg.sender == address(ynETH));
     }
 
     //--------------------------------------------------------------------------------------

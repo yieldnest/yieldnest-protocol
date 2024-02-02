@@ -11,7 +11,6 @@ import "./external/eigenlayer/BeaconChainProofs.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
-
      event Delegated(address indexed operator, ISignatureUtils.SignatureWithExpiry approverSignatureAndExpiry, bytes32 approverSalt);
 }
 
@@ -50,9 +49,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     constructor() {
     }
 
-    ///  To receive the rewards from the execution layer, it should have 'receive()' function.
-    receive() external payable {}
-
     function initialize(Init memory init) external {
         require(address(stakingNodesManager) == address(0), "already initialized");
         require(address(init.stakingNodesManager) != address(0), "No zero addresses");
@@ -61,7 +57,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         strategyManager = init.strategyManager;
         nodeId = init.nodeId;
     }
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EIGENPOD CREATION   ------------------------------
