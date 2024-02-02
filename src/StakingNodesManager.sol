@@ -35,6 +35,21 @@ contract StakingNodesManager is
     error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
 
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    /// @notice  Role is allowed to set system parameters
+    bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
+
+    /// @notice  Role controls all staking nodes
+    bytes32 public constant STAKING_NODES_ADMIN_ROLE = keccak256("STAKING_NODES_ADMIN_ROLE");
+
+    /// @notice  Role is able to register validators
+    bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
+
+
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
@@ -64,6 +79,9 @@ contract StakingNodesManager is
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
+        address stakingAdmin;
+        address stakingNodesAdmin;
+        address validatorManager;
         uint maxNodeCount;
         IDepositContract depositContract;
         IynETH ynETH;
@@ -78,6 +96,10 @@ contract StakingNodesManager is
        __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
+        _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
+        _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
+
         depositContractEth2 = init.depositContract;
         maxNodeCount = init.maxNodeCount;
         eigenPodManager = init.eigenPodManager;
@@ -100,7 +122,7 @@ contract StakingNodesManager is
     function registerValidators(
         bytes32 _depositRoot,
         DepositData[] calldata _depositData
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant verifyDepositState(_depositRoot) {
+    ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant verifyDepositState(_depositRoot) {
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
 
@@ -227,7 +249,7 @@ contract StakingNodesManager is
         return node;
     }
 
-    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(DEFAULT_ADMIN_ROLE) public {
+    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
 
         require(_implementationContract != address(0), "No zero addresses");
 
@@ -241,7 +263,7 @@ contract StakingNodesManager is
 
     /// @notice Sets the maximum number of staking nodes allowed
     /// @param _maxNodeCount The maximum number of staking nodes
-    function setMaxNodeCount(uint _maxNodeCount) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMaxNodeCount(uint _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
         maxNodeCount = _maxNodeCount;
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
@@ -271,7 +293,7 @@ contract StakingNodesManager is
 
     function isStakingNodesAdmin(address _address) public view returns (bool) {
         // TODO: define specific admin
-        return hasRole(DEFAULT_ADMIN_ROLE, _address);
+        return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
     }
 
     //--------------------------------------------------------------------------------------
