@@ -4,7 +4,7 @@ const { getProxyAdminAddress, deployProxy, deployAndInitializeTransparentUpgrade
 
 
 async function setup() {
-  const [deployer] = await ethers.getSigners();
+  const [deployer, feesReceiver] = await ethers.getSigners();
 
   const MockEigenPodManagerFactory = await ethers.getContractFactory('MockEigenPodManager');
   const mockEigenPodManager = await MockEigenPodManagerFactory.deploy();
@@ -34,8 +34,8 @@ async function setup() {
   const mockDelayedWithdrawalRouter = await MockDelayedWithdrawalRouterFactory.deploy();
   await mockDelayedWithdrawalRouter.deployed();
 
-  const EmptyYnETHFactory = await ethers.getContractFactory('EmptyYnETH');
-  let ynETH = await deployProxy(EmptyYnETHFactory, 'ynETH', deployer);
+  const PlaceholderContractFactory = await ethers.getContractFactory('PlaceholderContract');
+  let ynETH = await deployProxy(PlaceholderContractFactory, 'ynETH', deployer);
 
   const StakingNodesManagerFactory = await ethers.getContractFactory('StakingNodesManager');
 
@@ -63,6 +63,39 @@ async function setup() {
 
   stakingNodesManager.registerStakingNodeImplementationContract(stakingNode.address);
 
+  let rewardsDistributor = await deployProxy(PlaceholderContractFactory, 'RewardsDistributor', deployer);
+  await rewardsDistributor.deployed();
+
+  const RewardsReceiverFactory = await ethers.getContractFactory('RewardsReceiver');
+  const executionLayerReceiver = await deployAndInitializeTransparentUpgradeableProxy(
+    RewardsReceiverFactory,
+    'RewardsReceiver',
+    [],
+    deployer,
+    [{
+    admin: deployer.address,
+    manager: deployer.address, // Updated as per followup instructions
+    withdrawer: rewardsDistributor.address // Assuming the deployer has the role of withdrawer
+  }]);
+  await executionLayerReceiver.deployed();
+  // End Generation Here
+
+  const RewardsDistributorFactory = await ethers.getContractFactory('RewardsDistributor');
+
+  // proxy, factory, name, initArgs
+  rewardsDistributor = await upgradeProxy(
+    rewardsDistributor,
+    RewardsDistributorFactory,
+    'RewardsDistributor',
+    [{
+      admin: deployer.address,
+      executionLayerReceiver: executionLayerReceiver.address,
+      feesReceiver: feesReceiver.address,
+      ynETH: ynETH.address
+    }]
+  );
+  await rewardsDistributor.deployed();
+
   const ynETHFactory = await ethers.getContractFactory('ynETH');
   ynETH = await upgradeProxy(
       ynETH,
@@ -72,7 +105,8 @@ async function setup() {
         admin: deployer.address,
         stakingNodesManager: stakingNodesManager.address,
         oracle: oracle.address,
-        wETH: weth.address
+        wETH: weth.address,
+        rewardsDistributor: rewardsDistributor.address
       }]
   );
   await ynETH.deployed();

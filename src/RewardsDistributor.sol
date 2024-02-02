@@ -90,7 +90,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable {
         }
         _;
     }
-
+    
     /// @notice Sets the fees receiver wallet for the protocol.
     /// @param newReceiver The new fees receiver wallet.
     function setFeesReceiver(address payable newReceiver)

@@ -22,7 +22,7 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     }
 
     constructor() {
-        _disableInitializers();
+       // _disableInitializers();
     }
 
     /// @notice Inititalizes the contract.

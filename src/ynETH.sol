@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 
 import {IynETH} from "./interfaces/IynETH.sol";
@@ -33,6 +34,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     error Paused();
 
     IStakingNodesManager public stakingNodesManager;
+    IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
     bool public isDepositETHPaused;
     // Storage variables
@@ -49,15 +51,11 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     /// 100% in basis point terms.
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
-    modifier onlyStakingNodesManager() {
-        require(msg.sender == address(stakingNodesManager), "Caller is not the stakingNodesManager");
-        _;
-    }
-
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
         IStakingNodesManager stakingNodesManager;
+        IRewardsDistributor rewardsDistributor;
         IWETH wETH;
     }
 
@@ -76,6 +74,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         stakingNodesManager = init.stakingNodesManager;
+        rewardsDistributor = init.rewardsDistributor;
     }
 
     function depositETH(address receiver) public payable returns (uint shares) {
@@ -155,6 +154,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     }
 
     function receiveRewards() external payable {
+        require(msg.sender == address(rewardsDistributor), "Caller is not the stakingNodesManager");
         totalDepositedInPool += msg.value;
     }
 
@@ -174,4 +174,9 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         emit DepositETHPausedUpdated(isDepositETHPaused);
     }
 
+    
+    modifier onlyStakingNodesManager() {
+        require(msg.sender == address(stakingNodesManager), "Caller is not the stakingNodesManager");
+        _;
+    }
 }
