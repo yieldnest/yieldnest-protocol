@@ -16,7 +16,6 @@ import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "forge-std/StdMath.sol";
 
 
-
 interface StakingNodesManagerEvents {
      event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
      event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
@@ -98,6 +97,13 @@ contract StakingNodesManager is
         }
     }
 
+    /**
+     * @notice Validates the allocation of deposit data across nodes to ensure the distribution does not increase the disparity in balances.
+     * @dev This function checks if the proposed allocation of deposits (represented by `_depositData`) across the nodes would lead to a more
+     * equitable distribution of validator stakes. It calculates the current and new average balances of nodes, and ensures that for each node,
+     * the absolute difference between its balance and the average balance does not increase as a result of the new deposits
+     * @param _depositData An array of `DepositData` structures representing the validator stakes to be allocated across the nodes.
+     */
     function validateDepositDataAllocation(DepositData[] calldata _depositData) public view {
         uint[] memory nodeBalances = new uint[](nodes.length);
         uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
@@ -120,7 +126,6 @@ contract StakingNodesManager is
             newTotalBalance += DEFAULT_VALIDATOR_STAKE;
         }
         uint newAverageBalance = newTotalBalance / nodes.length;
-        // End Generation Here
 
         for (uint i = 0; i < nodes.length; i++) {
             require(
@@ -132,8 +137,6 @@ contract StakingNodesManager is
 
     /// @notice Creates validator object and deposits into beacon chain
     /// @param _depositData Data structure to hold all data needed for depositing to the beacon chain
-    /// however, instead of the validator key, it will include the IPFS hash
-    /// containing the validator key encrypted by the corresponding node operator's public key
     function _registerValidator(
         DepositData calldata _depositData, 
         uint256 _depositAmount
@@ -149,6 +152,7 @@ contract StakingNodesManager is
 
         validators.push(_depositData.publicKey);
 
+        // notify node of ETH _depositAmount
         IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
 
         emit ValidatorRegistered(
@@ -244,7 +248,6 @@ contract StakingNodesManager is
         // TODO: define specific admin
         return hasRole(DEFAULT_ADMIN_ROLE, _address);
     }
-
 
     // Receive
     receive() external payable {
