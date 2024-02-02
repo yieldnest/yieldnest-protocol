@@ -29,6 +29,12 @@ contract StakingNodesManager is
     ReentrancyGuardUpgradeable,
     StakingNodesManagerEvents {
 
+    // Errors.
+    error MinimumStakeBoundNotSatisfied();
+    error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
+    error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
+
+
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
@@ -128,10 +134,9 @@ contract StakingNodesManager is
         uint newAverageBalance = newTotalBalance / nodes.length;
 
         for (uint i = 0; i < nodes.length; i++) {
-            require(
-                stdMath.abs(int256(nodeBalances[i]) - int256(averageBalance)) >= stdMath.abs(int256(newNodeBalances[i]) - int256(newAverageBalance)),
-                "New setup does not decrease the absolute difference between the balance and the average balance"
-            );
+            if (stdMath.abs(int256(nodeBalances[i]) - int256(averageBalance)) < stdMath.abs(int256(newNodeBalances[i]) - int256(newAverageBalance))) {
+                revert DepositAllocationUnbalanced(i, nodeBalances[i], averageBalance, newNodeBalances[i], newAverageBalance);
+            }
         }
     }
 
