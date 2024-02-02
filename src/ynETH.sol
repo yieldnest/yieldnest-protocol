@@ -11,7 +11,7 @@ import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -20,10 +20,10 @@ interface StakingEvents {
     /// @param ynETHAmount The amount of ynETH received.
     event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
     event DepositETHPausedUpdated(bool isPaused);
-
+    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
 }
  
-contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingEvents {
+contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEvents {
 
     // Errors.
     error MinimumStakeBoundNotSatisfied();
@@ -70,7 +70,6 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
-        __ERC4626_init(IERC20(address(init.wETH)));
         __ERC20_init("ynETH", "ynETH");
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
@@ -87,11 +86,6 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
 
         uint assets = msg.value;
 
-        uint256 maxAssets = maxDeposit(receiver);
-
-        if (assets > maxAssets) {
-            revert ERC4626ExceededMaxDeposit(receiver, assets, maxAssets);
-        }
         shares = previewDeposit(assets);
 
         _mint(receiver, shares);
@@ -104,7 +98,7 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
-    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) override internal view returns (uint256) {
+    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Using `ynETH.totalSupply` over `totalControlled` to check if the protocol is in its bootstrap phase since
         // the latter can be manipulated, for example by transferring funds to the `ExecutionLayerReturnsReceiver`, and
@@ -128,7 +122,14 @@ contract ynETH is IynETH, ERC4626Upgradeable, AccessControlUpgradeable, StakingE
         );
     }
 
-    function totalAssets() override public view returns (uint) {
+    /// @notice Calculates the amount of shares to be minted for a given deposit.
+    /// @param assets The amount of assets to be deposited.
+    /// @return The amount of shares to be minted.
+    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Floor);
+    }
+
+    function totalAssets() public view returns (uint) {
         uint total = 0;
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
