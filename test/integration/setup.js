@@ -106,6 +106,7 @@ async function setup() {
       'ynETH',
       [{
         admin: deployer.address,
+        pauser: deployer.address,
         stakingNodesManager: stakingNodesManager.address,
         oracle: oracle.address,
         wETH: weth.address,

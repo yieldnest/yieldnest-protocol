@@ -33,6 +33,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice  Role is allowed to set the pause state
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
@@ -54,6 +61,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
+        address pauser;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         IWETH wETH;
@@ -73,6 +81,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         __ERC20_init("ynETH", "ynETH");
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
     }
@@ -172,8 +181,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         totalDepositedInPool += msg.value;
     }
 
-    function toggleDepositETHPause() external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isDepositETHPaused = !isDepositETHPaused;
+    function setisDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        isDepositETHPaused = isPaused;
         emit DepositETHPausedUpdated(isDepositETHPaused);
     }
 
