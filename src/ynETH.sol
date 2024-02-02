@@ -62,7 +62,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     constructor(
     ) {
         // TODO; re-enable this
-        // _disableInitializers();
+         //_disableInitializers();
     }
 
 
@@ -99,27 +99,23 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
-    function _convertToShares(uint256 ethAmount, Math.Rounding /* rounding */) internal view returns (uint256) {
+    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
-        // Using `ynETH.totalSupply` over `totalControlled` to check if the protocol is in its bootstrap phase since
-        // the latter can be manipulated, for example by transferring funds to the `ExecutionLayerReturnsReceiver`, and
-        // therefore be non-zero by the time the first stake is made
+        // Use totalSupply to see if this is the boostrap call, not totalAssets
         if (totalSupply() == 0) {
             return ethAmount;
         }
 
         // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        // This rounds down to zero in the case of `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply <
-        // totalControlled`.
-        // While this scenario is theoretically possible, it can only be realised feasibly during the protocol's
-        // bootstrap phase and if `totalControlled` and `ynETHSupply` can be changed independently of each other. Since
-        // the former is permissioned, and the latter is not permitted by the protocol, this cannot be exploited by an
-        // attacker.
-
+        //  If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
+        
+        // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
+        // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
             totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR)
+            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR),
+            rounding
         );
     }
 
@@ -147,7 +143,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         }
         return totalDeposited;
     }
-
 
     receive() external payable {
         revert("ynETH: Cannot receive ETH directly");
