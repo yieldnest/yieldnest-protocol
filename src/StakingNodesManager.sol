@@ -34,6 +34,8 @@ contract StakingNodesManager is
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
     error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
+    error ValidatorAlreadyUsed(bytes publicKey);
+    error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -48,6 +50,8 @@ contract StakingNodesManager is
 
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
+
+    uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
 
     IEigenPodManager public eigenPodManager;
@@ -69,8 +73,7 @@ contract StakingNodesManager is
     IStakingNode[] public nodes;
     uint public maxNodeCount;
 
-    uint constant DEFAULT_NODE_INDEX  = 0;
-    uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
+    mapping(bytes pubkey => bool) usedValidators;
 
      //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
@@ -133,11 +136,22 @@ contract StakingNodesManager is
             }
         }
 
+        if (_depositData.length == 0) {
+            return;
+        }
 
-        uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
+        // check if already used
+        for (uint256 i = 0; i < _depositData.length; ++i) {
+            DepositData calldata depositData = _depositData[i];
+            if (usedValidators[depositData.publicKey]) {
+                revert ValidatorAlreadyUsed(depositData.publicKey);
+            }
+            usedValidators[depositData.publicKey] = true;
+        }
 
         validateDepositDataAllocation(_depositData);
 
+        uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
         for (uint x = 0; x < _depositData.length; ++x) {
@@ -192,7 +206,9 @@ contract StakingNodesManager is
         uint256 nodeId = _depositData.nodeId;
         bytes memory withdrawalCredentials = getWithdrawalCredentials(nodeId);
         bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(_depositData.publicKey, _depositData.signature, withdrawalCredentials, _depositAmount);
-        require(depositDataRoot == _depositData.depositDataRoot, "Deposit data root mismatch");
+        if (depositDataRoot != _depositData.depositDataRoot) {
+            revert DepositDataRootMismatch(depositDataRoot, _depositData.depositDataRoot);
+        }
 
         // Deposit to the Beacon Chain
         depositContractEth2.deposit{value: _depositAmount}(_depositData.publicKey, withdrawalCredentials, _depositData.signature, depositDataRoot);
