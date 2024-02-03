@@ -33,7 +33,7 @@ contract StakingNodesManager is
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
-
+    error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -122,7 +122,17 @@ contract StakingNodesManager is
     function registerValidators(
         bytes32 _depositRoot,
         DepositData[] calldata _depositData
-    ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant verifyDepositState(_depositRoot) {
+    ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
+
+        // check deposit root matches the deposit contract deposit root
+        // to prevent front-running from rogue operators 
+        if (_depositRoot != 0x0000000000000000000000000000000000000000000000000000000000000000) {
+            bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
+            if (_depositRoot != onchainDepositRoot) {
+                revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
+            }
+        }
+
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
 
@@ -296,16 +306,4 @@ contract StakingNodesManager is
         return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
     }
 
-    //--------------------------------------------------------------------------------------
-    //-----------------------------------  MODIFIERS  --------------------------------------
-    //--------------------------------------------------------------------------------------
-    
-    modifier verifyDepositState(bytes32 _depositRoot) {
-        // disable deposit root check if none provided
-        if (_depositRoot != 0x0000000000000000000000000000000000000000000000000000000000000000) {
-            bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
-            require(_depositRoot == onchainDepositRoot, "deposit root changed");
-        }
-        _;
-    }
 }
