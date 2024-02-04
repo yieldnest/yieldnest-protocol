@@ -36,6 +36,7 @@ contract StakingNodesManager is
     error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
+    error DirectETHDepositsNotAllowed();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -113,9 +114,12 @@ contract StakingNodesManager is
     }
 
 
-    // Receive
     receive() external payable {
         require(msg.sender == address(ynETH));
+    }
+
+    fallback() external payable {
+        revert DirectETHDepositsNotAllowed();
     }
 
     //--------------------------------------------------------------------------------------
