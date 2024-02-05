@@ -5,7 +5,6 @@ import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
-import "hardhat/console.sol";
 import "./external/eigenlayer/BeaconChainProofs.sol";
 
 

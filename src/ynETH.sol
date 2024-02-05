@@ -181,7 +181,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         totalDepositedInPool += msg.value;
     }
 
-    function setisDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+    function setIsDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
         isDepositETHPaused = isPaused;
         emit DepositETHPausedUpdated(isDepositETHPaused);
     }
