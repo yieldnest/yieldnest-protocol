@@ -1,4 +1,4 @@
-pragma solidity >0.8.00;
+pragma solidity >0.8.0;
 
 contract WETH {
     string public name = "Wrapped Ether";
