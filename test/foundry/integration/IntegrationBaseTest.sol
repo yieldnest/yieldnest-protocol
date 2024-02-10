@@ -24,8 +24,12 @@ contract IntegrationBaseTest is Test {
 
     function setUp() public {
 
+        emit log("IntegrationBaseTest setup started");
+
         proxyAdmin = new ProxyAdmin(address(this));
         WETH weth = new WETH();
+
+        emit log("WETH contract deployed");
 
         // Deploy implementations
         yneth = new ynETH();

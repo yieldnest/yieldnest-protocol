@@ -1,8 +1,13 @@
 import "./IntegrationBaseTest.sol";
+import "forge-std/console.sol";
+import "../../../src/ynETH.sol";
+
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testDepositETH() public {
+
+        emit log_named_uint("Block number at deposit test", block.number);
 
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
@@ -21,11 +26,19 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
     }
 
-    function testFailDepositETHWhenPaused() public {
+    function testDepositETHWhenPaused() public {
         // Arrange
         yneth.setIsDepositETHPaused(true);
 
+        uint256 depositAmount = 1 ether;
+        vm.deal(address(this), depositAmount);
+        // Arrange
+
+        bool pauseState = yneth.isDepositETHPaused();
+        console.log("Pause state:", pauseState);
+
         // Act & Assert
-        yneth.depositETH{value: 1 ether}(address(this));
+        vm.expectRevert(ynETH.Paused.selector);
+        yneth.depositETH{value: depositAmount}(address(this));
     }
 }
