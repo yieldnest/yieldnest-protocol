@@ -41,4 +41,38 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         vm.expectRevert(ynETH.Paused.selector);
         yneth.depositETH{value: depositAmount}(address(this));
     }
+
+    function testPauseDepositETH() public {
+        // Arrange
+        yneth.setIsDepositETHPaused(true);
+
+        // Act & Assert
+        bool pauseState = yneth.isDepositETHPaused();
+        assertTrue(pauseState, "Deposit ETH should be paused");
+    }
+
+    function testUnpauseDepositETH() public {
+        // Arrange
+        yneth.setIsDepositETHPaused(true);
+        yneth.setIsDepositETHPaused(false);
+
+        // Act & Assert
+        bool pauseState = yneth.isDepositETHPaused();
+        assertFalse(pauseState, "Deposit ETH should be unpaused");
+    }
+
+    // function testReceiveRewards() public {
+    //     // Arrange
+    //     uint256 rewardAmount = 0.5 ether;
+    //     vm.deal(address(rewardsDistributor), rewardAmount);
+
+    //     uint256 initialPoolBalance = yneth.totalAssets();
+
+    //     // Act
+    //     rewardsDistributor.sendValue(address(yneth), rewardAmount);
+
+    //     // Assert
+    //     uint256 finalPoolBalance = yneth.totalAssets();
+    //     assertEq(finalPoolBalance, initialPoolBalance + rewardAmount, "Reward was not correctly added to the pool");
+    // }
 }
