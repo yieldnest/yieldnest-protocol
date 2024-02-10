@@ -62,8 +62,9 @@ contract IntegrationBaseTest is Test {
         
         address eigenPodManagerAddress = chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS;
         address delegationManagerAddress = chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS;
-        address delayedWithdrawalRouterAddress = chainAddresses.DEPOSIT_2_ADDRESS; // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        address delayedWithdrawalRouterAddress = chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS; // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         address strategyManagerAddress = chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS;
+        address depositContractAddress = chainAddresses.DEPOSIT_2_ADDRESS;
 
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
@@ -72,7 +73,7 @@ contract IntegrationBaseTest is Test {
             stakingNodesAdmin: address(this),
             validatorManager: address(this),
             maxNodeCount: 10,
-            depositContract: IDepositContract(address(0)), // Assuming an address for the example
+            depositContract: IDepositContract(depositContractAddress), // Assuming an address for the example
             ynETH: IynETH(address(yneth)),
             eigenPodManager: IEigenPodManager(eigenPodManagerAddress),
             delegationManager: IDelegationManager(delegationManagerAddress),
