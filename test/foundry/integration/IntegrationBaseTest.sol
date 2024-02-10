@@ -19,21 +19,29 @@ contract IntegrationBaseTest is Test {
     
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
-    RewardsReceiver public rewardsReceiver;
+    RewardsReceiver public executionLayerReceiver;
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
+    address payable feeReceiver;
+
+    uint startingExchangeAdjustmentRate;
+
     function setUp() public {
         emit log("IntegrationBaseTest setup started");
 
+        address defaultSigner = vm.addr(1); // Using the default signer address from foundry's vm
+        feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
+
+
+        startingExchangeAdjustmentRate = 4;
+
         proxyAdmin = new ProxyAdmin(address(this));
         WETH weth = new WETH();
-
-        emit log("WETH contract deployed");
-
+        
         // Deploy implementations
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
-        rewardsReceiver = new RewardsReceiver();
+        executionLayerReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
@@ -53,7 +61,8 @@ contract IntegrationBaseTest is Test {
             pauser: address(this),
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            wETH: IWETH(address(weth)) // Deployed WETH address
+            wETH: IWETH(address(weth)),  // Deployed WETH address
+            exchangeAdjustmentRate: startingExchangeAdjustmentRate
         });
         yneth.initialize(ynethInit);
 
@@ -82,13 +91,21 @@ contract IntegrationBaseTest is Test {
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
+        RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
+            admin: address(this),
+            executionLayerReceiver: executionLayerReceiver,
+            feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
+            ynETH: IynETH(address(yneth))
+        });
+        rewardsDistributor.initialize(rewardsDistributorInit);
+
         // Initialize RewardsReceiver with example parameters
         RewardsReceiver.Init memory rewardsReceiverInit = RewardsReceiver.Init({
             admin: address(this),
             manager: address(this),
-            withdrawer: address(stakingNodesManager)
+            withdrawer: address(rewardsDistributor)
         });
-        rewardsReceiver.initialize(rewardsReceiverInit);
+        executionLayerReceiver.initialize(rewardsReceiverInit);
     }
 }
 

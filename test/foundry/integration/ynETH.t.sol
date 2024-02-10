@@ -122,6 +122,41 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesAfterSecondDeposit, ethAmount, "Shares should equal ETH amount after second deposit");
     }
 
+
+    function testConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver() public {
+        // Arrange
+        uint256 ethAmount = 1 ether;
+        yneth.depositETH{value: ethAmount}(address(this));
+        uint256 rawRewardAmount = 1 ether;
+        // Deal directly to the executionLayerReceiver
+        vm.deal(address(executionLayerReceiver), rawRewardAmount);
+        // Simulate RewardsDistributor processing rewards which are then forwarded to yneth
+        rewardsDistributor.processRewards();
+        uint256 expectedNetRewardAmount = rawRewardAmount * 9 / 10;
+
+        // Act
+        uint256 sharesAfterDepositAndRewards = yneth.previewDeposit(ethAmount);
+
+        uint256 expectedTotalAssets = ethAmount + expectedNetRewardAmount; // Assuming initial total assets were equal to ethAmount before rewards
+        uint256 expectedTotalSupply = ethAmount; // Assuming initial total supply equals shares after first deposit
+        assertEq(expectedTotalAssets, yneth.totalAssets(), "Expected total assets should match actual total assets after rewards");
+        assertEq(expectedTotalSupply, yneth.totalSupply(), "Expected total supply should match actual total supply after rewards");
+        // Using the formula from ynETH to calculate expectedShares
+        // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
+        uint256 expectedShares = Math.mulDiv(
+                ethAmount,
+                expectedTotalSupply * uint256(10000 - startingExchangeAdjustmentRate),
+                expectedTotalAssets * uint256(10000),
+                Math.Rounding.Floor
+            );
+
+        // Assert
+        assertEq(sharesAfterDepositAndRewards, expectedShares, "Shares should equal ETH amount after deposit and rewards processed through RewardsReceiver");
+    }
+
+
+
+
     function testPauseDepositETHFunctionality() public {
         // Arrange
         yneth.setIsDepositETHPaused(true);

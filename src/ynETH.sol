@@ -15,6 +15,7 @@ import {AccessControlUpgradeable} from
 import "./interfaces/IOracle.sol";
 import "./interfaces/IWETH.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "forge-std/console.sol";
 
 interface StakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
@@ -24,6 +25,7 @@ interface StakingEvents {
     event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
     event DepositETHPausedUpdated(bool isPaused);
     event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+    event ExchangeAdjustmentRateUpdated(uint256 newRate);
 }
  
 contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEvents {
@@ -49,7 +51,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
     /// amount of ynETH received when staking, meaning there is no surprise for users when staking or unstaking.
     /// @dev The value is in basis points (1/10000).
-    uint16 public exchangeAdjustmentRate;
+    uint public exchangeAdjustmentRate;
 
     uint public totalDepositedInPool;
 
@@ -65,6 +67,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         IWETH wETH;
+        uint exchangeAdjustmentRate;
     }
 
     constructor(
@@ -84,6 +87,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
+        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
     }
 
     //--------------------------------------------------------------------------------------
@@ -93,8 +97,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     function depositETH(address receiver) public payable returns (uint shares) {
 
         if (isDepositETHPaused) {
+            console.log("System is paused");
             revert Paused();
         }
+    
 
         require(msg.value > 0, "msg.value == 0");
 
@@ -186,6 +192,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         emit DepositETHPausedUpdated(isDepositETHPaused);
     }
 
+    function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {
+        exchangeAdjustmentRate = newRate;
+        emit ExchangeAdjustmentRateUpdated(newRate);
+    }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------
     //--------------------------------------------------------------------------------------
