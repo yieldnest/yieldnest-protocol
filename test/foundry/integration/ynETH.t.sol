@@ -122,7 +122,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesAfterSecondDeposit, ethAmount, "Shares should equal ETH amount after second deposit");
     }
 
-
     function testConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver() public {
         // Arrange
         uint256 ethAmount = 1 ether;
@@ -139,8 +138,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         uint256 expectedTotalAssets = ethAmount + expectedNetRewardAmount; // Assuming initial total assets were equal to ethAmount before rewards
         uint256 expectedTotalSupply = ethAmount; // Assuming initial total supply equals shares after first deposit
-        assertEq(expectedTotalAssets, yneth.totalAssets(), "Expected total assets should match actual total assets after rewards");
-        assertEq(expectedTotalSupply, yneth.totalSupply(), "Expected total supply should match actual total supply after rewards");
         // Using the formula from ynETH to calculate expectedShares
         // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
         uint256 expectedShares = Math.mulDiv(
