@@ -8,6 +8,7 @@ import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
+import "../ContractAddresses.sol";
 
 // import "../../../src/StakingNode.sol";
 contract IntegrationBaseTest is Test {
@@ -21,9 +22,7 @@ contract IntegrationBaseTest is Test {
     RewardsReceiver public rewardsReceiver;
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
-
     function setUp() public {
-
         emit log("IntegrationBaseTest setup started");
 
         proxyAdmin = new ProxyAdmin(address(this));
@@ -36,7 +35,6 @@ contract IntegrationBaseTest is Test {
         stakingNodesManager = new StakingNodesManager();
         rewardsReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
-
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdmin), "");
@@ -59,6 +57,14 @@ contract IntegrationBaseTest is Test {
         });
         yneth.initialize(ynethInit);
 
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        
+        address eigenPodManagerAddress = chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS;
+        address delegationManagerAddress = chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS;
+        address delayedWithdrawalRouterAddress = chainAddresses.DEPOSIT_2_ADDRESS; // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        address strategyManagerAddress = chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS;
+
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: address(this),
@@ -68,10 +74,10 @@ contract IntegrationBaseTest is Test {
             maxNodeCount: 10,
             depositContract: IDepositContract(address(0)), // Assuming an address for the example
             ynETH: IynETH(address(yneth)),
-            eigenPodManager: IEigenPodManager(address(0)), // Assuming an address for the example
-            delegationManager: IDelegationManager(address(0)), // Assuming an address for the example
-            delayedWithdrawalRouter: IDelayedWithdrawalRouter(address(0)), // Assuming an address for the example
-            strategyManager: IStrategyManager(address(0)) // Assuming an address for the example
+            eigenPodManager: IEigenPodManager(eigenPodManagerAddress),
+            delegationManager: IDelegationManager(delegationManagerAddress),
+            delayedWithdrawalRouter: IDelayedWithdrawalRouter(delayedWithdrawalRouterAddress),
+            strategyManager: IStrategyManager(strategyManagerAddress) // Assuming an address for the example
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 

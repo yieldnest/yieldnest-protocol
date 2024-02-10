@@ -61,6 +61,91 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertFalse(pauseState, "Deposit ETH should be unpaused");
     }
 
+    function testPreviewDeposit() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        vm.deal(address(this), depositAmount);
+
+        // Act
+        uint256 shares = yneth.previewDeposit(depositAmount);
+
+        // Assert
+        assertTrue(shares > 0, "Preview deposit should return more than 0 shares");
+    }
+
+    function testTotalAssets() public {
+        // Arrange
+        uint256 initialTotalAssets = yneth.totalAssets();
+        uint256 depositAmount = 1 ether;
+        yneth.depositETH{value: depositAmount}(address(this));
+
+        // Act
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+
+        // Assert
+        assertEq(totalAssetsAfterDeposit, initialTotalAssets + depositAmount, "Total assets should increase by the deposit amount");
+    }
+
+    function testConvertToSharesBeforeAnyDeposits() public {
+        // Arrange
+        uint256 ethAmount = 1 ether;
+
+        // Act
+        uint256 sharesBeforeDeposit = yneth.previewDeposit(ethAmount);
+
+        // Assert
+        assertEq(sharesBeforeDeposit, ethAmount, "Shares should equal ETH amount before any deposits");
+    }
+
+    function testConvertToSharesAfterFirstDeposit() public {
+        // Arrange
+        uint256 ethAmount = 1 ether;
+        yneth.depositETH{value: ethAmount}(address(this));
+
+        // Act
+        uint256 sharesAfterFirstDeposit = yneth.previewDeposit(ethAmount);
+
+        // Assert
+        assertEq(sharesAfterFirstDeposit, ethAmount, "Shares should equal ETH amount after first deposit");
+    }
+
+    function testConvertToSharesAfterSecondDeposit() public {
+        // Arrange
+        uint256 ethAmount = 1 ether;
+        yneth.depositETH{value: ethAmount}(address(this));
+        yneth.depositETH{value: ethAmount}(address(this));
+
+        // Act
+        uint256 sharesAfterSecondDeposit = yneth.previewDeposit(ethAmount);
+
+        // Assert
+        assertEq(sharesAfterSecondDeposit, ethAmount, "Shares should equal ETH amount after second deposit");
+    }
+
+    function testPauseDepositETHFunctionality() public {
+        // Arrange
+        yneth.setIsDepositETHPaused(true);
+
+        // Act & Assert
+        bool pauseState = yneth.isDepositETHPaused();
+        assertTrue(pauseState, "Deposit ETH should be paused after setting pause state to true");
+
+        // Trying to deposit ETH while paused
+        uint256 depositAmount = 1 ether;
+        vm.expectRevert(ynETH.Paused.selector);
+        yneth.depositETH{value: depositAmount}(address(this));
+
+        // Unpause and try depositing again
+        yneth.setIsDepositETHPaused(false);
+        pauseState = yneth.isDepositETHPaused();
+        assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
+
+        // Deposit should succeed now
+        yneth.depositETH{value: depositAmount}(address(this));
+        uint256 ynETHBalance = yneth.balanceOf(address(this));
+        assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
+    }
+
     // function testReceiveRewards() public {
     //     // Arrange
     //     uint256 rewardAmount = 0.5 ether;
