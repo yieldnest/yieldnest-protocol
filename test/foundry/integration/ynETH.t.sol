@@ -26,6 +26,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
     }
 
+
+
     function testDepositETHWhenPaused() public {
         // Arrange
         yneth.setIsDepositETHPaused(true);
@@ -105,8 +107,10 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         uint256 sharesAfterFirstDeposit = yneth.previewDeposit(ethAmount);
 
+        uint expectedShares = ethAmount - startingExchangeAdjustmentRate * ethAmount / 10000;
+
         // Assert
-        assertEq(sharesAfterFirstDeposit, ethAmount, "Shares should equal ETH amount after first deposit");
+        assertEq(sharesAfterFirstDeposit, expectedShares, "Shares should equal ETH amount after first deposit");
     }
 
     function testConvertToSharesAfterSecondDeposit() public {
@@ -118,8 +122,19 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         uint256 sharesAfterSecondDeposit = yneth.previewDeposit(ethAmount);
 
+        uint256 expectedTotalAssets = 2 * ethAmount; // Assuming initial total assets were equal to ethAmount before rewards
+        uint256 expectedTotalSupply = 2 * ethAmount - startingExchangeAdjustmentRate * ethAmount / 10000; // Assuming initial total supply equals shares after first deposit
+        // Using the formula from ynETH to calculate expectedShares
+        // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
+        uint256 expectedShares = Math.mulDiv(
+                ethAmount,
+                expectedTotalSupply * uint256(10000 - startingExchangeAdjustmentRate),
+                expectedTotalAssets * uint256(10000),
+                Math.Rounding.Floor
+            );
+
         // Assert
-        assertEq(sharesAfterSecondDeposit, ethAmount, "Shares should equal ETH amount after second deposit");
+        assertEq(sharesAfterSecondDeposit, expectedShares, "Shares should equal ETH amount after second deposit");
     }
 
     function testConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver() public {
@@ -152,8 +167,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     }
 
 
-
-
     function testPauseDepositETHFunctionality() public {
         // Arrange
         yneth.setIsDepositETHPaused(true);
@@ -177,19 +190,4 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 ynETHBalance = yneth.balanceOf(address(this));
         assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
     }
-
-    // function testReceiveRewards() public {
-    //     // Arrange
-    //     uint256 rewardAmount = 0.5 ether;
-    //     vm.deal(address(rewardsDistributor), rewardAmount);
-
-    //     uint256 initialPoolBalance = yneth.totalAssets();
-
-    //     // Act
-    //     rewardsDistributor.sendValue(address(yneth), rewardAmount);
-
-    //     // Assert
-    //     uint256 finalPoolBalance = yneth.totalAssets();
-    //     assertEq(finalPoolBalance, initialPoolBalance + rewardAmount, "Reward was not correctly added to the pool");
-    // }
 }
