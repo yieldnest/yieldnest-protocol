@@ -1,3 +1,11 @@
+
+import {IPauserRegistry} from "../../../src/interfaces/eigenlayer-init-mainnet/IPauserRegistry.sol";
+import {IEigenPodManager} from "../../../src/interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
+import {IEigenPod} from "../../../src/interfaces/eigenlayer-init-mainnet/IEigenPod.sol";
+import {IStrategyManager} from "../../../src/interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
+import {IDelayedWithdrawalRouter} from "../../../src/interfaces/eigenlayer-init-mainnet/IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "../../../src/interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
+
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -9,8 +17,8 @@ import "../../../src/RewardsDistributor.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../ContractAddresses.sol";
+import "forge-std/console.sol";
 
-// import "../../../src/StakingNode.sol";
 contract IntegrationBaseTest is Test {
     ProxyAdmin public proxyAdmin;
     TransparentUpgradeableProxy public ynethProxy;
@@ -24,10 +32,15 @@ contract IntegrationBaseTest is Test {
     StakingNode public stakingNodeImplementation;
     address payable feeReceiver;
 
+    IEigenPodManager public eigenPodManager;
+    IDelegationManager public delegationManager;
+    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    IStrategyManager public strategyManager;
+    IDepositContract public depositContract;
+
     uint startingExchangeAdjustmentRate;
 
     function setUp() public {
-        emit log("IntegrationBaseTest setup started");
 
         address defaultSigner = vm.addr(1); // Using the default signer address from foundry's vm
         feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
@@ -68,13 +81,11 @@ contract IntegrationBaseTest is Test {
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        
-        address eigenPodManagerAddress = chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS;
-        address delegationManagerAddress = chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS;
-        address delayedWithdrawalRouterAddress = chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS; // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
-        address strategyManagerAddress = chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS;
-        address depositContractAddress = chainAddresses.DEPOSIT_2_ADDRESS;
-
+        eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
+        delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
+        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
+        depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: address(this),
@@ -82,12 +93,12 @@ contract IntegrationBaseTest is Test {
             stakingNodesAdmin: address(this),
             validatorManager: address(this),
             maxNodeCount: 10,
-            depositContract: IDepositContract(depositContractAddress), // Assuming an address for the example
+            depositContract: depositContract,
             ynETH: IynETH(address(yneth)),
-            eigenPodManager: IEigenPodManager(eigenPodManagerAddress),
-            delegationManager: IDelegationManager(delegationManagerAddress),
-            delayedWithdrawalRouter: IDelayedWithdrawalRouter(delayedWithdrawalRouterAddress),
-            strategyManager: IStrategyManager(strategyManagerAddress) // Assuming an address for the example
+            eigenPodManager: eigenPodManager,
+            delegationManager: delegationManager,
+            delayedWithdrawalRouter: delayedWithdrawalRouter,
+            strategyManager: strategyManager
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 

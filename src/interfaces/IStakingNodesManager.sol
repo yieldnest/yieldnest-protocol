@@ -1,8 +1,8 @@
 pragma solidity ^0.8.0;
 
-import "./eigenlayer/IDelegationManager.sol";
-import "./eigenlayer/IEigenPodManager.sol";
-import "./eigenlayer/IDelayedWithdrawalRouter.sol";
+import "./eigenlayer-init-mainnet/IDelegationManager.sol";
+import "./eigenlayer-init-mainnet/IEigenPodManager.sol";
+import "./eigenlayer-init-mainnet/IDelayedWithdrawalRouter.sol";
 import "./IStakingNode.sol";
 
 
