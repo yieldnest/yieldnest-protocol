@@ -8,31 +8,33 @@ import "../../../src/mocks/MockStakingNode.sol";
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
 
-    bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes32 ZERO_DEPOSIT_ROOT = bytes32(0);
-
     function testCreateStakingNode() public {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IEigenPod eigenPod = stakingNodeInstance.eigenPod();
         assertEq(address(stakingNodesManager), address(stakingNodeInstance.stakingNodesManager()), "StakingNodesManager is not correct");
         address eigenPodOwner = eigenPod.podOwner();
         assertEq(eigenPodOwner, address(stakingNodeInstance), "EigenPod owner is not the staking node instance");
+
+        uint expectedNodeId = 0;
+        assertEq(stakingNodeInstance.nodeId(), expectedNodeId, "Node ID does not match expected value");
     }
 
     function testCreate2StakingNodes() public {
-
         IStakingNode stakingNodeInstance1 = stakingNodesManager.createStakingNode();
         IEigenPod eigenPod1 = stakingNodeInstance1.eigenPod();
         assertEq(address(stakingNodesManager), address(stakingNodeInstance1.stakingNodesManager()), "StakingNodesManager for node 1 is not correct");
         address eigenPodOwner1 = eigenPod1.podOwner();
         assertEq(eigenPodOwner1, address(stakingNodeInstance1), "EigenPod owner for node 1 is not the staking node instance");
+        uint expectedNodeId1 = 0;
+        assertEq(stakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
 
         IStakingNode stakingNodeInstance2 = stakingNodesManager.createStakingNode();
         IEigenPod eigenPod2 = stakingNodeInstance2.eigenPod();
         assertEq(address(stakingNodesManager), address(stakingNodeInstance2.stakingNodesManager()), "StakingNodesManager for node 2 is not correct");
         address eigenPodOwner2 = eigenPod2.podOwner();
         assertEq(eigenPodOwner2, address(stakingNodeInstance2), "EigenPod owner for node 2 is not the staking node instance");
+        uint expectedNodeId2 = 1;
+        assertEq(stakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
     }
 
       function testRegisterValidators() public {
