@@ -6,6 +6,7 @@ import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./external/eigenlayer/BeaconChainProofs.sol";
+import "forge-std/console.sol";
 
 
 interface StakingNodeEvents {
@@ -64,7 +65,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     function createEigenPod() public returns (IEigenPod) {
         if (address(eigenPod) != address(0x0)) return IEigenPod(address(0)); // already have pod
 
+        console.log("StakingNode.createEigenPod");
+
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
+
+        console.log("eigenPodManager", address(eigenPodManager));
         eigenPodManager.createPod();
         eigenPod = eigenPodManager.getPod(address(this));
         emit EigenPodCreated(address(this), address(eigenPod));

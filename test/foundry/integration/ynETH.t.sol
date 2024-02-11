@@ -26,8 +26,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
     }
 
-
-
     function testDepositETHWhenPaused() public {
         // Arrange
         yneth.setIsDepositETHPaused(true);

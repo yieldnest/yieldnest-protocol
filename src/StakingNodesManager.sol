@@ -14,6 +14,7 @@ import "./interfaces/IynETH.sol";
 import "./interfaces/eigenlayer/IDelegationManager.sol";
 import "./interfaces/eigenlayer/IEigenPodManager.sol";
 import "forge-std/StdMath.sol";
+import "forge-std/console.sol";
 
 
 interface StakingNodesManagerEvents {
@@ -260,6 +261,8 @@ contract StakingNodesManager is
     function createStakingNode() public returns (IStakingNode) {
 
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
+
+        console.log("Creating a new Staking Node");
 
         BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));

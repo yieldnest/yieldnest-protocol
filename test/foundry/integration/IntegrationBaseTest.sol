@@ -37,7 +37,7 @@ contract IntegrationBaseTest is Test {
 
         proxyAdmin = new ProxyAdmin(address(this));
         WETH weth = new WETH();
-        
+
         // Deploy implementations
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
@@ -90,6 +90,8 @@ contract IntegrationBaseTest is Test {
             strategyManager: IStrategyManager(strategyManagerAddress) // Assuming an address for the example
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
+
+        stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
 
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: address(this),
