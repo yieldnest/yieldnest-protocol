@@ -7,9 +7,10 @@ import "../../../src/StakingNodesManager.sol";
 import "../../../src/mocks/MockStakingNode.sol";
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
-    address owner;
-    address addr1;
-    address addr2;
+
+    bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    bytes ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    bytes32 ZERO_DEPOSIT_ROOT = bytes32(0);
 
     function testCreateStakingNode() public {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
@@ -32,6 +33,46 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         assertEq(address(stakingNodesManager), address(stakingNodeInstance2.stakingNodesManager()), "StakingNodesManager for node 2 is not correct");
         address eigenPodOwner2 = eigenPod2.podOwner();
         assertEq(eigenPodOwner2, address(stakingNodeInstance2), "EigenPod owner for node 2 is not the staking node instance");
+    }
+
+      function testRegisterValidators() public {
+
+        address addr1 = vm.addr(100);
+
+        vm.deal(addr1, 100 ether);
+
+        uint depositAmount = 32 ether;
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+        uint balance = yneth.balanceOf(addr1);
+        assertEq(balance, depositAmount, "Balance does not match deposit amount");
+
+        console.log("Creating staking node...");
+        stakingNodesManager.createStakingNode();
+
+        uint nodeId = 0;
+
+        IStakingNodesManager.DepositData[] memory depositData = new IStakingNodesManager.DepositData[](1);
+        depositData[0] = IStakingNodesManager.DepositData({
+            publicKey: ZERO_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: nodeId,
+            depositDataRoot: bytes32(0)
+        });
+
+        console.log("Getting withdrawal credentials...", nodeId);
+        bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
+
+        console.log("Generating deposit data root for each deposit data...");
+        for (uint i = 0; i < depositData.length; i++) {
+            uint amount = depositAmount / depositData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(depositData[i].publicKey, depositData[i].signature, withdrawalCredentials, amount);
+            depositData[i].depositDataRoot = depositDataRoot;
+        }
+        
+        console.log("Registering validators...");
+        bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
+        stakingNodesManager.registerValidators(depositRoot, depositData);
     }
 
     function testUpgradeStakingNodeImplementation() public {
