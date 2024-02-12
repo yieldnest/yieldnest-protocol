@@ -43,38 +43,44 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         vm.deal(addr1, 100 ether);
 
-        uint depositAmount = 32 ether;
+        uint validatorCount = 2;
+
+        uint depositAmount = 32 ether * validatorCount;
         vm.prank(addr1);
         yneth.depositETH{value: depositAmount}(addr1);
         uint balance = yneth.balanceOf(addr1);
         assertEq(balance, depositAmount, "Balance does not match deposit amount");
-
-        console.log("Creating staking node...");
+        
         stakingNodesManager.createStakingNode();
 
         uint nodeId = 0;
-
-        IStakingNodesManager.DepositData[] memory depositData = new IStakingNodesManager.DepositData[](1);
+        IStakingNodesManager.DepositData[] memory depositData = new IStakingNodesManager.DepositData[](validatorCount);
         depositData[0] = IStakingNodesManager.DepositData({
             publicKey: ZERO_PUBLIC_KEY,
             signature: ZERO_SIGNATURE,
             nodeId: nodeId,
             depositDataRoot: bytes32(0)
         });
+        depositData[1] = IStakingNodesManager.DepositData({
+            publicKey: ONE_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: nodeId,
+            depositDataRoot: bytes32(0)
+        });
 
-        console.log("Getting withdrawal credentials...", nodeId);
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-        console.log("Generating deposit data root for each deposit data...");
         for (uint i = 0; i < depositData.length; i++) {
             uint amount = depositAmount / depositData.length;
             bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(depositData[i].publicKey, depositData[i].signature, withdrawalCredentials, amount);
             depositData[i].depositDataRoot = depositDataRoot;
         }
         
-        console.log("Registering validators...");
         bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
         stakingNodesManager.registerValidators(depositRoot, depositData);
+
+        uint totalAssetsControlled = yneth.totalAssets();
+        assertEq(totalAssetsControlled, depositAmount, "Total assets controlled does not match expected value");
     }
 
     function testUpgradeStakingNodeImplementation() public {
