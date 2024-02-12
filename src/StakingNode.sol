@@ -120,6 +120,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         emit Delegated(operator, approverSalt);
     }
 
+
     /// @dev Validates the withdrawal credentials for a withdrawal
     /// This activates the activation of the staked funds within EigenLayer
     // function verifyWithdrawalCredentials(

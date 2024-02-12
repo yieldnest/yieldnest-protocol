@@ -50,6 +50,24 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         uint actualETHBalance = stakingNodeInstance.getETHBalance();
         assertEq(actualETHBalance, depositAmount, "ETH balance does not match expected value");
+
+        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+
+        uint64 restakedGwei = eigenPodInstance.restakedExecutionLayerGwei();
+        IEigenPodManager eigenPodManagerInstance = eigenPodInstance.eigenPodManager();
+        address podOwnerAddress = eigenPodInstance.podOwner();
+        bool hasFullyRestaked = eigenPodInstance.hasRestaked();
+        uint64 recentWithdrawalBlock = eigenPodInstance.mostRecentWithdrawalBlockNumber();
+
+        // TODO: dpouble check this is the desired state for a pod.
+        // we can't delegate on mainnet at this time so one should be able to farm points without delegating
+        assertEq(restakedGwei, 0, "Restaked Gwei should be 0");
+        assertEq(address(eigenPodManager), address(eigenPodManagerInstance), "EigenPodManager should match");
+        assertEq(podOwnerAddress, address(stakingNodeInstance), "Pod owner address does not match");
+        assertFalse(hasFullyRestaked, "Pod should have fully restaked");
+        assertEq(recentWithdrawalBlock, 0, "Most recent withdrawal block should be greater than 0");
+
+        stakingNodeInstance.withdrawBeforeRestaking();
     }  
 }
 

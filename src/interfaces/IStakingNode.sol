@@ -18,6 +18,10 @@ interface IStakingNode {
     function eigenPod() external view returns (IEigenPod);
     function initialize(Init memory init) external;
     function createEigenPod() external returns (IEigenPod);
+    function delegate(address operator) external;
+    function withdrawBeforeRestaking() external;
+
+    
     function implementation() external view returns (address);
 
     function allocateStakedETH(uint amount) external payable;   
