@@ -5,6 +5,7 @@ import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
 import "./interfaces/IStakingNodesManager.sol";
 import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
+import "./interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
 import "./interfaces/eigenlayer-init-mainnet/BeaconChainProofs.sol";
 import "forge-std/console.sol";
 
@@ -18,6 +19,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
     // Errors.
     error NotStakingNodesAdmin();
+    error StrategyIndexMismatch(address strategy, uint index);
 
     IStrategy public constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
     uint256 public constant GWEI_TO_WEI = 1e9;
@@ -140,6 +142,74 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         }
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
+    //--------------------------------------------------------------------------------------
+
+
+    /*
+    *  Withdrawal Flow:
+    *
+    *  1. queueWithdrawals() - Admin queues withdrawals
+    *  2. undelegate() - Admin undelegates
+    *  3. verifyAndProcessWithdrawals() - Admin verifies and processes withdrawals
+    *  4. completeWithdrawal() - Admin completes withdrawal
+    *
+    */
+
+    function startWithdrawal(
+        uint strategyIndex,
+        uint256 amount
+    ) external onlyAdmin returns (bytes32) {
+
+        // Save the nonce before starting the withdrawal
+        uint96 nonce = uint96(strategyManager.numWithdrawalsQueued(address(this)));
+
+        // default strategy
+        IStrategy strategy = beaconChainETHStrategy;
+
+        if(!(strategyManager.stakerStrategyList(address(this), strategyIndex) == strategy)) {
+            revert StrategyIndexMismatch(address(strategy), strategyIndex);
+        }
+
+        // Need to get the index for the strategy - this is not ideal since docs say only to put into list ones that we are withdrawing 100% from
+        uint256[] memory strategyIndexes = new uint256[](1);
+
+        uint256 sharesToWithdraw = amount;
+
+        IStrategy[] memory strategiesToWithdraw = new IStrategy[](1);
+        strategiesToWithdraw[0] = strategy;
+
+        uint256[] memory amountsToWithdraw = new uint256[](1);
+        amountsToWithdraw[0] = sharesToWithdraw;
+
+        bytes32 withdrawalRoot = strategyManager.queueWithdrawal(
+            strategyIndexes,
+            strategiesToWithdraw,
+            amountsToWithdraw,
+            address(this), // Only allow this contract to complete the withdraw
+            false // Do not undeledgate if the balance goes to 0
+        );
+
+        return withdrawalRoot;
+    }
+
+    function completeWithdrawal(
+        IStrategyManager.QueuedWithdrawal calldata _withdrawal,
+        IERC20 _token,
+        uint256 _middlewareTimesIndex,
+        address _sendToAddress
+    ) external onlyAdmin {
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = _token;
+
+        strategyManager.completeQueuedWithdrawal(
+            _withdrawal,
+            tokens,
+            _middlewareTimesIndex,
+            true // Always get tokens and not share transfers
+        );
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ETH BALANCE ACCOUNTING  --------------------------

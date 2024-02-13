@@ -254,4 +254,15 @@ interface IStrategyManager {
 
     /// @notice Returns the number of blocks that must pass between the time a withdrawal is queued and the time it can be completed
     function withdrawalDelayBlocks() external view returns (uint256);
+    
+    /// @notice Returns the number of withdrawals currently queued
+    function numWithdrawalsQueued(address staker) external view returns (uint256);
+
+    /**
+     * @notice Returns the strategy at the specified index for a given staker
+     * @param staker The address of the staker whose strategy list is being queried
+     * @param index The index in the staker's strategy list to retrieve
+     * @return The strategy contract at the specified index for the given staker
+     */
+    function stakerStrategyList(address staker, uint256 index) external view returns (IStrategy);
 }
