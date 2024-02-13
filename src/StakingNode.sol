@@ -141,6 +141,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     }
 
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ETH BALANCE ACCOUNTING  --------------------------
+    //--------------------------------------------------------------------------------------
+
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH( uint amount) external payable onlyStakingNodesManager {
         totalETHNotRestaked += amount;
