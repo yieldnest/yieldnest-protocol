@@ -105,19 +105,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
     //--------------------------------------------------------------------------------------
 
-    function delegate(address operator) public onlyAdmin {
+    function delegate(address operator) public virtual onlyAdmin {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
-        // Only supports empty approverSignatureAndExpiry and approverSalt
-        // this applies when no IDelegationManager.OperatorDetails.delegationApprover is specified by operator
-        // TODO: add support for operators that require signatures
-        //ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
-        bytes32 approverSalt;
+        delegationManager.delegateTo(operator);
 
-        delegationManager.delegateTo(operator  /*, approverSignatureAndExpiry, approverSalt */ );
-
-        emit Delegated(operator, approverSalt);
+        emit Delegated(operator, 0);
     }
 
 
