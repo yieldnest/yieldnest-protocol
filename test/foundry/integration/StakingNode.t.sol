@@ -13,7 +13,8 @@ contract StakingNodeTest is IntegrationBaseTest {
         assertEq(actualETHBalance, 0, "ETH balance does not match expected value");
     }
 
-    function testCreateNodeAndAssertETHBalanceAfterDeposits() public {
+
+    function setupStakingNode() public returns (IStakingNode, IEigenPod) {
 
         address addr1 = vm.addr(100);
 
@@ -36,7 +37,6 @@ contract StakingNodeTest is IntegrationBaseTest {
             depositDataRoot: bytes32(0)
         });
 
-
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
         for (uint i = 0; i < depositData.length; i++) {
@@ -53,19 +53,22 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
 
-        uint64 restakedGwei = eigenPodInstance.restakedExecutionLayerGwei();
-        IEigenPodManager eigenPodManagerInstance = eigenPodInstance.eigenPodManager();
-        address podOwnerAddress = eigenPodInstance.podOwner();
-        bool hasFullyRestaked = eigenPodInstance.hasRestaked();
-        uint64 recentWithdrawalBlock = eigenPodInstance.mostRecentWithdrawalBlockNumber();
+        return (stakingNodeInstance, eigenPodInstance);
+    }
 
-        // TODO: dpouble check this is the desired state for a pod.
+    function testCreateNodeAndAssertETHBalanceAfterDeposits() public {
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
+
+        // Collapsed variable declarations into direct usage within assertions and conditions
+
+        // TODO: double check this is the desired state for a pod.
         // we can't delegate on mainnet at this time so one should be able to farm points without delegating
-        assertEq(restakedGwei, 0, "Restaked Gwei should be 0");
-        assertEq(address(eigenPodManager), address(eigenPodManagerInstance), "EigenPodManager should match");
-        assertEq(podOwnerAddress, address(stakingNodeInstance), "Pod owner address does not match");
-        assertFalse(hasFullyRestaked, "Pod should have fully restaked");
-        assertEq(recentWithdrawalBlock, 0, "Most recent withdrawal block should be greater than 0");
+        assertEq(eigenPodInstance.restakedExecutionLayerGwei(), 0, "Restaked Gwei should be 0");
+        assertEq(address(eigenPodManager), address(eigenPodInstance.eigenPodManager()), "EigenPodManager should match");
+        assertEq(eigenPodInstance.podOwner(), address(stakingNodeInstance), "Pod owner address does not match");
+        assertFalse(eigenPodInstance.hasRestaked(), "Pod should have fully restaked");
+        assertEq(eigenPodInstance.mostRecentWithdrawalBlockNumber(), 0, "Most recent withdrawal block should be greater than 0");
 
         stakingNodeInstance.withdrawBeforeRestaking();
     }  
