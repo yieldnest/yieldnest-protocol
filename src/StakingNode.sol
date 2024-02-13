@@ -162,17 +162,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         uint256 amount
     ) external onlyAdmin returns (bytes32) {
 
-        // Save the nonce before starting the withdrawal
-        uint96 nonce = uint96(strategyManager.numWithdrawalsQueued(address(this)));
-
         // default strategy
         IStrategy strategy = beaconChainETHStrategy;
-
-        // if(!(strategyManager.stakerStrategyList(address(this), strategyIndex) == strategy)) {
-        //     revert StrategyIndexMismatch(address(strategy), strategyIndex);
-        // }
-
-        // Need to get the index for the strategy - this is not ideal since docs say only to put into list ones that we are withdrawing 100% from
         uint256[] memory strategyIndexes = new uint256[](1);
 
         uint256 sharesToWithdraw = amount;
@@ -187,8 +178,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             strategyIndexes,
             strategiesToWithdraw,
             amountsToWithdraw,
-            address(this), // Only allow this contract to complete the withdraw
-            false // Do not undeledgate if the balance goes to 0
+            address(this), // only the StakingNode can complete the withdraw
+            false // no auto-undelegate when there's 0 shares left
         );
 
         return withdrawalRoot;
