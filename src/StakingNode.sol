@@ -114,32 +114,31 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         emit Delegated(operator, 0);
     }
 
+    function verifyWithdrawalCredentials(
+        uint64[] calldata oracleBlockNumber,
+        uint40[] calldata validatorIndex,
+        BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
+        bytes32[][] calldata validatorFields
+    ) external virtual onlyAdmin {
 
-    /// @dev Validates the withdrawal credentials for a withdrawal
-    /// This activates the activation of the staked funds within EigenLayer
-    // function verifyWithdrawalCredentials(
-    //     uint64 oracleTimestamp,
-    //     IEigenPod.StateRootProof calldata stateRootProof,
-    //     uint40[] calldata validatorIndices,
-    //     bytes[] calldata withdrawalCredentialProofs,
-    //     bytes32[][] calldata validatorFields
-    // ) external onlyAdmin {
-    //     eigenPod.verifyWithdrawalCredentialsAndBalance(
-    //         oracleTimestamp,
-    //         stateRootProof,
-    //         validatorIndices,
-    //         withdrawalCredentialProofs,
-    //         validatorFields
-    //     );
+        require(oracleBlockNumber.length == validatorIndex.length, "Mismatched oracleBlockNumber and validatorIndex lengths");
+        require(validatorIndex.length == proofs.length, "Mismatched validatorIndex and proofs lengths");
+        require(validatorIndex.length == validatorFields.length, "Mismatched proofs and validatorFields lengths");
 
-    //     for (uint i = 0; i < validatorIndices.length; i++) {
+        for (uint i = 0; i < validatorIndex.length; i++) {
+            eigenPod.verifyWithdrawalCredentialsAndBalance(
+                oracleBlockNumber[i],
+                validatorIndex[i],
+                proofs[i],
+                validatorFields[i]
+            );
 
-    //         // TODO: check if this is correct
-    //         uint64 validatorCurrentBalanceGwei = BeaconChainProofs.getEffectiveBalanceGwei(validatorFields[i]);
-
-    //         totalETHNotRestaked -= (validatorCurrentBalanceGwei * 1e9);
-    //     }
-    // }
+            // Decrement the staked but not verified ETH
+            uint64 validatorBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex[i], proofs[i].balanceRoot);
+             
+            totalETHNotRestaked -= (validatorBalanceGwei * 1e9);
+        }
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
