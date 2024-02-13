@@ -2,13 +2,14 @@ import {IDelegationManager as IDelegationManagerM2 } from "./interfaces/eigenlay
 import {IEigenPod as IEigenPodM2 } from "./interfaces/eigenlayer/IEigenPod.sol";
 import {ISignatureUtils} from "./interfaces/eigenlayer/ISignatureUtils.sol";
 import { BeaconChainProofs as BeaconChainProofsM2 } from "./external/eigenlayer/BeaconChainProofs.sol";
+import {IStrategy as IStrategyM2} from "./interfaces/eigenlayer/IStrategy.sol";
 
 
 import "./StakingNode.sol";
 
 
 contract StakingNodeM2 is StakingNode {
-    // Additional functionality or overrides can be implemented here.
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
@@ -62,8 +63,102 @@ contract StakingNodeM2 is StakingNode {
         BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
         bytes32[][] calldata validatorFields
     ) external override {
+        // the https://github.com/Layr-Labs/eigenlayer-contracts/releases/tag/mainnet-deployment
+        // withdrawal path. Will no longer be supported.
         revert("StakingNode: Sunset functionality");
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
+    //--------------------------------------------------------------------------------------
 
+
+    /*
+    *  Withdrawal Flow:
+    *
+    *  1. queueWithdrawals() - Admin queues withdrawals
+    *  2. undelegate() - Admin undelegates
+    *  3. verifyAndProcessWithdrawals() - Admin verifies and processes withdrawals
+    *  4. completeWithdrawal() - Admin completes withdrawal
+    *
+    */
+
+    function queueWithdrawals(uint shares) public onlyAdmin {
+    
+        IDelegationManagerM2 delegationManager = IDelegationManagerM2(address(stakingNodesManager.delegationManager()));
+
+        IDelegationManagerM2.QueuedWithdrawalParams[] memory queuedWithdrawalParams = new IDelegationManagerM2.QueuedWithdrawalParams[](1);
+        queuedWithdrawalParams[0] = IDelegationManagerM2.QueuedWithdrawalParams({
+            strategies: new IStrategyM2[](1),
+            shares: new uint256[](1),
+            withdrawer: address(this)
+        });
+        queuedWithdrawalParams[0].strategies[0] = IStrategyM2(address(beaconChainETHStrategy));
+        queuedWithdrawalParams[0].shares[0] = shares;
+        
+        delegationManager.queueWithdrawals(queuedWithdrawalParams);
+    }
+
+    function undelegate() public onlyAdmin {
+        
+        IDelegationManagerM2 delegationManager = IDelegationManagerM2(address(stakingNodesManager.delegationManager()));
+        delegationManager.undelegate(address(this));
+    }
+
+    function verifyAndProcessWithdrawals(
+        uint64 oracleTimestamp,
+        IEigenPodM2.StateRootProof calldata stateRootProof,
+        IEigenPodM2.WithdrawalProof[] calldata withdrawalProofs,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields,
+        bytes32[][] calldata withdrawalFields
+    ) external onlyAdmin {
+    
+        IEigenPodM2(address(eigenPod)).verifyAndProcessWithdrawals(
+            oracleTimestamp,
+            stateRootProof,
+            withdrawalProofs,
+            validatorFieldsProofs,
+            validatorFields,
+            withdrawalFields
+        );
+    }
+
+    function completeWithdrawal(
+        uint shares,
+        uint32 startBlock
+    ) external onlyAdmin {
+
+        IDelegationManagerM2 delegationManager = IDelegationManagerM2(address(stakingNodesManager.delegationManager()));
+
+        uint[] memory sharesArray = new uint[](1);
+        sharesArray[0] = shares;
+
+        IStrategyM2[] memory strategiesArray = new IStrategyM2[](1);
+        strategiesArray[0] = IStrategyM2(address(beaconChainETHStrategy));
+
+        IDelegationManagerM2.Withdrawal memory withdrawal = IDelegationManagerM2.Withdrawal({
+            staker: address(this),
+            delegatedTo: delegationManager.delegatedTo(address(this)),
+            withdrawer: address(this),
+            nonce: 0, // TODO: fix
+            startBlock: startBlock,
+            strategies: strategiesArray,
+            shares:  sharesArray
+        });
+
+        uint256 balanceBefore = address(this).balance;
+
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = IERC20(0x0000000000000000000000000000000000000000);
+
+        // middlewareTimesIndexes is 0, since it's unused
+        // https://github.com/Layr-Labs/eigenlayer-contracts/blob/5fd029069b47bf1632ec49b71533045cf00a45cd/src/contracts/core/DelegationManager.sol#L556
+        delegationManager.completeQueuedWithdrawal(withdrawal, tokens, 0, true);
+
+        uint256 balanceAfter = address(this).balance;
+        uint256 fundsWithdrawn = balanceAfter - balanceBefore;
+
+        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
+    }
 }
