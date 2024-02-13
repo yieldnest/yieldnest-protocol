@@ -70,7 +70,17 @@ contract StakingNodeTest is IntegrationBaseTest {
         assertFalse(eigenPodInstance.hasRestaked(), "Pod should have fully restaked");
         assertEq(eigenPodInstance.mostRecentWithdrawalBlockNumber(), 0, "Most recent withdrawal block should be greater than 0");
 
+        // trigger withdraw before restaking succesfully
         stakingNodeInstance.withdrawBeforeRestaking();
+    }  
+
+    function testStartWithdrawal() public {
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
+
+        // TODO: see if you can simulate a full deposit verification to test withdrawal
+        vm.expectRevert();
+        stakingNodeInstance.startWithdrawal(0, 1 ether);
     }  
 }
 

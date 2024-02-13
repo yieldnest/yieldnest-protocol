@@ -168,9 +168,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
         // default strategy
         IStrategy strategy = beaconChainETHStrategy;
 
-        if(!(strategyManager.stakerStrategyList(address(this), strategyIndex) == strategy)) {
-            revert StrategyIndexMismatch(address(strategy), strategyIndex);
-        }
+        // if(!(strategyManager.stakerStrategyList(address(this), strategyIndex) == strategy)) {
+        //     revert StrategyIndexMismatch(address(strategy), strategyIndex);
+        // }
 
         // Need to get the index for the strategy - this is not ideal since docs say only to put into list ones that we are withdrawing 100% from
         uint256[] memory strategyIndexes = new uint256[](1);

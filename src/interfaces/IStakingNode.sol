@@ -28,4 +28,16 @@ interface IStakingNode {
     function getETHBalance() external view returns (uint);
     function nodeId() external view returns (uint);
 
+    function startWithdrawal(
+        uint strategyIndex,
+        uint256 amount
+    ) external returns (bytes32);
+
+    function completeWithdrawal(
+        IStrategyManager.QueuedWithdrawal calldata _withdrawal,
+        IERC20 _token,
+        uint256 _middlewareTimesIndex,
+        address _sendToAddress
+    ) external;
+
 }
