@@ -5,6 +5,15 @@ import "./eigenlayer-init-mainnet/IDelegationManager.sol";
 import "./eigenlayer-init-mainnet/IEigenPod.sol";
 import "./eigenlayer-init-mainnet/IStrategyManager.sol";
 
+
+struct WithdrawalCompletionParams {
+    uint256 middlewareTimesIndex;
+    uint amount;
+    uint32 withdrawalStartBlock;
+    address delegatedAddress;
+    uint96 nonce;
+}
+
 interface IStakingNode {
 
     /// @notice Configuration for contract initialization.
@@ -29,15 +38,14 @@ interface IStakingNode {
     function nodeId() external view returns (uint);
 
     function startWithdrawal(
-        uint strategyIndex,
         uint256 amount
     ) external returns (bytes32);
 
     function completeWithdrawal(
-        IStrategyManager.QueuedWithdrawal calldata _withdrawal,
-        IERC20 _token,
-        uint256 _middlewareTimesIndex,
-        address _sendToAddress
+        WithdrawalCompletionParams memory withdrawalCompletionParams
     ) external;
+
+    /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
+    function beaconChainETHStrategy() external view returns (IStrategy);
 
 }

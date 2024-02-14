@@ -13,7 +13,6 @@ contract StakingNodeTest is IntegrationBaseTest {
         assertEq(actualETHBalance, 0, "ETH balance does not match expected value");
     }
 
-
     function setupStakingNode() public returns (IStakingNode, IEigenPod) {
 
         address addr1 = vm.addr(100);
@@ -78,9 +77,25 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
 
+
+        uint withdrawalAmount = 1 ether;
+
         // TODO: see if you can simulate a full deposit verification to test withdrawal
         vm.expectRevert();
-        stakingNodeInstance.startWithdrawal(0, 1 ether);
+        stakingNodeInstance.startWithdrawal(withdrawalAmount);
+
+        // TODO: reenable this code path to allow for withdrawal processing
+        return;
+
+        WithdrawalCompletionParams memory params = WithdrawalCompletionParams({
+            middlewareTimesIndex: 0, // Assuming middlewareTimesIndex is not used in this context
+            amount: withdrawalAmount,
+            withdrawalStartBlock: uint32(block.number), // Current block number as the start block
+            delegatedAddress: address(0), // Assuming no delegation address is needed for this withdrawal
+            nonce: 0 // first nonce is 0
+        });
+
+        stakingNodeInstance.completeWithdrawal(params);
     }  
 }
 

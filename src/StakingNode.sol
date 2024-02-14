@@ -13,6 +13,7 @@ import "forge-std/console.sol";
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
+     event WithdrawalStarted(uint256 amount, address strategy, uint96 nonce);
 }
 
 contract StakingNode is IStakingNode, StakingNodeEvents {
@@ -158,9 +159,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     */
 
     function startWithdrawal(
-        uint strategyIndex,
         uint256 amount
     ) external onlyAdmin returns (bytes32) {
+
+        uint96 nonce = uint96(strategyManager.numWithdrawalsQueued(address(this)));
 
         // default strategy
         IStrategy strategy = beaconChainETHStrategy;
@@ -182,24 +184,50 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
             false // no auto-undelegate when there's 0 shares left
         );
 
+        emit WithdrawalStarted(amount, address(strategy), nonce);
+
         return withdrawalRoot;
     }
 
     function completeWithdrawal(
-        IStrategyManager.QueuedWithdrawal calldata _withdrawal,
-        IERC20 _token,
-        uint256 _middlewareTimesIndex,
-        address _sendToAddress
+        WithdrawalCompletionParams memory params
     ) external onlyAdmin {
+
         IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = _token;
+        tokens[0] = IERC20(address(0)); // no token for the ETH strategy
+
+       IStrategy[] memory strategies = new IStrategy[](1);
+       strategies[0] = beaconChainETHStrategy;
+       uint256[] memory shares = new uint256[](1);
+       shares[0] = params.amount;
+
+       IStrategyManager.QueuedWithdrawal memory queuedWithdrawal = IStrategyManager.QueuedWithdrawal({
+            strategies: strategies,
+            shares: shares,
+            depositor: address(this),
+            withdrawerAndNonce: IStrategyManager.WithdrawerAndNonce({
+                withdrawer: address(this),
+                nonce: params.nonce
+            }),
+            withdrawalStartBlock: params.withdrawalStartBlock,
+            delegatedAddress: params.delegatedAddress
+        });
+
+
+        uint256 balanceBefore = address(this).balance;
 
         strategyManager.completeQueuedWithdrawal(
-            _withdrawal,
+            queuedWithdrawal,
             tokens,
-            _middlewareTimesIndex,
+            params.middlewareTimesIndex,
             true // Always get tokens and not share transfers
         );
+
+
+        uint256 balanceAfter = address(this).balance;
+        uint256 fundsWithdrawn = balanceAfter - balanceBefore;
+
+        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
     }
 
     //--------------------------------------------------------------------------------------
