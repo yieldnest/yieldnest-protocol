@@ -164,6 +164,27 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesAfterDepositAndRewards, expectedShares, "Shares should equal ETH amount after deposit and rewards processed through RewardsReceiver");
     }
 
+    function testRewardsDistributionToYnETHAndFeeReceiver() public {
+        // Arrange
+        uint256 initialYnETHBalance = address(yneth).balance;
+        uint256 initialFeeReceiverBalance = address(feeReceiver).balance;
+        uint256 rewardAmount = 10 ether;
+        uint256 expectedFees = rewardAmount * rewardsDistributor.feesBasisPoints() / 10000;
+        uint256 expectedNetRewards = rewardAmount - expectedFees;
+
+        // Simulate sending rewards to the executionLayerReceiver
+        vm.deal(address(executionLayerReceiver), rewardAmount);
+
+        // Act
+        rewardsDistributor.processRewards();
+
+        // Assert
+        uint256 finalYnETHBalance = address(yneth).balance;
+        uint256 finalFeeReceiverBalance = address(feeReceiver).balance;
+
+        assertEq(finalYnETHBalance, initialYnETHBalance + expectedNetRewards, "Incorrect ynETH balance after rewards distribution");
+        assertEq(finalFeeReceiverBalance, initialFeeReceiverBalance + expectedFees, "Incorrect feeReceiver balance after rewards distribution");
+    }
 
     function testPauseDepositETHFunctionality() public {
         // Arrange
