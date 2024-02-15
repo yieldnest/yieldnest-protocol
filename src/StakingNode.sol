@@ -1,5 +1,6 @@
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
@@ -14,9 +15,10 @@ interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event WithdrawalStarted(uint256 amount, address strategy, uint96 nonce);
+     event RewardsProcessed(uint256 rewardsAmount);
 }
 
-contract StakingNode is IStakingNode, StakingNodeEvents {
+contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
 
     // Errors.
     error NotStakingNodesAdmin();
@@ -48,6 +50,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTRUCTOR   ------------------------------------
     //--------------------------------------------------------------------------------------
+
+    receive() external payable nonReentrant {
+       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId);
+       emit RewardsProcessed(msg.value);
+    }
+
 
     constructor() {
     }

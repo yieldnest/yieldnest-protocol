@@ -69,8 +69,24 @@ contract StakingNodeTest is IntegrationBaseTest {
         assertFalse(eigenPodInstance.hasRestaked(), "Pod should have fully restaked");
         assertEq(eigenPodInstance.mostRecentWithdrawalBlockNumber(), 0, "Most recent withdrawal block should be greater than 0");
 
+
+        address payable eigenPodAddress = payable(address(eigenPodInstance));
+        uint rewardsSweeped = 1 ether;
+        vm.deal(eigenPodAddress, rewardsSweeped);
+
         // trigger withdraw before restaking succesfully
         stakingNodeInstance.withdrawBeforeRestaking();
+
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
+        vm.roll(block.number + withdrawalDelayBlocks + 1);
+
+        uint256 balanceBeforeClaim = address(yneth).balance;
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max);
+        uint256 balanceAfterClaim = address(yneth).balance;
+        uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
+
+        assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
     }  
 
     function testStartWithdrawal() public {
