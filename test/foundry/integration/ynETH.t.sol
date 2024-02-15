@@ -97,18 +97,18 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesBeforeDeposit, ethAmount, "Shares should equal ETH amount before any deposits");
     }
 
-    function testConvertToSharesAfterFirstDeposit() public {
+    function testFuzzConvertToSharesAfterFirstDeposit(uint256 ethAmount) public {
         // Arrange
-        uint256 ethAmount = 1 ether;
+        vm.assume(ethAmount > 0 ether && ethAmount <= 10000 ether);
         yneth.depositETH{value: ethAmount}(address(this));
 
         // Act
         uint256 sharesAfterFirstDeposit = yneth.previewDeposit(ethAmount);
 
-        uint expectedShares = ethAmount - startingExchangeAdjustmentRate * ethAmount / 10000;
+        uint expectedShares = Math.mulDiv(ethAmount, 10000 - startingExchangeAdjustmentRate, 10000, Math.Rounding.Floor);
 
         // Assert
-        assertEq(sharesAfterFirstDeposit, expectedShares, "Shares should equal ETH amount after first deposit");
+        assertEq(sharesAfterFirstDeposit, expectedShares, "Fuzz: Shares should match expected shares");
     }
 
     function testConvertToSharesAfterSecondDeposit() public {

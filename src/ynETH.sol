@@ -48,16 +48,12 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     bool public isDepositETHPaused;
     // Storage variables
 
-    /// As the adjustment is applied to the exchange rate, the result is reflected in any user interface which shows the
-    /// amount of ynETH received when staking, meaning there is no surprise for users when staking or unstaking.
+
     /// @dev The value is in basis points (1/10000).
     uint public exchangeAdjustmentRate;
 
     uint public totalDepositedInPool;
 
-    /// @dev A basis point (often denoted as bp, 1bp = 0.01%) is a unit of measure used in finance to describe
-    /// the percentage change in a financial instrument. This is a constant value set as 10000 which represents
-    /// 100% in basis point terms.
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
     /// @notice Configuration for contract initialization.
