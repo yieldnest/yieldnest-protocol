@@ -8,6 +8,22 @@ import {IStrategy as IStrategyM2} from "./interfaces/eigenlayer/IStrategy.sol";
 import "./StakingNode.sol";
 
 
+/*
+    The purpose of this file, StakingNodeM2.sol, is to extend the functionality of the StakingNode contract
+    specifically for the M2 deployment on EigenLayer that is currently operational on the Goerli testnet.
+    This deployment aims to address and integrate with the unique features and requirements of the EigenLayer M2,
+    including enhanced delegation management, withdrawal credential verification, and validator management,
+    tailored to the EigenLayer's specifications and protocols.
+
+    Release:
+
+    https://github.com/Layr-Labs/eigenlayer-contracts/releases/tag/v0.2.1-goerli-m2
+
+    For more detailed information and updates, refer to the GitHub release at:
+    https://github.com/Layr-Labs/eigenlayer-contracts/releases/
+
+*/
+
 contract StakingNodeM2 is StakingNode {
 
     //--------------------------------------------------------------------------------------
