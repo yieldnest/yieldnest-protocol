@@ -83,9 +83,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
      /**
      * @notice  Kicks off a delayed withdraw of the ETH before any restaking has been done (EigenPod.hasRestaked() == false)
-     * @dev    To initiate the withdrawal process before any restaking actions have been taken
-     * you will need to execute claimQueuedWithdrawals after the necessary time has passed as per the requirements of EigenLayer's
-     * DelayedWithdrawalRouter. The funds will reside in the DelayedWithdrawalRouter once they are queued for withdrawal.
+     * @dev  This allows StakingNode to retrieve rewards from the Consensus Layer that accrue over time as 
+     *       validators sweep them to the withdrawal address
      */
     function withdrawBeforeRestaking() external onlyAdmin {
         eigenPod.withdrawBeforeRestaking();
@@ -116,7 +115,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
         emit Delegated(operator, 0);
     }
-
+    
+    // This function enables the Eigenlayer protocol to validate the withdrawal credentials of validators.
+    // Upon successful verification, Eigenlayer issues shares corresponding to the staked ETH in the StakingNode.
     function verifyWithdrawalCredentials(
         uint64[] calldata oracleBlockNumber,
         uint40[] calldata validatorIndex,
