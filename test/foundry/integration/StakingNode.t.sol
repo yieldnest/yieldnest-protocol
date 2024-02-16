@@ -58,7 +58,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         return (stakingNodeInstance, eigenPodInstance);
     }
 
-    function testCreateNodeAndAssertETHBalanceAfterDeposits() public {
+    function testCreateNodeAndVerifyPodStateIsValid() public {
 
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
 
@@ -92,7 +92,58 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
-    }  
+    }
+
+    function testWithdrawBeforeRestakingAndClaimDelayedWithdrawals() public {
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
+
+       address payable eigenPodAddress = payable(address(eigenPodInstance));
+        // Validators are configured to send consensus layer rewards directly to the EigenPod address.
+        // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
+        uint rewardsSweeped = 1 ether;
+        vm.deal(eigenPodAddress, rewardsSweeped);
+
+        // trigger withdraw before restaking succesfully
+        stakingNodeInstance.withdrawBeforeRestaking();
+
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
+        vm.roll(block.number + withdrawalDelayBlocks + 1);
+
+        uint256 balanceBeforeClaim = address(yneth).balance;
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max);
+        uint256 balanceAfterClaim = address(yneth).balance;
+        uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
+
+        assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
+    }
+
+   function testWithdrawBeforeRestakingAndClaimDelayedWithdrawalsForALargeAmount() public {
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
+
+       address payable eigenPodAddress = payable(address(eigenPodInstance));
+        // Validators are configured to send consensus layer rewards directly to the EigenPod address.
+        // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
+        uint rewardsSweeped = 1000 ether;
+        vm.deal(eigenPodAddress, rewardsSweeped);
+
+        // trigger withdraw before restaking succesfully
+        stakingNodeInstance.withdrawBeforeRestaking();
+
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
+        vm.roll(block.number + withdrawalDelayBlocks + 1);
+
+        uint256 balanceBeforeClaim = address(yneth).balance;
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max);
+        uint256 balanceAfterClaim = address(yneth).balance;
+        uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
+
+        assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
+    }
+      
 
     function testStartWithdrawal() public {
 
