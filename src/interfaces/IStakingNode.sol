@@ -49,4 +49,18 @@ interface IStakingNode {
     /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
     function beaconChainETHStrategy() external view returns (IStrategy);
 
+    /**
+     * @notice Verifies the withdrawal credentials and balance of validators.
+     * @param oracleBlockNumber An array of oracle block numbers corresponding to each validator.
+     * @param validatorIndex An array of validator indices.
+     * @param proofs An array of ValidatorFieldsAndBalanceProofs, containing the merkle proofs for validator fields and balances.
+     * @param validatorFields An array of arrays, each containing the validator fields to be verified.
+     */
+    function verifyWithdrawalCredentials(
+        uint64[] calldata oracleBlockNumber,
+        uint40[] calldata validatorIndex,
+        BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
+        bytes32[][] calldata validatorFields
+    ) external;
+
 }
