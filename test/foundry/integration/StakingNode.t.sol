@@ -144,9 +144,8 @@ contract StakingNodeTest is IntegrationBaseTest {
         stakingNodeInstance.startWithdrawal(withdrawalAmount);
 
 
-        // TODO: reenable this code path to allow for withdrawal processing
-        return;
-
+        // Note: once deposits are unpaused and a withdrawal is queued, it may be completed
+        vm.expectRevert("StrategyManager.completeQueuedWithdrawal: withdrawal is not pending");
         WithdrawalCompletionParams memory params = WithdrawalCompletionParams({
             middlewareTimesIndex: 0, // Assuming middlewareTimesIndex is not used in this context
             amount: withdrawalAmount,
@@ -154,7 +153,6 @@ contract StakingNodeTest is IntegrationBaseTest {
             delegatedAddress: address(0), // Assuming no delegation address is needed for this withdrawal
             nonce: 0 // first nonce is 0
         });
-
         stakingNodeInstance.completeWithdrawal(params);
     }  
 }
