@@ -74,7 +74,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     function createEigenPod() public returns (IEigenPod) {
-        if (address(eigenPod) != address(0x0)) return IEigenPod(address(0)); // already have pod
+        if (address(eigenPod) != address(0)) return eigenPod; // already have pod
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
         eigenPodManager.createPod();

@@ -34,6 +34,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
+    error ValueOutOfBounds(uint value);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -189,6 +190,9 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     }
 
     function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {
+        if (newRate > _BASIS_POINTS_DENOMINATOR) {
+            revert ValueOutOfBounds(newRate);
+        }
         exchangeAdjustmentRate = newRate;
         emit ExchangeAdjustmentRateUpdated(newRate);
     }
