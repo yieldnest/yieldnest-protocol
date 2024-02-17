@@ -72,6 +72,18 @@ contract StakingNodesManager is
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
 
+    /**
+    /**
+     * @notice Each node in the StakingNodesManager manages an EigenPod. 
+     * An EigenPod represents a collection of validators and their associated staking activities within the EigenLayer protocol. 
+     * The StakingNode contract, which each node is an instance of, interacts with the EigenPod to perform various operations such as:
+     * - Creating the EigenPod upon the node's initialization if it does not already exist.
+     * - Delegating staking operations to the EigenPod, including processing rewards and managing withdrawals.
+     * - Verifying withdrawal credentials and managing expedited withdrawals before restaking.
+     * 
+     * This design allows for delegating to multiple operators simultaneously while also being gas efficient.
+     * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
+     */
     IStakingNode[] public nodes;
     uint public maxNodeCount;
 
