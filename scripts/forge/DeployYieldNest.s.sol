@@ -32,6 +32,7 @@ contract DeployYieldNest is Script {
     IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
     IDepositContract public depositContract;
+    IWETH public weth;
 
     uint startingExchangeAdjustmentRate;
 
@@ -72,7 +73,16 @@ contract DeployYieldNest is Script {
         startingExchangeAdjustmentRate = 4;
 
         proxyAdmin = new ProxyAdmin(address(this));
-        WETH weth = new WETH();
+
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
+        delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
+        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
+        depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
+        weth = IWETH(chainAddresses.WETH_ADDRESS);
+
 
         // Deploy implementations
         yneth = new ynETH();
@@ -102,13 +112,6 @@ contract DeployYieldNest is Script {
         });
         yneth.initialize(ynethInit);
 
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
-        delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
-        strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
-        depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
 
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({

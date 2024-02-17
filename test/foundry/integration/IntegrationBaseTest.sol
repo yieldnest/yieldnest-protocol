@@ -122,7 +122,6 @@ contract IntegrationBaseTest is Test {
         // Initialize RewardsReceiver with example parameters
         RewardsReceiver.Init memory rewardsReceiverInit = RewardsReceiver.Init({
             admin: address(this),
-            manager: address(this),
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
