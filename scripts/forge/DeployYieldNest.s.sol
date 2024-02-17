@@ -65,6 +65,8 @@ contract DeployYieldNest is Script {
 
 
         console.log("Default Signer Address:", _broadcaster);
+        console.log("Current Block Number:", block.number);
+        console.log("Current Chain ID:", block.chainid);
 
 
         feeReceiver = payable(_broadcaster); // Casting the default signer address to payable
@@ -82,7 +84,6 @@ contract DeployYieldNest is Script {
         strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
         depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
         weth = IWETH(chainAddresses.WETH_ADDRESS);
-
 
         // Deploy implementations
         yneth = new ynETH();

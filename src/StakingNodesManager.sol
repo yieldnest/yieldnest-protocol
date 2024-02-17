@@ -132,6 +132,10 @@ contract StakingNodesManager is
         DepositData[] calldata _depositData
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
+        if (_depositData.length == 0) {
+            return;
+        }
+
         // check deposit root matches the deposit contract deposit root
         // to prevent front-running from rogue operators 
         if (_depositRoot != 0x0000000000000000000000000000000000000000000000000000000000000000) {
@@ -141,26 +145,21 @@ contract StakingNodesManager is
             }
         }
 
-        if (_depositData.length == 0) {
-            return;
-        }
-
-        // check if already used
-        for (uint256 i = 0; i < _depositData.length; ++i) {
-            DepositData calldata depositData = _depositData[i];
-            if (usedValidators[depositData.publicKey]) {
-                revert ValidatorAlreadyUsed(depositData.publicKey);
-            }
-            usedValidators[depositData.publicKey] = true;
-        }
-
         validateDepositDataAllocation(_depositData);
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        for (uint x = 0; x < _depositData.length; ++x) {
-            _registerValidator(_depositData[x], DEFAULT_VALIDATOR_STAKE);
+        uint depositDataLength = _depositData.length;
+        for (uint i = 0; i < depositDataLength; i++) {
+
+            DepositData calldata depositData = _depositData[i];
+            if (usedValidators[depositData.publicKey]) {
+                revert ValidatorAlreadyUsed(depositData.publicKey);
+            }
+            usedValidators[depositData.publicKey] = true;
+
+            _registerValidator(depositData, DEFAULT_VALIDATOR_STAKE);
         }
     }
 
