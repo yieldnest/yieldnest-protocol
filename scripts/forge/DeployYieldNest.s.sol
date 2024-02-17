@@ -11,9 +11,10 @@ import "../../src/interfaces/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
 import "../../src/interfaces/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
+import "./BaseScript.s.sol";
 
 
-contract DeployYieldNest is Script {
+contract DeployYieldNest is BaseScript {
 
     ProxyAdmin public proxyAdmin;
     TransparentUpgradeableProxy public ynethProxy;
@@ -148,6 +149,16 @@ contract DeployYieldNest is Script {
         executionLayerReceiver.initialize(rewardsReceiverInit);
 
         vm.stopBroadcast();
+
+        Deployment memory deployment = Deployment({
+            ynETH: yneth,
+            stakingNodesManager: stakingNodesManager,
+            executionLayerReceiver: executionLayerReceiver,
+            rewardsDistributor: rewardsDistributor,
+            stakingNodeImplementation: stakingNodeImplementation
+        });
+        
+        saveDeployment(deployment);
     }
 }
 
