@@ -151,6 +151,7 @@ contract DeployYieldNest is BaseScript {
         vm.stopBroadcast();
 
         Deployment memory deployment = Deployment({
+            proxyAdmin: proxyAdmin,
             ynETH: yneth,
             stakingNodesManager: stakingNodesManager,
             executionLayerReceiver: executionLayerReceiver,

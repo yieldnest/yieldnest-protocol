@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0 <0.9.0;
 
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
@@ -16,6 +17,7 @@ abstract contract BaseScript is Script {
     
 
     struct Deployment {
+        ProxyAdmin proxyAdmin;
         ynETH ynETH;
         StakingNodesManager stakingNodesManager;
         RewardsReceiver executionLayerReceiver;
@@ -31,6 +33,7 @@ abstract contract BaseScript is Script {
     function saveDeployment(Deployment memory deployment) public {
         string memory json = "deployment";
 
+        vm.serializeAddress(json, "proxyAdmin", address(deployment.proxyAdmin));
         vm.serializeAddress(json, "ynETH", address(deployment.ynETH)); // Assuming ynETH should be serialized as a boolean for simplicity
         vm.serializeAddress(json, "stakingNodesManager", address(deployment.stakingNodesManager));
         vm.serializeAddress(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
@@ -45,6 +48,7 @@ abstract contract BaseScript is Script {
         string memory deploymentFile = getDeploymentFile();
         string memory jsonContent = vm.readFile(deploymentFile);
         Deployment memory deployment;
+        deployment.proxyAdmin = ProxyAdmin(payable(jsonContent.readAddress(".proxyAdmin")));
         deployment.ynETH = ynETH(payable(jsonContent.readAddress(".ynETH")));
         deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".stakingNodesManager")));
         deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".executionLayerReceiver")));
