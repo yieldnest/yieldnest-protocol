@@ -131,9 +131,9 @@ contract StakingNodesManager is
         require(msg.sender == address(ynETH));
     }
 
-    fallback() external payable {
-        revert DirectETHDepositsNotAllowed();
-    }
+    // fallback() external payable {
+    //     revert DirectETHDepositsNotAllowed();
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VALIDATOR REGISTRATION  --------------------------
