@@ -37,7 +37,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         assertEq(stakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
     }
 
-      function testRegisterValidators() public {
+    function testRegisterValidators() public {
 
         address addr1 = vm.addr(100);
 
