@@ -1,5 +1,6 @@
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
 import "./interfaces/IStakingNode.sol";
@@ -14,9 +15,10 @@ interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event WithdrawalStarted(uint256 amount, address strategy, uint96 nonce);
+     event RewardsProcessed(uint256 rewardsAmount);
 }
 
-contract StakingNode is IStakingNode, StakingNodeEvents {
+contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
 
     // Errors.
     error NotStakingNodesAdmin();
@@ -49,6 +51,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     //----------------------------------  CONSTRUCTOR   ------------------------------------
     //--------------------------------------------------------------------------------------
 
+    receive() external payable nonReentrant {
+        // TODO: should we charge fees here or not?
+        // Except for Consensus Layer rewards the principal may exit this way as well.
+       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId);
+       emit RewardsProcessed(msg.value);
+    }
+
+
     constructor() {
     }
 
@@ -66,7 +76,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     //--------------------------------------------------------------------------------------
 
     function createEigenPod() public returns (IEigenPod) {
-        if (address(eigenPod) != address(0x0)) return IEigenPod(address(0)); // already have pod
+        if (address(eigenPod) != address(0)) return eigenPod; // already have pod
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
         eigenPodManager.createPod();
@@ -83,9 +93,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
      /**
      * @notice  Kicks off a delayed withdraw of the ETH before any restaking has been done (EigenPod.hasRestaked() == false)
-     * @dev    To initiate the withdrawal process before any restaking actions have been taken
-     * you will need to execute claimQueuedWithdrawals after the necessary time has passed as per the requirements of EigenLayer's
-     * DelayedWithdrawalRouter. The funds will reside in the DelayedWithdrawalRouter once they are queued for withdrawal.
+     * @dev  This allows StakingNode to retrieve rewards from the Consensus Layer that accrue over time as 
+     *       validators sweep them to the withdrawal address
      */
     function withdrawBeforeRestaking() external onlyAdmin {
         eigenPod.withdrawBeforeRestaking();
@@ -98,6 +107,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
     function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public {
 
         // only claim if we have active unclaimed withdrawals
+
+        // the ETH funds are sent to address(this) and trigger the receive() function
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
         if (delayedWithdrawalRouter.getUserDelayedWithdrawals(address(this)).length > 0) {
             delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);
@@ -116,7 +127,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents {
 
         emit Delegated(operator, 0);
     }
-
+    
+    // This function enables the Eigenlayer protocol to validate the withdrawal credentials of validators.
+    // Upon successful verification, Eigenlayer issues shares corresponding to the staked ETH in the StakingNode.
     function verifyWithdrawalCredentials(
         uint64[] calldata oracleBlockNumber,
         uint40[] calldata validatorIndex,

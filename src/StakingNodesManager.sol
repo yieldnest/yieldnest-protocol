@@ -72,6 +72,18 @@ contract StakingNodesManager is
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
 
+    /**
+    /**
+     * @notice Each node in the StakingNodesManager manages an EigenPod. 
+     * An EigenPod represents a collection of validators and their associated staking activities within the EigenLayer protocol. 
+     * The StakingNode contract, which each node is an instance of, interacts with the EigenPod to perform various operations such as:
+     * - Creating the EigenPod upon the node's initialization if it does not already exist.
+     * - Delegating staking operations to the EigenPod, including processing rewards and managing withdrawals.
+     * - Verifying withdrawal credentials and managing expedited withdrawals before restaking.
+     * 
+     * This design allows for delegating to multiple operators simultaneously while also being gas efficient.
+     * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
+     */
     IStakingNode[] public nodes;
     uint public maxNodeCount;
 
@@ -119,9 +131,9 @@ contract StakingNodesManager is
         require(msg.sender == address(ynETH));
     }
 
-    fallback() external payable {
-        revert DirectETHDepositsNotAllowed();
-    }
+    // fallback() external payable {
+    //     revert DirectETHDepositsNotAllowed();
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VALIDATOR REGISTRATION  --------------------------
@@ -132,6 +144,10 @@ contract StakingNodesManager is
         DepositData[] calldata _depositData
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
+        if (_depositData.length == 0) {
+            return;
+        }
+
         // check deposit root matches the deposit contract deposit root
         // to prevent front-running from rogue operators 
         if (_depositRoot != 0x0000000000000000000000000000000000000000000000000000000000000000) {
@@ -141,26 +157,21 @@ contract StakingNodesManager is
             }
         }
 
-        if (_depositData.length == 0) {
-            return;
-        }
-
-        // check if already used
-        for (uint256 i = 0; i < _depositData.length; ++i) {
-            DepositData calldata depositData = _depositData[i];
-            if (usedValidators[depositData.publicKey]) {
-                revert ValidatorAlreadyUsed(depositData.publicKey);
-            }
-            usedValidators[depositData.publicKey] = true;
-        }
-
         validateDepositDataAllocation(_depositData);
 
         uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        for (uint x = 0; x < _depositData.length; ++x) {
-            _registerValidator(_depositData[x], DEFAULT_VALIDATOR_STAKE);
+        uint depositDataLength = _depositData.length;
+        for (uint i = 0; i < depositDataLength; i++) {
+
+            DepositData calldata depositData = _depositData[i];
+            if (usedValidators[depositData.publicKey]) {
+                revert ValidatorAlreadyUsed(depositData.publicKey);
+            }
+            usedValidators[depositData.publicKey] = true;
+
+            _registerValidator(depositData, DEFAULT_VALIDATOR_STAKE);
         }
     }
 

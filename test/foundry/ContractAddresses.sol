@@ -1,3 +1,5 @@
+pragma solidity >=0.8.0;
+
 contract ContractAddresses {
     struct ChainAddresses {
         address WETH_ADDRESS;

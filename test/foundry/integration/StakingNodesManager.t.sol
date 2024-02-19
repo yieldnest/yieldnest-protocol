@@ -37,7 +37,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         assertEq(stakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
     }
 
-      function testRegisterValidators() public {
+    function testRegisterValidators() public {
 
         address addr1 = vm.addr(100);
 
@@ -88,15 +88,15 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         address eigenPodAddress = address(stakingNodeInstance.eigenPod());
 
         MockStakingNode mockStakingNode = new MockStakingNode();
-        stakingNodesManager.registerStakingNodeImplementationContract(address(mockStakingNode));
+        stakingNodesManager.registerStakingNodeImplementationContract(payable(mockStakingNode));
 
         address upgradedImplementationAddress = stakingNodesManager.implementationContract();
-        assertEq(upgradedImplementationAddress, address(mockStakingNode));
+        assertEq(upgradedImplementationAddress, payable(mockStakingNode));
 
         address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
         assertEq(newEigenPodAddress, eigenPodAddress);
 
-        MockStakingNode mockStakingNodeInstance = MockStakingNode(address(stakingNodeInstance));
+        MockStakingNode mockStakingNodeInstance = MockStakingNode(payable(address(stakingNodeInstance)));
         uint redundantFunctionResult = mockStakingNodeInstance.redundantFunction();
         assertEq(redundantFunctionResult, 1234567);
     }
