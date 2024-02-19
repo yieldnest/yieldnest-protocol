@@ -11,7 +11,6 @@ contract YieldNestOracle is AccessControlUpgradeable {
         uint256 maxAge; // in seconds
     }
 
-
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;

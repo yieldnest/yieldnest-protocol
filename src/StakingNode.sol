@@ -52,6 +52,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     receive() external payable nonReentrant {
+        // TODO: should we charge fees here or not?
+        // Except for Consensus Layer rewards the principal may exit this way as well.
        stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId);
        emit RewardsProcessed(msg.value);
     }
@@ -105,6 +107,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public {
 
         // only claim if we have active unclaimed withdrawals
+
+        // the ETH funds are sent to address(this) and trigger the receive() function
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
         if (delayedWithdrawalRouter.getUserDelayedWithdrawals(address(this)).length > 0) {
             delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);

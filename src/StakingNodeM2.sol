@@ -4,7 +4,6 @@ import {ISignatureUtils} from "./interfaces/eigenlayer/ISignatureUtils.sol";
 import { BeaconChainProofs as BeaconChainProofsM2 } from "./external/eigenlayer/BeaconChainProofs.sol";
 import {IStrategy as IStrategyM2} from "./interfaces/eigenlayer/IStrategy.sol";
 
-
 import "./StakingNode.sol";
 
 
