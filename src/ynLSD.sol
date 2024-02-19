@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
+// import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {AccessControlUpgradeable} from
     "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -26,11 +26,13 @@ contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgr
     IStrategyManager public strategyManager;
 
     mapping(IERC20 => IStrategy) public strategies;
-    mapping(IERC20 => uint) public depositedBalances;
+    mapping(address => uint) public depositedBalances;
+    mapping(address => uint) public totalTokenShares;
+    mapping(address => mapping(address => uint)) public userShares;
 
     IERC20[] tokens;
 
-    uint exchangeAdjustmentRate;
+    uint public exchangeAdjustmentRate;
 
     struct Init {
         IERC20[] tokens;
@@ -71,7 +73,9 @@ contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgr
         }
         token.safeTransferFrom(msg.sender, address(this), amount);
 
-        token.approve(address(strategyManager), amount);
+        if(token.allowance(address(this), address(strategyManager)) < amount) {
+            token.approve(address(strategyManager), amount);
+        }
 
         strategyManager.depositIntoStrategy(
                 strategy,
@@ -79,38 +83,39 @@ contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgr
                 amount
             );
 
-        depositedBalances[token] += amount;
+        depositedBalances[address(token)] += amount;
+        shares = _convertToShares(amount, Math.Rounding.Floor);
 
-         // Convert the value of the token deposited to ETH
-        int256 tokenPriceInETH = oracle.getLatestPrice(address(token));
-        uint256 tokenAmountInETH = uint256(tokenPriceInETH) * amount / 1e18; // Assuming price is in 18 decimal places
-
-        // Calculate how many shares to be minted using the same formula as ynETH
-        shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
-
-        // Mint the calculated shares to the receiver
+        userShares[address(token)][msg.sender] += shares;
+        totalTokenShares[address(token)] += shares;
         _mint(receiver, shares);
 
         emit Deposit(msg.sender, receiver, amount, shares);
     }
 
+    function totalSupply() public view returns(uint256) {
+        uint totalSupply_;
+        for(uint i=0; i<tokens.length, i++) {
+            totalSupply_ += totalTokenShares[address(tokens[i])];
+        }
+        return totalSupply_;
+    }
 
-    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
+    // TODO Refactor this part better
+    // totalSupply() should be calculated differently 
+    function _convertToShares(address token, uint amount,  Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Use totalSupply to see if this is the boostrap call, not totalAssets
         if (totalSupply() == 0) {
-            return ethAmount;
+            return amount;
         }
-
-        // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        //  If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
         
         // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
         // independently. That should not be possible.
         return Math.mulDiv(
-            ethAmount,
-            totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR),
+            amount,
+            totalTokenShares[token] * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
+            depositedBalances[token] * uint256(_BASIS_POINTS_DENOMINATOR),
             rounding
         );
     }
