@@ -185,6 +185,13 @@ contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgr
         emit Deposit(msg.sender, receiver, amount, shares);
     }
 
+    function totalSupply() public view returns(uint256) {
+        uint totalSupply_;
+        for(uint i=0; i<tokens.length, i++) {
+            totalSupply_ += totalTokenShares[address(tokens[i])];
+        }
+        return totalSupply_;
+    }
 
     function _convertToShares(IERC20 token, uint256 amount, Math.Rounding rounding) internal view returns (uint256) {
 
@@ -192,7 +199,7 @@ contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgr
         // 1:1 exchange rate on the first stake.
         // Use totalSupply to see if this is the boostrap call, not totalAssets
         if (totalSupply() == 0) {
-            return ethAmount;
+            return amount;
         }
 
         return Math.mulDiv(
