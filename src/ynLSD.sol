@@ -7,6 +7,7 @@ import {AccessControlUpgradeable} from
 import "./interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import "./YieldNestOracle.sol";
 
 
@@ -22,6 +23,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     error LowAmountOfShares(uint sharesProvided, uint sharesExpected);
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+    uint16 internal constant _ONE_PERCENT = 100;
 
     YieldNestOracle oracle;
     IStrategyManager public strategyManager;
@@ -59,10 +61,14 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
     }
 
+    function updateAssets() external nonReentrant whenNotPaused {
+        _updateTotalAssets();
+    }
+
     /// @notice Update the assets state and deposit tokens to obtain shares
-    /// @param _token the ERC-20 token that is deposited
-    /// @param _amount amount of ERC-20 tokens deposited
-    /// @param _minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
+    /// @param token the ERC-20 token that is deposited
+    /// @param amount amount of ERC-20 tokens deposited
+    /// @param minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
     /// @return shares the amount of shares received
     function updateAndDeposit(
         IERC20 token,
@@ -72,7 +78,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         if(latestAssetUpdate + 1 minutes <= block.timestamp) {
             _updateTotalAssets();
         }
-        _depost(
+        _deposit(
             token,
             msg.sender,
             amount,
@@ -81,16 +87,16 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     }
 
     /// @notice Deposit tokens to obtain shares
-    /// @param _token the ERC-20 token that is deposited
-    /// @param _amount amount of ERC-20 tokens deposited
-    /// @param _minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
+    /// @param token the ERC-20 token that is deposited
+    /// @param amount amount of ERC-20 tokens deposited
+    /// @param minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
     /// @return shares the amount of shares received
     function deposit(
         IERC20 token,
         uint256 amount,
         uint256 minExpectedAmountOfShares
     ) external nonReentrant whenNotPaused returns (uint256 shares) {
-         _depost(
+         _deposit(
             token,
             msg.sender,
             amount,
@@ -99,10 +105,10 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     }
 
     /// @notice Update the assets state and deposit tokens to obtain shares on behalf of receiver
-    /// @param _token the ERC-20 token that is deposited
-    /// @param _receiver the address that receives the shares
-    /// @param _amount amount of ERC-20 tokens deposited
-    /// @param _minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
+    /// @param token the ERC-20 token that is deposited
+    /// @param receiver the address that receives the shares
+    /// @param amount amount of ERC-20 tokens deposited
+    /// @param minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
     /// @return shares the amount of shares received
     function updateAndDepositOnBehalf(
         IERC20 token,
@@ -113,7 +119,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         if(latestAssetUpdate + 1 minutes <= block.timestamp) {
             _updateTotalAssets();
         }
-        _depost(
+        _deposit(
             token,
             receiver,
             amount,
@@ -123,10 +129,10 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     }
 
     /// @notice Deposit tokens to obtain shares on behalf of receiver
-    /// @param _token the ERC-20 token that is deposited
-    /// @param _receiver the address that receives the shares
-    /// @param _amount amount of ERC-20 tokens deposited
-    /// @param _minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
+    /// @param token the ERC-20 token that is deposited
+    /// @param receiver the address that receives the shares
+    /// @param amount amount of ERC-20 tokens deposited
+    /// @param minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
     /// @return shares the amount of shares received
     function depositOnBehalf(
         IERC20 token,
@@ -134,7 +140,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         uint256 amount,
         uint256 minExpectedAmountOfShares
     ) external nonReentrant whenNotPaused returns (uint256 shares) {
-         _depost(
+         _deposit(
             token,
             receiver,
             amount,
@@ -185,12 +191,25 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         emit Deposit(msg.sender, receiver, amount, shares);
     }
 
-    function totalSupply() public view returns(uint256) {
-        uint totalSupply_;
-        for(uint i=0; i<tokens.length, i++) {
-            totalSupply_ += totalTokenShares[address(tokens[i])];
+    function _updateTotalAssets() internal {
+        require(latestAssetUpdate < block.timestamp, "Up-to date");
+        latestAssetUpdate = block.timestamp;
+        
+        uint total;
+        int256 price;
+        
+        // get all assets from depoisted balances
+        for (uint i = 0; i < tokens.length; i++) {
+            price = oracle.getLatestPrice(address(tokens[i]));
+            total += uint256(price) * depositedBalances[tokens[i]] / 1e18;
         }
-        return totalSupply_;
+
+        //pending rest of the assets if present
+
+        if(total < ((fallThreshold * totalAssets * ONE_PERCENT)/_BASIS_POINTS_DENOMINATOR)) {
+            // potential pause action
+        }
+        totalAssets = total;
     }
 
     function _convertToShares(IERC20 token, uint256 amount, Math.Rounding rounding) internal view returns (uint256) {

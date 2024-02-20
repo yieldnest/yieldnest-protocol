@@ -46,16 +46,13 @@ contract YieldNestOracle is AccessControlUpgradeable {
         assetPriceFeeds[asset] = AssetPriceFeed(AggregatorV3Interface(priceFeedAddress), maxAge);
     }
 
-    function getLatestPrice(address asset) public view returns (int256) {
-        AssetPriceFeed storage priceFeed = assetPriceFeeds[asset];
-        require(address(priceFeed.priceFeed) != address(0), "Price feed not set");
-
-        (, int256 price,, uint256 timeStamp,) = priceFeed.priceFeed.latestRoundData();
-        uint256 age = block.timestamp - timeStamp;
-        if (age > priceFeed.maxAge) {
-            revert PriceFeedTooStale(age, priceFeed.maxAge);
+    function getLatestPrice(address asset) public view returns (int256 ) {
+        if(address(assetPriceFeeds[asset].priceFeed) != address(0)){
+            ( , int256 price, , uint256 timeStamp, ) = assetPriceFeeds[asset].priceFeed.latestRoundData();
+            if (block.timestamp > timeStamp && (block.timestamp - timeStamp) > assetPriceFeeds[asset].maxAge) {
+                price = 0;
+            }
         }
 
-        return price;
     }
 }
