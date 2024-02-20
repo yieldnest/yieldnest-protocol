@@ -40,6 +40,8 @@ contract IntegrationBaseTest is Test, Utils {
     IStrategyManager public strategyManager;
     IDepositContract public depositContract;
 
+    address public transferEnabledEOA;
+
     uint startingExchangeAdjustmentRate;
 
     bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -55,6 +57,8 @@ contract IntegrationBaseTest is Test, Utils {
 
         proxyAdmin = vm.addr(2);
         feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
+
+        transferEnabledEOA = vm.addr(3);
 
 
         startingExchangeAdjustmentRate = 4;
@@ -79,13 +83,17 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
 
         // Initialize ynETH with example parameters
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = transferEnabledEOA;
+        
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: address(this),
             pauser: address(this),
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             wETH: IWETH(address(weth)),  // Deployed WETH address
-            exchangeAdjustmentRate: startingExchangeAdjustmentRate
+            exchangeAdjustmentRate: startingExchangeAdjustmentRate,
+            pauseWhitelist: pauseWhitelist
         });
         yneth.initialize(ynethInit);
 
