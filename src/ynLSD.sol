@@ -14,7 +14,7 @@ interface yLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
 }
 
-contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, yLSDEvents {
+contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, yLSDEvents {
     using SafeERC20 for IERC20;
 
     error UnsupportedToken(IERC20 token);
