@@ -10,11 +10,11 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "./YieldNestOracle.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-interface yLSDEvents {
+interface ynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
 }
 
-contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, yLSDEvents {
+contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ynLSDEvents {
     using SafeERC20 for IERC20;
 
     error UnsupportedToken(IERC20 token);
