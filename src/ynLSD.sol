@@ -122,7 +122,7 @@ contract yLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgr
     function _deposit(
         IERC20 token,
         address receiver,
-        uint256 amount- ,
+        uint256 amount,
         uint256 minExpectedAmountOfShares
     ) internal returns (uint256 shares) {
 
