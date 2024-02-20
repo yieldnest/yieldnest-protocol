@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 contract UpgradesTest is IntegrationBaseTest {
 
-    function testUpgradeEachContract() public {
+    function testUpgradeEachTransparentProxyUpgradeableContract() public {
 
         address newImplementation = address(new ynETHERC4626()); 
         vm.prank(proxyAdmin);
