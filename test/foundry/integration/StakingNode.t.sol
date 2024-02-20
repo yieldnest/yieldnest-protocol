@@ -72,7 +72,6 @@ contract StakingNodeTest is IntegrationBaseTest {
         assertFalse(eigenPodInstance.hasRestaked(), "Pod should have fully restaked");
         assertEq(eigenPodInstance.mostRecentWithdrawalBlockNumber(), 0, "Most recent withdrawal block should be greater than 0");
 
-
         address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
         // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.

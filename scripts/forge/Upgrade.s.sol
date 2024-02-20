@@ -30,8 +30,7 @@ contract Upgrade is BaseScript {
 
     function run(string memory contractName) public {
         Deployment memory deployment = loadDeployment();
-
-
+        
         console.log("Upgrading contract with name:", contractName);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -48,7 +47,7 @@ contract Upgrade is BaseScript {
         console.log(implAddress);
 
         vm.startBroadcast(deployerPrivateKey);
-        deployment.proxyAdmin.upgradeAndCall(proxy, implAddress, "");
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(proxyAddr)).upgradeAndCall(ITransparentUpgradeableProxy(proxyAddr), implAddress, "");
         vm.stopBroadcast();
  
     }

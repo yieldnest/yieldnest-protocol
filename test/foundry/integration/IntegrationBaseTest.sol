@@ -18,9 +18,11 @@ import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../ContractAddresses.sol";
 import "forge-std/console.sol";
+import "../../../scripts/forge/Utils.sol";
 
-contract IntegrationBaseTest is Test {
-    ProxyAdmin public proxyAdmin;
+
+contract IntegrationBaseTest is Test, Utils {
+    address public proxyAdmin;
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
@@ -50,12 +52,13 @@ contract IntegrationBaseTest is Test {
     function setUp() public {
 
         address defaultSigner = vm.addr(1); // Using the default signer address from foundry's vm
+
+        proxyAdmin = vm.addr(2);
         feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
 
 
         startingExchangeAdjustmentRate = 4;
 
-        proxyAdmin = new ProxyAdmin(address(this));
         WETH weth = new WETH();
 
         // Deploy implementations
