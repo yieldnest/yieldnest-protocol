@@ -30,7 +30,12 @@ interface StakingEvents {
  
 contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEvents {
 
-    // Errors.
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
@@ -43,19 +48,27 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     /// @notice  Role is allowed to set the pause state
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
     bool public isDepositETHPaused;
-    // Storage variables
-
 
     /// @dev The value is in basis points (1/10000).
     uint public exchangeAdjustmentRate;
 
     uint public totalDepositedInPool;
 
-    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
     /// @notice Configuration for contract initialization.
     struct Init {
