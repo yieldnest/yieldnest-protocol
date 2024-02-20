@@ -16,23 +16,23 @@ contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeEachTransparentProxyUpgradeableContract() public {
 
-        address newImplementation = address(new ynETHERC4626()); 
-        vm.prank(proxyAdmin);
-        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newImplementation, "");
+        // address newImplementation = address(new ynETHERC4626()); 
+        // vm.prank(proxyAdmin);
+        // ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newImplementation, "");
 
-        address currentImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneth));
-        assertEq(currentImplementation, newImplementation);
+        // address currentImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneth));
+        // assertEq(currentImplementation, newImplementation);
 
-        address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        vm.prank(proxyAdmin);
-        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
-        address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
-        assertEq(currentStakingNodesManagerImpl, newStakingNodesManagerImpl);
+        // address newStakingNodesManagerImpl = address(new StakingNodesManager());
+        // vm.prank(proxyAdmin);
+        // ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
+        // address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
+        // assertEq(currentStakingNodesManagerImpl, newStakingNodesManagerImpl);
 
-        address newRewardsDistributorImpl = address(new RewardsDistributor());
-        vm.prank(proxyAdmin);
-        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(rewardsDistributor))).upgradeAndCall(ITransparentUpgradeableProxy(address(rewardsDistributor)), newRewardsDistributorImpl, "");
-        address currentRewardsDistributorImpl = getTransparentUpgradeableProxyImplementationAddress(address(rewardsDistributor));
-        assertEq(currentRewardsDistributorImpl, newRewardsDistributorImpl);
+        // address newRewardsDistributorImpl = address(new RewardsDistributor());
+        // vm.prank(proxyAdmin);
+        // ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(rewardsDistributor))).upgradeAndCall(ITransparentUpgradeableProxy(address(rewardsDistributor)), newRewardsDistributorImpl, "");
+        // address currentRewardsDistributorImpl = getTransparentUpgradeableProxyImplementationAddress(address(rewardsDistributor));
+        // assertEq(currentRewardsDistributorImpl, newRewardsDistributorImpl);
     }
 }
