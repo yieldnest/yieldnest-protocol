@@ -21,7 +21,7 @@ The following document provides a general comparison of the key features and fun
 
 
 
-## YeildNest
+## YieldNest
 - Focuses on staking and withdrawal processes with a clear flow.
 - Incorporates strategy management for asset handling.
 - Utilizes delegation for flexible validator management.
