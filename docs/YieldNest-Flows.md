@@ -81,13 +81,13 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    participant A as Admin
     participant S as StakingNode
     participant SM as StakingNodesManager
     participant EP as EigenPod
     participant DM as DelegationManager
     participant SRM as StrategyManager
     participant DR as DelayedWithdrawalRouter
-    participant A as Admin
 
     %% Initialization %%
     A->>S: initialize()
@@ -151,11 +151,11 @@ sequenceDiagram
 
   ```mermaid
   sequenceDiagram
+    participant Admin as Admin
     participant SNM as StakingNodesManager
     participant DC as DepositContract
     participant Node as StakingNode
     participant EP as EigenPod
-    participant Admin as Admin
 
     %% Initialization %%
     Admin->>SNM: initialize()
