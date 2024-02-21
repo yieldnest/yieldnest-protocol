@@ -66,7 +66,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         }
     }
 
-    function getSharesForToken(IERC20 token, uint amount) external view returns(uint shares) {
+    function getExpectedShares(IERC20 token, uint amount) external view returns(uint shares) {
         IStrategy strategy = strategies[token];
         if(address(strategy) != address(0)){
            int256 tokenPriceInETH = oracle.getLatestPrice(address(token));

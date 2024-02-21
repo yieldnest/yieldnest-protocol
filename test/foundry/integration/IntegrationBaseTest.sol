@@ -15,6 +15,7 @@ import "forge-std/console.sol";
 import "forge-std/Test.sol";
 import "../../../src/external/tokens/WETH.sol";
 import "../../../src/ynETH.sol";
+import "../../../src/ynLSD.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
@@ -100,6 +101,8 @@ contract IntegrationBaseTest is Test, Utils {
             pauseWhitelist: pauseWhitelist
         });
         yneth.initialize(ynethInit);
+
+        
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
