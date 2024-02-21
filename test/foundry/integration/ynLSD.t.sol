@@ -1,8 +1,7 @@
 import "forge-std/Test.sol";
 import "../../../src/ynLSD.sol";
 import "../../../src/YieldNestOracle.sol";
-import "../../../src/interfaces/eigenlayer/IStrategy.sol";;
-import "../../../src/mocks/MockStrategyManager.sol";
+import "../../../src/mocks/MockStrategyManager_v2.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
