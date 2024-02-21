@@ -1,38 +1,35 @@
 
-# Compare Node Handling Architecture
+# Node Handling Architecture
 
-The following table provides a general comparison of the key features and functionalities of the YieldNest, Renzo, Kelp, and Ether.Fi node handling contracts.
+The following document provides a general comparison of the key features and functionalities of the YieldNest, Renzo, Kelp, and Ether.Fi node handling contracts.
 
 ### General Comparison Table
 
-| Feature                          | YeildNest (StakeNode.sol) | Renzo (OperatorDelegator.sol) | Kelp (NodeDelegator.sol) | Ether.Fi (EtherFiNode.sol) |
-|----------------------------------|---------------------------|-------------------------------|--------------------------|----------------------------|
-| Staking and Withdrawal Processes | ✓                         | ✓                             | ✓                        | ✓                          |
-| Strategy Management              | ✓                         | ✓                             | ✓                        |                            |
-| Delegation Mechanism             | ✓                         | ✓                             |                          |                            |
-| Supports Multiple ERC20 Tokens   |                           | ✓                             | ✓                        |                            |
-| ETH Staking and Reward Handling  |                           | ✓                             | ✓                        | ✓                          |
-| Comprehensive Asset Management   |                           |                               | ✓                        |                            |
-| Restaking Support                |                           |                               |                          | ✓                          |
-| Fund Withdrawal to Multiple Parties |                       |                               |                          | ✓                          |
-| Pausing and Unpausing            |                           |                               | ✓                        |                            |
+
+| Feature                           | YieldNest                        | Renzo                            | Kelp                              | Ether.Fi                         |
+|-----------------------------------|----------------------------------|----------------------------------|-----------------------------------|----------------------------------|
+| Staking Mechanism                 | EigenPod-based staking           | Strategy-based staking           | EigenPod-based staking            | EigenPod-based staking           |
+| Withdrawal Mechanism              | Supports pre-restaking withdrawals and delayed withdrawals | Supports queued withdrawals with strategies | Supports asset withdrawal and ETH restaking | Supports fund withdrawal to multiple parties |
+| Delegation Management             | Delegation to operators          | Delegation to operators via DelegationManager | Not explicitly mentioned          | Not explicitly mentioned          |
+| Strategy Management               | Strategy management for staking  | Strategy management via StrategyManager | Strategy management for asset deposits | Not explicitly mentioned          |
+| Claiming Mechanism                | Claiming delayed withdrawals     | Not explicitly mentioned         | Claiming rewards and withdrawals  | Not explicitly mentioned          |
+| Asset Management                  | Limited to staking-related assets | Supports multiple ERC20 tokens   | Comprehensive asset management    | Limited to staking-related assets |
+| External Dependencies             | StakingNodesManager, StrategyManager, DelegationManager | RestakeManager, StrategyManager, DelegationManager | LRTManager, LRTAdmin, LRTOracle | EtherFiNodesManager, EigenPodManager |
+| Reward Distribution               | RewardsDistributor for staking rewards | Reward forwarding to deposit queue | Not explicitly mentioned          | Rewards management for staking    |
+| Validator State Management        | Supports resetting validator state | Not explicitly mentioned         | Not explicitly mentioned          | Supports phase transitions and resetting validator state |
+| Contract Control                  | Not explicitly mentioned         | Pausing and unpausing contract   | Pausing and unpausing contract    | Not explicitly mentioned          |
 
 
-# Node Handling Comparison
-
-The following swimlanes provide a detailed comparison of the node handling processes for the YieldNest, Renzo, Kelp, and Ether.Fi node handling contracts.
 
 ## YeildNest
-
-`StakeNode.sol`
-
-
 - Focuses on staking and withdrawal processes with a clear flow.
 - Incorporates strategy management for asset handling.
 - Utilizes delegation for flexible validator management.
 - Provides mechanisms for claiming delayed withdrawals.
 - Limited to staking-related functionalities.
 - Lacks broader asset management capabilities beyond staking.
+
+`StakeNode.sol`
 
 ```mermaid
 sequenceDiagram
@@ -104,10 +101,6 @@ sequenceDiagram
 
 
 ## Renzo
-
-`OperatorDelegator.sol`
-
-
 - Supports multiple ERC20 tokens for delegation.
 - Integrates with a RestakeManager for managing staking operations.
 - Provides functionalities for depositing tokens into strategies and handling withdrawals.
@@ -115,6 +108,7 @@ sequenceDiagram
 - Primarily focused on staking and token management, with less emphasis on other aspects of node operation.
 - Dependent on external managers (RestakeManager, StrategyManager) for core functionalities.
 
+`OperatorDelegator.sol`
 
 ```mermaid
 sequenceDiagram
@@ -200,10 +194,6 @@ sequenceDiagram
 ```
 
 ## Kelp
-
-`NodeDelegator.sol`
-
-
 - Offers comprehensive asset management, including depositing assets into strategies and transferring assets back to pools.
 - Supports ETH staking with validation and reward handling.
 - Provides detailed asset balance information and TVL calculations.
@@ -211,6 +201,7 @@ sequenceDiagram
 - Complexity due to the extensive range of features and asset management capabilities.
 - Potential for higher gas costs due to the increased number of interactions and transactions.
 
+`NodeDelegator.sol`
 
 ```mermaid
 sequenceDiagram
@@ -296,10 +287,6 @@ sequenceDiagram
 ```
 
 ## Ether.Fi
-
-`EtherFiNode.sol`
-
-
 - Focuses on staking, withdrawal, and reward management.
 - Supports restaking through EigenPod integration.
 - Includes mechanisms for resetting validator states and handling phase transitions.
@@ -307,7 +294,7 @@ sequenceDiagram
 - Limited to staking and fund management functionalities.
 - Lacks broader asset management features found in some other contracts.
 
-
+`EtherFiNode.sol`
 
 ```mermaid
 sequenceDiagram
