@@ -3,18 +3,18 @@
 
 ```mermaid
 sequenceDiagram
-    participant A as Admin
+    participant U as User
     participant y as ynETH
     participant SNM as StakingNodesManager
     participant RD as RewardsDistributor
     participant SN as StakingNode
+    participant A as Admin
 
     %% Initialization %%
     A->>y: initialize()
-    y->>y: Set stakingNodesManager, rewardsDistributor, exchangeAdjustmentRate
-
+    y->>y: Set stakingNodesManager, rewardsDistributor, exchangeAdjustmentRate, ROLES
     %% Deposit ETH %%
-    user->>y: depositETH(receiver)
+    U->>y: depositETH(receiver)
     y->>y: Calculate shares
     y->>y: Mint ynETH
     y->>y: Update totalDepositedInPool
@@ -45,13 +45,13 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Admin as Admin
     participant User as User
     participant yLSD as yLSD
     participant Token as IERC20
     participant StrategyMgr as IStrategyManager
     participant Oracle as YieldNestOracle
     participant Strategy as IStrategy
+    participant Admin as Admin
 
     %% Initialization %%
     Admin->>yLSD: initialize(init)
@@ -81,13 +81,13 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant A as Admin
     participant S as StakingNode
     participant SM as StakingNodesManager
     participant EP as EigenPod
     participant DM as DelegationManager
     participant SRM as StrategyManager
     participant DR as DelayedWithdrawalRouter
+    participant A as Admin
 
     %% Initialization %%
     A->>S: initialize()
@@ -151,11 +151,11 @@ sequenceDiagram
 
   ```mermaid
   sequenceDiagram
-    participant Admin as Admin
     participant SNM as StakingNodesManager
     participant DC as DepositContract
     participant Node as StakingNode
     participant EP as EigenPod
+    participant Admin as Admin
 
     %% Initialization %%
     Admin->>SNM: initialize()
@@ -216,20 +216,20 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant A as Admin
-    participant C as Contract
-    participant W as Withdrawer
+    participant C as RewardsReceiver
+    participant U as User
     participant E as ERC20 Token
     participant R as Recipient
+    participant A as Admin
 
     A->>C: Deploy Contract
     A->>C: initialize(admin, withdrawer)
     Note over C: Initialization
     C->>C: Grant Roles
-    W->>C: transfer(to, amount)
+    U->>C: transfer(to, amount)
     Note over C: ETH Transfer
     C->>R: Transfer ETH
-    W->>C: transferERC20(token, to, amount)
+    U->>C: transferERC20(token, to, amount)
     Note over C: ERC20 Transfer
     C->>E: Request Transfer
     E->>R: Transfer ERC20
@@ -268,4 +268,32 @@ sequenceDiagram
         C->>C: Update feesReceiver
         Note over C,F: Emit FeeReceiverSet event
     end
+```
+---
+`YieldNestOracle.sol`
+
+```mermaid
+sequenceDiagram
+    participant A as Admin
+    participant OM as OracleManager
+    participant YNO as YieldNestOracle
+    participant PF as PriceFeed
+
+    %% Initialization %%
+    A->>YNO: initialize(init)
+    YNO->>YNO: Set ADMIN_ROLE and ORACLE_MANAGER_ROLE
+    loop For each asset in init
+        YNO->>YNO: setAssetPriceFeed(asset, priceFeedAddress, maxAge)
+    end
+
+    %% Set Asset Price Feed %%
+    OM->>YNO: setAssetPriceFeed(asset, priceFeedAddress, maxAge)
+    YNO->>YNO: _setAssetPriceFeed(asset, priceFeedAddress, maxAge)
+
+    %% Get Latest Price %%
+    User->>YNO: getLatestPrice(asset)
+    YNO->>PF: priceFeed.latestRoundData()
+    PF->>YNO: Return (price, timeStamp)
+    YNO->>YNO: Check if price feed is too stale
+    YNO->>User: Return price
 ```
