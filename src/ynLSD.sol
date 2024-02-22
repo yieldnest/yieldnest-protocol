@@ -19,7 +19,6 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
     error UnsupportedToken(IERC20 token);
     error ZeroAmount();
-    error LowAmountOfShares(uint sharesProvided, uint sharesExpected);
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
@@ -66,7 +65,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         }
     }
 
-    function getExpectedShares(IERC20 token, uint amount) external view returns(uint shares) {
+    function convertToShares(IERC20 token, uint amount) external view returns(uint shares) {
         IStrategy strategy = strategies[token];
         if(address(strategy) != address(0)){
            int256 tokenPriceInETH = oracle.getLatestPrice(address(token));
@@ -81,38 +80,15 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     /// @notice Deposit tokens to obtain shares (eliminates script injection)
     /// @param token the ERC-20 token that is deposited
     /// @param amount amount of ERC-20 tokens deposited
-    /// @param minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
     /// @return shares the amount of shares received
     function deposit(
         IERC20 token,
-        uint256 amount,
-        uint256 minExpectedAmountOfShares
+        uint256 amount
     ) external nonReentrant whenNotPaused returns (uint256 shares) {
          _deposit(
             token,
             amount,
-            msg.sender,
-            minExpectedAmountOfShares
-        );
-    }
-
-    /// @notice Deposit tokens to obtain shares on behalf of receiver
-    /// @param token the ERC-20 token that is deposited
-    /// @param receiver the address that receives the shares
-    /// @param amount amount of ERC-20 tokens deposited
-    /// @param minExpectedAmountOfShares the minimum amount of expected shares the receiver should receive
-    /// @return shares the amount of shares received
-    function depositOnBehalf(
-        IERC20 token,
-        uint256 amount,
-        address receiver,
-        uint256 minExpectedAmountOfShares
-    ) external nonReentrant whenNotPaused returns (uint256 shares) {
-         _deposit(
-            token,
-            amount,
-            receiver,
-            minExpectedAmountOfShares
+            msg.sender
         );
     }
 
@@ -122,11 +98,10 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     function _deposit(
         IERC20 token,
         uint256 amount,
-        address receiver,
-        uint256 minExpectedAmountOfShares
+        address receiver
     ) internal returns (uint256 shares) {
 
-        if (amount == 0 || minExpectedAmountOfShares == 0) {
+        if (amount == 0) {
             revert ZeroAmount();
         }
 
@@ -155,10 +130,6 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
         // Calculate how many shares to be minted using the same formula as ynETH
         shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
-
-        if(shares < minExpectedAmountOfShares) {
-            revert LowAmountOfShares(shares, minExpectedAmountOfShares);
-        }
 
         // Mint the calculated shares to the receiver
         _mint(receiver, shares);
