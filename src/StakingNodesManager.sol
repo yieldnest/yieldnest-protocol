@@ -141,10 +141,10 @@ contract StakingNodesManager is
 
     function registerValidators(
         bytes32 _depositRoot,
-        DepositData[] calldata _depositData
+        ValidatorData[] calldata validators
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
-        if (_depositData.length == 0) {
+        if (validators.length == 0) {
             return;
         }
 
@@ -157,21 +157,21 @@ contract StakingNodesManager is
             }
         }
 
-        validateDepositDataAllocation(_depositData);
+        validateDepositDataAllocation(validators);
 
-        uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
+        uint totalDepositAmount = validators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        uint depositDataLength = _depositData.length;
-        for (uint i = 0; i < depositDataLength; i++) {
+        uint validatorsLength = validators.length;
+        for (uint i = 0; i < validatorsLength; i++) {
 
-            DepositData calldata depositData = _depositData[i];
-            if (usedValidators[depositData.publicKey]) {
-                revert ValidatorAlreadyUsed(depositData.publicKey);
+            ValidatorData calldata validator = validators[i];
+            if (usedValidators[validator.publicKey]) {
+                revert ValidatorAlreadyUsed(validator.publicKey);
             }
-            usedValidators[depositData.publicKey] = true;
+            usedValidators[validator.publicKey] = true;
 
-            _registerValidator(depositData, DEFAULT_VALIDATOR_STAKE);
+            _registerValidator(validator, DEFAULT_VALIDATOR_STAKE);
         }
     }
 
@@ -180,9 +180,9 @@ contract StakingNodesManager is
      * @dev This function checks if the proposed allocation of deposits (represented by `_depositData`) across the nodes would lead to a more
      * equitable distribution of validator stakes. It calculates the current and new average balances of nodes, and ensures that for each node,
      * the absolute difference between its balance and the average balance does not increase as a result of the new deposits
-     * @param _depositData An array of `DepositData` structures representing the validator stakes to be allocated across the nodes.
+     * @param validators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
      */
-    function validateDepositDataAllocation(DepositData[] calldata _depositData) public view {
+    function validateDepositDataAllocation(ValidatorData[] calldata validators) public view {
         uint[] memory nodeBalances = new uint[](nodes.length);
         uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
         uint totalBalance = 0;
@@ -198,8 +198,8 @@ contract StakingNodesManager is
         uint averageBalance = totalBalance / nodes.length;
 
         uint newTotalBalance = totalBalance;
-        for (uint i = 0; i < _depositData.length; i++) {
-            uint nodeId = _depositData[i].nodeId;
+        for (uint i = 0; i < validators.length; i++) {
+            uint nodeId = validators[i].nodeId;
             newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
             newTotalBalance += DEFAULT_VALIDATOR_STAKE;
         }
@@ -213,31 +213,31 @@ contract StakingNodesManager is
     }
 
     /// @notice Creates validator object and deposits into beacon chain
-    /// @param _depositData Data structure to hold all data needed for depositing to the beacon chain
+    /// @param validator Data structure to hold all data needed for depositing to the beacon chain
     function _registerValidator(
-        DepositData calldata _depositData, 
+        ValidatorData calldata validator, 
         uint256 _depositAmount
     ) internal {
 
-        uint256 nodeId = _depositData.nodeId;
+        uint256 nodeId = validator.nodeId;
         bytes memory withdrawalCredentials = getWithdrawalCredentials(nodeId);
-        bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(_depositData.publicKey, _depositData.signature, withdrawalCredentials, _depositAmount);
-        if (depositDataRoot != _depositData.depositDataRoot) {
-            revert DepositDataRootMismatch(depositDataRoot, _depositData.depositDataRoot);
+        bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(validator.publicKey, validator.signature, withdrawalCredentials, _depositAmount);
+        if (depositDataRoot != validator.depositDataRoot) {
+            revert DepositDataRootMismatch(depositDataRoot, validator.depositDataRoot);
         }
 
         // Deposit to the Beacon Chain
-        depositContractEth2.deposit{value: _depositAmount}(_depositData.publicKey, withdrawalCredentials, _depositData.signature, depositDataRoot);
+        depositContractEth2.deposit{value: _depositAmount}(validator.publicKey, withdrawalCredentials, validator.signature, depositDataRoot);
 
-        validators.push(_depositData.publicKey);
+        validators.push(validator.publicKey);
 
         // notify node of ETH _depositAmount
         IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
 
         emit ValidatorRegistered(
             nodeId,
-            _depositData.signature,
-            _depositData.publicKey,
+            validator.signature,
+            validator.publicKey,
             depositDataRoot
         );
     }

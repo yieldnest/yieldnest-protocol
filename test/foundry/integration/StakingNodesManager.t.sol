@@ -54,14 +54,14 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         stakingNodesManager.createStakingNode();
 
         uint nodeId = 0;
-        IStakingNodesManager.DepositData[] memory depositData = new IStakingNodesManager.DepositData[](validatorCount);
-        depositData[0] = IStakingNodesManager.DepositData({
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
+        validatorData[0] = IStakingNodesManager.ValidatorData({
             publicKey: ZERO_PUBLIC_KEY,
             signature: ZERO_SIGNATURE,
             nodeId: nodeId,
             depositDataRoot: bytes32(0)
         });
-        depositData[1] = IStakingNodesManager.DepositData({
+        validatorData[1] = IStakingNodesManager.ValidatorData({
             publicKey: ONE_PUBLIC_KEY,
             signature: ZERO_SIGNATURE,
             nodeId: nodeId,
@@ -70,19 +70,18 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-        for (uint i = 0; i < depositData.length; i++) {
-            uint amount = depositAmount / depositData.length;
-            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(depositData[i].publicKey, depositData[i].signature, withdrawalCredentials, amount);
-            depositData[i].depositDataRoot = depositDataRoot;
+        for (uint i = 0; i < validatorData.length; i++) {
+            uint amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
         }
         
         bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
-        stakingNodesManager.registerValidators(depositRoot, depositData);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();
         assertEq(totalAssetsControlled, depositAmount, "Total assets controlled does not match expected value");
     }
-
     function testUpgradeStakingNodeImplementation() public {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         address eigenPodAddress = address(stakingNodeInstance.eigenPod());
