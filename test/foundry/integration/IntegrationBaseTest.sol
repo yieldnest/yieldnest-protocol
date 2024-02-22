@@ -176,14 +176,14 @@ contract IntegrationBaseTest is Test, Utils {
         assetsAddresses.push(chainAddresses.RETH_ADDRESS);
         strategies.push(IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS));
         priceFeeds.push(chainAddresses.RETH_FEED_ADDRESS);
-        maxAges.push(uint256(3600));
+        maxAges.push(uint256(86400));
 
         // stETH
         tokens.push(IERC20(chainAddresses.STETH_ADDRESS));
         assetsAddresses.push(chainAddresses.STETH_ADDRESS);
         strategies.push(IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS));
         priceFeeds.push(chainAddresses.STETH_FEED_ADDRESS);
-        maxAges.push(uint256(3600)); //one hour
+        maxAges.push(uint256(86400)); //one hour
         
         YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
             assets: assetsAddresses,
