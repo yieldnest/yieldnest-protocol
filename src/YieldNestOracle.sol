@@ -11,7 +11,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
         uint256 maxAge; // in seconds
     }
 
-    error PriceFeedTooStale(uint256 age, uint256 maxAge);
+    error PriceFeedStale(uint256 age, uint256 maxAge);
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;
 
@@ -37,7 +37,6 @@ contract YieldNestOracle is AccessControlUpgradeable {
         }
     }
 
-
     function setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) public onlyRole(ORACLE_MANAGER_ROLE) {
         _setAssetPriceFeed(asset, priceFeedAddress, maxAge);
     }
@@ -53,7 +52,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
         (, int256 price,, uint256 timeStamp,) = priceFeed.priceFeed.latestRoundData();
         uint256 age = block.timestamp - timeStamp;
         if (age > priceFeed.maxAge) {
-            revert PriceFeedTooStale(age, priceFeed.maxAge);
+            revert PriceFeedStale(age, priceFeed.maxAge);
         }
 
         return price;
