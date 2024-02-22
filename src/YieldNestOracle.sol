@@ -26,7 +26,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
-    function initialize(Init memory init) external {
+    function initialize(Init memory init) external initializer {
          __AccessControl_init();
         _grantRole(ADMIN_ROLE, init.admin);
         _grantRole(ORACLE_MANAGER_ROLE, init.oracleManager);
