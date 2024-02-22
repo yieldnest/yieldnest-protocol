@@ -1,25 +1,11 @@
-import "forge-std/Test.sol";
-import "../../../src/ynLSD.sol";
-import "../../../src/YieldNestOracle.sol";
-import "../../../src/mocks/MockStrategyManager_v2.sol";
+import "./IntegrationBaseTest.sol";
+
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract ynLSDTest is Test {
-    ynLSD public ynlsd;
-    YieldNestOracle public yieldNestOracle;
-
-
-
-    function setUp() public {
-        // Initialize the contract with appropriate values
-        ynLSD.Init memory init;
-        // Fill the init struct with appropriate values
-        ynlsd = new ynLSD();
-        ynlsd.initialize(init);
-    }
-
+contract ynLSDTest is IntegrationBaseTest {
+  
     function testDeposit() public {
         // IERC20 token;
         // uint256 amount;

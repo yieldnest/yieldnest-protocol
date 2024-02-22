@@ -19,9 +19,15 @@ import "../../../src/ynLSD.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
+import "../../../src/ynLSD.sol";
+import "../../../src/YieldNestOracle.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../../../scripts/forge/Utils.sol";
+import "../../../src/mocks/MockERC20.sol";
+import "../../../src/mocks/MockStrategy.sol";
+import "../ContractAddresses.sol";
+import "forge-std/console.sol";
 
 contract IntegrationBaseTest is Test, Utils {
     address public proxyAdminOwner;
@@ -46,7 +52,16 @@ contract IntegrationBaseTest is Test, Utils {
 
     address public transferEnabledEOA;
 
-    uint startingExchangeAdjustmentRate;
+    uint public startingExchangeAdjustmentRate;
+
+    ynLSD public ynlsd;
+    YieldNestOracle public yieldNestOracle;
+    MockStrategy public strategy1;
+    MockStrategy public strategy2;
+    MockERC20 public token1;
+    MockERC20 public token2;
+    IERC20[] public tokens;
+    IStrategy[] public strategies;
 
     bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
     bytes ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
@@ -147,6 +162,24 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver.initialize(rewardsReceiverInit);
 
         consensusLayerReceiver.initialize(rewardsReceiverInit);
+        
+        token1 = new MockERC20("Mock1", "MOK");
+        token2 = new MockERC20("Mock2", "MOK");
+        tokens.push(IERC20(token1));
+        tokens.push(IERC20(token2));
+        strategies.push(IStrategy(strategy1));
+        strategies.push(IStrategy(strategy2));
+        ynLSD.Init memory init = ynLSD.Init({
+            tokens: tokens,
+            strategies: strategies,
+            strategyManager: strategyManager,
+            oracle: yieldNestOracle,
+            exchangeAdjustmentRate: startingExchangeAdjustmentRate
+        });
+        // Fill the init struct with appropriate values
+        ynlsd = new ynLSD();
+        ynlsd.initialize(init);
+
     }
 }
 
