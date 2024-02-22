@@ -90,8 +90,8 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     ) external nonReentrant whenNotPaused returns (uint256 shares) {
          _deposit(
             token,
-            msg.sender,
             amount,
+            msg.sender,
             minExpectedAmountOfShares
         );
     }
@@ -104,14 +104,14 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     /// @return shares the amount of shares received
     function depositOnBehalf(
         IERC20 token,
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 minExpectedAmountOfShares
     ) external nonReentrant whenNotPaused returns (uint256 shares) {
          _deposit(
             token,
-            receiver,
             amount,
+            receiver,
             minExpectedAmountOfShares
         );
     }
@@ -121,8 +121,8 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
     function _deposit(
         IERC20 token,
-        address receiver,
         uint256 amount,
+        address receiver,
         uint256 minExpectedAmountOfShares
     ) internal returns (uint256 shares) {
 
