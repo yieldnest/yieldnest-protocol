@@ -56,11 +56,10 @@ contract IntegrationBaseTest is Test, Utils {
 
     ynLSD public ynlsd;
     YieldNestOracle public yieldNestOracle;
-    MockStrategy public strategy1;
-    MockStrategy public strategy2;
-    MockERC20 public token1;
-    MockERC20 public token2;
     IERC20[] public tokens;
+    address[] public assetsAddresses;
+    address[] public priceFeeds;
+    uint256[] public maxAges;
     IStrategy[] public strategies;
 
     bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -90,6 +89,8 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
+        yieldNestOracle = new YieldNestOracle();
+        ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdminOwner), "");
@@ -116,9 +117,8 @@ contract IntegrationBaseTest is Test, Utils {
             pauseWhitelist: pauseWhitelist
         });
         yneth.initialize(ynethInit);
-
         
-
+        
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
@@ -169,6 +169,31 @@ contract IntegrationBaseTest is Test, Utils {
         tokens.push(IERC20(token2));
         strategies.push(IStrategy(strategy1));
         strategies.push(IStrategy(strategy2));
+        
+        
+        // rETH
+        tokens.push(IERC20(chainAddresses.RETH_ADDRESS));
+        assetsAddresses.push(chainAddresses.RETH_ADDRESS);
+        strategies.push(IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS));
+        priceFeeds.push(chainAddresses.RETH_FEED_ADDRESS);
+        maxAges.push(uint256(3600));
+
+        // stETH
+        tokens.push(IERC20(chainAddresses.STETH_ADDRESS));
+        assetsAddresses.push(chainAddresses.STETH_ADDRESS);
+        strategies.push(IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS));
+        priceFeeds.push(chainAddresses.STETH_FEED_ADDRESS);
+        maxAges.push(uint256(3600)); //one hour
+        
+        YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
+            assets: assetsAddresses,
+            priceFeedAddresses: priceFeeds,
+            maxAges: maxAges,
+            admin: defaultSigner,
+            oracleManager: address(this)
+        });
+        
+       
         ynLSD.Init memory init = ynLSD.Init({
             tokens: tokens,
             strategies: strategies,
@@ -176,10 +201,10 @@ contract IntegrationBaseTest is Test, Utils {
             oracle: yieldNestOracle,
             exchangeAdjustmentRate: startingExchangeAdjustmentRate
         });
-        // Fill the init struct with appropriate values
-        ynlsd = new ynLSD();
-        ynlsd.initialize(init);
 
+        ynlsd.initialize(init);
+        yieldNestOracle.initialize(oracleInit);
+        
     }
 }
 
