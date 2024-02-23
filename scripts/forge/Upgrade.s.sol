@@ -21,6 +21,14 @@ contract Upgrade is BaseScript {
             RewardsDistributor impl = new RewardsDistributor();
             return (address(deployment.rewardsDistributor), address(impl));
         }
+        if (keccak256(bytes(contractName)) == keccak256("ynLSD")) {
+            ynLSD impl = new ynLSD();
+            return (address(deployment.ynLSD), address(impl));
+        }
+        if (keccak256(bytes(contractName)) == keccak256("YieldNestOracle")) {
+            YieldNestOracle impl = new YieldNestOracle();
+            return (address(deployment.yieldNestOracle), address(impl));
+        }
         // if (keccak256(bytes(contractName)) == keccak256("RewardsReceiver")) {
         //     RewardsReceiver impl = new RewardsReceiver();
         //     return (address(deployment.rewardsReceiver), address(impl));

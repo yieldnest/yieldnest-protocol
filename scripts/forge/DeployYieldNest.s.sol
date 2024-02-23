@@ -10,6 +10,8 @@ import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
 import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
+import "../../src/ynLSD.sol";
+import "../../src/YieldNestOracle.sol";
 import "../../src/interfaces/IStakingNode.sol";
 import "../../src/external/ethereum/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
@@ -25,6 +27,8 @@ contract DeployYieldNest is BaseScript {
     TransparentUpgradeableProxy public rewardsDistributorProxy;
     
     ynETH public yneth;
+    ynLSD public ynlsd;
+    YieldNestOracle public yieldNestOracle;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
     RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
@@ -38,6 +42,11 @@ contract DeployYieldNest is BaseScript {
     IStrategyManager public strategyManager;
     IDepositContract public depositContract;
     IWETH public weth;
+    IERC20[] public tokens;
+    address[] public assetsAddresses;
+    address[] public priceFeeds;
+    uint256[] public maxAges;
+    IStrategy[] public strategies;
 
     uint startingExchangeAdjustmentRate;
 
@@ -87,9 +96,25 @@ contract DeployYieldNest is BaseScript {
         strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
         depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
         weth = IWETH(chainAddresses.WETH_ADDRESS);
+        
+        // rETH
+        tokens.push(IERC20(chainAddresses.RETH_ADDRESS));
+        assetsAddresses.push(chainAddresses.RETH_ADDRESS);
+        strategies.push(IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS));
+        priceFeeds.push(chainAddresses.RETH_FEED_ADDRESS);
+        maxAges.push(uint256(86400));
+
+        // stETH
+        tokens.push(IERC20(chainAddresses.STETH_ADDRESS));
+        assetsAddresses.push(chainAddresses.STETH_ADDRESS);
+        strategies.push(IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS));
+        priceFeeds.push(chainAddresses.STETH_FEED_ADDRESS);
+        maxAges.push(uint256(86400)); //24 hours
 
         // Deploy implementations
         yneth = new ynETH();
+        ynlsd = new ynLSD();
+        yieldNestOracle = new YieldNestOracle();
         stakingNodesManager = new StakingNodesManager();
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
@@ -102,9 +127,34 @@ contract DeployYieldNest is BaseScript {
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), proxyOwnerAddress, "");
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), proxyOwnerAddress, "");
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), address(proxyAdmin), "");
+        ynlsdProxy = new TransparentUpgradeableProxy(address(ynlsd), address(proxyAdmin), "");
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), address(proxyAdmin), "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), address(proxyAdmin), "");
 
         yneth = ynETH(payable(ynethProxy));
+        ynlsd = ynLSD(payable(ynlsdProxy));
+        yieldNestOracleProxy = ynETH(yieldNestOracleProxy);
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
+
+        // Initialize YieldNestOracle
+        YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
+            assets: assetsAddresses,
+            priceFeedAddresses: priceFeeds,
+            maxAges: maxAges,
+            admin: defaultSigner,
+            oracleManager: address(this)
+        });
+        yieldNestOracle.initialize(oracleInit);
+
+        ynLSD.Init memory init = ynLSD.Init({
+            tokens: tokens,
+            strategies: strategies,
+            strategyManager: strategyManager,
+            oracle: yieldNestOracle,
+            exchangeAdjustmentRate: startingExchangeAdjustmentRate
+        });
+        ynlsd.initialize(init);
 
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);

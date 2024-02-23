@@ -10,6 +10,9 @@ import "../../src/ynETH.sol";
 import "../../lib/forge-std/src/Script.sol";
 import "../../lib/forge-std/src/StdJson.sol";
 import "./Utils.sol";
+import "../../src/ynLSD.sol";
+import "../../src/YieldNestOracle.sol";
+import "forge-std/Script.sol";
 
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
@@ -22,6 +25,8 @@ abstract contract BaseScript is Script, Utils {
         RewardsReceiver consensusLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
+        ynLSD ynLSD;
+        YieldNestOracle yieldNestOracle;
     }
 
     function getDeploymentFile() internal view returns (string memory) {
@@ -38,6 +43,8 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
         vm.serializeAddress(json, "rewardsDistributor", address(deployment.rewardsDistributor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
+        vm.serializeAddress(json, "ynLSD", address(deployment.ynLSD));
+        vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
 
         string memory finalJson = vm.serializeString(json, "object", "dummy");
         vm.writeJson(finalJson, getDeploymentFile());
@@ -53,6 +60,8 @@ abstract contract BaseScript is Script, Utils {
         deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".consensusLayerReceiver")));
         deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".rewardsDistributor")));
         deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
+        deployment.ynLSD = ynLSD(payable(jsonContent.readAddress(".ynLSD")));
+        deployment.yieldNestOracle = YieldNestOracle(payable(jsonContent.readAddress(".yieldNestOracle")));
 
         return deployment;
     }
