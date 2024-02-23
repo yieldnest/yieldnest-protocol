@@ -40,23 +40,47 @@ contract ynLSDTest is IntegrationBaseTest {
         ynlsd.setStrategyManager(address(mockStrategyManager));
         ynlsd.setStrategies(tokens, mockStrategies);
 
+        uint expectedEigenLayer = mockStrategy1.deposit(token, amount);
+        // Check if event is emmitted
+        vm.expectEmit();
+        emit ynLSDEvents.Deposit(address(this), address(this), amount, expectedAmount, expectedEigenLayer);
         shares = ynlsd.deposit(token, amount);
 
+    }
+    function testSetStrategyManager() public {
+        address newStrategyManager = address(new MockStrategyManager());
+        ynlsd.setStrategyManager(newStrategyManager);
+        assertEq(address(ynlsd.strategyManager()), newStrategyManager, "Strategy Manager not set correctly");
+    }
+
+    function testSetOracle() public {
+        address newOracle = address(new YieldNestOracle());
+        ynlsd.setOracle(newOracle);
+        assertEq(address(ynlsd.oracle()), newOracle, "Oracle not set correctly");
+    }
+
+    function testSetStrategies() public {
+        IERC20[] memory newTokens = new IERC20[](2);
+        address[] memory newStrategies = new address[](2);
+        newTokens[0] = IERC20(chainAddresses.RETH_ADDRESS);
+        newTokens[1] = IERC20(chainAddresses.STETH_ADDRESS);
+        newStrategies[0] = address(new MockStrategy());
+        newStrategies[1] = address(new MockStrategy());
+        ynlsd.setStrategies(newTokens, newStrategies);
+        for(uint i = 0; i < newTokens.length; i++) {
+            assertEq(address(ynlsd.strategies(newTokens[i])), newStrategies[i], "Strategy not set correctly for token");
+        }
     }
 
     
     function testGetSharesForToken() public {
-        // Define the token and amount
-        // IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
-        // uint256 amount = 1000;
+        IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
+        uint256 amount = 1000;
 
-        // // Call the getSharesForToken function
-        // uint256 shares = ynlsd.convertToShares(token, amount);
+        // Call the getSharesForToken function
+        uint256 shares = ynlsd.convertToShares(token, amount);
+        // TODO to continue with it
+        // obtaining the amount from a price feed to do the calculation
 
-        // // Get the expected shares from the external view function
-        // uint256 expectedShares = ynlsd.getExpectedShares(token, amount);
-
-        // // Assert that the shares are as expected
-        // assertEq(shares, expectedShares);
     }
 }
