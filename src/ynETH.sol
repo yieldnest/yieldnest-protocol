@@ -40,6 +40,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
     error ValueOutOfBounds(uint value);
+    error TransfersPaused();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -69,6 +70,9 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
 
     uint public totalDepositedInPool;
 
+    mapping (address => bool) pauseWhiteList;
+    bool transfersPaused;
+
 
     /// @notice Configuration for contract initialization.
     struct Init {
@@ -78,6 +82,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         IRewardsDistributor rewardsDistributor;
         IWETH wETH;
         uint exchangeAdjustmentRate;
+        address[] pauseWhitelist;
     }
 
     constructor(
@@ -98,6 +103,9 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
+        transfersPaused = true; // transfers are initially paused
+
+        _addToPauseWhitelist(init.pauseWhitelist);
     }
 
     //--------------------------------------------------------------------------------------
@@ -208,6 +216,35 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         }
         exchangeAdjustmentRate = newRate;
         emit ExchangeAdjustmentRateUpdated(newRate);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  BOOTSTRAP TRANSFERS PAUSE  ------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    function _update(address from, address to, uint256 amount) internal virtual override {
+        // revert if transfers are paused, the from is not on the whitelist and
+        // it's neither a mint (from = 0) nor a burn (to = 0)
+        if (transfersPaused && !pauseWhiteList[from] && from != address(0) && to != address(0)) {
+            revert TransfersPaused();
+        }
+        super._update(from, to, amount);
+    }
+
+    /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
+    function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
+        transfersPaused = false;
+    }
+    
+    function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
+        _addToPauseWhitelist(whitelistedForTransfers);
+    }
+
+    function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
+        for (uint i = 0; i < whitelistedForTransfers.length; i++) {
+            pauseWhiteList[whitelistedForTransfers[i]] = true;
+        }
     }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------

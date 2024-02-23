@@ -9,7 +9,7 @@ import "./IStakingNode.sol";
 
 interface IStakingNodesManager {
 
-    struct DepositData {
+    struct ValidatorData {
         bytes publicKey;
         bytes signature;
         bytes32 depositDataRoot;
@@ -32,7 +32,7 @@ interface IStakingNodesManager {
 
     function registerValidators(
         bytes32 _depositRoot,
-        DepositData[] calldata _depositData
+        ValidatorData[] calldata _depositData
     ) external;
 }
 

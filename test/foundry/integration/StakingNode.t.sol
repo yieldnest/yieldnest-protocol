@@ -31,8 +31,8 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         uint nodeId = 0;
 
-        IStakingNodesManager.DepositData[] memory depositData = new IStakingNodesManager.DepositData[](1);
-        depositData[0] = IStakingNodesManager.DepositData({
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](1);
+        validatorData[0] = IStakingNodesManager.ValidatorData({
             publicKey: ZERO_PUBLIC_KEY,
             signature: ZERO_SIGNATURE,
             nodeId: nodeId,
@@ -41,14 +41,14 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-        for (uint i = 0; i < depositData.length; i++) {
-            uint amount = depositAmount / depositData.length;
-            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(depositData[i].publicKey, depositData[i].signature, withdrawalCredentials, amount);
-            depositData[i].depositDataRoot = depositDataRoot;
+        for (uint i = 0; i < validatorData.length; i++) {
+            uint amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
         }
         
         bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
-        stakingNodesManager.registerValidators(depositRoot, depositData);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint actualETHBalance = stakingNodeInstance.getETHBalance();
         assertEq(actualETHBalance, depositAmount, "ETH balance does not match expected value");
