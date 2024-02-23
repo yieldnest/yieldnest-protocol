@@ -27,15 +27,15 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
-    YieldNestOracle oracle;
+    YieldNestOracle public oracle;
     IStrategyManager public strategyManager;
 
     mapping(IERC20 => IStrategy) public strategies;
     mapping(IERC20 => uint) public depositedBalances;
 
-    IERC20[] tokens;
+    IERC20[] public tokens;
 
-    uint exchangeAdjustmentRate;
+    uint public exchangeAdjustmentRate;
 
     struct Init {
         IERC20[] tokens;
