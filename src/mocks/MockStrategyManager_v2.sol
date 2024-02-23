@@ -6,13 +6,30 @@ import "../interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
 
 contract MockStrategyManager {
 
+    constructor () {}
+
     function depositIntoStrategy(
         IStrategy strategy, 
         IERC20 token, 
         uint256 amount
-        ) external pure returns (uint256 shares) {
-        revert("MockStrategyManager: depositIntoStrategy not implemented");
+        ) external returns (uint256 shares) {
+
+        // transfer tokens from the sender to the strategy
+        token.transferFrom(msg.sender, address(strategy), amount);
+
+        // deposit the assets into the specified strategy and get the equivalent amount of shares in that strategy
+        shares = strategy.deposit(token, amount);
+
+        // add the returned shares to the depositor's existing shares for this strategy
+        // _addShares(depositor, strategy, shares);
+
+        emit Deposit(msg.sender, token, strategy, shares);
+        return shares;
     }
+
+    event Deposit(
+        address depositor, IERC20 token, IStrategy strategy, uint256 shares
+    );
 
     function depositIntoStrategyWithSignature(
         IStrategy strategy,
