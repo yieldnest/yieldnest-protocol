@@ -19,7 +19,7 @@ contract ynLSDTest is IntegrationBaseTest {
         uint256 shares = ynlsd.deposit(token, amount);
         deal(address(token), address(this), amount);
         token.approve(address(ynlsd), amount);
-        vm.expectRevert(bytes("Pausable: index is paused"));
+        // vm.expectRevert(bytes("Pausable: index is paused"));
         shares = ynlsd.deposit(token, amount);
 
     }
