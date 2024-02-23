@@ -3,6 +3,7 @@ import "./IntegrationBaseTest.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "../../../src/mocks/MockERC20.sol";
 
 contract ynLSDTest is IntegrationBaseTest {
     ContractAddresses contractAddresses = new ContractAddresses();
@@ -16,6 +17,10 @@ contract ynLSDTest is IntegrationBaseTest {
         
         vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
         uint256 shares = ynlsd.deposit(token, amount);
+        deal(address(token), address(this), amount);
+        token.approve(address(ynlsd), amount);
+        vm.expectRevert(bytes("Pausable: index is paused"));
+        shares = ynlsd.deposit(token, amount);
 
     }
 
