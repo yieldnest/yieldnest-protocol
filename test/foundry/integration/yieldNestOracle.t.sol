@@ -9,14 +9,19 @@ contract ynLSDTest is IntegrationBaseTest {
     ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
 
-    function testDeposit() public {
+    function testSetAsset() public {
         IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
         uint256 amount = 1000;
         uint256 expectedAmount = ynlsd.convertToShares(token, amount);
-        
-        vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
-        uint256 shares = ynlsd.deposit(token, amount);
 
+        vm.expectRevert(bytes("ZeroAge"));
+        yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, chainAddresses.RETH_FEED_ADDRESS, 0); // one hour
+        vm.expectRevert(bytes("ZeroAddress"));
+        yieldNestOracle.setAssetPriceFeed(address(0), chainAddresses.RETH_FEED_ADDRESS, 0); // one hour
+        vm.expectRevert(bytes("ZeroAddress"));
+        yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, address(0), 0); // one hour
+        vm.expectRevert(bytes("ZeroAddress"));
+        yieldNestOracle.setAssetPriceFeed(address(0), address(0), 0); // one hour
     }
 
     
