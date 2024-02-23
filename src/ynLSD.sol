@@ -11,14 +11,19 @@ import "./YieldNestOracle.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 interface ynLSDEvents {
-    event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
+    event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares, uint256 eigenShares);
 }
 
 contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, ynLSDEvents {
     using SafeERC20 for IERC20;
 
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+
+
     error UnsupportedToken(IERC20 token);
     error ZeroAmount();
+    error ZeroAddress();
+    error LengthMismatch(uint256 firstLength, uint256 secondLength);
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
@@ -41,9 +46,10 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     }
 
 
-    function initialize(Init memory init) public initializer {
+    function initialize(Init memory init) external initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
+        _grantRole(ADMIN_ROLE, msg.sender);
 
         for (uint i = 0; i < init.tokens.length; i++) {
             tokens.push(init.tokens[i]);
@@ -116,7 +122,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
             token.approve(address(strategyManager), amount);
         }
 
-        strategyManager.depositIntoStrategy(
+        uint eigenShares = strategyManager.depositIntoStrategy(
                 strategy,
                 token,
                 amount
@@ -134,7 +140,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         // Mint the calculated shares to the receiver
         _mint(receiver, shares);
 
-        emit Deposit(msg.sender, receiver, amount, shares);
+        emit Deposit(msg.sender, receiver, amount, shares, eigenShares);
     }
 
 
@@ -158,5 +164,24 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         );
     }
 
+    // ==================================== CONTRACT MANAGEMENT =========================================
+
+    function setStrategyManager(address _strategyManager) external onlyRole(ADMIN_ROLE) {
+        if(_strategyManager == address(0)) revert ZeroAddress();
+        strategyManager = IStrategyManager(_strategyManager);
+    }
+
+    function setOracle(address _oracle) external onlyRole(ADMIN_ROLE) {
+        if(_oracle == address(0)) revert ZeroAddress();
+        oracle = YieldNestOracle(_oracle);
+    }
+
+    function setStrategies(IERC20[] memory _tokens, address[] memory _strategies) external onlyRole(ADMIN_ROLE) {
+        if(_tokens.length != _strategies.length) revert LengthMismatch(_tokens.length, _strategies.length);
+        for (uint i = 0; i < _tokens.length; i++) {
+            if(address(_tokens[i]) == address(0) || _strategies[i] == address(0)) revert ZeroAddress();
+            strategies[_tokens[i]] = IStrategy(_strategies[i]);
+        }
+    }
 
 }
