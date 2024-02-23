@@ -43,6 +43,8 @@ contract YieldNestOracle is AccessControlUpgradeable {
     }
 
     function _setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) internal {
+        require(priceFeedAddress != address(0) && asset != address(0), "ZeroAddress");
+        require(maxAge > 0, "ZeroAge");
         assetPriceFeeds[asset] = AssetPriceFeed(AggregatorV3Interface(priceFeedAddress), maxAge);
     }
 

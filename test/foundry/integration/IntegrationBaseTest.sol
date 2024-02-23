@@ -161,7 +161,7 @@ contract IntegrationBaseTest is Test {
             assets: assetsAddresses,
             priceFeedAddresses: priceFeeds,
             maxAges: maxAges,
-            admin: defaultSigner,
+            admin: address(this),
             oracleManager: address(this)
         });
         

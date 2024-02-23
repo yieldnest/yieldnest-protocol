@@ -137,8 +137,8 @@ contract DeployYieldNest is BaseScript {
             assets: assetsAddresses,
             priceFeedAddresses: priceFeeds,
             maxAges: maxAges,
-            admin: defaultSigner,
-            oracleManager: address(this)
+            admin: ynethAdminAddress,
+            oracleManager: ynethAdminAddress
         });
         yieldNestOracle.initialize(oracleInit);
 
