@@ -7,6 +7,8 @@ import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
 import "../../src/external/WETH.sol";
 import "../../src/ynETH.sol";
+import "../../src/ynLSD.sol";
+import "../../src/YieldNestOracle.sol";
 import "forge-std/Script.sol";
 
 import "forge-std/StdJson.sol";
@@ -23,6 +25,8 @@ abstract contract BaseScript is Script {
         RewardsReceiver executionLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
+        ynLSD ynLSD;
+        YieldNestOracle yieldNestOracle;
     }
 
     function getDeploymentFile() internal view returns (string memory) {
@@ -39,6 +43,8 @@ abstract contract BaseScript is Script {
         vm.serializeAddress(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
         vm.serializeAddress(json, "rewardsDistributor", address(deployment.rewardsDistributor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
+        vm.serializeAddress(json, "ynLSD", address(deployment.ynLSD));
+        vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
 
         string memory finalJson = vm.serializeString(json, "object", "dummy");
         vm.writeJson(finalJson, getDeploymentFile());
@@ -54,6 +60,8 @@ abstract contract BaseScript is Script {
         deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".executionLayerReceiver")));
         deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".rewardsDistributor")));
         deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
+        deployment.ynLSD = ynLSD(payable(jsonContent.readAddress(".ynLSD")));
+        deployment.yieldNestOracle = YieldNestOracle(payable(jsonContent.readAddress(".yieldNestOracle")));
 
         return deployment;
     }
