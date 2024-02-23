@@ -1,7 +1,7 @@
 import "./IntegrationBaseTest.sol";
 import "forge-std/console.sol";
 import "../../../src/interfaces/IStakingNode.sol";
-import "../../../src/mocks/mainnet/MainnetEigenPodMock.sol";
+import "../mocks/mainnet/MainnetEigenPodMock.sol";
 import "../../../src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 

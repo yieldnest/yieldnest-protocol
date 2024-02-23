@@ -1,8 +1,8 @@
 pragma solidity >=0.8.12;
 
-import { BeaconChainProofs } from "../../interfaces/eigenlayer-init-mainnet/BeaconChainProofs.sol";
-import "../../interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "../../interfaces/eigenlayer-init-mainnet/IEigenPod.sol";
+import { BeaconChainProofs } from "../../../../src/interfaces/eigenlayer-init-mainnet/BeaconChainProofs.sol";
+import "../../../../src/interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
+import "../../../../src/interfaces/eigenlayer-init-mainnet/IEigenPod.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 

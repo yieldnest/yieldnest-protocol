@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./IntegrationBaseTest.sol";
 import "forge-std/console.sol";
 import "../../../src/StakingNodesManager.sol";
-import "../../../src/mocks/MockStakingNode.sol";
+import "../mocks/MockStakingNode.sol";
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
 
