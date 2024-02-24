@@ -36,7 +36,7 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
 
     /// @notice Transfers the given amount of ETH to an address.
     /// @dev Only called by the withdrawer.
-    function transfer(address payable to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
+    function transferETH(address payable to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
         require(address(this).balance >= amount, "Insufficient balance");
         (bool success, ) = to.call{value: amount}("");
         require(success, "Transfer failed");

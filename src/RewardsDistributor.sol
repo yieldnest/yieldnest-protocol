@@ -67,7 +67,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
 
         // Aggregate returns in this contract
         address payable self = payable(address(this));
-        executionLayerReceiver.transfer(self, elRewards);
+        executionLayerReceiver.transferETH(self, elRewards);
 
         uint256 netRewards = totalRewards - fees;
         if (netRewards > 0) {
