@@ -141,10 +141,10 @@ contract StakingNodesManager is
 
     function registerValidators(
         bytes32 _depositRoot,
-        ValidatorData[] calldata _validators
+        ValidatorData[] calldata newValidators
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
-        if (validators.length == 0) {
+        if (newValidators.length == 0) {
             return;
         }
 
@@ -157,15 +157,15 @@ contract StakingNodesManager is
             }
         }
 
-        validateDepositDataAllocation(_validators);
+        validateDepositDataAllocation(newValidators);
 
-        uint totalDepositAmount = _validators.length * DEFAULT_VALIDATOR_STAKE;
+        uint totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        uint validatorsLength = _validators.length;
+        uint validatorsLength = newValidators.length;
         for (uint i = 0; i < validatorsLength; i++) {
 
-            ValidatorData calldata validator = _validators[i];
+            ValidatorData calldata validator = newValidators[i];
             if (usedValidators[validator.publicKey]) {
                 revert ValidatorAlreadyUsed(validator.publicKey);
             }
@@ -180,9 +180,9 @@ contract StakingNodesManager is
      * @dev This function checks if the proposed allocation of deposits (represented by `_depositData`) across the nodes would lead to a more
      * equitable distribution of validator stakes. It calculates the current and new average balances of nodes, and ensures that for each node,
      * the absolute difference between its balance and the average balance does not increase as a result of the new deposits
-     * @param _validators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
+     * @param newValidators An array of `ValidatorData` structures representing news validator stake to be allocated across the nodes.
      */
-    function validateDepositDataAllocation(ValidatorData[] calldata _validators) public view {
+    function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
         uint[] memory nodeBalances = new uint[](nodes.length);
         uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
         uint totalBalance = 0;
@@ -198,8 +198,8 @@ contract StakingNodesManager is
         uint averageBalance = totalBalance / nodes.length;
 
         uint newTotalBalance = totalBalance;
-        for (uint i = 0; i < _validators.length; i++) {
-            uint nodeId = _validators[i].nodeId;
+        for (uint i = 0; i < newValidators.length; i++) {
+            uint nodeId = newValidators[i].nodeId;
             newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
             newTotalBalance += DEFAULT_VALIDATOR_STAKE;
         }
