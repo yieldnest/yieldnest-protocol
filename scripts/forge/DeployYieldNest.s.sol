@@ -101,13 +101,17 @@ contract DeployYieldNest is BaseScript {
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
 
         // Initialize ynETH with example parameters
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = pauserAddress;
+
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: ynethAdminAddress,
             pauser: pauserAddress,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             wETH: IWETH(address(weth)),  // Deployed WETH address
-            exchangeAdjustmentRate: startingExchangeAdjustmentRate
+            exchangeAdjustmentRate: startingExchangeAdjustmentRate,
+            pauseWhitelist: pauseWhitelist
         });
         yneth.initialize(ynethInit);
 
