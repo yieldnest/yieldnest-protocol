@@ -10,6 +10,7 @@ lerna-debug.log*
 # Coverage directory used by tools like istanbul
 coverage
 *.lcov
+lcov.info
 
 
 # dotenv environment variable files
@@ -22,9 +23,12 @@ coverage
 # Foundry
 out
 cache_forge
+broadcast
 
 #Node
 node_modules
 package-lock.json
 
 
+# MacOS
+.DS_Store
