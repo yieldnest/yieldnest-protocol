@@ -5,7 +5,6 @@
     "no-inline-assembly": "off",
     "reason-string": ["warn",{"maxLength":160}],
     "func-visibility": ["warn",{"ignoreConstructors":true}],
-    "explicit-types": ["warn","explicit"],
     "quotes": ["warn","double"],
     "const-name-snakecase": "off",
     "not-rely-on-time": "off",
@@ -14,9 +13,7 @@
     "func-name-mixedcase": "off",
     "var-name-mixedcase": "off",
     "compiler-version": "off",
-    "custom-errors": "off",
     "no-global-import": "off",
-    "immutable-vars-naming": "off",
     "no-console": "warn"
   }
 }
