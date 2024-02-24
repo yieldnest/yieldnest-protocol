@@ -18,20 +18,20 @@ contract UpgradesTest is IntegrationBaseTest {
     function testUpgradeEachTransparentProxyUpgradeableContract() public {
 
         address newImplementation = address(new ynETH()); 
-        vm.prank(proxyAdmin);
+        vm.prank(proxyAdminOwner);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newImplementation, "");
 
         address currentImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneth));
         assertEq(currentImplementation, newImplementation);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        vm.prank(proxyAdmin);
+        vm.prank(proxyAdminOwner);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
         address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
         assertEq(currentStakingNodesManagerImpl, newStakingNodesManagerImpl);
 
         address newRewardsDistributorImpl = address(new RewardsDistributor());
-        vm.prank(proxyAdmin);
+        vm.prank(proxyAdminOwner);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(rewardsDistributor))).upgradeAndCall(ITransparentUpgradeableProxy(address(rewardsDistributor)), newRewardsDistributorImpl, "");
         address currentRewardsDistributorImpl = getTransparentUpgradeableProxyImplementationAddress(address(rewardsDistributor));
         assertEq(currentRewardsDistributorImpl, newRewardsDistributorImpl);
@@ -58,7 +58,7 @@ contract UpgradesTest is IntegrationBaseTest {
         nETH.mint(address(this), 100000 ether);
 
         address newImplementation = address(new MockYnETHERC4626()); 
-        vm.prank(proxyAdmin);
+        vm.prank(proxyAdminOwner);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth)))
             .upgradeAndCall(ITransparentUpgradeableProxy(
                 address(yneth)),

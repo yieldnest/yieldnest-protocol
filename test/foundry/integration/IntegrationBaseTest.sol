@@ -22,7 +22,7 @@ import "../../../scripts/forge/Utils.sol";
 
 
 contract IntegrationBaseTest is Test, Utils {
-    address public proxyAdmin;
+    address public proxyAdminOwner;
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
@@ -55,7 +55,7 @@ contract IntegrationBaseTest is Test, Utils {
 
         address defaultSigner = vm.addr(1); // Using the default signer address from foundry's vm
 
-        proxyAdmin = vm.addr(2);
+        proxyAdminOwner = vm.addr(2);
         feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
 
         transferEnabledEOA = vm.addr(3);
@@ -72,12 +72,12 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
-        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdmin), "");
+        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdminOwner), "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
 
         // Deploy proxies
-        ynethProxy = new TransparentUpgradeableProxy(address(yneth), address(proxyAdmin), "");
-        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), address(proxyAdmin), "");
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), address(proxyAdminOwner), "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), address(proxyAdminOwner), "");
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
