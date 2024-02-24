@@ -82,12 +82,14 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         uint totalAssetsControlled = yneth.totalAssets();
         assertEq(totalAssetsControlled, depositAmount, "Total assets controlled does not match expected value");
     }
+
     function testUpgradeStakingNodeImplementation() public {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         address eigenPodAddress = address(stakingNodeInstance.eigenPod());
 
         MockStakingNode mockStakingNode = new MockStakingNode();
-        stakingNodesManager.registerStakingNodeImplementationContract(payable(mockStakingNode));
+        bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
         address upgradedImplementationAddress = stakingNodesManager.implementationContract();
         assertEq(upgradedImplementationAddress, payable(mockStakingNode));
@@ -98,5 +100,18 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         MockStakingNode mockStakingNodeInstance = MockStakingNode(payable(address(stakingNodeInstance)));
         uint redundantFunctionResult = mockStakingNodeInstance.redundantFunction();
         assertEq(redundantFunctionResult, 1234567);
+
+        assertEq(mockStakingNodeInstance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
+
+    function testFailRegisterStakingNodeImplementationTwice() public {
+        address initialImplementation = address(new MockStakingNode());
+        stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
+
+        address newImplementation = address(new MockStakingNode());
+        vm.expectRevert("StakingNodesManager: Implementation already exists");
+        stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
+    }
+
+
 }

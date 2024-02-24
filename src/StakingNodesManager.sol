@@ -38,6 +38,7 @@ contract StakingNodesManager is
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
     error DirectETHDepositsNotAllowed();
+    error InvalidNodeId(uint nodeId);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -200,6 +201,10 @@ contract StakingNodesManager is
         uint newTotalBalance = totalBalance;
         for (uint i = 0; i < validators.length; i++) {
             uint nodeId = validators[i].nodeId;
+
+            if (nodeId >= nodes.length) {
+                revert InvalidNodeId(nodeId);
+            }
             newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
             newTotalBalance += DEFAULT_VALIDATOR_STAKE;
         }
@@ -293,14 +298,29 @@ contract StakingNodesManager is
 
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
 
-        require(_implementationContract != address(0), "No zero addresses");
+        require(_implementationContract != address(0), "StakingNodesManager: No zero address");
+        require(implementationContract == address(0), "StakingNodesManager: Implementation already exists");
 
-        if (implementationContract == address(0)) {
-            upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
-        } else {
-           upgradableBeacon.upgradeTo(_implementationContract);
-        }
+        upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
         implementationContract = _implementationContract;
+    }
+
+    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
+
+        require(implementationContract != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
+        require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
+        upgradableBeacon.upgradeTo(_implementationContract);
+        implementationContract = _implementationContract;
+
+        if (callData.length == 0) {
+            // no function to initialize with
+            return;
+        }
+        // reinitialize all nodes
+        for (uint i = 0; i < nodes.length; i++) {
+            (bool success, ) = address(nodes[i]).call(callData);
+            require(success, "StakingNodesManager: Failed to call method on upgraded node");
+        }
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
