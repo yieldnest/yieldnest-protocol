@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../../src/mocks/MockStrategyManager_v2.sol";
 import "../../../src/mocks/MockStrategy.sol";
+import "../../../src/interfaces/chainlink/AggregatorV3Interface.sol";
 // import "../../../src/mocks/MockERC20.sol";
 
 contract ynLSDTest is IntegrationBaseTest {
@@ -47,6 +48,28 @@ contract ynLSDTest is IntegrationBaseTest {
         shares = ynlsd.deposit(token, amount);
 
     }
+
+    function testDepositSTETH() public {
+        IERC20 token = IERC20(chainAddresses.STETH_ADDRESS);
+        uint256 amount = 1000;
+        uint256 expectedAmount = ynlsd.convertToShares(token, amount);
+        
+        vm.expectRevert(bytes("ALLOWANCE_EXCEEDED"));
+        uint256 shares = ynlsd.deposit(token, amount);
+        address destination = address(this);
+        // Obtain STETH from the biggest holder, deal does not work
+        vm.startPrank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+        token.transfer(destination, amount+1);
+        vm.stopPrank();
+        uint balance = token.balanceOf(address(this));
+        emit log_uint(balance);
+        assertEq(balance, amount, "Amount not received");
+        token.approve(address(ynlsd), amount);
+        vm.expectRevert(bytes("Pausable: index is paused"));
+        shares = ynlsd.deposit(token, amount);
+    }
+
+    
     function testSetStrategyManager() public {
         address newStrategyManager = address(new MockStrategyManager());
         ynlsd.setStrategyManager(newStrategyManager);
@@ -76,11 +99,18 @@ contract ynLSDTest is IntegrationBaseTest {
     function testGetSharesForToken() public {
         IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
         uint256 amount = 1000;
-
+        AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.RETH_FEED_ADDRESS);
         // Call the getSharesForToken function
         uint256 shares = ynlsd.convertToShares(token, amount);
-        // TODO to continue with it
-        // obtaining the amount from a price feed to do the calculation
+        (, int256 price,, uint256 timeStamp,) = assetPriceFeed.latestRoundData();
 
+        assertEq(ynlsd.totalAssets(), 0);
+        assertEq(ynlsd.totalSupply(), 0);
+
+        assertEq(timeStamp>0, true, "Zero timestamp");
+        assertEq(price>0, true, "Zero price");
+        assertEq(block.timestamp - timeStamp < 86400, true, "Price stale for more than 24 hours");
+        assertEq(shares, (uint256(price)*amount)/1e18, "Total shares don't match");
+        
     }
 }
