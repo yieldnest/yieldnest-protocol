@@ -47,7 +47,7 @@ contract StakingNodeTest is IntegrationBaseTest {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
         
-        bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint actualETHBalance = stakingNodeInstance.getETHBalance();

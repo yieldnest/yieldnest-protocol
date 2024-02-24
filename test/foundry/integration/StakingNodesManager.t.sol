@@ -74,9 +74,10 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
             uint amount = depositAmount / validatorData.length;
             bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
             validatorData[i].depositDataRoot = depositDataRoot;
+
         }
         
-        bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();

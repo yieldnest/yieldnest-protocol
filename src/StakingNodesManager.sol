@@ -151,11 +151,9 @@ contract StakingNodesManager is
 
         // check deposit root matches the deposit contract deposit root
         // to prevent front-running from rogue operators 
-        if (_depositRoot != 0x0000000000000000000000000000000000000000000000000000000000000000) {
-            bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
-            if (_depositRoot != onchainDepositRoot) {
-                revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
-            }
+        bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
+        if (_depositRoot != onchainDepositRoot) {
+            revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
         }
 
         validateDepositDataAllocation(validators);
@@ -298,7 +296,7 @@ contract StakingNodesManager is
 
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
 
-        require(_implementationContract != address(0), "StakingNodesManager: No zero address");
+        require(_implementationContract != address(0), "StakingNodesManager:No zero address");
         require(implementationContract == address(0), "StakingNodesManager: Implementation already exists");
 
         upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     

@@ -38,7 +38,7 @@ contract IntegrationBaseTest is Test, Utils {
     IDelegationManager public delegationManager;
     IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
-    IDepositContract public depositContract;
+    IDepositContract public depositContractEth2;
 
     address public transferEnabledEOA;
 
@@ -103,7 +103,7 @@ contract IntegrationBaseTest is Test, Utils {
         delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
         delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
-        depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
+        depositContractEth2 = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: address(this),
@@ -111,7 +111,7 @@ contract IntegrationBaseTest is Test, Utils {
             stakingNodesAdmin: address(this),
             validatorManager: address(this),
             maxNodeCount: 10,
-            depositContract: depositContract,
+            depositContract: depositContractEth2,
             ynETH: IynETH(address(yneth)),
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
