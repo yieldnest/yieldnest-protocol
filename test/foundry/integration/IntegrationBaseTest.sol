@@ -18,9 +18,10 @@ import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../ContractAddresses.sol";
 import "forge-std/console.sol";
+import "../../../scripts/forge/Utils.sol";
 
 
-contract IntegrationBaseTest is Test {
+contract IntegrationBaseTest is Test, Utils {
     address public proxyAdmin;
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
