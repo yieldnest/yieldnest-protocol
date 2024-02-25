@@ -69,7 +69,7 @@ contract StakingNodeM2 is StakingNode {
             // TODO: check if this is correct
             uint64 validatorBalanceGwei = BeaconChainProofsM2.getEffectiveBalanceGwei(validatorFields[i]);
 
-            totalETHNotRestaked -= (validatorBalanceGwei * 1e9);
+            allocatedETH -= (validatorBalanceGwei * 1e9);
         }
     }
 

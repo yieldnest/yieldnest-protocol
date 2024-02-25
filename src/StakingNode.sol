@@ -35,7 +35,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     uint public nodeId;
 
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
-    uint256 public totalETHNotRestaked;
+    uint256 public allocatedETH;
 
 
     /// @dev Allows only a whitelisted address to configure the contract
@@ -109,7 +109,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
     /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
     ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public {
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public onlyAdmin {
 
         // only claim if we have active unclaimed withdrawals
 
@@ -153,11 +153,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 proofs[i],
                 validatorFields[i]
             );
-
-            // Decrement the staked but not verified ETH
-            uint64 validatorBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex[i], proofs[i].balanceRoot);
-             
-            totalETHNotRestaked -= (validatorBalanceGwei * 1e9);
         }
     }
 
@@ -167,7 +162,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH( uint amount) external payable onlyStakingNodesManager {
-        totalETHNotRestaked += amount;
+        allocatedETH += amount;
     }
 
     function getETHBalance() public view returns (uint) {
@@ -178,7 +173,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // NOTE: when verifyWithdrawalCredentials is enabled
         // the eigenpod will be credited with shares measured as:
         // strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
-        return totalETHNotRestaked;
+        return allocatedETH;
     }
 
     /**
