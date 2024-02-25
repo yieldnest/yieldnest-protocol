@@ -35,7 +35,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
@@ -73,6 +72,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     mapping (address => bool) pauseWhiteList;
     bool transfersPaused;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
+
 
     /// @notice Configuration for contract initialization.
     struct Init {
@@ -106,6 +109,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         transfersPaused = true; // transfers are initially paused
 
         _addToPauseWhitelist(init.pauseWhitelist);
+    }
+
+    receive() external payable {
+        revert("ynETH: Cannot receive ETH directly");
     }
 
     //--------------------------------------------------------------------------------------
@@ -184,10 +191,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------
     //--------------------------------------------------------------------------------------
-
-    receive() external payable {
-        revert("ynETH: Cannot receive ETH directly");
-    }
 
     function receiveRewards() external payable {
         require(msg.sender == address(rewardsDistributor), "Caller is not the stakingNodesManager");

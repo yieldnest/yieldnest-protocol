@@ -32,7 +32,10 @@ contract StakingNodesManager is
     ReentrancyGuardUpgradeable,
     StakingNodesManagerEvents {
 
-    // Errors.
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
@@ -46,7 +49,6 @@ contract StakingNodesManager is
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
     /// @notice  Role is allowed to set system parameters
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
 
@@ -56,8 +58,15 @@ contract StakingNodesManager is
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
@@ -93,8 +102,8 @@ contract StakingNodesManager is
 
     mapping(bytes pubkey => bool) usedValidators;
 
-     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
     /// @notice Configuration for contract initialization.
@@ -136,10 +145,6 @@ contract StakingNodesManager is
     receive() external payable {
         require(msg.sender == address(ynETH));
     }
-
-    // fallback() external payable {
-    //     revert DirectETHDepositsNotAllowed();
-    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VALIDATOR REGISTRATION  --------------------------

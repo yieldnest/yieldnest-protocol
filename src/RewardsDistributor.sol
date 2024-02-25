@@ -16,12 +16,24 @@ interface RewardsDistributorEvents {
 
 contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsDistributorEvents {
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error InvalidConfiguration();
     error NotOracle();
     error Paused();
     error ZeroAddress();
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IynETH ynETH;
 
@@ -35,6 +47,10 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
 
     /// @notice The protocol fees in basis points (1/10000).
     uint16 public feesBasisPoints;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
     /// @notice Configuration for contract initialization.
     struct Init {
@@ -56,6 +72,12 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         // Default fees are 10%
         feesBasisPoints = 1_000;
     }
+
+    receive() external payable {}
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  REWARDS PROCESSING  ------------------------------
+    //--------------------------------------------------------------------------------------
 
     function processRewards()
         external
@@ -90,16 +112,9 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         }
     }
 
-    receive() external payable {}
-
-    /// @notice Ensures that the given address is not the zero address.
-    /// @param addr The address to check.
-    modifier notZeroAddress(address addr) {
-        if (addr == address(0)) {
-            revert ZeroAddress();
-        }
-        _;
-    }
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  SETTERS  -----------------------------------------
+    //--------------------------------------------------------------------------------------
 
     /// @notice Sets the fees receiver wallet for the protocol.
     /// @param newReceiver The new fees receiver wallet.
@@ -117,4 +132,14 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         _;
         assert(address(this).balance == before);
     }
+
+    /// @notice Ensures that the given address is not the zero address.
+    /// @param addr The address to check.
+    modifier notZeroAddress(address addr) {
+        if (addr == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
+    }
+
 }

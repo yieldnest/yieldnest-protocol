@@ -20,7 +20,10 @@ interface StakingNodeEvents {
 
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
 
-    // Errors.
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error NotStakingNodesAdmin();
     error StrategyIndexMismatch(address strategy, uint index);
     error ETHDepositorNotDelayedWithdrawalRouter();
@@ -28,8 +31,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     IStrategy public constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
     uint256 public constant GWEI_TO_WEI = 1e9;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IStakingNodesManager public stakingNodesManager;
     IStrategyManager public strategyManager;
@@ -54,7 +65,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
     receive() external payable nonReentrant {
@@ -102,7 +113,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  EXPEDITED WITHDRAWAL   --------------------
+    //----------------------------------  EXPEDITED WITHDRAWAL   ---------------------------
     //--------------------------------------------------------------------------------------
 
      /**
@@ -134,7 +145,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
+    //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
 
     function delegate(address operator) public virtual onlyAdmin {
@@ -188,6 +199,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
         return allocatedETH;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  BEACON IMPLEMENTATION  ---------------------------
+    //--------------------------------------------------------------------------------------
 
     /**
       Beacons slot value is defined here:
