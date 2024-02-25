@@ -1,3 +1,5 @@
+pragma solidity ^0.8.24;
+
 import {IDelegationManager as IDelegationManagerM2 } from "./interfaces/eigenlayer/IDelegationManager.sol";
 import {IEigenPod as IEigenPodM2 } from "./interfaces/eigenlayer/IEigenPod.sol";
 import {ISignatureUtils} from "./interfaces/eigenlayer/ISignatureUtils.sol";

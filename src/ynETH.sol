@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
 import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";

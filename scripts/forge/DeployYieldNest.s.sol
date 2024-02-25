@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
+
 import "forge-std/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";

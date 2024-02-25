@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IDepositPool} from "../../../src/interfaces/IDepositPool.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
