@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
-import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "./interfaces/IStakingNode.sol";
-import "./interfaces/IStakingNodesManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/BeaconChainProofs.sol";
-import "forge-std/console.sol";
-
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+import {IEigenPodManager} from "./external/eigenlayer/v1/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "./external/eigenlayer/v1/interfaces/IEigenPod.sol";
+import {IDelegationManager} from "./external/eigenlayer/v1/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v1/interfaces/IDelayedWithdrawalRouter.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v1/interfaces/IStrategyManager.sol";
+import {BeaconChainProofs} from "./external/eigenlayer/v1/BeaconChainProofs.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   

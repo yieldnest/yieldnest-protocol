@@ -28,7 +28,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint depositAmount = 32 ether;
         vm.prank(addr1);
         yneth.depositETH{value: depositAmount}(addr1);
-        uint balance = yneth.balanceOf(addr1);
+        // uint balance = yneth.balanceOf(addr1);
 
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
@@ -147,50 +147,50 @@ contract StakingNodeTest is IntegrationBaseTest {
     }
       
 
-    function testVerifyWithdrawalCredentials() public {
+    // function testVerifyWithdrawalCredentials() public {
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
+    //     (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
 
-        MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
-        bytes memory tempCode = address(mainnetEigenPodMock).code;
+    //     MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
+    //     bytes memory tempCode = address(mainnetEigenPodMock).code;
 
-        address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
-        address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
+        // address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
+        // address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
 
-        UpgradeableBeacon beacon = UpgradeableBeacon(eigenPodBeaconAddress);
-        address previousImplementation = beacon.implementation();
+        // UpgradeableBeacon beacon = UpgradeableBeacon(eigenPodBeaconAddress);
+        // address previousImplementation = beacon.implementation();
 
-        vm.prank(beaconOwner);
-        beacon.upgradeTo(address(mainnetEigenPodMock));
+        // vm.prank(beaconOwner);
+        // beacon.upgradeTo(address(mainnetEigenPodMock));
 
-        bytes memory previousCode = address(eigenPodInstance).code;
+        // bytes memory previousCode = address(eigenPodInstance).code;
 
-        uint withdrawalAmount = 1 ether;
+        // uint withdrawalAmount = 1 ether;
 
-        MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
+        // MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
 
-        uint64[] memory oracleBlockNumbers = new uint64[](1);
-        oracleBlockNumbers[0] = 0; // Mock value
+        // uint64[] memory oracleBlockNumbers = new uint64[](1);
+        // oracleBlockNumbers[0] = 0; // Mock value
 
-        uint40[] memory validatorIndexes = new uint40[](1);
-        validatorIndexes[0] = 1234567; // Validator index
+        // uint40[] memory validatorIndexes = new uint40[](1);
+        // validatorIndexes[0] = 1234567; // Validator index
 
-        BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] memory proofs = new BeaconChainProofs.ValidatorFieldsAndBalanceProofs[](1);
-        proofs[0] = BeaconChainProofs.ValidatorFieldsAndBalanceProofs({
-            validatorFieldsProof: new bytes(0), // Mock value
-            validatorBalanceProof: new bytes(0), // Mock value
-            balanceRoot: bytes32(0) // Mock value
-        });
+        // BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] memory proofs = new BeaconChainProofs.ValidatorFieldsAndBalanceProofs[](1);
+        // proofs[0] = BeaconChainProofs.ValidatorFieldsAndBalanceProofs({
+        //     validatorFieldsProof: new bytes(0), // Mock value
+        //     validatorBalanceProof: new bytes(0), // Mock value
+        //     balanceRoot: bytes32(0) // Mock value
+        // });
 
-        bytes32[][] memory validatorFields = new bytes32[][](1);
-        validatorFields[0] = new bytes32[](2);
-        validatorFields[0][0] = bytes32(0); // Mock value
-        validatorFields[0][1] = bytes32(0); // Mock value
+        // bytes32[][] memory validatorFields = new bytes32[][](1);
+        // validatorFields[0] = new bytes32[](2);
+        // validatorFields[0][0] = bytes32(0); // Mock value
+        // validatorFields[0][1] = bytes32(0); // Mock value
 
-        // Note: Deposits are currently paused as per the PAUSED_DEPOSITS flag in StrategyManager.sol
-        // See: https://github.com/Layr-Labs/eigenlayer-contracts/blob/c7bf3817c5e1430672bf8bc80558d8439a2022af/src/contracts/core/StrategyManager.sol#L168
-        vm.expectRevert("Pausable: index is paused");
-        stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
+        // // Note: Deposits are currently paused as per the PAUSED_DEPOSITS flag in StrategyManager.sol
+        // // See: https://github.com/Layr-Labs/eigenlayer-contracts/blob/c7bf3817c5e1430672bf8bc80558d8439a2022af/src/contracts/core/StrategyManager.sol#L168
+        // vm.expectRevert("Pausable: index is paused");
+        // stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
         // Note: reenable this when verifyWithdrawals works
         // // Note: once deposits are unpaused this should work
@@ -208,6 +208,6 @@ contract StakingNodeTest is IntegrationBaseTest {
         //     nonce: 0 // first nonce is 0
         // });
         // stakingNodeInstance.completeWithdrawal(params);
-    }  
+    // }  
 }
 

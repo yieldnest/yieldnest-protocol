@@ -8,12 +8,12 @@ import {IRewardsDistributor} from "../../../src/interfaces/IRewardsDistributor.s
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 
 import {IynETH} from "../../../src/interfaces/IynETH.sol";
-import {IDepositContract} from "../../../src/interfaces/IDepositContract.sol";
+import {IDepositContract} from "../../../src/external/ethereum/IDepositContract.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../../../src/interfaces/IOracle.sol";
-import "../../../src/interfaces/IWETH.sol";
+import "../../../src/external/tokens/IWETH.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "forge-std/console.sol";
 

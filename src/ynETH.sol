@@ -1,34 +1,20 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IDepositPool} from "./interfaces/IDepositPool.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
-import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-
-import {IynETH} from "./interfaces/IynETH.sol";
-import {IDepositContract} from "./interfaces/IDepositContract.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./interfaces/IOracle.sol";
-import "./interfaces/IWETH.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "forge-std/console.sol";
-
-interface StakingEvents {
-    /// @notice Emitted when a user stakes ETH and receives ynETH.
-    /// @param staker The address of the user staking ETH.
-    /// @param ethAmount The amount of ETH staked.
-    /// @param ynETHAmount The amount of ynETH received.
-    event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
-    event DepositETHPausedUpdated(bool isPaused);
-    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-    event ExchangeAdjustmentRateUpdated(uint256 newRate);
-}
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
+import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {IWETH} from "./external/tokens/IWETH.sol";
  
-contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEvents {
+contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {
 
 
     //--------------------------------------------------------------------------------------
@@ -122,7 +108,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     function depositETH(address receiver) public payable returns (uint shares) {
 
         if (isDepositETHPaused) {
-            console.log("System is paused");
             revert Paused();
         }
     

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity >=0.5.0;
+pragma solidity ^0.8.12;
 
 /**
  * @title Interface for the `PauserRegistry` contract.
@@ -7,10 +7,6 @@ pragma solidity >=0.5.0;
  * @notice Terms of Service: https://docs.eigenlayer.xyz/overview/terms-of-service
  */
 interface IPauserRegistry {
-    event PauserStatusChanged(address pauser, bool canPause);
-
-    event UnpauserChanged(address previousUnpauser, address newUnpauser);
-    
     /// @notice Mapping of addresses to whether they hold the pauser role.
     function isPauser(address pauser) external view returns (bool);
 

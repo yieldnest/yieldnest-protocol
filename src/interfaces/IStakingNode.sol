@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./IStakingNodesManager.sol";
-import "./eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./eigenlayer-init-mainnet/IEigenPod.sol";
-import "./eigenlayer-init-mainnet/IStrategyManager.sol";
-
+import {BeaconChainProofs} from "../external/eigenlayer/v1/BeaconChainProofs.sol";
+import {IStakingNodesManager} from "./IStakingNodesManager.sol";
+import {IDelegationManager} from "../external/eigenlayer/v1/interfaces/IDelegationManager.sol";
+import {IStrategyManager,IStrategy} from "../external/eigenlayer/v1/interfaces/IStrategyManager.sol";
+import {IEigenPod} from "../external/eigenlayer/v1/interfaces/IEigenPod.sol";
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;
@@ -13,6 +13,17 @@ struct WithdrawalCompletionParams {
     uint32 withdrawalStartBlock;
     address delegatedAddress;
     uint96 nonce;
+}
+
+interface IStakingEvents {
+    /// @notice Emitted when a user stakes ETH and receives ynETH.
+    /// @param staker The address of the user staking ETH.
+    /// @param ethAmount The amount of ETH staked.
+    /// @param ynETHAmount The amount of ynETH received.
+    event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
+    event DepositETHPausedUpdated(bool isPaused);
+    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
+    event ExchangeAdjustmentRateUpdated(uint256 newRate);
 }
 
 interface IStakingNode {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./IRewardsReceiver.sol";
+import {IRewardsReceiver} from "./IRewardsReceiver.sol";
 
 interface IRewardsDistributor {
     function processRewards() external;

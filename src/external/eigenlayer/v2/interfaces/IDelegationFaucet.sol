@@ -2,15 +2,17 @@
 pragma solidity >=0.5.0;
 
 import "./IStrategyManager.sol";
-import "./IStrategy.sol";
 import "./IDelegationManager.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Create2.sol";
 
-interface IWhitelister {
-    function whitelist(address operator) external;
+interface IDelegationFaucet {
+    function mintDepositAndDelegate(
+        address _operator,
+        IDelegationManager.SignatureWithExpiry memory approverSignatureAndExpiry,
+        bytes32 approverSalt,
+        uint256 _depositAmount
+    ) external;
 
     function getStaker(address operator) external returns (address);
 
@@ -23,7 +25,7 @@ interface IWhitelister {
 
     function queueWithdrawal(
         address staker,
-        IDelegationManager.QueuedWithdrawalParams[] calldata queuedWithdrawalParams
+         IDelegationManager.QueuedWithdrawalParams[] calldata queuedWithdrawalParams
     ) external returns (bytes memory);
 
     function completeQueuedWithdrawal(

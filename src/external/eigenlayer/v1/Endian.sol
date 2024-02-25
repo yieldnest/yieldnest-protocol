@@ -1,4 +1,5 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.24;
 
 library Endian {
     /**
@@ -8,7 +9,9 @@ library Endian {
      * @dev Note that the input is formatted as a 'bytes32' type (i.e. 256 bits), but it is immediately truncated to a uint64 (i.e. 64 bits)
      * through a right-shift/shr operation.
      */
-    function fromLittleEndianUint64(bytes32 lenum) internal pure returns (uint64 n) {
+    function fromLittleEndianUint64(
+        bytes32 lenum
+    ) internal pure returns (uint64 n) {
         // the number needs to be stored in little-endian encoding (ie in bytes 0-8)
         n = uint64(uint256(lenum >> 192));
         return
