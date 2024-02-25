@@ -37,6 +37,13 @@ contract Upgrade is BaseScript {
         address _broadcaster = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
+        if (keccak256(bytes(contractName)) == keccak256("StakingNode")) {
+            StakingNode impl = new StakingNode();
+            StakingNodesManager stakingNodesManager = deployment.stakingNodesManager;
+            
+            stakingNodesManager.upgradeStakingNodeImplementation(address(impl), "");
+        }
+
         (address proxyAddr, address implAddress) = _deployImplementation(contractName);
         vm.stopBroadcast();
         
