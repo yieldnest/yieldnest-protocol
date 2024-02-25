@@ -162,93 +162,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
-    //--------------------------------------------------------------------------------------
-
-
-    /*
-    *  Withdrawal Flow:
-    *
-    *  1. queueWithdrawals() - Admin queues withdrawals
-    *  2. undelegate() - Admin undelegates
-    *  3. verifyAndProcessWithdrawals() - Admin verifies and processes withdrawals
-    *  4. completeWithdrawal() - Admin completes withdrawal
-    *
-    */
-
-    function startWithdrawal(
-        uint256 amount
-    ) external onlyAdmin returns (bytes32) {
-
-        uint96 nonce = uint96(strategyManager.numWithdrawalsQueued(address(this)));
-
-        // default strategy
-        IStrategy strategy = beaconChainETHStrategy;
-        uint256[] memory strategyIndexes = new uint256[](1);
-
-        uint256 sharesToWithdraw = amount;
-
-        IStrategy[] memory strategiesToWithdraw = new IStrategy[](1);
-        strategiesToWithdraw[0] = strategy;
-
-        uint256[] memory amountsToWithdraw = new uint256[](1);
-        amountsToWithdraw[0] = sharesToWithdraw;
-
-        bytes32 withdrawalRoot = strategyManager.queueWithdrawal(
-            strategyIndexes,
-            strategiesToWithdraw,
-            amountsToWithdraw,
-            address(this), // only the StakingNode can complete the withdraw
-            false // no auto-undelegate when there's 0 shares left
-        );
-
-        emit WithdrawalStarted(amount, address(strategy), nonce);
-
-        return withdrawalRoot;
-    }
-
-    function completeWithdrawal(
-        WithdrawalCompletionParams memory params
-    ) external onlyAdmin {
-
-        IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = IERC20(address(0)); // no token for the ETH strategy
-
-       IStrategy[] memory strategies = new IStrategy[](1);
-       strategies[0] = beaconChainETHStrategy;
-       uint256[] memory shares = new uint256[](1);
-       shares[0] = params.amount;
-
-       IStrategyManager.QueuedWithdrawal memory queuedWithdrawal = IStrategyManager.QueuedWithdrawal({
-            strategies: strategies,
-            shares: shares,
-            depositor: address(this),
-            withdrawerAndNonce: IStrategyManager.WithdrawerAndNonce({
-                withdrawer: address(this),
-                nonce: params.nonce
-            }),
-            withdrawalStartBlock: params.withdrawalStartBlock,
-            delegatedAddress: params.delegatedAddress
-        });
-
-
-        uint256 balanceBefore = address(this).balance;
-
-        strategyManager.completeQueuedWithdrawal(
-            queuedWithdrawal,
-            tokens,
-            params.middlewareTimesIndex,
-            true // Always get tokens and not share transfers
-        );
-
-
-        uint256 balanceAfter = address(this).balance;
-        uint256 fundsWithdrawn = balanceAfter - balanceBefore;
-
-        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
-    }
-
-    //--------------------------------------------------------------------------------------
     //----------------------------------  ETH BALANCE ACCOUNTING  --------------------------
     //--------------------------------------------------------------------------------------
 
@@ -262,8 +175,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 1 Beacon Chain ETH strategy share = 1 ETH
         // TODO: handle the withdrawal situation - this means that ETH will reside in the eigenpod at some point
 
-        // TODO: reevaluate whether to read the shares balance at all in the girst release or just rely on internal YieldNest balance
-        return totalETHNotRestaked + strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        // NOTE: when verifyWithdrawalCredentials is enabled
+        // the eigenpod will be credited with shares measured as:
+        // strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        return totalETHNotRestaked;
     }
 
     /**

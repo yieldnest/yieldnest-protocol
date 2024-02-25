@@ -147,7 +147,7 @@ contract StakingNodeTest is IntegrationBaseTest {
     }
       
 
-    function testStartWithdrawal() public {
+    function testVerifyWithdrawalCredentials() public {
 
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
 
@@ -192,21 +192,22 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.expectRevert("Pausable: index is paused");
         stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
-        // Note: once deposits are unpaused this should work
-        vm.expectRevert("StrategyManager._removeShares: shareAmount too high");
-        stakingNodeInstance.startWithdrawal(withdrawalAmount);
+        // Note: test code activated once withdrawal logic is implemented
+        // // Note: once deposits are unpaused this should work
+        // vm.expectRevert("StrategyManager._removeShares: shareAmount too high");
+        // stakingNodeInstance.startWithdrawal(withdrawalAmount);
 
 
-        // Note: once deposits are unpaused and a withdrawal is queued, it may be completed
-        vm.expectRevert("StrategyManager.completeQueuedWithdrawal: withdrawal is not pending");
-        WithdrawalCompletionParams memory params = WithdrawalCompletionParams({
-            middlewareTimesIndex: 0, // Assuming middlewareTimesIndex is not used in this context
-            amount: withdrawalAmount,
-            withdrawalStartBlock: uint32(block.number), // Current block number as the start block
-            delegatedAddress: address(0), // Assuming no delegation address is needed for this withdrawal
-            nonce: 0 // first nonce is 0
-        });
-        stakingNodeInstance.completeWithdrawal(params);
+        // // Note: once deposits are unpaused and a withdrawal is queued, it may be completed
+        // vm.expectRevert("StrategyManager.completeQueuedWithdrawal: withdrawal is not pending");
+        // WithdrawalCompletionParams memory params = WithdrawalCompletionParams({
+        //     middlewareTimesIndex: 0, // Assuming middlewareTimesIndex is not used in this context
+        //     amount: withdrawalAmount,
+        //     withdrawalStartBlock: uint32(block.number), // Current block number as the start block
+        //     delegatedAddress: address(0), // Assuming no delegation address is needed for this withdrawal
+        //     nonce: 0 // first nonce is 0
+        // });
+        // stakingNodeInstance.completeWithdrawal(params);
     }  
 }
 

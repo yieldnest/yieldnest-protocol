@@ -39,14 +39,6 @@ interface IStakingNode {
     function getETHBalance() external view returns (uint);
     function nodeId() external view returns (uint);
 
-    function startWithdrawal(
-        uint256 amount
-    ) external returns (bytes32);
-
-    function completeWithdrawal(
-        WithdrawalCompletionParams memory withdrawalCompletionParams
-    ) external;
-
     /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
     function beaconChainETHStrategy() external view returns (IStrategy);
 
