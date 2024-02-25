@@ -10,6 +10,7 @@ import "./StakingNode.sol";
 import "./libraries/DepositRootGenerator.sol";
 import "./interfaces/IDepositContract.sol";
 import "./interfaces/IStakingNode.sol";
+import "./interfaces/IRewardsDistributor.sol";
 import "./interfaces/IDepositPool.sol";
 import "./interfaces/IynETH.sol";
 import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
@@ -68,6 +69,7 @@ contract StakingNodesManager is
     UpgradeableBeacon private upgradableBeacon;
 
     IynETH public ynETH;
+    IRewardsDistributor rewardsDistributor;
 
     bytes[] public validators;
 
@@ -108,11 +110,12 @@ contract StakingNodesManager is
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
+        IRewardsDistributor rewardsDistributor; // Added rewardsDistributor dependency
     }
     
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
-       __ReentrancyGuard_init();
+        __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
@@ -126,6 +129,7 @@ contract StakingNodesManager is
         delegationManager = init.delegationManager;
         delayedWithdrawalRouter = init.delayedWithdrawalRouter;
         strategyManager = init.strategyManager;
+        rewardsDistributor = init.rewardsDistributor;
     }
 
 
@@ -333,10 +337,16 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint nodeId) external payable {
+    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable {
         require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
 
-        ynETH.processWithdrawnETH{value: msg.value}();
+        uint rewards = msg.value - withdrawnValidatorPrincipal;
+
+        IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
+        (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
+        require(sent, "Failed to send rewards");
+
+        ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
     }
 
     //--------------------------------------------------------------------------------------

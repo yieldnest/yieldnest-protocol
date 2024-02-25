@@ -89,7 +89,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(yneth).balance;
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max);
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(yneth).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -114,7 +114,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(yneth).balance;
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max);
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(yneth).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -138,9 +138,9 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
-        uint256 balanceBeforeClaim = address(yneth).balance;
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max);
-        uint256 balanceAfterClaim = address(yneth).balance;
+        uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
+        uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
@@ -192,7 +192,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.expectRevert("Pausable: index is paused");
         stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
-        // Note: test code activated once withdrawal logic is implemented
+        // Note: reenable this when verifyWithdrawals works
         // // Note: once deposits are unpaused this should work
         // vm.expectRevert("StrategyManager._removeShares: shareAmount too high");
         // stakingNodeInstance.startWithdrawal(withdrawalAmount);

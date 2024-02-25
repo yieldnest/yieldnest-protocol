@@ -30,9 +30,9 @@ interface IStakingNode {
     function createEigenPod() external returns (IEigenPod);
     function delegate(address operator) external;
     function withdrawBeforeRestaking() external;
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals) external;
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint PendingWithdrawnValidatorPrincipal) external;
 
-    
+
     function implementation() external view returns (address);
 
     function allocateStakedETH(uint amount) external payable;   

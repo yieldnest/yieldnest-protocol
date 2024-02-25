@@ -19,6 +19,7 @@ abstract contract BaseScript is Script, Utils {
         ynETH ynETH;
         StakingNodesManager stakingNodesManager;
         RewardsReceiver executionLayerReceiver;
+        RewardsReceiver consensusLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
     }
@@ -34,6 +35,7 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "ynETH", address(deployment.ynETH)); // Assuming ynETH should be serialized as a boolean for simplicity
         vm.serializeAddress(json, "stakingNodesManager", address(deployment.stakingNodesManager));
         vm.serializeAddress(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
+        vm.serializeAddress(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
         vm.serializeAddress(json, "rewardsDistributor", address(deployment.rewardsDistributor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
 
@@ -48,6 +50,7 @@ abstract contract BaseScript is Script, Utils {
         deployment.ynETH = ynETH(payable(jsonContent.readAddress(".ynETH")));
         deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".stakingNodesManager")));
         deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".executionLayerReceiver")));
+        deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".consensusLayerReceiver")));
         deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".rewardsDistributor")));
         deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
 

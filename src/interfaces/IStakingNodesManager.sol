@@ -29,7 +29,7 @@ interface IStakingNodesManager {
 
     function isStakingNodesAdmin(address) external view returns (bool);
 
-    function processWithdrawnETH(uint nodeId) external payable;
+    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable;
 
     function registerValidators(
         bytes32 _depositRoot,

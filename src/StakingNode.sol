@@ -24,6 +24,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error NotStakingNodesAdmin();
     error StrategyIndexMismatch(address strategy, uint index);
     error ETHDepositorNotDelayedWithdrawalRouter();
+    error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
+    error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 
 
     IStrategy public constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
@@ -33,6 +35,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     IStrategyManager public strategyManager;
     IEigenPod public eigenPod;
     uint public nodeId;
+
+    uint pendingWithdrawnValidatorPrincipal;
 
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
     uint256 public allocatedETH;
@@ -59,10 +63,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
        if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())) {
             revert ETHDepositorNotDelayedWithdrawalRouter();
        }
-       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId);
+       if (pendingWithdrawnValidatorPrincipal > msg.value) {
+            revert WithdrawalAmountTooLow(msg.value, pendingWithdrawnValidatorPrincipal);
+       }
+       allocatedETH -= pendingWithdrawnValidatorPrincipal;
+       pendingWithdrawnValidatorPrincipal = 0;
+       
+       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId, pendingWithdrawnValidatorPrincipal);
        emit RewardsProcessed(msg.value);
     }
-
 
     constructor() {
     }
@@ -109,7 +118,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
     /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
     ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public onlyAdmin {
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint withdrawnValidatorPrincipal) public onlyAdmin {
+
+        if (withdrawnValidatorPrincipal > allocatedETH) {
+            revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
+        }
 
         // only claim if we have active unclaimed withdrawals
 

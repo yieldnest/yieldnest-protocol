@@ -27,6 +27,7 @@ contract DeployYieldNest is BaseScript {
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
+    RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
     address payable feeReceiver;
@@ -91,6 +92,7 @@ contract DeployYieldNest is BaseScript {
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
         executionLayerReceiver = new RewardsReceiver();
+        consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
@@ -132,7 +134,8 @@ contract DeployYieldNest is BaseScript {
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
-            strategyManager: strategyManager
+            strategyManager: strategyManager,
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
@@ -141,6 +144,7 @@ contract DeployYieldNest is BaseScript {
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: rewardsDistributorAdminAddress,
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the initialization
             feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
             ynETH: IynETH(address(yneth))
         });
@@ -152,6 +156,7 @@ contract DeployYieldNest is BaseScript {
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
+        consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
         vm.stopBroadcast();
 
@@ -159,6 +164,7 @@ contract DeployYieldNest is BaseScript {
             ynETH: yneth,
             stakingNodesManager: stakingNodesManager,
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
             rewardsDistributor: rewardsDistributor,
             stakingNodeImplementation: stakingNodeImplementation
         });

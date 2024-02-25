@@ -32,6 +32,8 @@ contract IntegrationBaseTest is Test, Utils {
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
+    RewardsReceiver public consensusLayerReceiver;
+
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
     address payable feeReceiver;
@@ -71,6 +73,7 @@ contract IntegrationBaseTest is Test, Utils {
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
         executionLayerReceiver = new RewardsReceiver();
+        consensusLayerReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
@@ -118,7 +121,8 @@ contract IntegrationBaseTest is Test, Utils {
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
-            strategyManager: strategyManager
+            strategyManager: strategyManager,
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
@@ -127,6 +131,7 @@ contract IntegrationBaseTest is Test, Utils {
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: address(this),
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver,
             feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
             ynETH: IynETH(address(yneth))
         });

@@ -27,6 +27,8 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
 
     /// @notice The contract receiving execution layer rewards, both tips and MEV rewards.
     RewardsReceiver public executionLayerReceiver;
+    /// @notice The contract receiving consensus layer rewards.
+    RewardsReceiver public consensusLayerReceiver;
 
     /// @notice The address receiving protocol fees.
     address payable public feesReceiver;
@@ -38,6 +40,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     struct Init {
         address admin;
         RewardsReceiver executionLayerReceiver;
+        RewardsReceiver consensusLayerReceiver;
         address payable feesReceiver;
         IynETH ynETH;
     }
@@ -47,6 +50,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         executionLayerReceiver = init.executionLayerReceiver;
+        consensusLayerReceiver = init.consensusLayerReceiver;
         feesReceiver = init.feesReceiver;
         ynETH = init.ynETH;
         // Default fees are 10%
@@ -61,7 +65,8 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         uint256 totalRewards = 0;
 
         uint256 elRewards = address(executionLayerReceiver).balance;
-        totalRewards += elRewards;
+        uint256 clRewards = address(consensusLayerReceiver).balance;
+        totalRewards += elRewards + clRewards;
         
         // Calculate protocol fees.
         uint256 fees = Math.mulDiv(feesBasisPoints, totalRewards, _BASIS_POINTS_DENOMINATOR);
@@ -69,6 +74,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         // Aggregate returns in this contract
         address payable self = payable(address(this));
         executionLayerReceiver.transferETH(self, elRewards);
+        consensusLayerReceiver.transferETH(self, clRewards);
 
         uint256 netRewards = totalRewards - fees;
         if (netRewards > 0) {
