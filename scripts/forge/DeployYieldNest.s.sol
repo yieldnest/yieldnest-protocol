@@ -2,18 +2,18 @@
 pragma solidity ^0.8.24;
 
 
-import "forge-std/Script.sol";
+import "../../lib/forge-std/src/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
-import "../../src/external/WETH.sol";
+import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
 import "../../src/interfaces/IStakingNode.sol";
-import "../../src/interfaces/IDepositContract.sol";
+import "../../src/external/ethereum/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
-import "../../src/interfaces/IWETH.sol";
+import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";
 

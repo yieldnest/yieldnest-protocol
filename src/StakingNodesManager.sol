@@ -22,8 +22,8 @@ import {stdMath} from "forge-std/StdMath.sol";
 
 
 interface StakingNodesManagerEvents {
-     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-     event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
+    event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
     event MaxNodeCountUpdated(uint maxNodeCount);
 }
 
