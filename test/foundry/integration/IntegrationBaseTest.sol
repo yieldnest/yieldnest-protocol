@@ -161,14 +161,7 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver.initialize(rewardsReceiverInit);
 
         consensusLayerReceiver.initialize(rewardsReceiverInit);
-        
-        token1 = new MockERC20("Mock1", "MOK");
-        token2 = new MockERC20("Mock2", "MOK");
-        tokens.push(IERC20(token1));
-        tokens.push(IERC20(token2));
-        strategies.push(IStrategy(strategy1));
-        strategies.push(IStrategy(strategy2));
-        
+          
         
         // rETH
         tokens.push(IERC20(chainAddresses.RETH_ADDRESS));
