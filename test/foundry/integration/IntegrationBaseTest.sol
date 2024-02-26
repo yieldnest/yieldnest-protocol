@@ -143,6 +143,8 @@ contract IntegrationBaseTest is Test, Utils {
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
+
+        consensusLayerReceiver.initialize(rewardsReceiverInit);
     }
 }
 

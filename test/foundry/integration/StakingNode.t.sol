@@ -88,9 +88,9 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
-        uint256 balanceBeforeClaim = address(yneth).balance;
+        uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
-        uint256 balanceAfterClaim = address(yneth).balance;
+        uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
@@ -113,9 +113,9 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
-        uint256 balanceBeforeClaim = address(yneth).balance;
+        uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
-        uint256 balanceAfterClaim = address(yneth).balance;
+        uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
