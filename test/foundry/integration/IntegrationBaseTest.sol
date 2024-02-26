@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IPauserRegistry} from "../../../src/external/eigenlayer/v1/interfaces/IPauserRegistry.sol";
@@ -9,7 +10,7 @@ import {IEigenPod} from "../../../src/external/eigenlayer/v1/interfaces//IEigenP
 import {IStrategyManager} from "../../../src/external/eigenlayer/v1/interfaces//IStrategyManager.sol";
 import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v1/interfaces//IDelayedWithdrawalRouter.sol";
 import {IDelegationManager} from "../../../src/external/eigenlayer/v1/interfaces//IDelegationManager.sol";
-import {Addresses} from "../../../scripts/forge/Addresses.sol";
+import {ContractAddresses} from "../ContractAddresses.sol";
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 import "../../../src/external/tokens/WETH.sol";
@@ -20,7 +21,6 @@ import "../../../src/RewardsDistributor.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../../../scripts/forge/Utils.sol";
-
 
 contract IntegrationBaseTest is Test, Utils {
     address public proxyAdminOwner;
@@ -101,8 +101,8 @@ contract IntegrationBaseTest is Test, Utils {
         });
         yneth.initialize(ynethInit);
 
-        Addresses addresses = new Addresses();
-        Addresses.ChainAddresses memory chainAddresses = addresses.getChainAddresses(block.chainid);
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
         delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
@@ -142,6 +142,8 @@ contract IntegrationBaseTest is Test, Utils {
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
+
+        consensusLayerReceiver.initialize(rewardsReceiverInit);
     }
 }
 
