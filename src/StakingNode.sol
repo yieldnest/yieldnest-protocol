@@ -1,15 +1,16 @@
+// SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
-import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "./interfaces/IStakingNode.sol";
-import "./interfaces/IStakingNodesManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/BeaconChainProofs.sol";
-import "forge-std/console.sol";
-
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+import {IEigenPodManager} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -20,22 +21,37 @@ interface StakingNodeEvents {
 
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
 
-    // Errors.
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error NotStakingNodesAdmin();
     error StrategyIndexMismatch(address strategy, uint index);
     error ETHDepositorNotDelayedWithdrawalRouter();
+    error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
+    error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IStrategy public constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
     uint256 public constant GWEI_TO_WEI = 1e9;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IStakingNodesManager public stakingNodesManager;
     IStrategyManager public strategyManager;
     IEigenPod public eigenPod;
     uint public nodeId;
 
+    uint pendingWithdrawnValidatorPrincipal;
+
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
-    uint256 public totalETHNotRestaked;
+    uint256 public allocatedETH;
 
 
     /// @dev Allows only a whitelisted address to configure the contract
@@ -50,7 +66,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
     receive() external payable nonReentrant {
@@ -59,10 +75,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
        if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())) {
             revert ETHDepositorNotDelayedWithdrawalRouter();
        }
-       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId);
+       if (pendingWithdrawnValidatorPrincipal > msg.value) {
+            revert WithdrawalAmountTooLow(msg.value, pendingWithdrawnValidatorPrincipal);
+       }
+       allocatedETH -= pendingWithdrawnValidatorPrincipal;
+       pendingWithdrawnValidatorPrincipal = 0;
+       
+       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId, pendingWithdrawnValidatorPrincipal);
        emit RewardsProcessed(msg.value);
     }
-
 
     constructor() {
     }
@@ -93,7 +114,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  EXPEDITED WITHDRAWAL   --------------------
+    //----------------------------------  EXPEDITED WITHDRAWAL   ---------------------------
     //--------------------------------------------------------------------------------------
 
      /**
@@ -109,7 +130,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
     /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
     ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals) public {
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint withdrawnValidatorPrincipal) public onlyAdmin {
+
+        if (withdrawnValidatorPrincipal > allocatedETH) {
+            revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
+        }
 
         // only claim if we have active unclaimed withdrawals
 
@@ -121,7 +146,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  DEPOSIT AND DELEGATION   -------------------------
+    //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
 
     function delegate(address operator) public virtual onlyAdmin {
@@ -153,99 +178,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 proofs[i],
                 validatorFields[i]
             );
-
-            // Decrement the staked but not verified ETH
-            uint64 validatorBalanceGwei = BeaconChainProofs.getBalanceFromBalanceRoot(validatorIndex[i], proofs[i].balanceRoot);
-             
-            totalETHNotRestaked -= (validatorBalanceGwei * 1e9);
         }
-    }
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
-    //--------------------------------------------------------------------------------------
-
-
-    /*
-    *  Withdrawal Flow:
-    *
-    *  1. queueWithdrawals() - Admin queues withdrawals
-    *  2. undelegate() - Admin undelegates
-    *  3. verifyAndProcessWithdrawals() - Admin verifies and processes withdrawals
-    *  4. completeWithdrawal() - Admin completes withdrawal
-    *
-    */
-
-    function startWithdrawal(
-        uint256 amount
-    ) external onlyAdmin returns (bytes32) {
-
-        uint96 nonce = uint96(strategyManager.numWithdrawalsQueued(address(this)));
-
-        // default strategy
-        IStrategy strategy = beaconChainETHStrategy;
-        uint256[] memory strategyIndexes = new uint256[](1);
-
-        uint256 sharesToWithdraw = amount;
-
-        IStrategy[] memory strategiesToWithdraw = new IStrategy[](1);
-        strategiesToWithdraw[0] = strategy;
-
-        uint256[] memory amountsToWithdraw = new uint256[](1);
-        amountsToWithdraw[0] = sharesToWithdraw;
-
-        bytes32 withdrawalRoot = strategyManager.queueWithdrawal(
-            strategyIndexes,
-            strategiesToWithdraw,
-            amountsToWithdraw,
-            address(this), // only the StakingNode can complete the withdraw
-            false // no auto-undelegate when there's 0 shares left
-        );
-
-        emit WithdrawalStarted(amount, address(strategy), nonce);
-
-        return withdrawalRoot;
-    }
-
-    function completeWithdrawal(
-        WithdrawalCompletionParams memory params
-    ) external onlyAdmin {
-
-        IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = IERC20(address(0)); // no token for the ETH strategy
-
-       IStrategy[] memory strategies = new IStrategy[](1);
-       strategies[0] = beaconChainETHStrategy;
-       uint256[] memory shares = new uint256[](1);
-       shares[0] = params.amount;
-
-       IStrategyManager.QueuedWithdrawal memory queuedWithdrawal = IStrategyManager.QueuedWithdrawal({
-            strategies: strategies,
-            shares: shares,
-            depositor: address(this),
-            withdrawerAndNonce: IStrategyManager.WithdrawerAndNonce({
-                withdrawer: address(this),
-                nonce: params.nonce
-            }),
-            withdrawalStartBlock: params.withdrawalStartBlock,
-            delegatedAddress: params.delegatedAddress
-        });
-
-
-        uint256 balanceBefore = address(this).balance;
-
-        strategyManager.completeQueuedWithdrawal(
-            queuedWithdrawal,
-            tokens,
-            params.middlewareTimesIndex,
-            true // Always get tokens and not share transfers
-        );
-
-
-        uint256 balanceAfter = address(this).balance;
-        uint256 fundsWithdrawn = balanceAfter - balanceBefore;
-
-        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
     }
 
     //--------------------------------------------------------------------------------------
@@ -254,7 +187,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH( uint amount) external payable onlyStakingNodesManager {
-        totalETHNotRestaked += amount;
+        allocatedETH += amount;
     }
 
     function getETHBalance() public view returns (uint) {
@@ -262,9 +195,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 1 Beacon Chain ETH strategy share = 1 ETH
         // TODO: handle the withdrawal situation - this means that ETH will reside in the eigenpod at some point
 
-        // TODO: reevaluate whether to read the shares balance at all in the girst release or just rely on internal YieldNest balance
-        return totalETHNotRestaked + strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        // NOTE: when verifyWithdrawalCredentials is enabled
+        // the eigenpod will be credited with shares measured as:
+        // strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        return allocatedETH;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  BEACON IMPLEMENTATION  ---------------------------
+    //--------------------------------------------------------------------------------------
 
     /**
       Beacons slot value is defined here:

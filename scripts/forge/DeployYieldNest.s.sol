@@ -2,18 +2,18 @@
 pragma solidity ^0.8.24;
 
 
-import "forge-std/Script.sol";
+import "../../lib/forge-std/src/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
-import "../../src/external/WETH.sol";
+import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
 import "../../src/interfaces/IStakingNode.sol";
-import "../../src/interfaces/IDepositContract.sol";
+import "../../src/external/ethereum/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
-import "../../src/interfaces/IWETH.sol";
+import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";
 
@@ -27,6 +27,7 @@ contract DeployYieldNest is BaseScript {
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
+    RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
     address payable feeReceiver;
@@ -91,6 +92,7 @@ contract DeployYieldNest is BaseScript {
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
         executionLayerReceiver = new RewardsReceiver();
+        consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
@@ -132,7 +134,8 @@ contract DeployYieldNest is BaseScript {
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
-            strategyManager: strategyManager
+            strategyManager: strategyManager,
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
@@ -141,6 +144,7 @@ contract DeployYieldNest is BaseScript {
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: rewardsDistributorAdminAddress,
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the initialization
             feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
             ynETH: IynETH(address(yneth))
         });
@@ -152,6 +156,7 @@ contract DeployYieldNest is BaseScript {
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
+        consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
         vm.stopBroadcast();
 
@@ -159,6 +164,7 @@ contract DeployYieldNest is BaseScript {
             ynETH: yneth,
             stakingNodesManager: stakingNodesManager,
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
             rewardsDistributor: rewardsDistributor,
             stakingNodeImplementation: stakingNodeImplementation
         });

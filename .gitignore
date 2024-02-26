@@ -9,6 +9,9 @@ logs
 out
 cache_forge
 lcov.info
+coverage
+broadcast
+deployments
 
 # Mac
 .DS_STORE

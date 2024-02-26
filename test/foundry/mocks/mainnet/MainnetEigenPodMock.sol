@@ -1,8 +1,8 @@
 pragma solidity >=0.8.12;
 
-import { BeaconChainProofs } from "../../../../src/interfaces/eigenlayer-init-mainnet/BeaconChainProofs.sol";
-import "../../../../src/interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "../../../../src/interfaces/eigenlayer-init-mainnet/IEigenPod.sol";
+import { BeaconChainProofs } from "../../../../src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import "../../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import "../../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
@@ -97,6 +97,7 @@ contract MainnetEigenPodMock is MainnetInitializableMock, MainnetReentrancyGuard
         if (!hasRestaked) {
             hasRestaked = true;
         }
+        (oracleBlockNumber,proofs,validatorFields);
 
         // virtually deposit REQUIRED_BALANCE_WEI for new ETH validator
         eigenPodManager.restakeBeaconChainETH(podOwner, REQUIRED_BALANCE_WEI);

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "./eigenlayer-init-mainnet/IDelayedWithdrawalRouter.sol";
-import "./IStakingNode.sol";
-
-
+import {IDelayedWithdrawalRouter} from "../external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "../external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IEigenPodManager} from "../external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStakingNode} from "./IStakingNode.sol";
 
 interface IStakingNodesManager {
 
@@ -18,19 +16,12 @@ interface IStakingNodesManager {
     }
 
     function eigenPodManager() external view returns (IEigenPodManager);
-
     function delegationManager() external view returns (IDelegationManager);
-
     function delayedWithdrawalRouter() external view returns (IDelayedWithdrawalRouter);
-
     function getAllValidators() external view returns (bytes[] memory);
-
     function getAllNodes() external view returns (IStakingNode[] memory);
-
     function isStakingNodesAdmin(address) external view returns (bool);
-
-    function processWithdrawnETH(uint nodeId) external payable;
-
+    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable;
     function registerValidators(
         bytes32 _depositRoot,
         ValidatorData[] calldata _depositData

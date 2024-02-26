@@ -1,18 +1,27 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 
 /// @title ReturnsReceiver
 /// @notice Receives protocol level returns and manages who can withdraw the returns. Deployed as the
 /// consensus layer withdrawal wallet and execution layer rewards wallet in the protocol.
 contract RewardsReceiver is Initializable, AccessControlUpgradeable {
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     /// @notice The withdrawer role can withdraw ETH and ERC20 tokens from this contract.
     bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
     /// @notice Configuration for contract initialization.
     struct Init {
@@ -34,6 +43,12 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
         _grantRole(WITHDRAWER_ROLE, init.withdrawer);
     }
 
+    receive() external payable {}
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  TRANSFERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     /// @notice Transfers the given amount of ETH to an address.
     /// @dev Only called by the withdrawer.
     function transferETH(address payable to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
@@ -47,6 +62,4 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     function transferERC20(IERC20 token, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
         SafeERC20.safeTransfer(token, to, amount);
     }
-
-    receive() external payable {}
 }

@@ -1,26 +1,29 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./StakingNode.sol";
-import "./libraries/DepositRootGenerator.sol";
-import "./interfaces/IDepositContract.sol";
-import "./interfaces/IStakingNode.sol";
-import "./interfaces/IDepositPool.sol";
-import "./interfaces/IynETH.sol";
-import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "forge-std/StdMath.sol";
-import "forge-std/console.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {depositRootGenerator} from "./external/etherfi/DepositRootGenerator.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
+import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {StakingNode} from "./StakingNode.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {stdMath} from "forge-std/StdMath.sol";
 
 
 interface StakingNodesManagerEvents {
-     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-     event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
+    event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
     event MaxNodeCountUpdated(uint maxNodeCount);
 }
 
@@ -31,7 +34,10 @@ contract StakingNodesManager is
     ReentrancyGuardUpgradeable,
     StakingNodesManagerEvents {
 
-    // Errors.
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
@@ -45,7 +51,6 @@ contract StakingNodesManager is
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
     /// @notice  Role is allowed to set system parameters
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
 
@@ -55,8 +60,15 @@ contract StakingNodesManager is
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
@@ -68,6 +80,7 @@ contract StakingNodesManager is
     UpgradeableBeacon private upgradableBeacon;
 
     IynETH public ynETH;
+    IRewardsDistributor rewardsDistributor;
 
     bytes[] public validators;
 
@@ -91,8 +104,8 @@ contract StakingNodesManager is
 
     mapping(bytes pubkey => bool) usedValidators;
 
-     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
     /// @notice Configuration for contract initialization.
@@ -108,11 +121,12 @@ contract StakingNodesManager is
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
+        IRewardsDistributor rewardsDistributor; // Added rewardsDistributor dependency
     }
     
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
-       __ReentrancyGuard_init();
+        __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
@@ -126,16 +140,13 @@ contract StakingNodesManager is
         delegationManager = init.delegationManager;
         delayedWithdrawalRouter = init.delayedWithdrawalRouter;
         strategyManager = init.strategyManager;
+        rewardsDistributor = init.rewardsDistributor;
     }
 
 
     receive() external payable {
         require(msg.sender == address(ynETH));
     }
-
-    // fallback() external payable {
-    //     revert DirectETHDepositsNotAllowed();
-    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VALIDATOR REGISTRATION  --------------------------
@@ -333,10 +344,16 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint nodeId) external payable {
+    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable {
         require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
 
-        ynETH.processWithdrawnETH{value: msg.value}();
+        uint rewards = msg.value - withdrawnValidatorPrincipal;
+
+        IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
+        (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
+        require(sent, "Failed to send rewards");
+
+        ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
     }
 
     //--------------------------------------------------------------------------------------
