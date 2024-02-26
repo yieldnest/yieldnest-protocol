@@ -82,4 +82,6 @@ interface IEigenPodManager is IPausable {
     function slasher() external view returns(ISlasher);
 
     function hasPod(address podOwner) external view returns (bool);
+
+    function eigenPodBeacon() external view returns (address);
 }
