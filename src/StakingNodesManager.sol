@@ -1,27 +1,29 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./StakingNode.sol";
-import "./libraries/DepositRootGenerator.sol";
-import "./interfaces/IDepositContract.sol";
-import "./interfaces/IStakingNode.sol";
-import "./interfaces/IRewardsDistributor.sol";
-import "./interfaces/IDepositPool.sol";
-import "./interfaces/IynETH.sol";
-import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "forge-std/StdMath.sol";
-import "forge-std/console.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {depositRootGenerator} from "./external/etherfi/DepositRootGenerator.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
+import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {StakingNode} from "./StakingNode.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {stdMath} from "forge-std/StdMath.sol";
 
 
 interface StakingNodesManagerEvents {
-     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-     event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
+    event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
     event MaxNodeCountUpdated(uint maxNodeCount);
 }
 

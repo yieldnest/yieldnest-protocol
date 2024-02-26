@@ -1,12 +1,12 @@
 pragma solidity ^0.8.24;
 
-import {IDelegationManager as IDelegationManagerM2 } from "./interfaces/eigenlayer/IDelegationManager.sol";
-import {IEigenPod as IEigenPodM2 } from "./interfaces/eigenlayer/IEigenPod.sol";
-import {ISignatureUtils} from "./interfaces/eigenlayer/ISignatureUtils.sol";
-import { BeaconChainProofs as BeaconChainProofsM2 } from "./external/eigenlayer/BeaconChainProofs.sol";
-import {IStrategy as IStrategyM2} from "./interfaces/eigenlayer/IStrategy.sol";
-
-import "./StakingNode.sol";
+import {IDelegationManager as IDelegationManagerM2 } from "./external/eigenlayer/v0.2.1/interfaces/IDelegationManager.sol";
+import {IEigenPod as IEigenPodM2 } from "./external/eigenlayer/v0.2.1/interfaces/IEigenPod.sol";
+import {ISignatureUtils} from "./external/eigenlayer/v0.2.1/interfaces/ISignatureUtils.sol";
+import {BeaconChainProofs as BeaconChainProofsM2} from "./external/eigenlayer/v0.2.1/BeaconChainProofs.sol";
+import {IStrategy as IStrategyM2} from "./external/eigenlayer/v0.2.1/interfaces/IStrategy.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {StakingNode} from "./StakingNode.sol";
 
 /**
     The purpose of this file, StakingNodeM2.sol, is to extend the functionality of the StakingNode contract
@@ -48,7 +48,7 @@ contract StakingNodeM2 is StakingNode {
     /// This activates the activation of the staked funds within EigenLayer
     function verifyWithdrawalCredentials(
         uint64 oracleTimestamp,
-        IEigenPodM2.StateRootProof calldata stateRootProof,
+        BeaconChainProofsM2.StateRootProof calldata stateRootProof,
         uint40[] calldata validatorIndices,
         bytes[] calldata withdrawalCredentialProofs,
         bytes32[][] calldata validatorFields
@@ -70,16 +70,16 @@ contract StakingNodeM2 is StakingNode {
         }
     }
 
-    function verifyWithdrawalCredentials(
-        uint64[] calldata oracleBlockNumber,
-        uint40[] calldata validatorIndex,
-        BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
-        bytes32[][] calldata validatorFields
-    ) external override {
-        // the https://github.com/Layr-Labs/eigenlayer-contracts/releases/tag/mainnet-deployment
-        // withdrawal path. Will no longer be supported.
-        revert("StakingNode: Sunset functionality");
-    }
+    // function verifyWithdrawalCredentials(
+    //     uint64[] calldata oracleBlockNumber,
+    //     uint40[] calldata validatorIndex,
+    //     BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
+    //     bytes32[][] calldata validatorFields
+    // ) external override {
+    //     // the https://github.com/Layr-Labs/eigenlayer-contracts/releases/tag/mainnet-deployment
+    //     // withdrawal path. Will no longer be supported.
+    //     revert("StakingNode: Sunset functionality");
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
@@ -120,8 +120,8 @@ contract StakingNodeM2 is StakingNode {
 
     function verifyAndProcessWithdrawals(
         uint64 oracleTimestamp,
-        IEigenPodM2.StateRootProof calldata stateRootProof,
-        IEigenPodM2.WithdrawalProof[] calldata withdrawalProofs,
+        BeaconChainProofsM2.StateRootProof calldata stateRootProof,
+        BeaconChainProofsM2.WithdrawalProof[] calldata withdrawalProofs,
         bytes[] calldata validatorFieldsProofs,
         bytes32[][] calldata validatorFields,
         bytes32[][] calldata withdrawalFields

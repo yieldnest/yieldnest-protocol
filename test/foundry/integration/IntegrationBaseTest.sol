@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IPauserRegistry} from "../../../src/interfaces/eigenlayer-init-mainnet/IPauserRegistry.sol";
-import {IEigenPodManager} from "../../../src/interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import {IEigenPod} from "../../../src/interfaces/eigenlayer-init-mainnet/IEigenPod.sol";
-import {IStrategyManager} from "../../../src/interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "../../../src/interfaces/eigenlayer-init-mainnet/IDelayedWithdrawalRouter.sol";
-import {IDelegationManager} from "../../../src/interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
 
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {IPauserRegistry} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPauserRegistry.sol";
+import {IEigenPodManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPodManager.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPod.sol";
+import {IStrategyManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IStrategyManager.sol";
+import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelegationManager.sol";
+import {ContractAddresses} from "../ContractAddresses.sol";
+import "forge-std/console.sol";
 import "forge-std/Test.sol";
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "../../../src/external/WETH.sol";
+import "../../../src/external/tokens/WETH.sol";
 import "../../../src/ynETH.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
-import "../ContractAddresses.sol";
-import "forge-std/console.sol";
 import "../../../scripts/forge/Utils.sol";
-
 
 contract IntegrationBaseTest is Test, Utils {
     address public proxyAdminOwner;

@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
-import "../../src/external/WETH.sol";
+import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
-import "forge-std/Script.sol";
-import "forge-std/StdJson.sol";
+import "../../lib/forge-std/src/Script.sol";
+import "../../lib/forge-std/src/StdJson.sol";
 import "./Utils.sol";
 
 abstract contract BaseScript is Script, Utils {
