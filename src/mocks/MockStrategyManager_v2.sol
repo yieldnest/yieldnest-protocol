@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity >0.8.0;
 
-import "../interfaces/eigenlayer-init-mainnet/IStrategyManager.sol";
-import "../interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
+import "../external/eigenlayer/v0.2.1/interfaces/IStrategyManager.sol";
+import "../external/eigenlayer/v0.2.1/interfaces/IEigenPodManager.sol";
 
 contract MockStrategyManager {
 

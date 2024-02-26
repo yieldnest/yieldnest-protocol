@@ -5,12 +5,13 @@ pragma solidity ^0.8.24;
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IPauserRegistry} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPauserRegistry.sol";
-import {IEigenPodManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPodManager.sol";
-import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPod.sol";
-import {IStrategyManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelayedWithdrawalRouter.sol";
-import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelegationManager.sol";
+import {IEigenPodManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IStrategyManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
 import {ContractAddresses} from "../ContractAddresses.sol";
+import {ynLSD} from "../../../src/ynLSD.sol";
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 import "../../../src/external/tokens/WETH.sol";
@@ -18,13 +19,10 @@ import "../../../src/ynETH.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
-import "../../../src/ynLSD.sol";
 import "../../../src/YieldNestOracle.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../../../scripts/forge/Utils.sol";
-import "../../../src/mocks/MockERC20.sol";
-import "../../../src/mocks/MockStrategy.sol";
 import "../ContractAddresses.sol";
 import "forge-std/console.sol";
 
@@ -59,7 +57,7 @@ contract IntegrationBaseTest is Test, Utils {
     address[] public assetsAddresses;
     address[] public priceFeeds;
     uint256[] public maxAges;
-    IStrategy[] public strategies;
+    // IStrategy[] public strategies;
 
     bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
     bytes ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
@@ -162,18 +160,20 @@ contract IntegrationBaseTest is Test, Utils {
 
         consensusLayerReceiver.initialize(rewardsReceiverInit);
           
-        
+        IStrategy[] memory strategies_filled = new IStrategy[](2);
         // rETH
         tokens.push(IERC20(chainAddresses.RETH_ADDRESS));
         assetsAddresses.push(chainAddresses.RETH_ADDRESS);
-        strategies.push(IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS));
+        strategies_filled[0] = IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS);
+        // strategies.push(IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS));
         priceFeeds.push(chainAddresses.RETH_FEED_ADDRESS);
         maxAges.push(uint256(86400));
 
         // stETH
         tokens.push(IERC20(chainAddresses.STETH_ADDRESS));
         assetsAddresses.push(chainAddresses.STETH_ADDRESS);
-        strategies.push(IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS));
+        strategies_filled[0] = IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS);
+        // strategies.push(IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS));
         priceFeeds.push(chainAddresses.STETH_FEED_ADDRESS);
         maxAges.push(uint256(86400)); //one hour
         
@@ -188,8 +188,8 @@ contract IntegrationBaseTest is Test, Utils {
        
         ynLSD.Init memory init = ynLSD.Init({
             tokens: tokens,
-            strategies: strategies,
-            strategyManager: strategyManager,
+            strategies: strategies_filled,
+            strategyManager: IStrategyManager(strategyManager),
             oracle: yieldNestOracle,
             exchangeAdjustmentRate: startingExchangeAdjustmentRate
         });

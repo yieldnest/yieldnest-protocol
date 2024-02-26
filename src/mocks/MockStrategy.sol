@@ -1,6 +1,6 @@
 pragma solidity ^0.8.0;
 
-import "../interfaces/eigenlayer-init-mainnet/IStrategy.sol";
+import "../external/eigenlayer/v0.2.1/interfaces/IStrategy.sol";
 
 contract MockStrategy is IStrategy {
     constructor() {}
@@ -15,6 +15,10 @@ contract MockStrategy is IStrategy {
     function setToken(address _token) external {
         token = _token;
     }
+
+     function shares(address user) external view returns (uint256) {
+        return multiplier;
+     }
 
     function deposit(IERC20 token, uint256 amount) external virtual override returns (uint256){
         return amount*multiplier;
