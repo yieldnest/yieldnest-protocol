@@ -71,6 +71,18 @@ contract ynLSDTest is IntegrationBaseTest {
         vm.expectRevert(bytes("Pausable: index is paused"));
         shares = ynlsd.deposit(token, amount);
     }
+    
+    function testWrongStrategy() public {
+        IERC20 token = IERC20(address(1));
+        uint256 amount = 0;
+        vm.expectRevert(bytes4(keccak256("ZeroAmount()")));
+        uint256 shares = ynlsd.deposit(token, amount);
+        amount = 1; 
+        // vm.expectRevert(
+        //     abi.encodeWithSelector(bytes4(keccak256("UnsupportedToken(IERC20)")), token));
+        vm.expectRevert();
+        shares = ynlsd.deposit(token, amount);
+    }
 
     function testReadAllVariables() public {
         // Test totalAssets function
@@ -96,8 +108,8 @@ contract ynLSDTest is IntegrationBaseTest {
         emit log_named_uint("depositedBalances: ", depositedBalances);
 
         // Test tokens function
-        IERC20 tokens_1 = ynlsd.tokens(1);
-        IERC20 tokens_2 = ynlsd.tokens(2);
+        IERC20 tokens_1 = ynlsd.tokens(0);
+        IERC20 tokens_2 = ynlsd.tokens(1);
         emit log_named_address("token: ", address(tokens_1));
         emit log_named_address("token: ", address(tokens_2));
        
