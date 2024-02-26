@@ -46,7 +46,10 @@ contract ynLSDTest is IntegrationBaseTest {
         vm.expectEmit();
         emit ynLSDEvents.Deposit(address(this), address(this), amount, expectedAmount, expectedEigenLayer);
         shares = ynlsd.deposit(token, amount);
-
+        uint totalAssets = ynlsd.totalAssets();
+        emit log_named_uint("totalAssets: ", totalAssets);
+        uint depositedBalances = ynlsd.depositedBalances(token);
+        emit log_named_uint("depositedBalances: ", depositedBalances);
     }
 
     function testDepositSTETH() public {
@@ -69,6 +72,40 @@ contract ynLSDTest is IntegrationBaseTest {
         shares = ynlsd.deposit(token, amount);
     }
 
+    function testReadAllVariables() public {
+        // Test totalAssets function
+        uint totalAssets = ynlsd.totalAssets();
+        emit log_named_uint("totalAssets: ", totalAssets);
+
+        // Test convertToShares function
+        IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
+        uint256 amount = 1000;
+        uint256 shares = ynlsd.convertToShares(token, amount);
+        emit log_named_uint("shares: ", shares);
+
+        // Test strategyManager function
+        IStrategyManager strategyManager = ynlsd.strategyManager();
+        emit log_named_address("strategyManager: ", address(strategyManager));
+
+        // Test strategies function
+        IStrategy strategy = ynlsd.strategies(token);
+        emit log_named_address("strategy: ", address(strategy));
+
+        // Test depositedBalances function
+        uint depositedBalances = ynlsd.depositedBalances(token);
+        emit log_named_uint("depositedBalances: ", depositedBalances);
+
+        // Test tokens function
+        IERC20 tokens_1 = ynlsd.tokens(1);
+        IERC20 tokens_2 = ynlsd.tokens(2);
+        emit log_named_address("token: ", address(tokens_1));
+        emit log_named_address("token: ", address(tokens_2));
+       
+
+        // Test exchangeAdjustmentRate function
+        uint exchangeAdjustmentRate = ynlsd.exchangeAdjustmentRate();
+        emit log_named_uint("exchangeAdjustmentRate: ", exchangeAdjustmentRate);
+    }
     
     function testSetStrategyManager() public {
         address newStrategyManager = address(new MockStrategyManager());
@@ -111,6 +148,47 @@ contract ynLSDTest is IntegrationBaseTest {
         assertEq(price>0, true, "Zero price");
         assertEq(block.timestamp - timeStamp < 86400, true, "Price stale for more than 24 hours");
         assertEq(shares, (uint256(price)*amount)/1e18, "Total shares don't match");
+        
+    }
+    
+    function testRepeatedDeposit() public {
+        IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
+        uint256 amount = 1 ether;
+        uint256 expectedAmount = ynlsd.convertToShares(token, amount);
+        emit log_named_uint("expected amount: ", expectedAmount);
+        
+        vm.expectRevert(bytes("ERC20: transfer amount exceeds balance"));
+        uint256 shares = ynlsd.deposit(token, amount);
+        deal(address(token), address(this), 5*amount);
+        token.approve(address(ynlsd), 5*amount);
+        vm.expectRevert(bytes("Pausable: index is paused"));
+        shares = ynlsd.deposit(token, amount);
+    
+        mockStrategyManager = new MockStrategyManager();
+        mockStrategy1 = new MockStrategy();
+        mockStrategy1.setMultiplier(1);
+        mockStrategy2 = new MockStrategy();
+        mockStrategy2.setMultiplier(1);
+        mockStrategies.push(address(mockStrategy1));
+        mockStrategies.push(address(mockStrategy2));
+        ynlsd.setStrategyManager(address(mockStrategyManager));
+        ynlsd.setStrategies(tokens, mockStrategies);
+
+        uint expectedEigenLayer = mockStrategy1.deposit(token, amount);
+        // Check if event is emmitted
+        vm.expectEmit();
+        emit ynLSDEvents.Deposit(address(this), address(this), amount, expectedAmount, expectedEigenLayer);
+        shares = ynlsd.deposit(token, amount);
+        assertEq(shares, expectedAmount);
+        uint lastDeposit = shares;
+        emit log_named_uint("1st deposit: ", shares);
+        shares = ynlsd.deposit(token, amount);
+        assertEq(shares < lastDeposit, true);
+        emit log_named_uint("2nd deposit: ",shares);
+        lastDeposit = shares;
+        shares = ynlsd.deposit(token, amount);
+        assertEq(shares < lastDeposit, true);
+        emit log_named_uint("3rd deposit: ",shares);
         
     }
 }

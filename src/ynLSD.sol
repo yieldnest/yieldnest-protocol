@@ -62,7 +62,12 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     }
 
     // ==================================== VIEW FUNCTIONS =========================================
-
+    /**
+     * @notice This function calculates the total assets of the contract
+     * @dev It iterates over all the tokens in the contract, gets the latest price for each token from the oracle, 
+     * multiplies it with the balance of the token and adds it to the total
+     * @return total The total assets of the contract in the form of uint
+     */
     function totalAssets() public view returns (uint total) {
         for (uint i = 0; i < tokens.length; i++) {
             int256 price = oracle.getLatestPrice(address(tokens[i]));
@@ -71,6 +76,12 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         }
     }
 
+    /**
+     * @notice Converts a given amount of a specific token to shares
+     * @param token The ERC-20 token to be converted
+     * @param amount The amount of the token to be converted
+     * @return shares The equivalent amount of shares for the given amount of the token
+     */
     function convertToShares(IERC20 token, uint amount) external view returns(uint shares) {
         IStrategy strategy = strategies[token];
         if(address(strategy) != address(0)){
@@ -91,16 +102,29 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         IERC20 token,
         uint256 amount
     ) external nonReentrant whenNotPaused returns (uint256 shares) {
-         _deposit(
-            token,
-            amount,
-            msg.sender
-        );
+        shares = _deposit(
+                    token,
+                    amount,
+                    msg.sender
+                );
     }
 
     // ==================================== INTERNAL FUNCTIONS =========================================
 
-
+    /**
+     * @notice Deposits a token amount into a strategy, returning equivalent shares
+     * @dev 
+     * - Checks if the amount is non-zero and if the token's strategy exists. 
+     * - Transfers tokens from sender to this contract and approves strategyManager to spend them. 
+     * - Calls depositIntoStrategy function of strategyManager to deposit tokens into the strategy and get equivalent shares. 
+     * - Adds the amount to the token's depositedBalances, converts the token amount to ETH. 
+     * - Calculates the shares to be minted using _convertToShares function and mints the shares to the receiver. 
+     * - Emits a Deposit event.
+     * @param token The ERC-20 token to deposit
+     * @param amount The token amount to deposit
+     * @param receiver The address to receive the shares
+     * @return shares The shares minted to the receiver
+     */
     function _deposit(
         IERC20 token,
         uint256 amount,
