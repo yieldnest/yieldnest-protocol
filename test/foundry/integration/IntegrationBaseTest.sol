@@ -4,12 +4,12 @@ pragma solidity ^0.8.24;
 
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {IPauserRegistry} from "../../../src/external/eigenlayer/v1/interfaces/IPauserRegistry.sol";
-import {IEigenPodManager} from "../../../src/external/eigenlayer/v1/interfaces//IEigenPodManager.sol";
-import {IEigenPod} from "../../../src/external/eigenlayer/v1/interfaces//IEigenPod.sol";
-import {IStrategyManager} from "../../../src/external/eigenlayer/v1/interfaces//IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v1/interfaces//IDelayedWithdrawalRouter.sol";
-import {IDelegationManager} from "../../../src/external/eigenlayer/v1/interfaces//IDelegationManager.sol";
+import {IPauserRegistry} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPauserRegistry.sol";
+import {IEigenPodManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPodManager.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPod.sol";
+import {IStrategyManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IStrategyManager.sol";
+import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelegationManager.sol";
 import {ContractAddresses} from "../ContractAddresses.sol";
 import "forge-std/console.sol";
 import "forge-std/Test.sol";

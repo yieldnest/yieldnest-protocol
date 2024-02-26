@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IDelayedWithdrawalRouter} from "../external/eigenlayer/v1/interfaces/IDelayedWithdrawalRouter.sol";
-import {IDelegationManager} from "../external/eigenlayer/v1/interfaces/IDelegationManager.sol";
-import {IEigenPodManager} from "../external/eigenlayer/v1/interfaces/IEigenPodManager.sol";
+import {IDelayedWithdrawalRouter} from "../external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "../external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IEigenPodManager} from "../external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
 import {IStakingNode} from "./IStakingNode.sol";
 
 interface IStakingNodesManager {

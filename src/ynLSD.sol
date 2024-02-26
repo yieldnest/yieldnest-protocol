@@ -8,8 +8,8 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IStrategy} from "./external/eigenlayer/v1/interfaces/IStrategy.sol";
-import {IStrategyManager} from "./external/eigenlayer/v1/interfaces/IStrategyManager.sol";
+import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
+import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IynLSDEvents} from "./interfaces/IynLSD.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
 

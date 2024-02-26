@@ -8,11 +8,11 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {depositRootGenerator} from "./external/etherfi/DepositRootGenerator.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
-import {IDelegationManager} from "./external/eigenlayer/v1/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v1/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
-import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v1/interfaces/IEigenPodManager.sol";
-import {IStrategyManager,IStrategy} from "./external/eigenlayer/v1/interfaces/IStrategyManager.sol";
+import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";

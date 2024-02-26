@@ -3,12 +3,12 @@ pragma solidity ^0.8.24;
 
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
-import {IEigenPodManager} from "./external/eigenlayer/v1/interfaces/IEigenPodManager.sol";
-import {IEigenPod} from "./external/eigenlayer/v1/interfaces/IEigenPod.sol";
-import {IDelegationManager} from "./external/eigenlayer/v1/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v1/interfaces/IDelayedWithdrawalRouter.sol";
-import {IStrategyManager,IStrategy} from "./external/eigenlayer/v1/interfaces/IStrategyManager.sol";
-import {BeaconChainProofs} from "./external/eigenlayer/v1/BeaconChainProofs.sol";
+import {IEigenPodManager} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 

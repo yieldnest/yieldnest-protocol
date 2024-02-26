@@ -1,10 +1,10 @@
 pragma solidity ^0.8.24;
 
-import {IDelegationManager as IDelegationManagerM2 } from "./external/eigenlayer/v2/interfaces/IDelegationManager.sol";
-import {IEigenPod as IEigenPodM2 } from "./external/eigenlayer/v2/interfaces/IEigenPod.sol";
-import {ISignatureUtils} from "./external/eigenlayer/v2/interfaces/ISignatureUtils.sol";
-import {BeaconChainProofs as BeaconChainProofsM2} from "./external/eigenlayer/v2/BeaconChainProofs.sol";
-import {IStrategy as IStrategyM2} from "./external/eigenlayer/v2/interfaces/IStrategy.sol";
+import {IDelegationManager as IDelegationManagerM2 } from "./external/eigenlayer/v0.2.1/interfaces/IDelegationManager.sol";
+import {IEigenPod as IEigenPodM2 } from "./external/eigenlayer/v0.2.1/interfaces/IEigenPod.sol";
+import {ISignatureUtils} from "./external/eigenlayer/v0.2.1/interfaces/ISignatureUtils.sol";
+import {BeaconChainProofs as BeaconChainProofsM2} from "./external/eigenlayer/v0.2.1/BeaconChainProofs.sol";
+import {IStrategy as IStrategyM2} from "./external/eigenlayer/v0.2.1/interfaces/IStrategy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {StakingNode} from "./StakingNode.sol";
 
