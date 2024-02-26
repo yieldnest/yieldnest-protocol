@@ -1,25 +1,29 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "./StakingNode.sol";
-import "./libraries/DepositRootGenerator.sol";
-import "./interfaces/IDepositContract.sol";
-import "./interfaces/IStakingNode.sol";
-import "./interfaces/IDepositPool.sol";
-import "./interfaces/IynETH.sol";
-import "./interfaces/eigenlayer-init-mainnet/IDelegationManager.sol";
-import "./interfaces/eigenlayer-init-mainnet/IEigenPodManager.sol";
-import "forge-std/StdMath.sol";
-import "forge-std/console.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {depositRootGenerator} from "./external/etherfi/DepositRootGenerator.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
+import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {StakingNode} from "./StakingNode.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {stdMath} from "forge-std/StdMath.sol";
 
 
 interface StakingNodesManagerEvents {
-     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-     event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
+    event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
     event MaxNodeCountUpdated(uint maxNodeCount);
 }
 
@@ -30,7 +34,10 @@ contract StakingNodesManager is
     ReentrancyGuardUpgradeable,
     StakingNodesManagerEvents {
 
-    // Errors.
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
@@ -38,11 +45,11 @@ contract StakingNodesManager is
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
     error DirectETHDepositsNotAllowed();
+    error InvalidNodeId(uint nodeId);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
-
 
     /// @notice  Role is allowed to set system parameters
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
@@ -53,8 +60,15 @@ contract StakingNodesManager is
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
@@ -66,6 +80,7 @@ contract StakingNodesManager is
     UpgradeableBeacon private upgradableBeacon;
 
     IynETH public ynETH;
+    IRewardsDistributor rewardsDistributor;
 
     bytes[] public validators;
 
@@ -89,8 +104,8 @@ contract StakingNodesManager is
 
     mapping(bytes pubkey => bool) usedValidators;
 
-     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTRUCTOR   ------------------------------------
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
     /// @notice Configuration for contract initialization.
@@ -106,11 +121,12 @@ contract StakingNodesManager is
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
+        IRewardsDistributor rewardsDistributor; // Added rewardsDistributor dependency
     }
     
     function initialize(Init memory init) external initializer {
         __AccessControl_init();
-       __ReentrancyGuard_init();
+        __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
@@ -124,6 +140,7 @@ contract StakingNodesManager is
         delegationManager = init.delegationManager;
         delayedWithdrawalRouter = init.delayedWithdrawalRouter;
         strategyManager = init.strategyManager;
+        rewardsDistributor = init.rewardsDistributor;
     }
 
 
@@ -131,47 +148,41 @@ contract StakingNodesManager is
         require(msg.sender == address(ynETH));
     }
 
-    // fallback() external payable {
-    //     revert DirectETHDepositsNotAllowed();
-    // }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  VALIDATOR REGISTRATION  --------------------------
     //--------------------------------------------------------------------------------------
 
     function registerValidators(
         bytes32 _depositRoot,
-        DepositData[] calldata _depositData
+        ValidatorData[] calldata newValidators
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
-        if (_depositData.length == 0) {
+        if (newValidators.length == 0) {
             return;
         }
 
         // check deposit root matches the deposit contract deposit root
         // to prevent front-running from rogue operators 
-        if (_depositRoot != 0x0000000000000000000000000000000000000000000000000000000000000000) {
-            bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
-            if (_depositRoot != onchainDepositRoot) {
-                revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
-            }
+        bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
+        if (_depositRoot != onchainDepositRoot) {
+            revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
         }
 
-        validateDepositDataAllocation(_depositData);
+        validateDepositDataAllocation(newValidators);
 
-        uint totalDepositAmount = _depositData.length * DEFAULT_VALIDATOR_STAKE;
+        uint totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        uint depositDataLength = _depositData.length;
-        for (uint i = 0; i < depositDataLength; i++) {
+        uint validatorsLength = newValidators.length;
+        for (uint i = 0; i < validatorsLength; i++) {
 
-            DepositData calldata depositData = _depositData[i];
-            if (usedValidators[depositData.publicKey]) {
-                revert ValidatorAlreadyUsed(depositData.publicKey);
+            ValidatorData calldata validator = newValidators[i];
+            if (usedValidators[validator.publicKey]) {
+                revert ValidatorAlreadyUsed(validator.publicKey);
             }
-            usedValidators[depositData.publicKey] = true;
+            usedValidators[validator.publicKey] = true;
 
-            _registerValidator(depositData, DEFAULT_VALIDATOR_STAKE);
+            _registerValidator(validator, DEFAULT_VALIDATOR_STAKE);
         }
     }
 
@@ -180,9 +191,9 @@ contract StakingNodesManager is
      * @dev This function checks if the proposed allocation of deposits (represented by `_depositData`) across the nodes would lead to a more
      * equitable distribution of validator stakes. It calculates the current and new average balances of nodes, and ensures that for each node,
      * the absolute difference between its balance and the average balance does not increase as a result of the new deposits
-     * @param _depositData An array of `DepositData` structures representing the validator stakes to be allocated across the nodes.
+     * @param newValidators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
      */
-    function validateDepositDataAllocation(DepositData[] calldata _depositData) public view {
+    function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
         uint[] memory nodeBalances = new uint[](nodes.length);
         uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
         uint totalBalance = 0;
@@ -198,8 +209,12 @@ contract StakingNodesManager is
         uint averageBalance = totalBalance / nodes.length;
 
         uint newTotalBalance = totalBalance;
-        for (uint i = 0; i < _depositData.length; i++) {
-            uint nodeId = _depositData[i].nodeId;
+        for (uint i = 0; i < newValidators.length; i++) {
+            uint nodeId = newValidators[i].nodeId;
+
+            if (nodeId >= nodes.length) {
+                revert InvalidNodeId(nodeId);
+            }
             newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
             newTotalBalance += DEFAULT_VALIDATOR_STAKE;
         }
@@ -213,31 +228,31 @@ contract StakingNodesManager is
     }
 
     /// @notice Creates validator object and deposits into beacon chain
-    /// @param _depositData Data structure to hold all data needed for depositing to the beacon chain
+    /// @param validator Data structure to hold all data needed for depositing to the beacon chain
     function _registerValidator(
-        DepositData calldata _depositData, 
+        ValidatorData calldata validator, 
         uint256 _depositAmount
     ) internal {
 
-        uint256 nodeId = _depositData.nodeId;
+        uint256 nodeId = validator.nodeId;
         bytes memory withdrawalCredentials = getWithdrawalCredentials(nodeId);
-        bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(_depositData.publicKey, _depositData.signature, withdrawalCredentials, _depositAmount);
-        if (depositDataRoot != _depositData.depositDataRoot) {
-            revert DepositDataRootMismatch(depositDataRoot, _depositData.depositDataRoot);
+        bytes32 depositDataRoot = depositRootGenerator.generateDepositRoot(validator.publicKey, validator.signature, withdrawalCredentials, _depositAmount);
+        if (depositDataRoot != validator.depositDataRoot) {
+            revert DepositDataRootMismatch(depositDataRoot, validator.depositDataRoot);
         }
 
         // Deposit to the Beacon Chain
-        depositContractEth2.deposit{value: _depositAmount}(_depositData.publicKey, withdrawalCredentials, _depositData.signature, depositDataRoot);
+        depositContractEth2.deposit{value: _depositAmount}(validator.publicKey, withdrawalCredentials, validator.signature, depositDataRoot);
 
-        validators.push(_depositData.publicKey);
+        validators.push(validator.publicKey);
 
         // notify node of ETH _depositAmount
         IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
 
         emit ValidatorRegistered(
             nodeId,
-            _depositData.signature,
-            _depositData.publicKey,
+            validator.signature,
+            validator.publicKey,
             depositDataRoot
         );
     }
@@ -293,14 +308,29 @@ contract StakingNodesManager is
 
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
 
-        require(_implementationContract != address(0), "No zero addresses");
+        require(_implementationContract != address(0), "StakingNodesManager:No zero address");
+        require(implementationContract == address(0), "StakingNodesManager: Implementation already exists");
 
-        if (implementationContract == address(0)) {
-            upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
-        } else {
-           upgradableBeacon.upgradeTo(_implementationContract);
-        }
+        upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
         implementationContract = _implementationContract;
+    }
+
+    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
+
+        require(implementationContract != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
+        require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
+        upgradableBeacon.upgradeTo(_implementationContract);
+        implementationContract = _implementationContract;
+
+        if (callData.length == 0) {
+            // no function to initialize with
+            return;
+        }
+        // reinitialize all nodes
+        for (uint i = 0; i < nodes.length; i++) {
+            (bool success, ) = address(nodes[i]).call(callData);
+            require(success, "StakingNodesManager: Failed to call method on upgraded node");
+        }
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
@@ -314,10 +344,16 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint nodeId) external payable {
+    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable {
         require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
 
-        ynETH.processWithdrawnETH{value: msg.value}();
+        uint rewards = msg.value - withdrawnValidatorPrincipal;
+
+        IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
+        (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
+        require(sent, "Failed to send rewards");
+
+        ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
     }
 
     //--------------------------------------------------------------------------------------

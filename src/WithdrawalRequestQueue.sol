@@ -1,58 +1,20 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-//import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-
 import {IynETH} from "./interfaces/IynETH.sol";
 import {
     IWithdrawalRequestQueue,
+    IWithdrawalRequestQueueEvents,
     WithdrawalRequest
 } from "./interfaces/IWithdrawalRequestQueue.sol";
-
-/// @notice Events emitted by the withdrawal request queue.
-interface WithdrawalRequestQueueEvents {
-    /// @notice Created emitted when a withdrawal request has been created.
-    /// @param id The id of the withdrawal request.
-    /// @param requester The address of the user who requested to withdraw.
-    /// @param ynETHLocked The amount of ynETH that will be burned when the request is claimed.
-    /// @param ethRequested The amount of ETH that will be returned to the requester.
-    /// @param cumulativeETHRequested The cumulative amount of ETH requested at the time of the withdrawal request.
-    /// @param blockNumber The block number at the point at which the request was created.
-    event WithdrawalRequestCreated(
-        uint256 indexed id,
-        address indexed requester,
-        uint256 ynETHLocked,
-        uint256 ethRequested,
-        uint256 cumulativeETHRequested,
-        uint256 blockNumber
-    );
-
-    /// @notice Claimed emitted when a withdrawal request has been claimed.
-    /// @param id The id of the withdrawal request.
-    /// @param requester The address of the user who requested to withdraw.
-    /// @param ynETHLocked The amount of ynETH that will be burned when the request is claimed.
-    /// @param ethRequested The amount of ETH that will be returned to the requester.
-    /// @param cumulativeETHRequested The cumulative amount of ETH requested at the time of the withdrawal request.
-    /// @param blockNumber The block number at the point at which the request was created.
-    event WithdrawalRequestClaimed(
-        uint256 indexed id,
-        address indexed requester,
-        uint256 ynETHLocked,
-        uint256 ethRequested,
-        uint256 cumulativeETHRequested,
-        uint256 blockNumber
-    );
-}
 
 /// @title WithdrawalRequestQueue
 /// @notice Manages withdrawal requests from the staking contract.
@@ -60,7 +22,7 @@ contract WithdrawalRequestQueue is
     Initializable,
     AccessControlUpgradeable,
     IWithdrawalRequestQueue,
-    WithdrawalRequestQueueEvents
+    IWithdrawalRequestQueueEvents
 {
     // Errors.
     error AlreadyClaimed();

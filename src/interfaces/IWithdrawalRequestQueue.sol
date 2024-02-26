@@ -1,6 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
 struct WithdrawalRequest {
     uint64 blockNumber;
@@ -10,6 +9,41 @@ struct WithdrawalRequest {
     uint128 ethRequested;
     uint128 cumulativeETHRequested;
     bool isFinalized;
+}
+
+/// @notice Events emitted by the withdrawal request queue.
+interface IWithdrawalRequestQueueEvents {
+    /// @notice Created emitted when a withdrawal request has been created.
+    /// @param id The id of the withdrawal request.
+    /// @param requester The address of the user who requested to withdraw.
+    /// @param ynETHLocked The amount of ynETH that will be burned when the request is claimed.
+    /// @param ethRequested The amount of ETH that will be returned to the requester.
+    /// @param cumulativeETHRequested The cumulative amount of ETH requested at the time of the withdrawal request.
+    /// @param blockNumber The block number at the point at which the request was created.
+    event WithdrawalRequestCreated(
+        uint256 indexed id,
+        address indexed requester,
+        uint256 ynETHLocked,
+        uint256 ethRequested,
+        uint256 cumulativeETHRequested,
+        uint256 blockNumber
+    );
+
+    /// @notice Claimed emitted when a withdrawal request has been claimed.
+    /// @param id The id of the withdrawal request.
+    /// @param requester The address of the user who requested to withdraw.
+    /// @param ynETHLocked The amount of ynETH that will be burned when the request is claimed.
+    /// @param ethRequested The amount of ETH that will be returned to the requester.
+    /// @param cumulativeETHRequested The cumulative amount of ETH requested at the time of the withdrawal request.
+    /// @param blockNumber The block number at the point at which the request was created.
+    event WithdrawalRequestClaimed(
+        uint256 indexed id,
+        address indexed requester,
+        uint256 ynETHLocked,
+        uint256 ethRequested,
+        uint256 cumulativeETHRequested,
+        uint256 blockNumber
+    );
 }
 
 interface IWithdrawalRequestQueue {

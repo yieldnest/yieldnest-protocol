@@ -1,10 +1,10 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
 import "./IntegrationBaseTest.sol";
 import "forge-std/console.sol";
 import "../../../src/StakingNodesManager.sol";
-import "../../../src/mocks/MockStakingNode.sol";
+import "../mocks/MockStakingNode.sol";
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
 
@@ -54,14 +54,14 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         stakingNodesManager.createStakingNode();
 
         uint nodeId = 0;
-        IStakingNodesManager.DepositData[] memory depositData = new IStakingNodesManager.DepositData[](validatorCount);
-        depositData[0] = IStakingNodesManager.DepositData({
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
+        validatorData[0] = IStakingNodesManager.ValidatorData({
             publicKey: ZERO_PUBLIC_KEY,
             signature: ZERO_SIGNATURE,
             nodeId: nodeId,
             depositDataRoot: bytes32(0)
         });
-        depositData[1] = IStakingNodesManager.DepositData({
+        validatorData[1] = IStakingNodesManager.ValidatorData({
             publicKey: ONE_PUBLIC_KEY,
             signature: ZERO_SIGNATURE,
             nodeId: nodeId,
@@ -70,14 +70,15 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-        for (uint i = 0; i < depositData.length; i++) {
-            uint amount = depositAmount / depositData.length;
-            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(depositData[i].publicKey, depositData[i].signature, withdrawalCredentials, amount);
-            depositData[i].depositDataRoot = depositDataRoot;
+        for (uint i = 0; i < validatorData.length; i++) {
+            uint amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+
         }
         
-        bytes32 depositRoot = ZERO_DEPOSIT_ROOT;
-        stakingNodesManager.registerValidators(depositRoot, depositData);
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();
         assertEq(totalAssetsControlled, depositAmount, "Total assets controlled does not match expected value");
@@ -88,7 +89,8 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         address eigenPodAddress = address(stakingNodeInstance.eigenPod());
 
         MockStakingNode mockStakingNode = new MockStakingNode();
-        stakingNodesManager.registerStakingNodeImplementationContract(payable(mockStakingNode));
+        bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
         address upgradedImplementationAddress = stakingNodesManager.implementationContract();
         assertEq(upgradedImplementationAddress, payable(mockStakingNode));
@@ -99,5 +101,18 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         MockStakingNode mockStakingNodeInstance = MockStakingNode(payable(address(stakingNodeInstance)));
         uint redundantFunctionResult = mockStakingNodeInstance.redundantFunction();
         assertEq(redundantFunctionResult, 1234567);
+
+        assertEq(mockStakingNodeInstance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
+
+    function testFailRegisterStakingNodeImplementationTwice() public {
+        address initialImplementation = address(new MockStakingNode());
+        stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
+
+        address newImplementation = address(new MockStakingNode());
+        vm.expectRevert("StakingNodesManager: Implementation already exists");
+        stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
+    }
+
+
 }

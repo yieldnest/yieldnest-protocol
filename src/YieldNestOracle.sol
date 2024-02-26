@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
-import {AccessControlUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./interfaces/chainlink/AggregatorV3Interface.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {AggregatorV3Interface} from "./external/chainlink/AggregatorV3Interface.sol";
 
 contract YieldNestOracle is AccessControlUpgradeable {
     struct AssetPriceFeed {

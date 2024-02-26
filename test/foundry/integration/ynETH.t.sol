@@ -1,7 +1,9 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import "./IntegrationBaseTest.sol";
 import "forge-std/console.sol";
 import "../../../src/ynETH.sol";
-
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
@@ -208,5 +210,88 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(address(this));
         uint256 ynETHBalance = yneth.balanceOf(address(this));
         assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
+    }
+
+    function testTransferFailsForNonWhitelistedAddresses() public {
+        // Arrange
+        uint256 transferAmount = 1 ether;
+        address nonWhitelistedAddress = address(4); // An arbitrary address not in the whitelist
+        address recipient = address(5); // An arbitrary recipient address
+
+        // Act & Assert
+        // Ensure transfer from a non-whitelisted address reverts
+        vm.expectRevert(ynETH.TransfersPaused.selector);
+        vm.prank(nonWhitelistedAddress);
+        yneth.transfer(recipient, transferAmount);
+    }
+
+    function testTransferSucceedsForWhitelistedAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address whitelistedAddress = transferEnabledEOA; // Using the pre-defined whitelisted address from setup
+        address recipient = address(6); // An arbitrary recipient address
+
+
+        yneth.depositETH{value: depositAmount}(whitelistedAddress); 
+
+        uint transferAmount = yneth.balanceOf(whitelistedAddress);
+
+        // Act
+        address[] memory whitelist = new address[](1);
+        whitelist[0] = whitelistedAddress;
+        yneth.addToPauseWhitelist(whitelist); // Whitelisting the address
+        vm.prank(whitelistedAddress);
+        yneth.transfer(recipient, transferAmount);
+
+        // Assert
+        uint256 recipientBalance = yneth.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for whitelisted address");
+    }
+
+    function testTransferSucceedsForNewlyWhitelistedAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address newWhitelistedAddress = vm.addr(7); // Using a new address for whitelisting
+        address recipient = address(8); // An arbitrary recipient address
+
+        address[] memory whitelistAddresses = new address[](1);
+        whitelistAddresses[0] = newWhitelistedAddress;
+        yneth.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
+        vm.deal(newWhitelistedAddress, depositAmount); // Providing the new whitelisted address with some ETH
+        vm.prank(newWhitelistedAddress);
+        yneth.depositETH{value: depositAmount}(newWhitelistedAddress); // Depositing ETH to get ynETH
+
+        uint transferAmount = yneth.balanceOf(newWhitelistedAddress);
+
+        // Act
+        vm.prank(newWhitelistedAddress);
+        yneth.transfer(recipient, transferAmount);
+
+        // Assert
+        uint256 recipientBalance = yneth.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for newly whitelisted address");
+    }
+
+    function testTransferEnabledForAnyAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address arbitraryAddress = vm.addr(9999); // Using an arbitrary address
+        address recipient = address(10000); // An arbitrary recipient address
+
+        vm.deal(arbitraryAddress, depositAmount); // Providing the arbitrary address with some ETH
+        vm.prank(arbitraryAddress);
+        yneth.depositETH{value: depositAmount}(arbitraryAddress); // Depositing ETH to get ynETH
+
+        uint transferAmount = yneth.balanceOf(arbitraryAddress);
+
+        // Act
+        yneth.unpauseTransfers(); // Unpausing transfers for all
+        
+        vm.prank(arbitraryAddress);
+        yneth.transfer(recipient, transferAmount);
+
+        // Assert
+        uint256 recipientBalance = yneth.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
     }
 }

@@ -1,22 +1,25 @@
-import "forge-std/Script.sol";
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
+
+import "../../lib/forge-std/src/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
-import "../../src/external/WETH.sol";
+import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
 import "../../src/interfaces/IStakingNode.sol";
-import "../../src/interfaces/IDepositContract.sol";
+import "../../src/external/ethereum/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
-import "../../src/interfaces/IWETH.sol";
+import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";
 
 
 contract DeployYieldNest is BaseScript {
 
-    ProxyAdmin public proxyAdmin;
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
@@ -24,6 +27,7 @@ contract DeployYieldNest is BaseScript {
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
+    RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
     address payable feeReceiver;
@@ -47,10 +51,10 @@ contract DeployYieldNest is BaseScript {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
-
         // ynETH.sol ROLES
         address ynethAdminAddress = vm.envAddress("YNETH_ADMIN_ADDRESS");
         address pauserAddress = vm.envAddress("PAUSER_ADDRESS");
+        address proxyOwnerAddress = vm.envAddress("PROXY_OWNER");
 
         address rewardsDistributorAdminAddress = vm.envAddress("REWARDS_DISTRIBUTOR_ADMIN_ADDRESS");
 
@@ -75,8 +79,6 @@ contract DeployYieldNest is BaseScript {
 
         startingExchangeAdjustmentRate = 4;
 
-        proxyAdmin = new ProxyAdmin(address(this));
-
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
@@ -90,27 +92,32 @@ contract DeployYieldNest is BaseScript {
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
         executionLayerReceiver = new RewardsReceiver();
+        consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
-        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdmin), "");
+        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), proxyOwnerAddress, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
 
         // Deploy proxies
-        ynethProxy = new TransparentUpgradeableProxy(address(yneth), address(proxyAdmin), "");
-        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), address(proxyAdmin), "");
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), proxyOwnerAddress, "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), proxyOwnerAddress, "");
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
 
         // Initialize ynETH with example parameters
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = pauserAddress;
+
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: ynethAdminAddress,
             pauser: pauserAddress,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             wETH: IWETH(address(weth)),  // Deployed WETH address
-            exchangeAdjustmentRate: startingExchangeAdjustmentRate
+            exchangeAdjustmentRate: startingExchangeAdjustmentRate,
+            pauseWhitelist: pauseWhitelist
         });
         yneth.initialize(ynethInit);
 
@@ -127,7 +134,8 @@ contract DeployYieldNest is BaseScript {
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
-            strategyManager: strategyManager
+            strategyManager: strategyManager,
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
@@ -136,6 +144,7 @@ contract DeployYieldNest is BaseScript {
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: rewardsDistributorAdminAddress,
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the initialization
             feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
             ynETH: IynETH(address(yneth))
         });
@@ -147,14 +156,15 @@ contract DeployYieldNest is BaseScript {
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
+        consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
         vm.stopBroadcast();
 
         Deployment memory deployment = Deployment({
-            proxyAdmin: proxyAdmin,
             ynETH: yneth,
             stakingNodesManager: stakingNodesManager,
             executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
             rewardsDistributor: rewardsDistributor,
             stakingNodeImplementation: stakingNodeImplementation
         });

@@ -1,40 +1,31 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
-import {IDepositPool} from "./interfaces/IDepositPool.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
-import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-
-import {IynETH} from "./interfaces/IynETH.sol";
-import {IDepositContract} from "./interfaces/IDepositContract.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from
-    "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./interfaces/IOracle.sol";
-import "./interfaces/IWETH.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "forge-std/console.sol";
-
-interface StakingEvents {
-    /// @notice Emitted when a user stakes ETH and receives ynETH.
-    /// @param staker The address of the user staking ETH.
-    /// @param ethAmount The amount of ETH staked.
-    /// @param ynETHAmount The amount of ynETH received.
-    event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
-    event DepositETHPausedUpdated(bool isPaused);
-    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-    event ExchangeAdjustmentRateUpdated(uint256 newRate);
-}
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
+import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
+import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {IWETH} from "./external/tokens/IWETH.sol";
  
-contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEvents {
+contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {
 
-    // Errors.
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
     error ValueOutOfBounds(uint value);
+    error TransfersPaused();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -43,19 +34,34 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     /// @notice  Role is allowed to set the pause state
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
     bool public isDepositETHPaused;
-    // Storage variables
-
 
     /// @dev The value is in basis points (1/10000).
     uint public exchangeAdjustmentRate;
 
     uint public totalDepositedInPool;
 
-    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+    mapping (address => bool) pauseWhiteList;
+    bool transfersPaused;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
+
 
     /// @notice Configuration for contract initialization.
     struct Init {
@@ -65,6 +71,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         IRewardsDistributor rewardsDistributor;
         IWETH wETH;
         uint exchangeAdjustmentRate;
+        address[] pauseWhitelist;
     }
 
     constructor(
@@ -85,6 +92,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
+        transfersPaused = true; // transfers are initially paused
+
+        _addToPauseWhitelist(init.pauseWhitelist);
+    }
+
+    receive() external payable {
+        revert("ynETH: Cannot receive ETH directly");
     }
 
     //--------------------------------------------------------------------------------------
@@ -94,7 +108,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     function depositETH(address receiver) public payable returns (uint shares) {
 
         if (isDepositETHPaused) {
-            console.log("System is paused");
             revert Paused();
         }
     
@@ -164,10 +177,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
     //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------
     //--------------------------------------------------------------------------------------
 
-    receive() external payable {
-        revert("ynETH: Cannot receive ETH directly");
-    }
-
     function receiveRewards() external payable {
         require(msg.sender == address(rewardsDistributor), "Caller is not the stakingNodesManager");
         totalDepositedInPool += msg.value;
@@ -195,6 +204,35 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, StakingEve
         }
         exchangeAdjustmentRate = newRate;
         emit ExchangeAdjustmentRateUpdated(newRate);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  BOOTSTRAP TRANSFERS PAUSE  ------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    function _update(address from, address to, uint256 amount) internal virtual override {
+        // revert if transfers are paused, the from is not on the whitelist and
+        // it's neither a mint (from = 0) nor a burn (to = 0)
+        if (transfersPaused && !pauseWhiteList[from] && from != address(0) && to != address(0)) {
+            revert TransfersPaused();
+        }
+        super._update(from, to, amount);
+    }
+
+    /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
+    function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
+        transfersPaused = false;
+    }
+    
+    function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
+        _addToPauseWhitelist(whitelistedForTransfers);
+    }
+
+    function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
+        for (uint i = 0; i < whitelistedForTransfers.length; i++) {
+            pauseWhiteList[whitelistedForTransfers[i]] = true;
+        }
     }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------

@@ -1,7 +1,8 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
-import "./interfaces/IynETH.sol";
-import "./interfaces/IStakingNodesManager.sol";
+import {IynETH} from "./interfaces/IynETH.sol";
+import {IStakingNodesManager,IStakingNode} from "./interfaces/IStakingNodesManager.sol";
 
 contract ynViewer {
     IynETH public ynETH;
