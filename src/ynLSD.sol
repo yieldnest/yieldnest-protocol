@@ -10,8 +10,12 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IynLSDEvents} from "./interfaces/IynLSD.sol";
+import {IynLSD} from "./interfaces/IynLSD.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
+
+interface IynLSDEvents {
+    event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares, uint256 eigenShares);
+}
 
 contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IynLSDEvents {
     using SafeERC20 for IERC20;
@@ -27,9 +31,9 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     mapping(IERC20 => IStrategy) public strategies;
     mapping(IERC20 => uint) public depositedBalances;
 
-    IERC20[] tokens;
+    IERC20[] public tokens;
 
-    uint exchangeAdjustmentRate;
+    uint public exchangeAdjustmentRate;
 
     struct Init {
         IERC20[] tokens;
@@ -38,7 +42,6 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         YieldNestOracle oracle;
         uint exchangeAdjustmentRate;
     }
-
 
     function initialize(Init memory init) public initializer {
         __AccessControl_init();
@@ -72,7 +75,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
         token.approve(address(strategyManager), amount);
 
-        strategyManager.depositIntoStrategy(
+        uint eigenShares = strategyManager.depositIntoStrategy(
                 strategy,
                 token,
                 amount
@@ -90,7 +93,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         // Mint the calculated shares to the receiver
         _mint(receiver, shares);
 
-        emit Deposit(msg.sender, receiver, amount, shares);
+        emit Deposit(msg.sender, receiver, amount, shares, eigenShares);
     }
 
 
@@ -115,6 +118,13 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
     }
 
 
+   // ==================================== VIEW FUNCTIONS =========================================
+    /**
+     * @notice This function calculates the total assets of the contract
+     * @dev It iterates over all the tokens in the contract, gets the latest price for each token from the oracle, 
+     * multiplies it with the balance of the token and adds it to the total
+     * @return total The total assets of the contract in the form of uint
+     */
     function totalAssets() public view returns (uint) {
         uint total = 0;
         for (uint i = 0; i < tokens.length; i++) {
@@ -125,4 +135,18 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         return total;
     }
 
+   /**
+     * @notice Converts a given amount of a specific token to shares
+     * @param token The ERC-20 token to be converted
+     * @param amount The amount of the token to be converted
+     * @return shares The equivalent amount of shares for the given amount of the token
+     */
+    function convertToShares(IERC20 token, uint amount) external view returns(uint shares) {
+        IStrategy strategy = strategies[token];
+        if(address(strategy) != address(0)){
+           int256 tokenPriceInETH = oracle.getLatestPrice(address(token));
+           uint256 tokenAmountInETH = uint256(tokenPriceInETH) * amount / 1e18;
+           shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
+        }
+    }
 }

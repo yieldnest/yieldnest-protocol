@@ -15,6 +15,8 @@ import "forge-std/console.sol";
 import "forge-std/Test.sol";
 import "../../../src/external/tokens/WETH.sol";
 import "../../../src/ynETH.sol";
+import "../../../src/ynLSD.sol";
+import "../../../src/YieldNestOracle.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
@@ -27,7 +29,9 @@ contract IntegrationBaseTest is Test, Utils {
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
-    
+    TransparentUpgradeableProxy public yieldNestOracleProxy;
+    TransparentUpgradeableProxy public ynLSDProxy;
+
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
@@ -42,6 +46,16 @@ contract IntegrationBaseTest is Test, Utils {
     IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
     IDepositContract public depositContractEth2;
+
+    uint public startingExchangeAdjustmentRateForYnLSD;
+
+    ynLSD public ynlsd;
+    YieldNestOracle public yieldNestOracle;
+    IERC20[] public tokens;
+    address[] public assetsAddresses;
+    address[] public priceFeeds;
+    uint256[] public maxAges;
+    IStrategy[] public strategies;
 
     address public transferEnabledEOA;
 
@@ -74,6 +88,8 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
+        yieldNestOracle = new YieldNestOracle();
+        ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdminOwner), "");
@@ -82,9 +98,13 @@ contract IntegrationBaseTest is Test, Utils {
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), address(proxyAdminOwner), "");
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), address(proxyAdminOwner), "");
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), address(proxyAdminOwner), "");
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), address(proxyAdminOwner), "");
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
+        yieldNestOracle =  YieldNestOracle(address(yieldNestOracle));
+        ynlsd = ynLSD(address(ynlsd));
 
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
@@ -144,6 +164,40 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver.initialize(rewardsReceiverInit);
 
         consensusLayerReceiver.initialize(rewardsReceiverInit);
+
+        // rETH
+        tokens.push(IERC20(chainAddresses.RETH_ADDRESS));
+        assetsAddresses.push(chainAddresses.RETH_ADDRESS);
+        strategies.push(IStrategy(chainAddresses.RETH_STRATEGY_ADDRESS));
+        priceFeeds.push(chainAddresses.RETH_FEED_ADDRESS);
+        maxAges.push(uint256(86400));
+
+        // stETH
+        tokens.push(IERC20(chainAddresses.STETH_ADDRESS));
+        assetsAddresses.push(chainAddresses.STETH_ADDRESS);
+        strategies.push(IStrategy(chainAddresses.STETH_STRATEGY_ADDRESS));
+        priceFeeds.push(chainAddresses.STETH_FEED_ADDRESS);
+        maxAges.push(uint256(86400)); //one hour
+
+        YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
+            assets: assetsAddresses,
+            priceFeedAddresses: priceFeeds,
+            maxAges: maxAges,
+            admin: address(this),
+            oracleManager: address(this)
+        });
+
+
+        ynLSD.Init memory init = ynLSD.Init({
+            tokens: tokens,
+            strategies: strategies,
+            strategyManager: strategyManager,
+            oracle: yieldNestOracle,
+            exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD
+        });
+
+        ynlsd.initialize(init);
+        yieldNestOracle.initialize(oracleInit);
     }
 }
 
