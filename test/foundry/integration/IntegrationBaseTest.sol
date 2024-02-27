@@ -3,24 +3,21 @@ pragma solidity ^0.8.24;
 
 
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {IPauserRegistry} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPauserRegistry.sol";
-import {IEigenPodManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPodManager.sol";
-import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IEigenPod.sol";
 import {IStrategyManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IStrategyManager.sol";
 import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelayedWithdrawalRouter.sol";
 import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelegationManager.sol";
 import {ContractAddresses} from "../ContractAddresses.sol";
-import "forge-std/console.sol";
 import "forge-std/Test.sol";
 import "../../../src/external/tokens/WETH.sol";
 import "../../../src/ynETH.sol";
+import "../../../src/ynViewer.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
 import "../../../src/interfaces/IRewardsDistributor.sol";
 import "../../../scripts/forge/Utils.sol";
+
 
 contract IntegrationBaseTest is Test, Utils {
     address public proxyAdminOwner;
@@ -33,6 +30,7 @@ contract IntegrationBaseTest is Test, Utils {
     RewardsReceiver public executionLayerReceiver;
     RewardsReceiver public consensusLayerReceiver;
 
+    ynViewer public viewer;
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
     address payable feeReceiver;
@@ -45,24 +43,22 @@ contract IntegrationBaseTest is Test, Utils {
 
     address public transferEnabledEOA;
 
-    uint startingExchangeAdjustmentRate;
+    uint256 startingExchangeAdjustmentRate;
 
     bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
     bytes ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
 
     bytes ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes32 ZERO_DEPOSIT_ROOT = bytes32(0);
+    bytes32  ZERO_DEPOSIT_ROOT = bytes32(0);
 
 
-    function setUp() public {
+    function setUp() virtual public {
 
         address defaultSigner = vm.addr(1); // Using the default signer address from foundry's vm
-
         proxyAdminOwner = vm.addr(2);
-        feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
-
         transferEnabledEOA = vm.addr(3);
 
+        feeReceiver = payable(defaultSigner); // Casting the default signer address to payable
 
         startingExchangeAdjustmentRate = 4;
 
@@ -74,6 +70,7 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
+        viewer = new ynViewer(yneth, stakingNodesManager);
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), address(proxyAdminOwner), "");
