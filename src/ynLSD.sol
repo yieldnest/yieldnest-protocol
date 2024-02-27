@@ -20,10 +20,12 @@ interface IynLSDEvents {
 contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IynLSDEvents {
     using SafeERC20 for IERC20;
 
-    error UnsupportedToken(IERC20 token);
+    error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+
+    bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
 
     YieldNestOracle oracle;
     IStrategyManager public strategyManager;
@@ -65,7 +67,7 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
         IStrategy strategy = strategies[token];
         if(address(strategy) == address(0x0)){
-            revert UnsupportedToken(token);
+            revert UnsupportedAsset(token);
         }
 
         if (amount == 0) {
@@ -149,4 +151,25 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
            shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
         }
     }
+
+    //  function depositAssetsToEigenlayer(address[] assets)
+    //     external
+    //     override
+    //     nonReentrant
+    //     hasRole(LSD_RESTAKING_MANAGER_ROLE)
+    // {
+        
+    //     for (uint i = 0; i < assets.length; i++) {
+    //         IERC20 token = IERC20(assets[i]);
+    //         address strategy = strategies[assets[i]];
+    //         if (strategy == address(0)) {
+    //             revert UnsupportedAsset(token);
+    //         }
+
+    //         uint256 balance = token.balanceOf(address(this));
+
+    //         strategyManager.depositIntoStrategy(IStrategy(strategy), token, balance);
+    //         emit DepositToEigenlayer(assets[i], strategy, balance);
+    //     }
+    // }
 }
