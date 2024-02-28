@@ -92,7 +92,8 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
         stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
-        address upgradedImplementationAddress = stakingNodesManager.implementationContract();
+        UpgradeableBeacon beacon = stakingNodesManager.upgradeableBeacon();
+        address upgradedImplementationAddress = beacon.implementation();
         assertEq(upgradedImplementationAddress, payable(mockStakingNode));
 
         address newEigenPodAddress = address(stakingNodeInstance.eigenPod());

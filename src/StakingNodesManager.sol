@@ -75,9 +75,8 @@ contract StakingNodesManager is
     IDelegationManager public delegationManager;
     IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
-
-    address public implementationContract;
-    UpgradeableBeacon private upgradableBeacon;
+    
+    UpgradeableBeacon public upgradeableBeacon;
 
     IynETH public ynETH;
     IRewardsDistributor rewardsDistributor;
@@ -288,7 +287,7 @@ contract StakingNodesManager is
 
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
 
-        BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
+        BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
 
         uint nodeId = nodes.length;
@@ -309,18 +308,16 @@ contract StakingNodesManager is
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
 
         require(_implementationContract != address(0), "StakingNodesManager:No zero address");
-        require(implementationContract == address(0), "StakingNodesManager: Implementation already exists");
+        require(address(upgradeableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
 
-        upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
-        implementationContract = _implementationContract;
+        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
     function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
 
-        require(implementationContract != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
+        require(address(upgradeableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
         require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
-        upgradableBeacon.upgradeTo(_implementationContract);
-        implementationContract = _implementationContract;
+        upgradeableBeacon.upgradeTo(_implementationContract);
 
         if (callData.length == 0) {
             // no function to initialize with

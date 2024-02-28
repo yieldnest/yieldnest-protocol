@@ -193,7 +193,8 @@ contract IntegrationBaseTest is Test, Utils {
             strategies: strategies,
             strategyManager: strategyManager,
             oracle: yieldNestOracle,
-            exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD
+            exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD,
+            maxNodeCount: 10
         });
 
         ynlsd.initialize(init);

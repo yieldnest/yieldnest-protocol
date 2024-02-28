@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -11,17 +13,23 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IynLSD} from "./interfaces/IynLSD.sol";
+import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
 
 interface IynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares, uint256 eigenShares);
+    event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
+    event LSDStakingNodeCreated(uint nodeId, address nodeAddress);
+    event MaxNodeCountUpdated(uint maxNodeCount);
 }
 
-contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IynLSDEvents {
+contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IynLSDEvents {
     using SafeERC20 for IERC20;
 
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
+
+    bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
@@ -29,6 +37,8 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
     YieldNestOracle oracle;
     IStrategyManager public strategyManager;
+        
+    UpgradeableBeacon private upgradableBeacon;
 
     mapping(IERC20 => IStrategy) public strategies;
     mapping(IERC20 => uint) public depositedBalances;
@@ -37,12 +47,17 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
     uint public exchangeAdjustmentRate;
 
+    ILSDStakingNode[] public nodes;
+    uint public maxNodeCount;
+
+
     struct Init {
         IERC20[] tokens;
         IStrategy[] strategies;
         IStrategyManager strategyManager;
         YieldNestOracle oracle;
         uint exchangeAdjustmentRate;
+        uint maxNodeCount;
     }
 
     function initialize(Init memory init) public initializer {
@@ -57,40 +72,41 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
         strategyManager = init.strategyManager;
         oracle = init.oracle;
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
+        maxNodeCount = init.maxNodeCount;
     }
 
     function deposit(
-        IERC20 token,
+        IERC20 asset,
         uint256 amount,
         address receiver
     ) external nonReentrant returns (uint256 shares) {
 
-        IStrategy strategy = strategies[token];
+        IStrategy strategy = strategies[asset];
         if(address(strategy) == address(0x0)){
-            revert UnsupportedAsset(token);
+            revert UnsupportedAsset(asset);
         }
 
         if (amount == 0) {
             revert ZeroAmount();
         }
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        asset.safeTransferFrom(msg.sender, address(this), amount);
 
-        token.approve(address(strategyManager), amount);
+        asset.approve(address(strategyManager), amount);
 
         uint eigenShares = strategyManager.depositIntoStrategy(
                 strategy,
-                token,
+                asset,
                 amount
             );
 
-        depositedBalances[token] += amount;
+        depositedBalances[asset] += amount;
 
-         // Convert the value of the token deposited to ETH
-        int256 tokenPriceInETH = oracle.getLatestPrice(address(token));
-        uint256 tokenAmountInETH = uint256(tokenPriceInETH) * amount / 1e18; // Assuming price is in 18 decimal places
+         // Convert the value of the asset deposited to ETH
+        int256 assetPriceInETH = oracle.getLatestPrice(address(asset));
+        uint256 assetAmountInETH = uint256(assetPriceInETH) * amount / 1e18; // Assuming price is in 18 decimal places
 
         // Calculate how many shares to be minted using the same formula as ynETH
-        shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
+        shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
 
         // Mint the calculated shares to the receiver
         _mint(receiver, shares);
@@ -139,37 +155,91 @@ contract ynLSD is ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpg
 
    /**
      * @notice Converts a given amount of a specific token to shares
-     * @param token The ERC-20 token to be converted
+     * @param asset The ERC-20 token to be converted
      * @param amount The amount of the token to be converted
      * @return shares The equivalent amount of shares for the given amount of the token
      */
-    function convertToShares(IERC20 token, uint amount) external view returns(uint shares) {
-        IStrategy strategy = strategies[token];
+    function convertToShares(IERC20 asset, uint amount) external view returns(uint shares) {
+        IStrategy strategy = strategies[asset];
         if(address(strategy) != address(0)){
-           int256 tokenPriceInETH = oracle.getLatestPrice(address(token));
+           int256 tokenPriceInETH = oracle.getLatestPrice(address(asset));
            uint256 tokenAmountInETH = uint256(tokenPriceInETH) * amount / 1e18;
            shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
+        } else {
+            revert UnsupportedAsset(asset);
         }
     }
 
-    //  function depositAssetsToEigenlayer(address[] assets)
-    //     external
-    //     override
-    //     nonReentrant
-    //     hasRole(LSD_RESTAKING_MANAGER_ROLE)
-    // {
-        
-    //     for (uint i = 0; i < assets.length; i++) {
-    //         IERC20 token = IERC20(assets[i]);
-    //         address strategy = strategies[assets[i]];
-    //         if (strategy == address(0)) {
-    //             revert UnsupportedAsset(token);
-    //         }
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STAKING NODE CREATION  ---------------------------
+    //--------------------------------------------------------------------------------------
 
-    //         uint256 balance = token.balanceOf(address(this));
+    function createLSDStakingNode() public returns (ILSDStakingNode) {
 
-    //         strategyManager.depositIntoStrategy(IStrategy(strategy), token, balance);
-    //         emit DepositToEigenlayer(assets[i], strategy, balance);
-    //     }
-    // }
+        require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
+
+        BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
+        ILSDStakingNode node = ILSDStakingNode(payable(proxy));
+
+        uint nodeId = nodes.length;
+
+        node.initialize(
+            ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
+        );
+        nodes.push(node);
+
+        emit LSDStakingNodeCreated(nodeId, address(node));
+
+        return node;
+    }
+
+    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
+
+        require(_implementationContract != address(0), "StakingNodesManager:No zero address");
+        require(address(upgradableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
+
+        upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
+    }
+
+    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
+
+        require(address(upgradableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
+        require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
+        upgradableBeacon.upgradeTo(_implementationContract);
+
+        if (callData.length == 0) {
+            // no function to initialize with
+            return;
+        }
+        // reinitialize all nodes
+        for (uint i = 0; i < nodes.length; i++) {
+            (bool success, ) = address(nodes[i]).call(callData);
+            require(success, "ynLSD: Failed to call method on upgraded node");
+        }
+    }
+
+    /// @notice Sets the maximum number of staking nodes allowed
+    /// @param _maxNodeCount The maximum number of staking nodes
+    function setMaxNodeCount(uint _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
+        maxNodeCount = _maxNodeCount;
+        emit MaxNodeCountUpdated(_maxNodeCount);
+    }
+
+    function hasLSDRestakingManagerRole(address account) external returns (bool) {
+        return hasRole(LSD_RESTAKING_MANAGER_ROLE, account);
+    }
+
+    function retrieveAsset(uint nodeId, IERC20 asset, uint256 amount) external {
+        require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
+
+        IStrategy strategy = strategies[asset];
+        if (address(strategy) == address(0)) {
+            revert UnsupportedAsset(asset);
+        }
+
+        IERC20(asset).transfer(msg.sender, amount);
+        emit AssetRetrieved(asset, amount, nodeId, msg.sender);
+    }
+
+    event AssetRetrieved(address token, address to, uint256 amount);
 }
