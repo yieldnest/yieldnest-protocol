@@ -26,14 +26,29 @@ interface IynLSDEvents {
 contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IynLSDEvents {
     using SafeERC20 for IERC20;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
+    bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
 
-    bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     YieldNestOracle oracle;
     IStrategyManager public strategyManager;
@@ -50,6 +65,9 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     ILSDStakingNode[] public nodes;
     uint public maxNodeCount;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
     struct Init {
         IERC20[] tokens;
@@ -81,6 +99,10 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         maxNodeCount = init.maxNodeCount;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  DEPOSITS   ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     function deposit(
         IERC20 asset,
@@ -131,8 +153,6 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         );
     }
 
-
-   // ==================================== VIEW FUNCTIONS =========================================
     /**
      * @notice This function calculates the total assets of the contract
      * @dev It iterates over all the tokens in the contract, gets the latest price for each token from the oracle, 
@@ -237,6 +257,4 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         IERC20(asset).transfer(msg.sender, amount);
         emit AssetRetrieved(asset, amount, nodeId, msg.sender);
     }
-
-    event AssetRetrieved(address token, address to, uint256 amount);
 }

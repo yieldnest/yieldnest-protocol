@@ -44,7 +44,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
@@ -61,7 +60,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
-
 
     /// @notice Configuration for contract initialization.
     struct Init {
