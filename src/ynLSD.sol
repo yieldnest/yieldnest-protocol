@@ -17,7 +17,7 @@ import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
 
 interface IynLSDEvents {
-    event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares, uint256 eigenShares);
+    event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
     event LSDStakingNodeCreated(uint nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint maxNodeCount);
@@ -90,17 +90,6 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
             revert ZeroAmount();
         }
         asset.safeTransferFrom(msg.sender, address(this), amount);
-
-        asset.approve(address(strategyManager), amount);
-
-        uint eigenShares = strategyManager.depositIntoStrategy(
-                strategy,
-                asset,
-                amount
-            );
-
-        depositedBalances[asset] += amount;
-
          // Convert the value of the asset deposited to ETH
         int256 assetPriceInETH = oracle.getLatestPrice(address(asset));
         uint256 assetAmountInETH = uint256(assetPriceInETH) * amount / 1e18; // Assuming price is in 18 decimal places
@@ -111,7 +100,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         // Mint the calculated shares to the receiver
         _mint(receiver, shares);
 
-        emit Deposit(msg.sender, receiver, amount, shares, eigenShares);
+        emit Deposit(msg.sender, receiver, amount, shares);
     }
 
 

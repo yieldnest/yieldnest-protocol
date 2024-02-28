@@ -11,7 +11,7 @@ import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrateg
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 
 interface ILSDStakingNodeEvents {
-    event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint amount);
+    event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint amount, uint eigenShares);
 }
 
 
@@ -41,17 +41,20 @@ contract LSDStakingNode is ILSDStakingNode, ReentrancyGuardUpgradeable, ILSDStak
 
         for (uint i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
+            uint amount = amounts[i];
             IStrategy strategy = ynLSD.strategies(assets[i]);
             if (address(strategy) == address(0)) {
                 revert UnsupportedAsset(asset);
             }
 
-            ynLSD.retrieveAsset(nodeId, assets[i], amounts[i]);
+            ynLSD.retrieveAsset(nodeId, assets[i], amount);
 
             uint256 balance = asset.balanceOf(address(this));
 
-            strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amounts[i]);
-            emit DepositToEigenlayer(assets[i], strategy, amounts[i]);
+            asset.approve(address(strategyManager), amount);
+
+            uint eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            emit DepositToEigenlayer(assets[i], strategy, amount, eigenShares);
         }
     }
 
