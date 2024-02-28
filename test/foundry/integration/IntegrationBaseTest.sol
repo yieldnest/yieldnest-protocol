@@ -65,7 +65,7 @@ contract IntegrationBaseTest is Test, Utils {
     // Ethereum
     IDepositContract public depositContractEth2;
 
-    function setUp() virtual public {
+    function setUp() public virtual {
 
         // Setup Addresses
         contractAddresses = new ContractAddresses();
@@ -95,6 +95,7 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager = new StakingNodesManager();
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
+        vm.stopPrank();
     }
 
     function setupUtils() public {
@@ -133,7 +134,6 @@ contract IntegrationBaseTest is Test, Utils {
             pauseWhitelist: pauseWhitelist
         });
 
-        vm.prank(actors.PROXY_ADMIN_OWNER);
         yneth.initialize(ynethInit);
     }
 
@@ -154,10 +154,8 @@ contract IntegrationBaseTest is Test, Utils {
             admin: actors.ADMIN,
             withdrawer: address(rewardsDistributor)
         });
-        vm.startPrank(actors.PROXY_ADMIN_OWNER);
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit);
-        vm.stopPrank();
     }
 
     function setupStakingNodesManager() public {
@@ -177,10 +175,9 @@ contract IntegrationBaseTest is Test, Utils {
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
         });
-        vm.startPrank(actors.PROXY_ADMIN_OWNER);
         stakingNodesManager.initialize(stakingNodesManagerInit);
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
-        vm.stopPrank();
     }
 }
 

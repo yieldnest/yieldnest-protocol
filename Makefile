@@ -8,7 +8,7 @@ lint		:;	solhint ./src/* # Solhint from Protofire: https://github.com/protofire/
 
 # Coverage https://github.com/linux-test-project/lcov (brew install lcov)
 
-cover		:;	forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage
+cover		:;	forge coverage --rpc-url ${rpc} --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage 
 show		:;	npx http-server ./coverage
 
 # Utilities
