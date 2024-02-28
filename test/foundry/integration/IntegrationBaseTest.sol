@@ -154,12 +154,13 @@ contract IntegrationBaseTest is Test, Utils {
             admin: actors.ADMIN,
             withdrawer: address(rewardsDistributor)
         });
+        vm.startPrank(actors.PROXY_ADMIN_OWNER);
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit);
+        vm.stopPrank();
     }
 
     function setupStakingNodesManager() public {
-
         stakingNodeImplementation = new StakingNode();
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.ADMIN,
@@ -175,8 +176,9 @@ contract IntegrationBaseTest is Test, Utils {
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
         });
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         stakingNodesManager.initialize(stakingNodesManagerInit);
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
     }
 }

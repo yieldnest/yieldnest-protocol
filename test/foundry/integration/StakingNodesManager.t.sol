@@ -94,7 +94,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         MockStakingNode mockStakingNode = new MockStakingNode();
         bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
         address upgradedImplementationAddress = stakingNodesManager.implementationContract();
@@ -112,10 +112,12 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
     function testFailRegisterStakingNodeImplementationTwice() public {
         address initialImplementation = address(new MockStakingNode());
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
 
         address newImplementation = address(new MockStakingNode());
         vm.expectRevert("StakingNodesManager: Implementation already exists");
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
     }
 
@@ -128,10 +130,19 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         stakingNodesManager.upgradeStakingNodeImplementation(payable(newImplementation), "");
     }
 
-    function testGetNodesLength() public {
-        // IStakingNodesManager stakeManager = new StakingNodesManager();
+    function testIsStakingNodesAdmin() public {
         stakingNodesManager.nodesLength();
-        stakingNodesManager.isStakingNodesAdmin(address(this));
+        assertEq(stakingNodesManager.isStakingNodesAdmin(address(this)), false);
+        assertEq(stakingNodesManager.isStakingNodesAdmin(actors.STAKING_NODES_ADMIN), true);
+    }
+
+
+    // TODO: Should createStakingNode be open to public?
+    function testStakingNodesLength() public {
+        uint256 initialLength = stakingNodesManager.nodesLength();
+        stakingNodesManager.createStakingNode();
+        uint256 newLength = stakingNodesManager.nodesLength();
+        assertEq(newLength, initialLength + 1);
     }
 
     function testUpgradeStakingNodeImplementationWithCallData() public {
@@ -140,7 +151,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         MockStakingNode mockStakingNode = new MockStakingNode();
         bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
         address upgradedImplementationAddress = stakingNodesManager.implementationContract();

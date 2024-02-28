@@ -7,7 +7,6 @@ import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 contract RewardsDistributorTest is IntegrationBaseTest {
 
 	function testSetFeeReceiver() public {
-
 		address newReceiver = address(0x123);
 		vm.prank(actors.ADMIN);
 		rewardsDistributor.setFeesReceiver(payable(newReceiver));
