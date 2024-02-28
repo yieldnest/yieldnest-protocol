@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./IntegrationBaseTest.sol";
+import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {MockStakingNode} from "../mocks/MockStakingNode.sol";
 import "forge-std/console.sol";
-import "../../../src/StakingNodesManager.sol";
-import "../mocks/MockStakingNode.sol";
+
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
 
@@ -78,6 +81,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         }
         
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();
@@ -90,6 +94,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         MockStakingNode mockStakingNode = new MockStakingNode();
         bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
         address upgradedImplementationAddress = stakingNodesManager.implementationContract();
@@ -114,5 +119,40 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
     }
 
+    function testFailUpgradeStakingNodeImplementationWithoutCallData() public {
+        address initialImplementation = address(new MockStakingNode());
+        stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
 
+        address newImplementation = address(new MockStakingNode());
+        vm.expectRevert("StakingNodesManager: Call data is empty");
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(newImplementation), "");
+    }
+
+    function testGetNodesLength() public {
+        // IStakingNodesManager stakeManager = new StakingNodesManager();
+        stakingNodesManager.nodesLength();
+        stakingNodesManager.isStakingNodesAdmin(address(this));
+    }
+
+    function testUpgradeStakingNodeImplementationWithCallData() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        address eigenPodAddress = address(stakingNodeInstance.eigenPod());
+
+        MockStakingNode mockStakingNode = new MockStakingNode();
+        bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
+
+        address upgradedImplementationAddress = stakingNodesManager.implementationContract();
+        assertEq(upgradedImplementationAddress, payable(mockStakingNode));
+
+        address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
+        assertEq(newEigenPodAddress, eigenPodAddress);
+
+        MockStakingNode mockStakingNodeInstance = MockStakingNode(payable(address(stakingNodeInstance)));
+        uint redundantFunctionResult = mockStakingNodeInstance.redundantFunction();
+        assertEq(redundantFunctionResult, 1234567);
+
+        assertEq(mockStakingNodeInstance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
+    }
 }

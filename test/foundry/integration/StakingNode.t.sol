@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {BeaconChainProofs} from "../../../src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
-
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {StakingNode} from "../../../src/StakingNode.sol";
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
-import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {BeaconChainProofs} from "../../../src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {MainnetEigenPodMock} from "../mocks/mainnet/MainnetEigenPodMock.sol";
-import {StakingNode} from "../../../src/StakingNode.sol";
-import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 
 
 contract StakingNodeTest is IntegrationBaseTest {
@@ -22,7 +21,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         // Create a staking node
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
-        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
+        uint256 actualETHBalance = stakingNodeImplementation.getETHBalance();
         assertEq(actualETHBalance, 0, "ETH balance does not match expected value");
     }
 
@@ -57,6 +56,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         }
         
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
@@ -88,6 +88,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.deal(eigenPodAddress, rewardsSweeped);
 
         // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
@@ -95,6 +96,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -113,6 +115,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.deal(eigenPodAddress, rewardsSweeped);
 
         // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
@@ -120,6 +123,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -138,6 +142,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.deal(eigenPodAddress, rewardsSweeped);
 
         // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
@@ -145,19 +150,20 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
     }
+      
 
     function testVerifyWithdrawalCredentials() public {
 
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode();
 
         MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
-
 
         address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
         address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
@@ -166,6 +172,7 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         vm.prank(beaconOwner);
         beacon.upgradeTo(address(mainnetEigenPodMock));
+
 
         MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
 
@@ -190,6 +197,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         // Note: Deposits are currently paused as per the PAUSED_DEPOSITS flag in StrategyManager.sol
         // See: https://github.com/Layr-Labs/eigenlayer-contracts/blob/c7bf3817c5e1430672bf8bc80558d8439a2022af/src/contracts/core/StrategyManager.sol#L168
         vm.expectRevert("Pausable: index is paused");
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
         // Note: reenable this when verifyWithdrawals works

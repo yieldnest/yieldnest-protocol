@@ -12,8 +12,7 @@ import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDeleg
 import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IDepositPool} from "./interfaces/IDepositPool.sol";
+import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {StakingNode} from "./StakingNode.sol";
