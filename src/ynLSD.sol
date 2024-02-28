@@ -161,9 +161,11 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
      */
     function totalAssets() public view returns (uint) {
         uint total = 0;
+
+        uint[] memory depositedBalances = getTotalAssets();
         for (uint i = 0; i < tokens.length; i++) {
             int256 price = oracle.getLatestPrice(address(tokens[i]));
-            uint256 balance = depositedBalances[tokens[i]];
+            uint256 balance = depositedBalances[i];
             total += uint256(price) * balance / 1e18;
         }
         return total;
@@ -185,6 +187,32 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
             revert UnsupportedAsset(asset);
         }
     }
+
+    function getTotalAssets()
+        public
+        view
+        returns (uint[] memory assetBalances)
+    {
+        assetBalances = new uint[](tokens.length);
+        IStrategy[] memory assetStrategies = new IStrategy[](tokens.length);
+        for (uint i = 0; i < tokens.length; i++) {
+            assetStrategies[i] = strategies[tokens[i]];
+        }
+
+        uint256 nodeCount = nodes.length;
+        for (uint256 i; i < nodeCount; i++ ) {
+            
+            ILSDStakingNode node = nodes[i];
+            for (uint j = 0; j < tokens.length; j++) {
+                
+                IERC20 asset = tokens[i];
+                assetBalances[j] += asset.balanceOf(address(this));
+                assetBalances[j] += asset.balanceOf(address(node));
+                assetBalances[j] += assetStrategies[j].userUnderlyingView((address(node)));
+            }
+        }
+    }
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
