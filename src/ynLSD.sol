@@ -38,7 +38,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     YieldNestOracle oracle;
     IStrategyManager public strategyManager;
         
-    UpgradeableBeacon private upgradableBeacon;
+    UpgradeableBeacon private upgradeableBeacon;
 
     mapping(IERC20 => IStrategy) public strategies;
     mapping(IERC20 => uint) public depositedBalances;
@@ -58,11 +58,18 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         YieldNestOracle oracle;
         uint exchangeAdjustmentRate;
         uint maxNodeCount;
+        address admin;
+        address stakingAdmin;
+        address lsdRestakingManager;
     }
 
     function initialize(Init memory init) public initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
+        _grantRole(LSD_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
 
         for (uint i = 0; i < init.tokens.length; i++) {
             tokens.push(init.tokens[i]);
@@ -165,9 +172,10 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
 
     function createLSDStakingNode() public returns (ILSDStakingNode) {
 
+        require(address(upgradeableBeacon) != address(0), "LSDStakingNode: upgradeableBeacon is not set");
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
 
-        BeaconProxy proxy = new BeaconProxy(address(upgradableBeacon), "");
+        BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         ILSDStakingNode node = ILSDStakingNode(payable(proxy));
 
         uint nodeId = nodes.length;
@@ -185,16 +193,16 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
 
         require(_implementationContract != address(0), "StakingNodesManager:No zero address");
-        require(address(upgradableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
+        require(address(upgradeableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
 
-        upgradableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
+        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
     function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
 
-        require(address(upgradableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
+        require(address(upgradeableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
         require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
-        upgradableBeacon.upgradeTo(_implementationContract);
+        upgradeableBeacon.upgradeTo(_implementationContract);
 
         if (callData.length == 0) {
             // no function to initialize with

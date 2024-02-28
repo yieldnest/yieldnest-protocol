@@ -285,6 +285,7 @@ contract StakingNodesManager is
 
     function createStakingNode() public returns (IStakingNode) {
 
+        require(address(upgradeableBeacon) != address(0), "LSDStakingNode: upgradeableBeacon is not set");
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");

@@ -15,32 +15,43 @@ contract ynLSDTest is IntegrationBaseTest {
 
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
         IERC20 token = IERC20(chainAddresses.STETH_ADDRESS);
-        uint256 amount = 1000;
+        uint256 amount = 1 ether;
         uint256 expectedAmount = ynlsd.convertToShares(token, amount);
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
 
-        address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
+        ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
         address destination = address(this);
-        // Obtain STETH from the biggest holder, deal does not work
-        vm.startPrank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-        token.transfer(destination, amount+1);
+        // Obtain STETH 
+        (bool success, ) = chainAddresses.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
+        //token.transfer(destination, amount + 1);
         vm.stopPrank();
         uint balance = token.balanceOf(address(this));
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
+
         token.approve(address(ynlsd), amount);
-        vm.expectRevert(bytes("Pausable: index is paused"));
         uint256 shares = ynlsd.deposit(token, amount, destination);
+
+        IERC20[] memory assets = new IERC20[](1);
+        uint[] memory amounts = new uint[](1);
+        assets[0] = token;
+        amounts[0] = amount;
+
+        vm.expectRevert(bytes("Pausable: index is paused"));
+        lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
     
     function testDepositSTETH() public {
         IERC20 token = IERC20(chainAddresses.STETH_ADDRESS);
-        uint256 amount = 1000;
+        uint256 amount = 1 ether;
         uint256 expectedAmount = ynlsd.convertToShares(token, amount);
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
+
+        ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
 
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
 
@@ -49,16 +60,22 @@ contract ynLSDTest is IntegrationBaseTest {
         vm.stopPrank();
         
         address destination = address(this);
-        // Obtain STETH from the biggest holder, deal does not work
-        vm.startPrank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-        token.transfer(destination, amount+1);
-        vm.stopPrank();
+        // Obtain STETH 
+        (bool success, ) = chainAddresses.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
         uint balance = token.balanceOf(address(this));
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
         token.approve(address(ynlsd), amount);
+        token.approve(address(ynlsd), amount);
         uint256 shares = ynlsd.deposit(token, amount, destination);
 
+        IERC20[] memory assets = new IERC20[](1);
+        uint[] memory amounts = new uint[](1);
+        assets[0] = token;
+        amounts[0] = amount;
+
+        lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
     
     function testWrongStrategy() public {

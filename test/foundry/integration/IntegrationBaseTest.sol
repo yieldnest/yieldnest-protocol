@@ -18,6 +18,7 @@ import "../../../src/ynETH.sol";
 import "../../../src/ynLSD.sol";
 import "../../../src/YieldNestOracle.sol";
 import "../../../src/StakingNodesManager.sol";
+import "../../../src/LSDStakingNode.sol";
 import "../../../src/RewardsReceiver.sol";
 import "../../../src/RewardsDistributor.sol";
 import "../../../src/interfaces/IStakingNodesManager.sol";
@@ -39,6 +40,7 @@ contract IntegrationBaseTest is Test, Utils {
 
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
+    LSDStakingNode public lsdStakingNodeImplementation;
     address payable feeReceiver;
 
     IEigenPodManager public eigenPodManager;
@@ -88,6 +90,7 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
         stakingNodeImplementation = new StakingNode();
+        lsdStakingNodeImplementation = new LSDStakingNode();
         yieldNestOracle = new YieldNestOracle();
         ynlsd = new ynLSD();
 
@@ -103,8 +106,8 @@ contract IntegrationBaseTest is Test, Utils {
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-        yieldNestOracle =  YieldNestOracle(address(yieldNestOracle));
-        ynlsd = ynLSD(address(ynlsd));
+        yieldNestOracle =  YieldNestOracle(address(yieldNestOracleProxy));
+        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
@@ -187,18 +190,22 @@ contract IntegrationBaseTest is Test, Utils {
             oracleManager: address(this)
         });
 
-
         ynLSD.Init memory init = ynLSD.Init({
             tokens: tokens,
             strategies: strategies,
             strategyManager: strategyManager,
             oracle: yieldNestOracle,
             exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD,
-            maxNodeCount: 10
+            maxNodeCount: 10,
+            admin: address(this),
+            stakingAdmin: address(this),
+            lsdRestakingManager: address(this)
         });
 
         ynlsd.initialize(init);
         yieldNestOracle.initialize(oracleInit);
+
+        ynlsd.registerStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }
 

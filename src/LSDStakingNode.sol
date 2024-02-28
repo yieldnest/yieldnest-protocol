@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -15,7 +16,7 @@ interface ILSDStakingNodeEvents {
 }
 
 
-contract LSDStakingNode is ILSDStakingNode, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
+contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
 
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
@@ -23,7 +24,7 @@ contract LSDStakingNode is ILSDStakingNode, ReentrancyGuardUpgradeable, ILSDStak
    IynLSD public ynLSD;
    uint public nodeId;
 
-   function initialize(Init memory init) public {
+   function initialize(Init memory init) public initializer {
        __ReentrancyGuard_init();
        ynLSD = init.ynLSD;
        nodeId = init.nodeId;
