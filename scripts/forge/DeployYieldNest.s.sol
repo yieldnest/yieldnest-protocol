@@ -8,14 +8,15 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
-import "../../src/external/WETH.sol";
 import "../../src/ynETH.sol";
 import "../../src/interfaces/IStakingNode.sol";
-import "../../src/interfaces/IDepositContract.sol";
+import "../../src/external/ethereum/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
-import "../../src/interfaces/IWETH.sol";
+import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";
+import "../../src/YieldNestOracle.sol";
+import "../../src/ynLSD.sol";
 
 
 contract DeployYieldNest is BaseScript {
@@ -33,7 +34,7 @@ contract DeployYieldNest is BaseScript {
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
     YieldNestOracle public yieldNestOracle;
-    ynLSD public ynLSD;
+    ynLSD public ynlsd;
     address payable feeReceiver;
 
     IEigenPodManager public eigenPodManager;
@@ -99,8 +100,7 @@ contract DeployYieldNest is BaseScript {
         consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
         stakingNodeImplementation = new StakingNode();
         yieldNestOracle = new YieldNestOracle();
-        ynLSD = new ynLSD();
-
+        ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), proxyOwnerAddress, "");
@@ -112,7 +112,7 @@ contract DeployYieldNest is BaseScript {
 
         ynLSD ynLSDImplementation = new ynLSD();
         ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), proxyOwnerAddress, "");
-        ynLSD = YieldNestOracle(address(ynLSDProxy));
+        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), proxyOwnerAddress, "");
