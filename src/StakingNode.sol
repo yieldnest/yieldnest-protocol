@@ -136,6 +136,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
         }
 
+        pendingWithdrawnValidatorPrincipal = withdrawnValidatorPrincipal;
         // only claim if we have active unclaimed withdrawals
 
         // the ETH funds are sent to address(this) and trigger the receive() function
