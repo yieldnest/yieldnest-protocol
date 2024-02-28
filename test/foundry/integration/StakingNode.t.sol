@@ -21,7 +21,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         // Create a staking node
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
-        uint256 actualETHBalance = stakingNodeImplementation.getETHBalance();
+        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
         assertEq(actualETHBalance, 0, "ETH balance does not match expected value");
     }
 
@@ -216,6 +216,34 @@ contract StakingNodeTest is IntegrationBaseTest {
         //     nonce: 0 // first nonce is 0
         // });
         // stakingNodeInstance.completeWithdrawal(params);
-    }  
+    }
+
+    function testCreateEigenPodReturnsEigenPodAddressAfterCreated() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+        assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
+    }
+
+    function testClaimDelayedWithdrawals() public {
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.expectRevert();
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 1);
+    }
+
+    function testDelegateFailWhenNotAdmin() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        vm.expectRevert();
+        stakingNodeInstance.delegate(address(this));
+    }
+
+    function testImplementViewFunction() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        assertEq(stakingNodeInstance.implementation(), address(stakingNodeImplementation));
+    }
+
+
 }
 

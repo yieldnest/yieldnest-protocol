@@ -71,7 +71,7 @@ contract IntegrationBaseTest is Test, Utils {
         contractAddresses = new ContractAddresses();
         actorAddresses = new ActorAddresses();
 
-        // // Setup Protocol
+        // Setup Protocol
         setupUtils();
         setupProxies();
         setupEthereum();
