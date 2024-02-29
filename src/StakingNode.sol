@@ -11,12 +11,15 @@ import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interface
 import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import "forge-std/console.sol";
+
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event WithdrawalStarted(uint256 amount, address strategy, uint96 nonce);
      event RewardsProcessed(uint256 rewardsAmount);
+     event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 }
 
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
@@ -30,6 +33,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error ETHDepositorNotDelayedWithdrawalRouter();
     error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
+    error ClaimableAnmountExceedsPrincipal(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
+    error ClaimAmountTooLow(uint256 expected, uint256 actual);
 
 
     //--------------------------------------------------------------------------------------
@@ -70,19 +75,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     receive() external payable nonReentrant {
-        // TODO: should we charge fees here or not?
-        // Except for Consensus Layer rewards the principal may exit this way as well.
+        // Consensus Layer rewards and the validator principal will be sent this way.
        if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())) {
             revert ETHDepositorNotDelayedWithdrawalRouter();
        }
-       if (pendingWithdrawnValidatorPrincipal > msg.value) {
-            revert WithdrawalAmountTooLow(msg.value, pendingWithdrawnValidatorPrincipal);
-       }
-       allocatedETH -= pendingWithdrawnValidatorPrincipal;
-       pendingWithdrawnValidatorPrincipal = 0;
-       
-       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId, pendingWithdrawnValidatorPrincipal);
-       emit RewardsProcessed(msg.value);
     }
 
     constructor() {
@@ -136,13 +132,34 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
         }
 
-        pendingWithdrawnValidatorPrincipal = withdrawnValidatorPrincipal;
-        // only claim if we have active unclaimed withdrawals
-
-        // the ETH funds are sent to address(this) and trigger the receive() function
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-        if (delayedWithdrawalRouter.getUserDelayedWithdrawals(address(this)).length > 0) {
+
+        uint256 totalClaimable = 0;
+        IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableWithdrawals = delayedWithdrawalRouter.getClaimableUserDelayedWithdrawals(address(this));
+        for (uint256 i = 0; i < claimableWithdrawals.length; i++) {
+            totalClaimable += claimableWithdrawals[i].amount;
+        }
+        if (totalClaimable < withdrawnValidatorPrincipal) {
+            revert ClaimableAnmountExceedsPrincipal(withdrawnValidatorPrincipal, totalClaimable);
+        }
+
+        // only claim if we have active unclaimed withdrawals
+        // the ETH funds are sent to address(this) and trigger the receive() function
+        if (totalClaimable > 0) {
+
+            uint256 balanceBefore = address(this).balance;
             delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);
+            uint256 balanceAfter = address(this).balance;
+
+            uint256 claimedAmount = balanceAfter - balanceBefore;
+            if (totalClaimable > claimedAmount) {
+                revert ClaimAmountTooLow(totalClaimable, claimedAmount);
+            }
+            // substract validator principal
+            allocatedETH -= withdrawnValidatorPrincipal;
+            
+            stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId, withdrawnValidatorPrincipal);
+            emit ClaimedDelayedWithdrawal(claimedAmount, claimedAmount, allocatedETH);
         }
     }
 
