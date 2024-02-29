@@ -50,8 +50,6 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
             ynLSD.retrieveAsset(nodeId, assets[i], amount);
 
-            uint256 balance = asset.balanceOf(address(this));
-
             asset.approve(address(strategyManager), amount);
 
             uint eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
