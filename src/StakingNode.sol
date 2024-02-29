@@ -182,12 +182,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         require(validatorIndex.length == validatorFields.length, "Mismatched proofs and validatorFields lengths");
 
         for (uint i = 0; i < validatorIndex.length; i++) {
+            // NOTE: this call reverts with 'Pausable: index is paused' on mainnet currently 
+            // because the beaconChainETHStrategy strategy is currently paused.
             eigenPod.verifyWithdrawalCredentialsAndBalance(
                 oracleBlockNumber[i],
                 validatorIndex[i],
                 proofs[i],
                 validatorFields[i]
             );
+
+            // NOTE: after the verifyWithdrawalCredentialsAndBalance call
+            // address(this) will be credited with shares corresponding to the balance of ETH in the validator.
         }
     }
 
@@ -220,12 +225,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function getETHBalance() public view returns (uint) {
 
-        // 1 Beacon Chain ETH strategy share = 1 ETH
-        // TODO: handle the withdrawal situation - this means that ETH will reside in the eigenpod at some point
-
         // NOTE: when verifyWithdrawalCredentials is enabled
-        // the eigenpod will be credited with shares measured as:
-        // strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        // the eigenpod will be credited with shares. Those shares represent 1 share = 1 ETH
+        // To get the shares call: strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy)
+        // This computation will need to be updated to factor in that.
         return allocatedETH;
     }
 
