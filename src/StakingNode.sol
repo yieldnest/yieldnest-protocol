@@ -17,7 +17,8 @@ import "forge-std/console.sol";
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
-     event WithdrawalStarted(uint256 amount, address strategy, uint96 nonce);
+     event Undelegated(address indexed operator);
+     event WithdrawalStarted(uint256 amount, address indexed strategy, uint96 nonce);
      event RewardsProcessed(uint256 rewardsAmount);
      event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 }
@@ -167,15 +168,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
 
-    function delegate(address operator) public virtual onlyAdmin {
-
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-
-        delegationManager.delegateTo(operator);
-
-        emit Delegated(operator, 0);
-    }
-    
     // This function enables the Eigenlayer protocol to validate the withdrawal credentials of validators.
     // Upon successful verification, Eigenlayer issues shares corresponding to the staked ETH in the StakingNode.
     function verifyWithdrawalCredentials(
@@ -197,6 +189,24 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 validatorFields[i]
             );
         }
+    }
+
+    function delegate(address operator) public virtual onlyAdmin {
+
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        delegationManager.delegateTo(operator);
+
+        emit Delegated(operator, 0);
+    }
+
+    function undelegate() public virtual onlyAdmin {
+        
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        address operator = delegationManager.delegatedTo(address(this));
+        delegationManager.undelegate(address(this));
+
+        emit Undelegated(operator);
     }
 
     //--------------------------------------------------------------------------------------

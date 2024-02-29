@@ -112,7 +112,7 @@ contract StakingNodeM2 is StakingNode {
         delegationManager.queueWithdrawals(queuedWithdrawalParams);
     }
 
-    function undelegate() public onlyAdmin {
+    function undelegate() public override onlyAdmin {
         
         IDelegationManagerM2 delegationManager = IDelegationManagerM2(address(stakingNodesManager.delegationManager()));
         delegationManager.undelegate(address(this));
