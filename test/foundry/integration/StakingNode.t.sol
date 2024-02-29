@@ -3,7 +3,9 @@ pragma solidity ^0.8.24;
 
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {StakingNode} from "../../../src/StakingNode.sol";
+import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPausable.sol";
+import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelegationTerms} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelegationTerms.sol";
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
@@ -236,6 +238,19 @@ contract StakingNodeTest is IntegrationBaseTest {
     function testDelegateFailWhenNotAdmin() public {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         vm.expectRevert();
+        stakingNodeInstance.delegate(address(this));
+    }
+
+    function testStakingNodeDelegate() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
+        vm.prank(chainAddresses.EIGENLAYER_DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
+
+        // register as operator
+        delegationManager.registerAsOperator(IDelegationTerms(address(this)));
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.delegate(address(this));
     }
 
