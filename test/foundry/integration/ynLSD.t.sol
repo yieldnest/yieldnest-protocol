@@ -67,7 +67,6 @@ contract ynLSDTest is IntegrationBaseTest {
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
         token.approve(address(ynlsd), amount);
-        token.approve(address(ynlsd), amount);
         uint256 shares = ynlsd.deposit(token, amount, destination);
 
         IERC20[] memory assets = new IERC20[](1);
@@ -111,5 +110,52 @@ contract ynLSDTest is IntegrationBaseTest {
         assertEq(price > 0, true, "Zero price");
         assertEq(block.timestamp - timeStamp < 86400, true, "Price stale for more than 24 hours");
         assertEq(shares, (uint256(price) * amount) / 1e18, "Total shares don't match");
-    }   
+    }
+
+    function testTotalAssetsAfterDeposit() public {
+        IERC20 token = IERC20(chainAddresses.STETH_ADDRESS);
+        uint256 amount = 1 ether;
+        uint256 expectedAmount = ynlsd.convertToShares(token, amount);
+
+        IPausable pausableStrategyManager = IPausable(address(strategyManager));
+
+        ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
+
+        address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
+
+        vm.startPrank(unpauser);
+        pausableStrategyManager.unpause(0);
+        vm.stopPrank();
+        
+        address destination = address(this);
+        // Obtain STETH 
+        (bool success, ) = chainAddresses.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
+        uint balance = token.balanceOf(address(this));
+        emit log_uint(balance);
+        assertEq(balance, amount, "Amount not received");
+        token.approve(address(ynlsd), amount);
+        uint256 shares = ynlsd.deposit(token, amount, destination);
+
+        {
+            IERC20[] memory assets = new IERC20[](1);
+            uint[] memory amounts = new uint[](1);
+            assets[0] = token;
+            amounts[0] = amount;
+
+            lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
+        }
+
+        uint256 totalAssetsAfterDeposit = ynlsd.totalAssets();
+
+        uint256 oraclePrice = yieldNestOracle.getLatestPrice(address(token));
+
+        IStrategy strategy = ynlsd.strategies(IERC20(chainAddresses.STETH_ADDRESS));
+        uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(lsdStakingNode)));
+
+        uint expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
+
+        // Assert that totalAssets reflects the deposit
+        assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
+    }
 }

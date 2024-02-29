@@ -64,7 +64,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         // 24 hours age
         age = 86400;
         yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, chainAddresses.RETH_FEED_ADDRESS, age);
-        int256 obtainedPrice = yieldNestOracle.getLatestPrice(address(token));
-        assertEq(price, obtainedPrice, "Price mismatch");
+        uint256 obtainedPrice = yieldNestOracle.getLatestPrice(address(token));
+        assertEq(uint256(price), obtainedPrice, "Price mismatch");
     }
 }

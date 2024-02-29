@@ -56,7 +56,6 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     UpgradeableBeacon private upgradeableBeacon;
 
     mapping(IERC20 => IStrategy) public strategies;
-    mapping(IERC20 => uint) public depositedBalances;
 
     IERC20[] public tokens;
 
@@ -120,8 +119,8 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         }
         asset.safeTransferFrom(msg.sender, address(this), amount);
          // Convert the value of the asset deposited to ETH
-        int256 assetPriceInETH = oracle.getLatestPrice(address(asset));
-        uint256 assetAmountInETH = uint256(assetPriceInETH) * amount / 1e18; // Assuming price is in 18 decimal places
+        uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
+        uint256 assetAmountInETH = assetPriceInETH * amount / 1e18; // Assuming price is in 18 decimal places
 
         // Calculate how many shares to be minted using the same formula as ynETH
         shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
@@ -164,7 +163,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
 
         uint[] memory depositedBalances = getTotalAssets();
         for (uint i = 0; i < tokens.length; i++) {
-            int256 price = oracle.getLatestPrice(address(tokens[i]));
+            uint256 price = oracle.getLatestPrice(address(tokens[i]));
             uint256 balance = depositedBalances[i];
             total += uint256(price) * balance / 1e18;
         }
@@ -180,8 +179,8 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     function convertToShares(IERC20 asset, uint amount) external view returns(uint shares) {
         IStrategy strategy = strategies[asset];
         if(address(strategy) != address(0)){
-           int256 tokenPriceInETH = oracle.getLatestPrice(address(asset));
-           uint256 tokenAmountInETH = uint256(tokenPriceInETH) * amount / 1e18;
+           uint256 tokenPriceInETH = oracle.getLatestPrice(address(asset));
+           uint256 tokenAmountInETH = tokenPriceInETH * amount / 1e18;
            shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
         } else {
             revert UnsupportedAsset(asset);
