@@ -2,13 +2,12 @@
 pragma solidity ^0.8.24;
 
 
-import "../../lib/forge-std/src/Script.sol";
+import "forge-std/Script.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
-import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
 import "../../src/interfaces/IStakingNode.sol";
 import "../../src/external/ethereum/IDepositContract.sol";
@@ -16,6 +15,8 @@ import "../../src/interfaces/IRewardsDistributor.sol";
 import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";
+import "../../src/YieldNestOracle.sol";
+import "../../src/ynLSD.sol";
 
 
 contract DeployYieldNest is BaseScript {
@@ -23,6 +24,8 @@ contract DeployYieldNest is BaseScript {
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
+    TransparentUpgradeableProxy public yieldNestOracleProxy;
+    TransparentUpgradeableProxy public ynLSDProxy;
     
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
@@ -30,6 +33,8 @@ contract DeployYieldNest is BaseScript {
     RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
+    YieldNestOracle public yieldNestOracle;
+    ynLSD public ynlsd;
     address payable feeReceiver;
 
     IEigenPodManager public eigenPodManager;
@@ -94,10 +99,20 @@ contract DeployYieldNest is BaseScript {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
         stakingNodeImplementation = new StakingNode();
+        yieldNestOracle = new YieldNestOracle();
+        ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), proxyOwnerAddress, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
+
+        YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), proxyOwnerAddress, "");
+        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
+
+        ynLSD ynLSDImplementation = new ynLSD();
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), proxyOwnerAddress, "");
+        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), proxyOwnerAddress, "");
@@ -105,7 +120,7 @@ contract DeployYieldNest is BaseScript {
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-
+    
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = pauserAddress;
@@ -157,6 +172,8 @@ contract DeployYieldNest is BaseScript {
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
+
+        
 
         vm.stopBroadcast();
 
