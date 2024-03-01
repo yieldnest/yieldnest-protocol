@@ -23,7 +23,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
-    error ValueOutOfBounds(uint value);
+    error ValueOutOfBounds(uint256 value);
     error TransfersPaused();
     error ZeroAddress();
     error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
@@ -50,13 +50,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
-    uint public allocatedETHForDeposits;
+    uint256 public allocatedETHForDeposits;
     bool public depositsPaused;
 
     /// @dev The value is in basis points (1/10000).
-    uint public exchangeAdjustmentRate;
+    uint256 public exchangeAdjustmentRate;
 
-    uint public totalDepositedInPool;
+    uint256 public totalDepositedInPool;
 
     mapping (address => bool) pauseWhiteList;
     bool transfersPaused;
@@ -72,7 +72,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         IWETH wETH;
-        uint exchangeAdjustmentRate;
+        uint256 exchangeAdjustmentRate;
         address[] pauseWhitelist;
     }
 
@@ -118,7 +118,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //----------------------------------  DEPOSITS   ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function depositETH(address receiver) public payable returns (uint shares) {
+    function depositETH(address receiver) public payable returns (uint256 shares) {
 
         if (depositsPaused) {
             revert Paused();
@@ -128,7 +128,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
             revert ZeroETH();
         }
 
-        uint assets = msg.value;
+        uint256 assets = msg.value;
 
         shares = previewDeposit(assets);
 
@@ -169,8 +169,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    function totalAssets() public view returns (uint) {
-        uint total = 0;
+    function totalAssets() public view returns (uint256) {
+        uint256 total = 0;
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
         /// The total ETH sent to the beacon chain 
@@ -178,10 +178,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         return total;
     }
 
-    function totalDepositedInValidators() internal view returns (uint) {
+    function totalDepositedInValidators() internal view returns (uint256) {
         IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
-        uint totalDeposited = 0;
-        for (uint i = 0; i < nodes.length; i++) {
+        uint256 totalDeposited = 0;
+        for (uint256 i = 0; i < nodes.length; i++) {
             totalDeposited += nodes[i].getETHBalance();
         }
         return totalDeposited;
@@ -196,7 +196,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         totalDepositedInPool += msg.value;
     }
 
-    function withdrawETH(uint ethAmount) public onlyStakingNodesManager override {
+    function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
         payable(address(stakingNodesManager)).transfer(ethAmount);
@@ -244,7 +244,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     }
 
     function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
-        for (uint i = 0; i < whitelistedForTransfers.length; i++) {
+        for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
             pauseWhiteList[whitelistedForTransfers[i]] = true;
         }
     }

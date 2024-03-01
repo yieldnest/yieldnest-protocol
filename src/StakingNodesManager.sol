@@ -23,8 +23,8 @@ import {stdMath} from "forge-std/StdMath.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-    event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
-    event MaxNodeCountUpdated(uint maxNodeCount);
+    event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event MaxNodeCountUpdated(uint256 maxNodeCount);
 }
 
 contract StakingNodesManager is
@@ -40,15 +40,15 @@ contract StakingNodesManager is
 
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
-    error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
+    error DepositAllocationUnbalanced(uint256 nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
     error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
     error DirectETHDepositsNotAllowed();
-    error InvalidNodeId(uint nodeId);
+    error InvalidNodeId(uint256 nodeId);
     error ZeroAddress();
     error NotStakingNode(address caller, uint256 nodeId);
-    error TooManyStakingNodes(uint maxNodeCount);
+    error TooManyStakingNodes(uint256 maxNodeCount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -67,7 +67,7 @@ contract StakingNodesManager is
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
+    uint256 constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -102,7 +102,7 @@ contract StakingNodesManager is
      * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
      */
     IStakingNode[] public nodes;
-    uint public maxNodeCount;
+    uint256 public maxNodeCount;
 
     mapping(bytes pubkey => bool) usedValidators;
 
@@ -119,7 +119,7 @@ contract StakingNodesManager is
         address validatorManager;
 
         // internal
-        uint maxNodeCount;
+        uint256 maxNodeCount;
         IynETH ynETH;
         IRewardsDistributor rewardsDistributor; 
 
@@ -178,7 +178,6 @@ contract StakingNodesManager is
         strategyManager = init.strategyManager;
     }
 
-
     receive() external payable {
         require(msg.sender == address(ynETH));
     }
@@ -205,11 +204,11 @@ contract StakingNodesManager is
 
         validateDepositDataAllocation(newValidators);
 
-        uint totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
+        uint256 totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        uint validatorsLength = newValidators.length;
-        for (uint i = 0; i < validatorsLength; i++) {
+        uint256 validatorsLength = newValidators.length;
+        for (uint256 i = 0; i < validatorsLength; i++) {
 
             ValidatorData calldata validator = newValidators[i];
             if (usedValidators[validator.publicKey]) {
@@ -230,8 +229,8 @@ contract StakingNodesManager is
      */
     function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
 
-        for (uint i = 0; i < newValidators.length; i++) {
-            uint nodeId = newValidators[i].nodeId;
+        for (uint256 i = 0; i < newValidators.length; i++) {
+            uint256 nodeId = newValidators[i].nodeId;
 
             if (nodeId >= nodes.length) {
                 revert InvalidNodeId(nodeId);
@@ -307,7 +306,7 @@ contract StakingNodesManager is
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
 
-        uint nodeId = nodes.length;
+        uint256 nodeId = nodes.length;
 
         node.initialize(
             IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
@@ -343,7 +342,7 @@ contract StakingNodesManager is
             return;
         }
         // reinitialize all nodes
-        for (uint i = 0; i < nodes.length; i++) {
+        for (uint256 i = 0; i < nodes.length; i++) {
             (bool success, ) = address(nodes[i]).call(callData);
             require(success, "StakingNodesManager: Failed to call method on upgraded node");
         }
@@ -351,7 +350,7 @@ contract StakingNodesManager is
 
     /// @notice Sets the maximum number of staking nodes allowed
     /// @param _maxNodeCount The maximum number of staking nodes
-    function setMaxNodeCount(uint _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
+    function setMaxNodeCount(uint256 _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
         maxNodeCount = _maxNodeCount;
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
@@ -360,12 +359,12 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable {
+    function processWithdrawnETH(uint256 nodeId, uint256 withdrawnValidatorPrincipal) external payable {
         if (address(nodes[nodeId]) != msg.sender) {
             revert NotStakingNode(msg.sender, nodeId);
         }
 
-        uint rewards = msg.value - withdrawnValidatorPrincipal;
+        uint256 rewards = msg.value - withdrawnValidatorPrincipal;
 
         IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
         (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");

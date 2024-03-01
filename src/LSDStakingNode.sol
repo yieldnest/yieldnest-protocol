@@ -12,7 +12,7 @@ import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrateg
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 
 interface ILSDStakingNodeEvents {
-    event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint amount, uint eigenShares);
+    event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
 }
 
 
@@ -23,7 +23,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     error ZeroAddress();
 
    IynLSD public ynLSD;
-   uint public nodeId;
+   uint256 public nodeId;
 
    function initialize(Init memory init)
         public
@@ -36,7 +36,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
    function depositAssetsToEigenlayer(
         IERC20[] memory assets,
-        uint[] memory amounts
+        uint256[] memory amounts
     )
         external
         nonReentrant
@@ -44,9 +44,9 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     {
         IStrategyManager strategyManager = ynLSD.strategyManager();
 
-        for (uint i = 0; i < assets.length; i++) {
+        for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
-            uint amount = amounts[i];
+            uint256 amount = amounts[i];
             IStrategy strategy = ynLSD.strategies(assets[i]);
             if (address(strategy) == address(0)) {
                 revert UnsupportedAsset(asset);
@@ -56,7 +56,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
             asset.approve(address(strategyManager), amount);
 
-            uint eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
             emit DepositToEigenlayer(assets[i], strategy, amount, eigenShares);
         }
     }
