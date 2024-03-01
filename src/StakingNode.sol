@@ -12,11 +12,14 @@ import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 
+
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
-     event WithdrawalStarted(uint256 amount, address strategy, uint96 nonce);
+     event Undelegated(address indexed operator);
+     event WithdrawalStarted(uint256 amount, address indexed strategy, uint96 nonce);
      event RewardsProcessed(uint256 rewardsAmount);
+     event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 }
 
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
@@ -30,6 +33,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error ETHDepositorNotDelayedWithdrawalRouter();
     error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
+    error ClaimableAnmountExceedsPrincipal(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
+    error ClaimAmountTooLow(uint256 expected, uint256 actual);
 
 
     //--------------------------------------------------------------------------------------
@@ -70,19 +75,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     receive() external payable nonReentrant {
-        // TODO: should we charge fees here or not?
-        // Except for Consensus Layer rewards the principal may exit this way as well.
+        // Consensus Layer rewards and the validator principal will be sent this way.
        if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())) {
             revert ETHDepositorNotDelayedWithdrawalRouter();
        }
-       if (pendingWithdrawnValidatorPrincipal > msg.value) {
-            revert WithdrawalAmountTooLow(msg.value, pendingWithdrawnValidatorPrincipal);
-       }
-       allocatedETH -= pendingWithdrawnValidatorPrincipal;
-       pendingWithdrawnValidatorPrincipal = 0;
-       
-       stakingNodesManager.processWithdrawnETH{value: msg.value}(nodeId, pendingWithdrawnValidatorPrincipal);
-       emit RewardsProcessed(msg.value);
     }
 
     constructor() {
@@ -112,7 +108,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return eigenPod;
     }
 
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  EXPEDITED WITHDRAWAL   ---------------------------
     //--------------------------------------------------------------------------------------
@@ -136,13 +131,34 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
         }
 
-        pendingWithdrawnValidatorPrincipal = withdrawnValidatorPrincipal;
-        // only claim if we have active unclaimed withdrawals
-
-        // the ETH funds are sent to address(this) and trigger the receive() function
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-        if (delayedWithdrawalRouter.getUserDelayedWithdrawals(address(this)).length > 0) {
+
+        uint256 totalClaimable = 0;
+        IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableWithdrawals = delayedWithdrawalRouter.getClaimableUserDelayedWithdrawals(address(this));
+        for (uint256 i = 0; i < claimableWithdrawals.length; i++) {
+            totalClaimable += claimableWithdrawals[i].amount;
+        }
+        if (totalClaimable < withdrawnValidatorPrincipal) {
+            revert ClaimableAnmountExceedsPrincipal(withdrawnValidatorPrincipal, totalClaimable);
+        }
+
+        // only claim if we have active unclaimed withdrawals
+        // the ETH funds are sent to address(this) and trigger the receive() function
+        if (totalClaimable > 0) {
+
+            uint256 balanceBefore = address(this).balance;
             delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);
+            uint256 balanceAfter = address(this).balance;
+
+            uint256 claimedAmount = balanceAfter - balanceBefore;
+            if (totalClaimable > claimedAmount) {
+                revert ClaimAmountTooLow(totalClaimable, claimedAmount);
+            }
+            // substract validator principal
+            allocatedETH -= withdrawnValidatorPrincipal;
+            
+            stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId, withdrawnValidatorPrincipal);
+            emit ClaimedDelayedWithdrawal(claimedAmount, claimedAmount, allocatedETH);
         }
     }
 
@@ -150,15 +166,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
 
-    function delegate(address operator) public virtual onlyAdmin {
-
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-
-        delegationManager.delegateTo(operator);
-
-        emit Delegated(operator, 0);
-    }
-    
     // This function enables the Eigenlayer protocol to validate the withdrawal credentials of validators.
     // Upon successful verification, Eigenlayer issues shares corresponding to the staked ETH in the StakingNode.
     function verifyWithdrawalCredentials(
@@ -173,13 +180,35 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         require(validatorIndex.length == validatorFields.length, "Mismatched proofs and validatorFields lengths");
 
         for (uint i = 0; i < validatorIndex.length; i++) {
+            // NOTE: this call reverts with 'Pausable: index is paused' on mainnet currently 
+            // because the beaconChainETHStrategy strategy is currently paused.
             eigenPod.verifyWithdrawalCredentialsAndBalance(
                 oracleBlockNumber[i],
                 validatorIndex[i],
                 proofs[i],
                 validatorFields[i]
             );
+
+            // NOTE: after the verifyWithdrawalCredentialsAndBalance call
+            // address(this) will be credited with shares corresponding to the balance of ETH in the validator.
         }
+    }
+
+    function delegate(address operator) public virtual onlyAdmin {
+
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        delegationManager.delegateTo(operator);
+
+        emit Delegated(operator, 0);
+    }
+
+    function undelegate() public virtual onlyAdmin {
+        
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        delegationManager.undelegate(address(this));
+
+        address operator = delegationManager.delegatedTo(address(this));
+        emit Undelegated(operator);
     }
 
     //--------------------------------------------------------------------------------------
@@ -193,12 +222,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function getETHBalance() public view returns (uint) {
 
-        // 1 Beacon Chain ETH strategy share = 1 ETH
-        // TODO: handle the withdrawal situation - this means that ETH will reside in the eigenpod at some point
-
         // NOTE: when verifyWithdrawalCredentials is enabled
-        // the eigenpod will be credited with shares measured as:
-        // strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy);
+        // the eigenpod will be credited with shares. Those shares represent 1 share = 1 ETH
+        // To get the shares call: strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy)
+        // This computation will need to be updated to factor in that.
         return allocatedETH;
     }
 
