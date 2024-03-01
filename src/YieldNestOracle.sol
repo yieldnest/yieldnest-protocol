@@ -13,6 +13,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
     error ZeroAddress();
     error ZeroAge();
+    error ArraysLengthMismatch(uint256 assetsLength, uint256 priceFeedAddressesLength, uint256 maxAgesLength);
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;
 
@@ -27,13 +28,25 @@ contract YieldNestOracle is AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
-    function initialize(Init memory init) external initializer {
+    function initialize(Init memory init)
+        external
+        notZeroAddress(init.admin)
+        notZeroAddress(init.oracleManager)
+        initializer {
          __AccessControl_init();
         _grantRole(ADMIN_ROLE, init.admin);
         _grantRole(ORACLE_MANAGER_ROLE, init.oracleManager);
 
-        require(init.assets.length == init.priceFeedAddresses.length && init.assets.length == init.maxAges.length, "Initialization arrays mismatch");
+        if (init.assets.length != init.priceFeedAddresses.length || init.assets.length != init.maxAges.length) {
+            revert ArraysLengthMismatch({assetsLength: init.assets.length, priceFeedAddressesLength: init.priceFeedAddresses.length, maxAgesLength: init.maxAges.length});
+        }
         for (uint256 i = 0; i < init.assets.length; i++) {
+            if(init.assets[i] == address(0)) {
+                revert ZeroAddress();
+            }
+            if(init.priceFeedAddresses[i] == address(0)) {
+                revert ZeroAddress();
+            }
             setAssetPriceFeed(init.assets[i], init.priceFeedAddresses[i], init.maxAges[i]);
         }
     }
@@ -60,5 +73,18 @@ contract YieldNestOracle is AccessControlUpgradeable {
         }
 
         return uint256(price);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }

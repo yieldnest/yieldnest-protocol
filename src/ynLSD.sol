@@ -98,6 +98,9 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         _grantRole(LSD_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
 
         for (uint i = 0; i < init.tokens.length; i++) {
+            if (address(init.tokens[i]) == address(0) || address(init.strategies[i]) == address(0)) {
+                revert ZeroAddress();
+            }
             tokens.push(init.tokens[i]);
             strategies[init.tokens[i]] = init.strategies[i];
         }

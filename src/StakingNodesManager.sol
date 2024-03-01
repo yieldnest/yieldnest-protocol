@@ -47,6 +47,8 @@ contract StakingNodesManager is
     error DirectETHDepositsNotAllowed();
     error InvalidNodeId(uint nodeId);
     error ZeroAddress();
+    error NotStakingNode(address caller, uint256 nodeId);
+    error TooManyStakingNodes(uint maxNodeCount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -227,7 +229,7 @@ contract StakingNodesManager is
      * @param newValidators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
      */
     function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
-        
+
         for (uint i = 0; i < newValidators.length; i++) {
             uint nodeId = newValidators[i].nodeId;
 
@@ -294,10 +296,14 @@ contract StakingNodesManager is
     //----------------------------------  STAKING NODE CREATION  ---------------------------
     //--------------------------------------------------------------------------------------
 
-    function createStakingNode() public returns (IStakingNode) {
+    function createStakingNode()
+        public
+        notZeroAddress((address(upgradeableBeacon)))
+        returns (IStakingNode) {
 
-        require(address(upgradeableBeacon) != address(0), "LSDStakingNode: upgradeableBeacon is not set");
-        require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
+        if (nodes.length >= maxNodeCount) {
+            revert TooManyStakingNodes(maxNodeCount);
+        }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         StakingNode node = StakingNode(payable(proxy));
@@ -317,9 +323,11 @@ contract StakingNodesManager is
         return node;
     }
 
-    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
+    function registerStakingNodeImplementationContract(address _implementationContract)
+        onlyRole(STAKING_ADMIN_ROLE)
+        notZeroAddress(_implementationContract)
+        public {
 
-        require(_implementationContract != address(0), "StakingNodesManager:No zero address");
         require(address(upgradeableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
 
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
@@ -354,7 +362,9 @@ contract StakingNodesManager is
     //--------------------------------------------------------------------------------------
 
     function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable {
-        require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
+        if (address(nodes[nodeId]) != msg.sender) {
+            revert NotStakingNode(msg.sender, nodeId);
+        }
 
         uint rewards = msg.value - withdrawnValidatorPrincipal;
 

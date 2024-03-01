@@ -20,11 +20,15 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
+    error ZeroAddress();
 
    IynLSD public ynLSD;
    uint public nodeId;
 
-   function initialize(Init memory init) public initializer {
+   function initialize(Init memory init)
+        public
+        notZeroAddress(address(init.ynLSD))
+        initializer {
        __ReentrancyGuard_init();
        ynLSD = init.ynLSD;
        nodeId = init.nodeId;
@@ -83,5 +87,18 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
         IBeacon beacon = IBeacon(implementationVariable);
         return beacon.implementation();
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }
