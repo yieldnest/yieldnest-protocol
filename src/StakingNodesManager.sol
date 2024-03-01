@@ -84,7 +84,7 @@ contract StakingNodesManager is
     IynETH public ynETH;
     IRewardsDistributor rewardsDistributor;
 
-    bytes[] public validators;
+    Validator[] public validators;
 
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
@@ -255,8 +255,7 @@ contract StakingNodesManager is
 
         // Deposit to the Beacon Chain
         depositContractEth2.deposit{value: _depositAmount}(validator.publicKey, withdrawalCredentials, validator.signature, depositDataRoot);
-
-        validators.push(validator.publicKey);
+        validators.push(Validator({publicKey: validator.publicKey, nodeId: validator.nodeId}));
 
         // notify node of ETH _depositAmount
         IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
@@ -379,7 +378,7 @@ contract StakingNodesManager is
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function getAllValidators() public view returns (bytes[] memory) {
+    function getAllValidators() public view returns (Validator[] memory) {
         return validators;
     }
 

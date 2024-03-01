@@ -13,7 +13,7 @@ contract ynViewer {
         stakingNodesManager = _stakingNodesManager;
     }
 
-    function getAllValidators() public view returns (bytes[] memory) {
+    function getAllValidators() public view returns (IStakingNodesManager.Validator[] memory) {
         return stakingNodesManager.getAllValidators();
     }
 
