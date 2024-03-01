@@ -190,7 +190,7 @@ contract StakingNodeTest is IntegrationBaseTest {
     }
       
 
-    function testVerifyWithdrawalCredentials() public {
+    function testVerifyWithdrawalCredentialsRevertingWhenPaused() public {
 
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
 
@@ -251,6 +251,65 @@ contract StakingNodeTest is IntegrationBaseTest {
         //     nonce: 0 // first nonce is 0
         // });
         // stakingNodeInstance.completeWithdrawal(params);
+    }  
+
+    function testVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
+
+        uint depositAmount = 32 ether;
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+
+        MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
+        bytes memory tempCode = address(mainnetEigenPodMock).code;
+
+        address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
+        address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
+
+        UpgradeableBeacon beacon = UpgradeableBeacon(eigenPodBeaconAddress);
+        address previousImplementation = beacon.implementation();
+
+        vm.prank(beaconOwner);
+        beacon.upgradeTo(address(mainnetEigenPodMock));
+
+        bytes memory previousCode = address(eigenPodInstance).code;
+
+        uint withdrawalAmount = 1 ether;
+
+        MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
+
+        {
+                        // unpausing deposits artificially
+            IPausable pausableStrategyManager = IPausable(address(strategyManager));
+            address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
+            vm.startPrank(unpauser);
+            pausableStrategyManager.unpause(0);
+            vm.stopPrank();
+        }
+
+        {
+            uint64[] memory oracleBlockNumbers = new uint64[](1);
+            oracleBlockNumbers[0] = 0; // Mock value
+
+            uint40[] memory validatorIndexes = new uint40[](1);
+            validatorIndexes[0] = 1234567; // Validator index
+
+            BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] memory proofs = new BeaconChainProofs.ValidatorFieldsAndBalanceProofs[](1);
+            proofs[0] = BeaconChainProofs.ValidatorFieldsAndBalanceProofs({
+                validatorFieldsProof: new bytes(0), // Mock value
+                validatorBalanceProof: new bytes(0), // Mock value
+                balanceRoot: bytes32(0) // Mock value
+            });
+
+            bytes32[][] memory validatorFields = new bytes32[][](1);
+            validatorFields[0] = new bytes32[](2);
+            validatorFields[0][0] = bytes32(0); // Mock value
+            validatorFields[0][1] = bytes32(0); // Mock value
+            stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
+        }
+        
+        uint shares = strategyManager.stakerStrategyShares(address(stakingNodeInstance), stakingNodeInstance.beaconChainETHStrategy());
+        assertEq(shares, depositAmount, "Shares do not match deposit amount");
+
     }  
 }
 
