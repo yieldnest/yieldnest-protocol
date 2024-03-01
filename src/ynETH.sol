@@ -102,7 +102,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         rewardsDistributor = init.rewardsDistributor;
         transfersPaused = true; // transfers are initially paused
 
-         if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
+        if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
             revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
         }
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;

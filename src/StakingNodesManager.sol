@@ -46,6 +46,7 @@ contract StakingNodesManager is
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
     error DirectETHDepositsNotAllowed();
     error InvalidNodeId(uint nodeId);
+    error ZeroAddress();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -123,7 +124,10 @@ contract StakingNodesManager is
         IRewardsDistributor rewardsDistributor; // Added rewardsDistributor dependency
     }
     
-    function initialize(Init memory init) external initializer {
+    function initialize(Init memory init)
+    external
+    initializer
+    {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
@@ -375,4 +379,16 @@ contract StakingNodesManager is
         return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
+    }
 }

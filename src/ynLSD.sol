@@ -32,6 +32,8 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
 
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
+    error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
+    error ZeroAddress();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -44,7 +46,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -80,7 +82,14 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         address lsdRestakingManager;
     }
 
-    function initialize(Init memory init) public initializer {
+    function initialize(Init memory init)
+        public
+        notZeroAddress(address(init.strategyManager))
+        notZeroAddress(address(init.oracle))
+        notZeroAddress(address(init.admin))
+        notZeroAddress(address(init.stakingAdmin))
+        notZeroAddress(address(init.lsdRestakingManager))
+        initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
@@ -95,6 +104,10 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
 
         strategyManager = init.strategyManager;
         oracle = init.oracle;
+
+        if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
+            revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
+        }
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         maxNodeCount = init.maxNodeCount;
     }
@@ -146,8 +159,8 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR),
+            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
+            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
             rounding
         );
     }
@@ -283,5 +296,18 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
 
         IERC20(asset).transfer(msg.sender, amount);
         emit AssetRetrieved(asset, amount, nodeId, msg.sender);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }
