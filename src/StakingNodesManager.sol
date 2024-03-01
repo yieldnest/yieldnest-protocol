@@ -227,35 +227,12 @@ contract StakingNodesManager is
      * @param newValidators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
      */
     function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
-        uint[] memory nodeBalances = new uint[](nodes.length);
-        uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
-        uint totalBalance = 0;
-        for (uint i = 0; i < nodes.length; i++) {
-            nodeBalances[i] = IStakingNode(nodes[i]).getETHBalance();
-            newNodeBalances[i] = nodeBalances[i]; // Assigning the value from nodeBalances to newNodeBalances
-            totalBalance += nodeBalances[i];
-        }
-
-        if (totalBalance == 0) {
-            return;
-        }
-        uint averageBalance = totalBalance / nodes.length;
-
-        uint newTotalBalance = totalBalance;
+        
         for (uint i = 0; i < newValidators.length; i++) {
             uint nodeId = newValidators[i].nodeId;
 
             if (nodeId >= nodes.length) {
                 revert InvalidNodeId(nodeId);
-            }
-            newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
-            newTotalBalance += DEFAULT_VALIDATOR_STAKE;
-        }
-        uint newAverageBalance = newTotalBalance / nodes.length;
-
-        for (uint i = 0; i < nodes.length; i++) {
-            if (stdMath.abs(int256(nodeBalances[i]) - int256(averageBalance)) < stdMath.abs(int256(newNodeBalances[i]) - int256(newAverageBalance))) {
-                revert DepositAllocationUnbalanced(i, nodeBalances[i], averageBalance, newNodeBalances[i], newAverageBalance);
             }
         }
     }
