@@ -235,6 +235,10 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.expectRevert("Pausable: index is paused");
         stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
+        // go back to previous implementation
+        vm.prank(beaconOwner);
+        beacon.upgradeTo(previousImplementation);
+
         // Note: reenable this when verifyWithdrawals works
         // // Note: once deposits are unpaused this should work
         // vm.expectRevert("StrategyManager._removeShares: shareAmount too high");
@@ -271,8 +275,6 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.prank(beaconOwner);
         beacon.upgradeTo(address(mainnetEigenPodMock));
 
-        bytes memory previousCode = address(eigenPodInstance).code;
-
         uint withdrawalAmount = 1 ether;
 
         MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
@@ -305,8 +307,12 @@ contract StakingNodeTest is IntegrationBaseTest {
             validatorFields[0][0] = bytes32(0); // Mock value
             validatorFields[0][1] = bytes32(0); // Mock value
             stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
+
+            // go back to previous implementation
+            vm.prank(beaconOwner);
+            beacon.upgradeTo(previousImplementation);
         }
-        
+
         uint shares = strategyManager.stakerStrategyShares(address(stakingNodeInstance), stakingNodeInstance.beaconChainETHStrategy());
         assertEq(shares, depositAmount, "Shares do not match deposit amount");
 
