@@ -110,40 +110,70 @@ contract StakingNodesManager is
 
     /// @notice Configuration for contract initialization.
     struct Init {
+        // roles
         address admin;
         address stakingAdmin;
         address stakingNodesAdmin;
         address validatorManager;
+
+        // internal
         uint maxNodeCount;
-        IDepositContract depositContract;
         IynETH ynETH;
+        IRewardsDistributor rewardsDistributor; 
+
+        // external contracts
+        IDepositContract depositContract;
         IEigenPodManager eigenPodManager;
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
-        IRewardsDistributor rewardsDistributor; // Added rewardsDistributor dependency
     }
     
-    function initialize(Init memory init)
+    function initialize(Init calldata init)
     external
+    notZeroAddress(address(init.ynETH))
+    notZeroAddress(address(init.rewardsDistributor))
     initializer
     {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        initializeRoles(init);
+        initializeExternalContracts(init);
+
+        rewardsDistributor = init.rewardsDistributor;
+        maxNodeCount = init.maxNodeCount;
+        ynETH = init.ynETH;
+
+    }
+
+    function initializeRoles(Init calldata init)
+        notZeroAddress(init.admin)
+        notZeroAddress(init.stakingAdmin)
+        notZeroAddress(init.stakingNodesAdmin)
+        notZeroAddress(init.validatorManager)
+        internal {
+       _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
         _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
+    }
 
-        depositContractEth2 = init.depositContract;
-        maxNodeCount = init.maxNodeCount;
-        eigenPodManager = init.eigenPodManager;
-        ynETH = init.ynETH;
+    function initializeExternalContracts(Init calldata init)
+        notZeroAddress(address(init.depositContract))
+        notZeroAddress(address(init.eigenPodManager))
+        notZeroAddress(address(init.delegationManager))
+        notZeroAddress(address(init.delayedWithdrawalRouter))
+        notZeroAddress(address(init.strategyManager))
+        internal {
+        // Ethereum
+        depositContractEth2 = init.depositContract;    
+
+        // Eigenlayer
+        eigenPodManager = init.eigenPodManager;    
         delegationManager = init.delegationManager;
         delayedWithdrawalRouter = init.delayedWithdrawalRouter;
         strategyManager = init.strategyManager;
-        rewardsDistributor = init.rewardsDistributor;
     }
 
 
