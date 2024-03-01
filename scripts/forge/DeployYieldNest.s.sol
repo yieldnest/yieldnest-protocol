@@ -130,7 +130,6 @@ contract DeployYieldNest is BaseScript {
             pauser: pauserAddress,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            wETH: IWETH(address(weth)),  // Deployed WETH address
             exchangeAdjustmentRate: startingExchangeAdjustmentRate,
             pauseWhitelist: pauseWhitelist
         });

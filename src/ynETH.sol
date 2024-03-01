@@ -12,7 +12,6 @@ import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
-import {IWETH} from "./external/tokens/IWETH.sol";
  
 contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {
 
@@ -71,7 +70,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         address pauser;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
-        IWETH wETH;
         uint256 exchangeAdjustmentRate;
         address[] pauseWhitelist;
     }
@@ -91,7 +89,6 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         notZeroAddress(init.pauser)
         notZeroAddress(address(init.stakingNodesManager))
         notZeroAddress(address(init.rewardsDistributor))
-        notZeroAddress(address(init.wETH))
         initializer {
         __AccessControl_init();
         __ERC20_init("ynETH", "ynETH");
