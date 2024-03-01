@@ -42,7 +42,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
-    bool public isDepositETHPaused;
+    bool public depositsPaused;
     // Storage variables
 
 
@@ -66,7 +66,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
 
     function deposit(uint assets, address receiver) public override returns (uint shares) {
 
-        if (isDepositETHPaused) {
+        if (depositsPaused) {
             console.log("System is paused");
             revert Paused();
         }
@@ -156,9 +156,9 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         totalDepositedInPool += msg.value;
     }
 
-    function setIsDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        isDepositETHPaused = isPaused;
-        emit DepositETHPausedUpdated(isDepositETHPaused);
+    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        depositsPaused = isPaused;
+        emit DepositETHPausedUpdated(depositsPaused);
     }
 
     function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {

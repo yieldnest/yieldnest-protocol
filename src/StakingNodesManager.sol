@@ -294,7 +294,7 @@ contract StakingNodesManager is
         uint nodeId = nodes.length;
 
         node.initialize(
-            IStakingNode.Init(IStakingNodesManager(address(this)), strategyManager, nodeId)
+            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
         );
  
         IEigenPod eigenPod = node.createEigenPod();

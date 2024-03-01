@@ -31,7 +31,6 @@ interface IStakingNode {
     /// @notice Configuration for contract initialization.
     struct Init {
         IStakingNodesManager stakingNodesManager;
-        IStrategyManager strategyManager;
         uint nodeId;
     }
 

@@ -35,6 +35,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
     error ClaimableAnmountExceedsPrincipal(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
+    error ZeroAddress();
 
 
     //--------------------------------------------------------------------------------------
@@ -49,7 +50,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     IStakingNodesManager public stakingNodesManager;
-    IStrategyManager public strategyManager;
     IEigenPod public eigenPod;
     uint public nodeId;
 
@@ -84,12 +84,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     constructor() {
     }
 
-    function initialize(Init memory init) external {
+    function initialize(Init memory init)
+        external
+        notZeroAddress(address(init.stakingNodesManager))
+        initializer {
         require(address(stakingNodesManager) == address(0), "already initialized");
         require(address(init.stakingNodesManager) != address(0), "No zero addresses");
 
         stakingNodesManager = init.stakingNodesManager;
-        strategyManager = init.strategyManager;
         nodeId = init.nodeId;
     }
 
@@ -246,5 +248,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         IBeacon beacon = IBeacon(implementationVariable);
         return beacon.implementation();
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }

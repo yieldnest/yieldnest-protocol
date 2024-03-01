@@ -16,7 +16,6 @@ import {IWETH} from "./external/tokens/IWETH.sol";
  
 contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {
 
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -26,6 +25,11 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     error Paused();
     error ValueOutOfBounds(uint value);
     error TransfersPaused();
+    error ZeroAddress();
+    error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
+    error ZeroETH();
+    error NoDirectETHDeposit();
+    error CallerNotStakingNodeManager(address expected, address provided);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -38,7 +42,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -47,7 +51,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
     uint public allocatedETHForDeposits;
-    bool public isDepositETHPaused;
+    bool public depositsPaused;
 
     /// @dev The value is in basis points (1/10000).
     uint public exchangeAdjustmentRate;
@@ -81,7 +85,14 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     /// @notice Initializes the contract.
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
-    function initialize(Init memory init) external initializer {
+    function initialize(Init memory init)
+        external
+        notZeroAddress(init.admin)
+        notZeroAddress(init.pauser)
+        notZeroAddress(address(init.stakingNodesManager))
+        notZeroAddress(address(init.rewardsDistributor))
+        notZeroAddress(address(init.wETH))
+        initializer {
         __AccessControl_init();
         __ERC20_init("ynETH", "ynETH");
 
@@ -89,14 +100,18 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
-        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         transfersPaused = true; // transfers are initially paused
+
+         if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
+            revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
+        }
+        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
 
         _addToPauseWhitelist(init.pauseWhitelist);
     }
 
     receive() external payable {
-        revert("ynETH: Cannot receive ETH directly");
+        revert NoDirectETHDeposit();
     }
 
     //--------------------------------------------------------------------------------------
@@ -105,12 +120,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     function depositETH(address receiver) public payable returns (uint shares) {
 
-        if (isDepositETHPaused) {
+        if (depositsPaused) {
             revert Paused();
         }
-    
 
-        require(msg.value > 0, "msg.value == 0");
+        if (msg.value == 0) {
+            revert ZeroETH();
+        }
 
         uint assets = msg.value;
 
@@ -140,8 +156,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR),
+            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
+            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
             rounding
         );
     }
@@ -191,13 +207,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         totalDepositedInPool += msg.value;
     }
 
-    function setIsDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        isDepositETHPaused = isPaused;
-        emit DepositETHPausedUpdated(isDepositETHPaused);
+    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        depositsPaused = isPaused;
+        emit DepositETHPausedUpdated(depositsPaused);
     }
 
     function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {
-        if (newRate > _BASIS_POINTS_DENOMINATOR) {
+        if (newRate > BASIS_POINTS_DENOMINATOR) {
             revert ValueOutOfBounds(newRate);
         }
         exchangeAdjustmentRate = newRate;
@@ -237,7 +253,21 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //--------------------------------------------------------------------------------------
 
     modifier onlyStakingNodesManager() {
-        require(msg.sender == address(stakingNodesManager), "Caller is not the stakingNodesManager");
+        if (msg.sender != address(stakingNodesManager)) {
+            revert CallerNotStakingNodeManager(
+                address(stakingNodesManager),
+                msg.sender
+            );
+        }
+        _;
+    }
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         _;
     }
 }
