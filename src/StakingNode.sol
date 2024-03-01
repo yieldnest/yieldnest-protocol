@@ -11,7 +11,6 @@ import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interface
 import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
-import "forge-std/console.sol";
 
 
 interface StakingNodeEvents {
@@ -198,7 +197,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function delegate(address operator) public virtual onlyAdmin {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-
         delegationManager.delegateTo(operator);
 
         emit Delegated(operator, 0);
@@ -207,9 +205,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function undelegate() public virtual onlyAdmin {
         
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        address operator = delegationManager.delegatedTo(address(this));
         delegationManager.undelegate(address(this));
 
+        address operator = delegationManager.delegatedTo(address(this));
         emit Undelegated(operator);
     }
 
