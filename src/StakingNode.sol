@@ -250,6 +250,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return beacon.implementation();
     }
 
+    /// @notice Retrieve the version number of the highest/newest initialize
+    ///         function that was executed.
+    function getInitializedVersion() external view returns (uint64) {
+        return _getInitializedVersion();
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
