@@ -325,13 +325,16 @@ contract StakingNodesManager is
 
     function initializeStakingNode(IStakingNode node) virtual internal {
 
-         uint64 initializedVersion = node.getInitializedVersion();
-         if (initializedVersion == 0) {
-             uint256 nodeId = nodes.length;
-             node.initialize(
-                IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
-             );
-         }
+        uint64 initializedVersion = node.getInitializedVersion();
+        if (initializedVersion == 0) {
+            uint256 nodeId = nodes.length;
+            node.initialize(
+            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
+            );
+
+            // update to the newly upgraded version.
+            initializedVersion = node.getInitializedVersion();
+        }
 
          // NOTE: for future versions add additional if clauses that initialize the node 
          // for the next version while keeping the previous initializers

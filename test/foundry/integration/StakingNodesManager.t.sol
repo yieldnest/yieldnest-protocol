@@ -39,6 +39,18 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         assertEq(stakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
     }
 
+    function testCreateStakingNodeAfterUpgradeWithoutUpgradeability() public {
+        // Upgrade the StakingNodesManager implementation to TestStakingNodesManagerV2
+        address newImplementation = address(new TestStakingNodesManagerV2());
+        vm.prank(proxyAdminOwner);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newImplementation, "");
+
+        // Attempt to create a staking node after the upgrade - should fail since implementation is not there
+        vm.expectRevert();
+        stakingNodesManager.createStakingNode();
+    }
+
     function testRegisterValidators() public {
 
         address addr1 = vm.addr(100);
