@@ -5,12 +5,10 @@ import "./IntegrationBaseTest.sol";
 import "forge-std/console.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../../../src/ynViewer.sol";
-import "../mocks/MockStakingNode.sol";
 import "../mocks/MockYnETHERC4626.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../mocks/MockERC20.sol";
-
 
 contract UpgradesTest is IntegrationBaseTest {
 

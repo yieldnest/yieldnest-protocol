@@ -66,4 +66,5 @@ interface IStakingNode {
         bytes32[][] calldata validatorFields
     ) external;
 
+    function getInitializedVersion() external view returns (uint64);
 }

@@ -41,6 +41,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
 
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
     bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
+    bytes32 public constant LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -80,6 +81,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         address admin;
         address stakingAdmin;
         address lsdRestakingManager;
+        address lsdStakingNodeCreatorRole;
     }
 
     function initialize(Init memory init)
@@ -89,6 +91,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.stakingAdmin))
         notZeroAddress(address(init.lsdRestakingManager))
+        notZeroAddress(init.lsdStakingNodeCreatorRole)
         initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -96,6 +99,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(LSD_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
+        _grantRole(LSD_STAKING_NODE_CREATOR_ROLE, init.lsdStakingNodeCreatorRole);
 
         for (uint256 i = 0; i < init.tokens.length; i++) {
             if (address(init.tokens[i]) == address(0) || address(init.strategies[i]) == address(0)) {
@@ -233,7 +237,10 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     //----------------------------------  STAKING NODE CREATION  ---------------------------
     //--------------------------------------------------------------------------------------
 
-    function createLSDStakingNode() public returns (ILSDStakingNode) {
+    function createLSDStakingNode()
+        public
+        onlyRole(LSD_STAKING_NODE_CREATOR_ROLE)
+        returns (ILSDStakingNode) {
 
         require(address(upgradeableBeacon) != address(0), "LSDStakingNode: upgradeableBeacon is not set");
         require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
@@ -242,10 +249,8 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         ILSDStakingNode node = ILSDStakingNode(payable(proxy));
 
         uint256 nodeId = nodes.length;
+        initializeLSDStakingNode(node);
 
-        node.initialize(
-            ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
-        );
         nodes.push(node);
 
         emit LSDStakingNodeCreated(nodeId, address(node));
@@ -253,28 +258,36 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         return node;
     }
 
-    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
+    function initializeLSDStakingNode(ILSDStakingNode node) virtual internal {
 
-        require(_implementationContract != address(0), "StakingNodesManager:No zero address");
-        require(address(upgradeableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
+         uint64 initializedVersion = node.getInitializedVersion();
+         if (initializedVersion == 0) {
+             uint256 nodeId = nodes.length;
+             node.initialize(
+               ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
+             );
+         }
+    }
+
+    function registerStakingNodeImplementationContract(address _implementationContract)
+        onlyRole(STAKING_ADMIN_ROLE)
+        notZeroAddress(_implementationContract)
+        public {
+
+        require(address(upgradeableBeacon) == address(0), "ynLSD: Implementation already exists");
 
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
-    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
+    function upgradeStakingNodeImplementation(address _implementationContract) public onlyRole(STAKING_ADMIN_ROLE) {
 
-        require(address(upgradeableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
-        require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
+        require(address(upgradeableBeacon) != address(0), "ynLSD: A Staking node implementation has never been registered");
+        require(_implementationContract != address(0), "ynLSD: Implementation cannot be zero address");
         upgradeableBeacon.upgradeTo(_implementationContract);
 
-        if (callData.length == 0) {
-            // no function to initialize with
-            return;
-        }
         // reinitialize all nodes
         for (uint256 i = 0; i < nodes.length; i++) {
-            (bool success, ) = address(nodes[i]).call(callData);
-            require(success, "ynLSD: Failed to call method on upgraded node");
+            initializeLSDStakingNode(nodes[i]);
         }
     }
 

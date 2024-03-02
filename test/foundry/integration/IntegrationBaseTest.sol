@@ -143,7 +143,8 @@ contract IntegrationBaseTest is Test, Utils {
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
-            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            stakingNodeCreatorRole: address(this)
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
@@ -198,7 +199,8 @@ contract IntegrationBaseTest is Test, Utils {
             maxNodeCount: 10,
             admin: address(this),
             stakingAdmin: address(this),
-            lsdRestakingManager: address(this)
+            lsdRestakingManager: address(this),
+            lsdStakingNodeCreatorRole: address(this)
         });
 
         ynlsd.initialize(init);

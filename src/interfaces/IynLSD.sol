@@ -25,7 +25,7 @@ interface IynLSD {
 
     function registerStakingNodeImplementationContract(address _implementationContract) external;
 
-    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) external;
+    function upgradeStakingNodeImplementation(address _implementationContract) external;
 
     function setMaxNodeCount(uint _maxNodeCount) external;
 

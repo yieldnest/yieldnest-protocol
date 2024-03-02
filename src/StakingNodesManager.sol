@@ -18,7 +18,7 @@ import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {StakingNode} from "./StakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
 import {stdMath} from "forge-std/StdMath.sol";
-
+import "forge-std/console.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -61,6 +61,9 @@ contract StakingNodesManager is
 
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
+
+    /// @notice Role is able to create staking nodes
+    bytes32 public constant STAKING_NODE_CREATOR_ROLE = keccak256("STAKING_NODE_CREATOR_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -116,6 +119,7 @@ contract StakingNodesManager is
         address stakingAdmin;
         address stakingNodesAdmin;
         address validatorManager;
+        address stakingNodeCreatorRole;
 
         // internal
         uint256 maxNodeCount;
@@ -153,11 +157,13 @@ contract StakingNodesManager is
         notZeroAddress(init.stakingAdmin)
         notZeroAddress(init.stakingNodesAdmin)
         notZeroAddress(init.validatorManager)
+        notZeroAddress(init.stakingNodeCreatorRole)
         internal {
        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
         _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
+        _grantRole(STAKING_NODE_CREATOR_ROLE, init.stakingNodeCreatorRole);
     }
 
     function initializeExternalContracts(Init calldata init)
@@ -296,6 +302,7 @@ contract StakingNodesManager is
     function createStakingNode()
         public
         notZeroAddress((address(upgradeableBeacon)))
+        onlyRole(STAKING_NODE_CREATOR_ROLE) 
         returns (IStakingNode) {
 
         if (nodes.length >= maxNodeCount) {
@@ -303,14 +310,10 @@ contract StakingNodesManager is
         }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
-        StakingNode node = StakingNode(payable(proxy));
+        IStakingNode node = IStakingNode(payable(proxy));
 
-        uint256 nodeId = nodes.length;
+        initializeStakingNode(node);
 
-        node.initialize(
-            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
-        );
- 
         IEigenPod eigenPod = node.createEigenPod();
 
         nodes.push(node);
@@ -318,6 +321,17 @@ contract StakingNodesManager is
         emit StakingNodeCreated(address(node), address(eigenPod));
 
         return node;
+    }
+
+    function initializeStakingNode(IStakingNode node) virtual internal {
+
+         uint64 initializedVersion = node.getInitializedVersion();
+         if (initializedVersion == 0) {
+             uint256 nodeId = nodes.length;
+             node.initialize(
+                IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
+             );
+         }
     }
 
     function registerStakingNodeImplementationContract(address _implementationContract)
@@ -330,20 +344,15 @@ contract StakingNodesManager is
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
-    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
+    function upgradeStakingNodeImplementation(address _implementationContract) public onlyRole(STAKING_ADMIN_ROLE) {
 
         require(address(upgradeableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
         require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
         upgradeableBeacon.upgradeTo(_implementationContract);
 
-        if (callData.length == 0) {
-            // no function to initialize with
-            return;
-        }
         // reinitialize all nodes
         for (uint256 i = 0; i < nodes.length; i++) {
-            (bool success, ) = address(nodes[i]).call(callData);
-            require(success, "StakingNodesManager: Failed to call method on upgraded node");
+            initializeStakingNode(nodes[i]);
         }
     }
 

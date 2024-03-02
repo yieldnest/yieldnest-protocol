@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "../../../src/StakingNode.sol";
 
-contract MockStakingNode is StakingNode {
+contract TestStakingNodeV2 is StakingNode {
 
     uint public valueToBeInitialized;
 
@@ -11,7 +11,7 @@ contract MockStakingNode is StakingNode {
         uint valueToBeInitialized;
     }
 
-    function reinitialize(ReInit memory reInit) public reinitializer(2) {
+    function initializeV2(ReInit memory reInit) public reinitializer(2) {
         valueToBeInitialized = reInit.valueToBeInitialized;
     }
 
