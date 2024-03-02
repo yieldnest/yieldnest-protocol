@@ -332,6 +332,9 @@ contract StakingNodesManager is
                 IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
              );
          }
+
+         // NOTE: for future versions add additional if clauses that initialize the node 
+         // for the next version while keeping the previous initializers
     }
 
     function registerStakingNodeImplementationContract(address _implementationContract)
