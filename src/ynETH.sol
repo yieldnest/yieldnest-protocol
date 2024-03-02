@@ -5,12 +5,9 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
  
 contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {

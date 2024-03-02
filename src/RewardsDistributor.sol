@@ -62,7 +62,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     }
 
     function initialize(Init memory init)
-        public
+        external
         notZeroAddress(init.admin)
         notZeroAddress(address(init.executionLayerReceiver))
         notZeroAddress(address(init.consensusLayerReceiver))
