@@ -18,7 +18,6 @@ import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {StakingNode} from "./StakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
 import {stdMath} from "forge-std/StdMath.sol";
-import "forge-std/console.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -48,6 +47,8 @@ contract StakingNodesManager is
     error ZeroAddress();
     error NotStakingNode(address caller, uint256 nodeId);
     error TooManyStakingNodes(uint256 maxNodeCount);
+    error BeaconImplementationAlreadyExists();
+    error NoBeaconImplementationExists();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -345,15 +346,20 @@ contract StakingNodesManager is
         notZeroAddress(_implementationContract)
         public {
 
-        require(address(upgradeableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
+        if (address(upgradeableBeacon) != address(0)) {
+            revert BeaconImplementationAlreadyExists();
+        }
 
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
-    function upgradeStakingNodeImplementation(address _implementationContract) public onlyRole(STAKING_ADMIN_ROLE) {
-
-        require(address(upgradeableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
-        require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
+    function upgradeStakingNodeImplementation(address _implementationContract)
+        onlyRole(STAKING_ADMIN_ROLE)
+        notZeroAddress(_implementationContract)
+        public {
+        if (address(upgradeableBeacon) == address(0)) {
+            revert NoBeaconImplementationExists();
+        }
         upgradeableBeacon.upgradeTo(_implementationContract);
 
         // reinitialize all nodes

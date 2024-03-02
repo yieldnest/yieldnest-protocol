@@ -34,6 +34,8 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     error ZeroAmount();
     error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
     error ZeroAddress();
+    error BeaconImplementationAlreadyExists();
+    error NoBeaconImplementationExists();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -56,7 +58,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     YieldNestOracle oracle;
     IStrategyManager public strategyManager;
         
-    UpgradeableBeacon private upgradeableBeacon;
+    UpgradeableBeacon public upgradeableBeacon;
 
     mapping(IERC20 => IStrategy) public strategies;
 
@@ -266,26 +268,36 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
              node.initialize(
                ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
              );
+
+             // update version to latest
+             initializedVersion = node.getInitializedVersion();
          }
 
          // NOTE: for future versions add additional if clauses that initialize the node 
          // for the next version while keeping the previous initializers
     }
 
-    function registerStakingNodeImplementationContract(address _implementationContract)
+    function registerLSDStakingNodeImplementationContract(address _implementationContract)
         onlyRole(STAKING_ADMIN_ROLE)
         notZeroAddress(_implementationContract)
-        public {
+        public{
 
-        require(address(upgradeableBeacon) == address(0), "ynLSD: Implementation already exists");
+        if (address(upgradeableBeacon) != address(0)) {
+            revert BeaconImplementationAlreadyExists();
+        }
 
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
-    function upgradeStakingNodeImplementation(address _implementationContract) public onlyRole(STAKING_ADMIN_ROLE) {
+    function upgradeLSDStakingNodeImplementation(address _implementationContract)   
+        onlyRole(STAKING_ADMIN_ROLE) 
+        notZeroAddress(_implementationContract)
+        public {
 
-        require(address(upgradeableBeacon) != address(0), "ynLSD: A Staking node implementation has never been registered");
-        require(_implementationContract != address(0), "ynLSD: Implementation cannot be zero address");
+        if (address(upgradeableBeacon) == address(0)) {
+            revert NoBeaconImplementationExists();
+        }
+
         upgradeableBeacon.upgradeTo(_implementationContract);
 
         // reinitialize all nodes

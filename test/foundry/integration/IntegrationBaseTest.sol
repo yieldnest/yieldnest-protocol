@@ -206,7 +206,7 @@ contract IntegrationBaseTest is Test, Utils {
         ynlsd.initialize(init);
         yieldNestOracle.initialize(oracleInit);
 
-        ynlsd.registerStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
+        ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }
 

@@ -133,6 +133,4 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         vm.expectRevert("StakingNodesManager: Implementation already exists");
         stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
     }
-
-
 }
