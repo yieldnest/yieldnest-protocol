@@ -12,12 +12,10 @@ import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDeleg
 import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-import {StakingNode} from "./StakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
-import {stdMath} from "forge-std/StdMath.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -49,6 +47,8 @@ contract StakingNodesManager is
     error TooManyStakingNodes(uint256 maxNodeCount);
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
+    error DepositorNotYnETH();
+    error TransferFailed();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -113,6 +113,10 @@ contract StakingNodesManager is
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
+    constructor() {
+       _disableInitializers();
+    }
+
     /// @notice Configuration for contract initialization.
     struct Init {
         // roles
@@ -154,12 +158,12 @@ contract StakingNodesManager is
     }
 
     function initializeRoles(Init calldata init)
+        internal
         notZeroAddress(init.admin)
         notZeroAddress(init.stakingAdmin)
         notZeroAddress(init.stakingNodesAdmin)
         notZeroAddress(init.validatorManager)
-        notZeroAddress(init.stakingNodeCreatorRole)
-        internal {
+        notZeroAddress(init.stakingNodeCreatorRole) {
        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
@@ -168,12 +172,12 @@ contract StakingNodesManager is
     }
 
     function initializeExternalContracts(Init calldata init)
+        internal
         notZeroAddress(address(init.depositContract))
         notZeroAddress(address(init.eigenPodManager))
         notZeroAddress(address(init.delegationManager))
         notZeroAddress(address(init.delayedWithdrawalRouter))
-        notZeroAddress(address(init.strategyManager))
-        internal {
+        notZeroAddress(address(init.strategyManager)) {
         // Ethereum
         depositContractEth2 = init.depositContract;    
 
@@ -185,7 +189,9 @@ contract StakingNodesManager is
     }
 
     receive() external payable {
-        require(msg.sender == address(ynETH));
+        if (msg.sender != address(ynETH)) {
+            revert DepositorNotYnETH();
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -342,9 +348,9 @@ contract StakingNodesManager is
     }
 
     function registerStakingNodeImplementationContract(address _implementationContract)
+        public
         onlyRole(STAKING_ADMIN_ROLE)
-        notZeroAddress(_implementationContract)
-        public {
+        notZeroAddress(_implementationContract) {
 
         if (address(upgradeableBeacon) != address(0)) {
             revert BeaconImplementationAlreadyExists();
@@ -354,9 +360,9 @@ contract StakingNodesManager is
     }
 
     function upgradeStakingNodeImplementation(address _implementationContract)
+        public
         onlyRole(STAKING_ADMIN_ROLE)
-        notZeroAddress(_implementationContract)
-        public {
+        notZeroAddress(_implementationContract) {
         if (address(upgradeableBeacon) == address(0)) {
             revert NoBeaconImplementationExists();
         }
@@ -388,7 +394,9 @@ contract StakingNodesManager is
 
         IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
         (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
-        require(sent, "Failed to send rewards");
+        if (!sent) {
+            revert TransferFailed();
+        }
 
         ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
     }

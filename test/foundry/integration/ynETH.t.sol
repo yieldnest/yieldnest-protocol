@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {ynETH} from "../../../src/ynETH.sol";
+import {ynBase} from "../../../src/ynBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import "forge-std/Console.sol";
 
@@ -226,7 +227,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         // Act & Assert
         // Ensure transfer from a non-whitelisted address reverts
-        vm.expectRevert(ynETH.TransfersPaused.selector);
+        vm.expectRevert(ynBase.TransfersPaused.selector);
         vm.prank(nonWhitelistedAddress);
         yneth.transfer(recipient, transferAmount);
     }
@@ -253,6 +254,21 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Assert
         uint256 recipientBalance = yneth.balanceOf(recipient);
         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for whitelisted address");
+    }
+
+    function testAddToPauseWhitelist() public {
+        // Arrange
+        address[] memory addressesToWhitelist = new address[](2);
+        addressesToWhitelist[0] = address(1);
+        addressesToWhitelist[1] = address(2);
+
+        // Act
+        vm.prank(actors.PAUSE_ADMIN);
+        yneth.addToPauseWhitelist(addressesToWhitelist);
+
+        // Assert
+        assertTrue(yneth.pauseWhiteList(addressesToWhitelist[0]), "Address 1 should be whitelisted");
+        assertTrue(yneth.pauseWhiteList(addressesToWhitelist[1]), "Address 2 should be whitelisted");
     }
 
     function testTransferSucceedsForNewlyWhitelistedAddress() public {

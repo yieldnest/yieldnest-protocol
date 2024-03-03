@@ -17,6 +17,8 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     //--------------------------------------------------------------------------------------
     
     error ZeroAddress();
+    error InsufficientBalance();
+    error TransferFailed();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -33,10 +35,6 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     struct Init {
         address admin;
         address withdrawer;
-    }
-
-    constructor() {
-       // _disableInitializers();
     }
 
     /// @notice Inititalizes the contract.
@@ -62,9 +60,13 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     /// @notice Transfers the given amount of ETH to an address.
     /// @dev Only called by the withdrawer.
     function transferETH(address payable to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
-        require(address(this).balance >= amount, "Insufficient balance");
+        if (address(this).balance < amount) {
+            revert InsufficientBalance();
+        }
         (bool success, ) = to.call{value: amount}("");
-        require(success, "Transfer failed");
+        if (!success) {
+            revert TransferFailed();
+        }
     }
 
     /// @notice Transfers the given amount of an ERC20 token to an address.

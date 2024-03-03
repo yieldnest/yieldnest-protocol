@@ -208,7 +208,7 @@ contract IntegrationBaseTest is Test, Utils {
             delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            stakingNodeCreatorRole: address(this)
+            stakingNodeCreatorRole:  actors.STAKING_NODE_CREATOR
         });
         vm.prank(actors.PROXY_ADMIN_OWNER);
         stakingNodesManager.initialize(stakingNodesManagerInit);
@@ -222,6 +222,9 @@ contract IntegrationBaseTest is Test, Utils {
         address[] memory priceFeeds = new address[](2);
         uint256[] memory maxAges = new uint256[](2);
         IStrategy[] memory strategies = new IStrategy[](2);
+
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
 
         // rETH
         tokens[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
@@ -241,8 +244,8 @@ contract IntegrationBaseTest is Test, Utils {
             assets: assetsAddresses,
             priceFeedAddresses: priceFeeds,
             maxAges: maxAges,
-            admin: address(this),
-            oracleManager: address(this)
+            admin: actors.ADMIN,
+            oracleManager: actors.ORACLE_MANAGER
         });
         yieldNestOracle.initialize(oracleInit);
 
@@ -256,14 +259,17 @@ contract IntegrationBaseTest is Test, Utils {
             oracle: yieldNestOracle,
             exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD,
             maxNodeCount: 10,
-            admin: address(this),
-            stakingAdmin: address(this),
-            lsdRestakingManager: address(this),
-            lsdStakingNodeCreatorRole: address(this)
+            admin: actors.ADMIN,
+            stakingAdmin: actors.STAKING_ADMIN,
+            lsdRestakingManager: actors.LSD_RESTAKING_MANAGER,
+            lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
+            pauseWhitelist: pauseWhitelist,
+            pauser: actors.PAUSE_ADMIN
         });
 
         ynlsd.initialize(init);
 
+        vm.prank(actors.STAKING_ADMIN);
         ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }

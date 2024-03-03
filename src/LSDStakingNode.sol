@@ -7,7 +7,6 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {IynLSD} from "./interfaces/IynLSD.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 
@@ -18,23 +17,44 @@ interface ILSDStakingNodeEvents {
 
 contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
     error ZeroAddress();
+    error NotLSDRestakingManager();
 
-   IynLSD public ynLSD;
-   uint256 public nodeId;
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
-   function initialize(Init memory init)
+    IynLSD public ynLSD;
+    uint256 public nodeId;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
+
+    constructor() {
+       _disableInitializers();
+    }
+
+    function initialize(Init memory init)
         public
         notZeroAddress(address(init.ynLSD))
         initializer {
-       __ReentrancyGuard_init();
-       ynLSD = init.ynLSD;
-       nodeId = init.nodeId;
-   }
+        __ReentrancyGuard_init();
+        ynLSD = init.ynLSD;
+        nodeId = init.nodeId;
+    }
 
-   function depositAssetsToEigenlayer(
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EIGENLAYER DEPOSITS  -----------------------------
+    //--------------------------------------------------------------------------------------
+
+    function depositAssetsToEigenlayer(
         IERC20[] memory assets,
         uint256[] memory amounts
     )
@@ -66,7 +86,9 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //--------------------------------------------------------------------------------------
 
     modifier onlyLSDRestakingManager() {
-        require(ynLSD.hasLSDRestakingManagerRole(msg.sender), "Caller is not an LSD restaking manager");
+        if (!ynLSD.hasLSDRestakingManagerRole(msg.sender)) {
+            revert NotLSDRestakingManager();
+        }
         _;
     }
 
@@ -79,7 +101,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
       https://github.com/OpenZeppelin/openzeppelin-contracts/blob/afb20119b33072da041c97ea717d3ce4417b5e01/contracts/proxy/ERC1967/ERC1967Upgrade.sol#L142
      */
     function implementation() public view returns (address) {
-        bytes32 slot = bytes32(uint256(keccak256('eip1967.proxy.beacon')) - 1);
+        bytes32 slot = bytes32(uint256(keccak256("eip1967.proxy.beacon")) - 1);
         address implementationVariable;
         assembly {
             implementationVariable := sload(slot)

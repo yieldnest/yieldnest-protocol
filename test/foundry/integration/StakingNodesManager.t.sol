@@ -17,6 +17,7 @@ import "../mocks/TestStakingNodesManagerV2.sol";
 contract StakingNodesManagerTest is IntegrationBaseTest {
 
     function testCreateStakingNode() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IEigenPod eigenPod = stakingNodeInstance.eigenPod();
         assertEq(address(stakingNodesManager), address(stakingNodeInstance.stakingNodesManager()), "StakingNodesManager is not correct");
@@ -28,6 +29,9 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
     }
 
     function testCreate2StakingNodes() public {
+
+        vm.prank(actors.STAKING_NODE_CREATOR);
+
         IStakingNode stakingNodeInstance1 = stakingNodesManager.createStakingNode();
         IEigenPod eigenPod1 = stakingNodeInstance1.eigenPod();
         assertEq(address(stakingNodesManager), address(stakingNodeInstance1.stakingNodesManager()), "StakingNodesManager for node 1 is not correct");
@@ -36,6 +40,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         uint expectedNodeId1 = 0;
         assertEq(stakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
 
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance2 = stakingNodesManager.createStakingNode();
         IEigenPod eigenPod2 = stakingNodeInstance2.eigenPod();
         assertEq(address(stakingNodesManager), address(stakingNodeInstance2.stakingNodesManager()), "StakingNodesManager for node 2 is not correct");
@@ -71,6 +76,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         uint balance = yneth.balanceOf(addr1);
         assertEq(balance, depositAmount, "Balance does not match deposit amount");
         
+        vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
 
         uint nodeId = 0;
@@ -106,6 +112,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
     }
 
     function testUpgradeStakingNodeImplementation() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         address eigenPodAddress = address(stakingNodeInstance.eigenPod());
 
@@ -154,6 +161,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
     // TODO: Should createStakingNode be open to public?
     function testStakingNodesLength() public {
         uint256 initialLength = stakingNodesManager.nodesLength();
+        vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
         uint256 newLength = stakingNodesManager.nodesLength();
         assertEq(newLength, initialLength + 1);

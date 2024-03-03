@@ -29,6 +29,10 @@ contract YieldNestOracle is AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
+    constructor() {
+       _disableInitializers();
+    }
+
     function initialize(Init memory init)
         external
         notZeroAddress(init.admin)
@@ -48,7 +52,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
             if(init.priceFeedAddresses[i] == address(0)) {
                 revert ZeroAddress();
             }
-            setAssetPriceFeed(init.assets[i], init.priceFeedAddresses[i], init.maxAges[i]);
+            _setAssetPriceFeed(init.assets[i], init.priceFeedAddresses[i], init.maxAges[i]);
         }
     }
 

@@ -11,21 +11,25 @@ contract YieldNestOracleTest is IntegrationBaseTest {
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
     function testSetAssetWithZeroAge() public {
         vm.expectRevert(YieldNestOracle.ZeroAge.selector);
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, 0); // zero age
     }
 
     function testSetAssetWithZeroAssetAddress() public {
         vm.expectRevert(YieldNestOracle.ZeroAddress.selector);
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(address(0), chainAddresses.lsd.RETH_FEED_ADDRESS, 3600); // one hour, zero asset address
     }
 
     function testSetAssetWithZeroPriceFeedAddress() public {
         vm.expectRevert(YieldNestOracle.ZeroAddress.selector);
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, address(0), 3600); // one hour, zero price feed address
     }
 
     function testSetAssetWithBothAddressesZero() public {
         vm.expectRevert(YieldNestOracle.ZeroAddress.selector);
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(address(0), address(0), 3600); // one hour, both addresses zero
     }
 
@@ -35,6 +39,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         uint256 age = 3600; // one hour
 
         // Expect no revert, successful execution
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(assetAddress, priceFeedAddress, age);
 
         // Verify the asset price feed is set correctly
@@ -53,6 +58,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         assertGt(price, 0, "Zero price");
         // One hour age
         uint256 age = 1;
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
         vm.expectRevert(
             abi.encodeWithSelector(PriceFeedTooStale.selector, block.timestamp - timeStamp, age)
@@ -61,6 +67,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         
         // 24 hours age
         age = 86400;
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
         uint256 obtainedPrice = yieldNestOracle.getLatestPrice(address(token));
         assertEq(uint256(price), obtainedPrice, "Price mismatch");
@@ -83,6 +90,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         uint256 newAge = 7200; // two hours
 
         // Act
+        vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(assetAddress, newPriceFeedAddress, newAge);
 
         // Assert

@@ -20,7 +20,8 @@ contract StakingNodeTest is IntegrationBaseTest {
     using stdStorage for StdStorage;
 
     function testCreateNodeAndAssertETHBalanceWithoutRegisteredValidators() public {
-        // Create a staking node
+        
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
         uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
@@ -40,6 +41,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.prank(addr1);
         yneth.depositETH{value: depositAmount}(addr1);
 
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
         uint256 nodeId = 0;
@@ -271,6 +273,7 @@ contract StakingNodeTest is IntegrationBaseTest {
     }
 
     function testCreateEigenPodReturnsEigenPodAddressAfterCreated() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
         assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
@@ -278,6 +281,7 @@ contract StakingNodeTest is IntegrationBaseTest {
 
     function testClaimDelayedWithdrawals() public {
 
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
         vm.prank(actors.STAKING_NODES_ADMIN);
@@ -286,12 +290,14 @@ contract StakingNodeTest is IntegrationBaseTest {
     }
 
     function testDelegateFailWhenNotAdmin() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         vm.expectRevert();
         stakingNodeInstance.delegate(address(this));
     }
 
     function testStakingNodeDelegate() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
@@ -305,6 +311,7 @@ contract StakingNodeTest is IntegrationBaseTest {
     }
 
     function testImplementViewFunction() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         assertEq(stakingNodeInstance.implementation(), address(stakingNodeImplementation));
     }
