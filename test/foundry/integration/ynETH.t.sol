@@ -255,6 +255,21 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for whitelisted address");
     }
 
+    function testAddToPauseWhitelist() public {
+        // Arrange
+        address[] memory addressesToWhitelist = new address[](2);
+        addressesToWhitelist[0] = address(1);
+        addressesToWhitelist[1] = address(2);
+
+        // Act
+        vm.prank(actors.PAUSE_ADMIN);
+        yneth.addToPauseWhitelist(addressesToWhitelist);
+
+        // Assert
+        assertTrue(yneth.pauseWhiteList(addressesToWhitelist[0]), "Address 1 should be whitelisted");
+        assertTrue(yneth.pauseWhiteList(addressesToWhitelist[1]), "Address 2 should be whitelisted");
+    }
+
     function testTransferSucceedsForNewlyWhitelistedAddress() public {
         // Arrange
         uint256 depositAmount = 1 ether;
