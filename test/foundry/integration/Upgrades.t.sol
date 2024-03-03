@@ -1,34 +1,36 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
-
-import "./IntegrationBaseTest.sol";
-import "forge-std/console.sol";
-import "../../../src/StakingNodesManager.sol";
-import "../../../src/ynViewer.sol";
-import "../mocks/MockYnETHERC4626.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import "../mocks/MockERC20.sol";
+import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {StakingNodesManager} from "../../../src/StakingNodesManager.sol";
+import {ynETH} from "../../../src/ynETH.sol";
+import {MockYnETHERC4626} from "../mocks/MockYnETHERC4626.sol";
+import {MockERC20} from "../mocks/MockERC20.sol";
+import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {IRewardsDistributor} from "../../../src/interfaces/IRewardsDistributor.sol";
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeEachTransparentProxyUpgradeableContract() public {
 
         address newImplementation = address(new ynETH()); 
-        vm.prank(proxyAdminOwner);
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newImplementation, "");
 
         address currentImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneth));
         assertEq(currentImplementation, newImplementation);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        vm.prank(proxyAdminOwner);
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
         address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
         assertEq(currentStakingNodesManagerImpl, newStakingNodesManagerImpl);
 
         address newRewardsDistributorImpl = address(new RewardsDistributor());
-        vm.prank(proxyAdminOwner);
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(rewardsDistributor))).upgradeAndCall(ITransparentUpgradeableProxy(address(rewardsDistributor)), newRewardsDistributorImpl, "");
         address currentRewardsDistributorImpl = getTransparentUpgradeableProxyImplementationAddress(address(rewardsDistributor));
         assertEq(currentRewardsDistributorImpl, newRewardsDistributorImpl);
@@ -55,7 +57,7 @@ contract UpgradesTest is IntegrationBaseTest {
         nETH.mint(address(this), 100000 ether);
 
         address newImplementation = address(new MockYnETHERC4626()); 
-        vm.prank(proxyAdminOwner);
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth)))
             .upgradeAndCall(ITransparentUpgradeableProxy(
                 address(yneth)),

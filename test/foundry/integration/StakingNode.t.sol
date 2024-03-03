@@ -1,12 +1,20 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./IntegrationBaseTest.sol";
-import "forge-std/console.sol";
-import "../../../src/interfaces/IStakingNode.sol";
-import "../mocks/mainnet/MainnetEigenPodMock.sol";
-import "../../../src/StakingNode.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPausable.sol";
+import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelegationTerms} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelegationTerms.sol";
+import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {BeaconChainProofs} from "../../../src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import {MainnetEigenPodMock} from "../mocks/mainnet/MainnetEigenPodMock.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
+
 
 contract StakingNodeTest is IntegrationBaseTest {
     using stdStorage for StdStorage;
@@ -15,7 +23,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         // Create a staking node
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
-        uint actualETHBalance = stakingNodeInstance.getETHBalance();
+        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
         assertEq(actualETHBalance, 0, "ETH balance does not match expected value");
     }
 
@@ -31,11 +39,10 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         vm.prank(addr1);
         yneth.depositETH{value: depositAmount}(addr1);
-        uint balance = yneth.balanceOf(addr1);
 
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
-        uint nodeId = 0;
+        uint256 nodeId = 0;
 
         IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
         for (uint i = 0; i < validatorCount; i++) {
@@ -51,16 +58,17 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-        for (uint i = 0; i < validatorData.length; i++) {
-            uint amount = depositAmount / validatorData.length;
+        for (uint256 i = 0; i < validatorData.length; i++) {
+            uint256 amount = depositAmount / validatorData.length;
             bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
             validatorData[i].depositDataRoot = depositDataRoot;
         }
         
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
-        uint actualETHBalance = stakingNodeInstance.getETHBalance();
+        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
         assertEq(actualETHBalance, depositAmount, "ETH balance does not match expected value");
 
         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
@@ -85,17 +93,19 @@ contract StakingNodeTest is IntegrationBaseTest {
         address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
         // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
-        uint rewardsSweeped = 1 ether;
+        uint256 rewardsSweeped = 1 ether;
         vm.deal(eigenPodAddress, rewardsSweeped);
 
         // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-        uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
+        uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -110,17 +120,19 @@ contract StakingNodeTest is IntegrationBaseTest {
        address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
         // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
-        uint rewardsSweeped = 1 ether;
+        uint256 rewardsSweeped = 1 ether;
         vm.deal(eigenPodAddress, rewardsSweeped);
 
         // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-        uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
+        uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -135,17 +147,19 @@ contract StakingNodeTest is IntegrationBaseTest {
        address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
         // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
-        uint rewardsSweeped = 1000 ether;
+        uint256 rewardsSweeped = 1000 ether;
         vm.deal(eigenPodAddress, rewardsSweeped);
 
-        // trigger   withdraw before restaking succesfully
+        // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-        uint withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
+        uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -169,6 +183,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.deal(eigenPodAddress, rewardsSweeped);
 
         // trigger withdraw before restaking succesfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
@@ -179,6 +194,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint256 withdrawnValidators = activeValidators - 1;
         uint256 validatorPrincipal = withdrawnValidators * 32 ether;
 
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, validatorPrincipal);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -195,7 +211,6 @@ contract StakingNodeTest is IntegrationBaseTest {
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
 
         MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
-        bytes memory tempCode = address(mainnetEigenPodMock).code;
 
         address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
         address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
@@ -206,9 +221,6 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.prank(beaconOwner);
         beacon.upgradeTo(address(mainnetEigenPodMock));
 
-        bytes memory previousCode = address(eigenPodInstance).code;
-
-        uint withdrawalAmount = 1 ether;
 
         MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
 
@@ -233,6 +245,7 @@ contract StakingNodeTest is IntegrationBaseTest {
         // Note: Deposits are currently paused as per the PAUSED_DEPOSITS flag in StrategyManager.sol
         // See: https://github.com/Layr-Labs/eigenlayer-contracts/blob/c7bf3817c5e1430672bf8bc80558d8439a2022af/src/contracts/core/StrategyManager.sol#L168
         vm.expectRevert("Pausable: index is paused");
+        vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
         // go back to previous implementation
@@ -255,7 +268,46 @@ contract StakingNodeTest is IntegrationBaseTest {
         //     nonce: 0 // first nonce is 0
         // });
         // stakingNodeInstance.completeWithdrawal(params);
-    }  
+    }
+
+    function testCreateEigenPodReturnsEigenPodAddressAfterCreated() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+        assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
+    }
+
+    function testClaimDelayedWithdrawals() public {
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.expectRevert();
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 1);
+    }
+
+    function testDelegateFailWhenNotAdmin() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        vm.expectRevert();
+        stakingNodeInstance.delegate(address(this));
+    }
+
+    function testStakingNodeDelegate() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
+        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
+
+        // register as operator
+        delegationManager.registerAsOperator(IDelegationTerms(address(this)));
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        stakingNodeInstance.delegate(address(this));
+    }
+
+    function testImplementViewFunction() public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        assertEq(stakingNodeInstance.implementation(), address(stakingNodeImplementation));
+    }
 
     function testVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
 
@@ -306,6 +358,7 @@ contract StakingNodeTest is IntegrationBaseTest {
             validatorFields[0] = new bytes32[](2);
             validatorFields[0][0] = bytes32(0); // Mock value
             validatorFields[0][1] = bytes32(0); // Mock value
+            vm.prank(actors.STAKING_NODES_ADMIN);
             stakingNodeInstance.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
 
             // go back to previous implementation

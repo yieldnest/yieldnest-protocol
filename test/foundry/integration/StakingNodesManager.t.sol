@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./IntegrationBaseTest.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 import "forge-std/console.sol";
 import "../../../src/StakingNodesManager.sol";
 import "../mocks/TestStakingNodeV2.sol";
@@ -42,7 +48,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
     function testCreateStakingNodeAfterUpgradeWithoutUpgradeability() public {
         // Upgrade the StakingNodesManager implementation to TestStakingNodesManagerV2
         address newImplementation = address(new TestStakingNodesManagerV2());
-        vm.prank(proxyAdminOwner);
+        vm.prank(actors.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newImplementation, "");
 
@@ -92,6 +98,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         }
         
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();
@@ -104,11 +111,13 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         // upgrade the StakingNodeManager to support the new initialization version.
         address newStakingNodesManagerImpl = address(new TestStakingNodesManagerV2());
-        vm.prank(proxyAdminOwner);
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
 
         TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(payable(testStakingNodeV2));
 
         UpgradeableBeacon beacon = stakingNodesManager.upgradeableBeacon();
@@ -127,10 +136,26 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
     function testFailRegisterStakingNodeImplementationTwice() public {
         address initialImplementation = address(new TestStakingNodeV2());
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
 
         address newImplementation = address(new TestStakingNodeV2());
         vm.expectRevert("StakingNodesManager: Implementation already exists");
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
+    }
+
+    function testIsStakingNodesAdmin() public {
+        stakingNodesManager.nodesLength();
+        assertEq(stakingNodesManager.isStakingNodesAdmin(address(this)), false);
+        assertEq(stakingNodesManager.isStakingNodesAdmin(actors.STAKING_NODES_ADMIN), true);
+    }
+
+    // TODO: Should createStakingNode be open to public?
+    function testStakingNodesLength() public {
+        uint256 initialLength = stakingNodesManager.nodesLength();
+        stakingNodesManager.createStakingNode();
+        uint256 newLength = stakingNodesManager.nodesLength();
+        assertEq(newLength, initialLength + 1);
     }
 }
