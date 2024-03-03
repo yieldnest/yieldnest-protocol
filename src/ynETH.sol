@@ -204,33 +204,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         emit ExchangeAdjustmentRateUpdated(newRate);
     }
 
-    // //--------------------------------------------------------------------------------------
-    // //----------------------------------  BOOTSTRAP TRANSFERS PAUSE  -----------------------
-    // //--------------------------------------------------------------------------------------
-
-    // function _update(address from, address to, uint256 amount) internal virtual override {
-    //     // revert if transfers are paused, the from is not on the whitelist and
-    //     // it's neither a mint (from = 0) nor a burn (to = 0)
-    //     if (transfersPaused && !pauseWhiteList[from] && from != address(0) && to != address(0)) {
-    //         revert TransfersPaused();
-    //     }
-    //     super._update(from, to, amount);
-    // }
-
-    // /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
-    // function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
-    //     transfersPaused = false;
-    // }
-    
-    // function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
-    //     _addToPauseWhitelist(whitelistedForTransfers);
-    // }
-
-    // function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
-    //     for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
-    //         pauseWhiteList[whitelistedForTransfers[i]] = true;
-    //     }
-    // }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------
     //--------------------------------------------------------------------------------------
