@@ -44,16 +44,13 @@ contract YieldNestOracleTest is IntegrationBaseTest {
     }
     
     function testForGetLatestPrice() public {
-        vm.expectRevert(bytes("Price feed not set"));
-        yieldNestOracle.getLatestPrice(address(0));
 
         IERC20 token = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.lsd.RETH_FEED_ADDRESS);
         (, int256 price, , uint256 timeStamp, ) = assetPriceFeed.latestRoundData();
         
-        assertEq(timeStamp > 0, true, "Zero timestamp");
-        assertEq(price > 0, true, "Zero price");
-
+        assertGt(timeStamp, 0, "Zero timestamp");
+        assertGt(price, 0, "Zero price");
         // One hour age
         uint256 age = 1;
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
@@ -67,5 +64,31 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
         uint256 obtainedPrice = yieldNestOracle.getLatestPrice(address(token));
         assertEq(uint256(price), obtainedPrice, "Price mismatch");
+    }
+
+    function testGetLatestPriceWithUnsetAsset() public {
+        // Arrange
+        address unsetAssetAddress = address(1); // An arbitrary address not set in the oracle
+
+        // Act & Assert
+        // Expect the oracle to revert with "Price feed not set" for an asset that hasn't been set up
+        vm.expectRevert(abi.encodeWithSelector(YieldNestOracle.PriceFeedNotSet.selector));
+        yieldNestOracle.getLatestPrice(unsetAssetAddress);
+    }
+
+    function testUpdateAssetPriceFeedSuccessfully() public {
+        // Arrange
+        address assetAddress = chainAddresses.lsd.RETH_ADDRESS;
+        address newPriceFeedAddress = address(2); // An arbitrary new price feed address
+        uint256 newAge = 7200; // two hours
+
+        // Act
+        yieldNestOracle.setAssetPriceFeed(assetAddress, newPriceFeedAddress, newAge);
+
+        // Assert
+        // Verify the asset price feed is updated correctly
+        (AggregatorV3Interface updatedPriceFeedAddress, uint256 updatedAge) = yieldNestOracle.assetPriceFeeds(assetAddress);
+        assertEq(address(updatedPriceFeedAddress), newPriceFeedAddress, "Price feed address not updated correctly");
+        assertEq(updatedAge, newAge, "Age not updated correctly");
     }
 }

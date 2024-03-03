@@ -14,6 +14,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
     error ZeroAddress();
     error ZeroAge();
     error ArraysLengthMismatch(uint256 assetsLength, uint256 priceFeedAddressesLength, uint256 maxAgesLength);
+    error PriceFeedNotSet();
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;
 
@@ -53,8 +54,14 @@ contract YieldNestOracle is AccessControlUpgradeable {
 
 
     function setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) public onlyRole(ORACLE_MANAGER_ROLE) {
-        if(priceFeedAddress == address(0) || asset == address(0)) revert ZeroAddress();
-        if(maxAge <= 0) revert ZeroAge();
+        if(priceFeedAddress == address(0) || asset == address(0)) {
+            revert ZeroAddress();
+        }
+
+        if (maxAge == 0) {
+            revert ZeroAge();
+        }
+
         _setAssetPriceFeed(asset, priceFeedAddress, maxAge);
     }
 
@@ -64,7 +71,9 @@ contract YieldNestOracle is AccessControlUpgradeable {
 
     function getLatestPrice(address asset) public view returns (uint256) {
         AssetPriceFeed storage priceFeed = assetPriceFeeds[asset];
-        require(address(priceFeed.priceFeed) != address(0), "Price feed not set");
+        if(address(priceFeed.priceFeed) == address(0)) {
+            revert PriceFeedNotSet();
+        }
 
         (, int256 price,, uint256 timeStamp,) = priceFeed.priceFeed.latestRoundData();
         uint256 age = block.timestamp - timeStamp;
