@@ -35,10 +35,6 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
         address withdrawer;
     }
 
-    constructor() {
-       // _disableInitializers();
-    }
-
     /// @notice Inititalizes the contract.
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
     function initialize(Init memory init)

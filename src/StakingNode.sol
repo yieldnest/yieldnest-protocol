@@ -7,7 +7,7 @@ import {IEigenPodManager} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPo
 import {IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
 import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
-import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
@@ -29,13 +29,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     error NotStakingNodesAdmin();
-    error StrategyIndexMismatch(address strategy, uint index);
+    error StrategyIndexMismatch(address strategy, uint256 index);
     error ETHDepositorNotDelayedWithdrawalRouter();
     error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
     error ClaimableAnmountExceedsPrincipal(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
+    error NotStakingNodesManager();
+    error MismatchedOracleBlockNumberAndValidatorIndexLengths(uint256 oracleBlockNumberLength, uint256 validatorIndexLength);
+    error MismatchedValidatorIndexAndProofsLengths(uint256 validatorIndexLength, uint256 proofsLength);
+    error MismatchedProofsAndValidatorFieldsLengths(uint256 proofsLength, uint256 validatorFieldsLength);
 
 
     //--------------------------------------------------------------------------------------
@@ -66,7 +70,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     modifier onlyStakingNodesManager() {
-        require(msg.sender == address(stakingNodesManager), "Only StakingNodesManager can call this function");
+        if(msg.sender != address(stakingNodesManager)) revert NotStakingNodesManager();
         _;
     }
 
@@ -82,14 +86,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     constructor() {
+       _disableInitializers();
     }
 
     function initialize(Init memory init)
         external
         notZeroAddress(address(init.stakingNodesManager))
         initializer {
-        require(address(stakingNodesManager) == address(0), "already initialized");
-        require(address(init.stakingNodesManager) != address(0), "No zero addresses");
 
         stakingNodesManager = init.stakingNodesManager;
         nodeId = init.nodeId;
@@ -127,7 +130,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
     /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
     ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint withdrawnValidatorPrincipal) public onlyAdmin {
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint256 withdrawnValidatorPrincipal) public onlyAdmin {
 
         if (withdrawnValidatorPrincipal > allocatedETH) {
             revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
@@ -176,12 +179,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
         bytes32[][] calldata validatorFields
     ) external virtual onlyAdmin {
+        if (oracleBlockNumber.length != validatorIndex.length) {
+            revert MismatchedOracleBlockNumberAndValidatorIndexLengths(oracleBlockNumber.length, validatorIndex.length);
+        }
+        if (validatorIndex.length != proofs.length) {
+            revert MismatchedValidatorIndexAndProofsLengths(validatorIndex.length, proofs.length);
+        }
+        if (validatorIndex.length != validatorFields.length) {
+            revert MismatchedProofsAndValidatorFieldsLengths(validatorIndex.length, validatorFields.length);
+        }
 
-        require(oracleBlockNumber.length == validatorIndex.length, "Mismatched oracleBlockNumber and validatorIndex lengths");
-        require(validatorIndex.length == proofs.length, "Mismatched validatorIndex and proofs lengths");
-        require(validatorIndex.length == validatorFields.length, "Mismatched proofs and validatorFields lengths");
-
-        for (uint i = 0; i < validatorIndex.length; i++) {
+        for (uint256 i = 0; i < validatorIndex.length; i++) {
             // NOTE: this call reverts with 'Pausable: index is paused' on mainnet currently 
             // because the beaconChainETHStrategy strategy is currently paused.
             eigenPod.verifyWithdrawalCredentialsAndBalance(
@@ -218,11 +226,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     /// @dev Record total staked ETH for this StakingNode
-    function allocateStakedETH( uint amount) external payable onlyStakingNodesManager {
+    function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
         allocatedETH += amount;
     }
 
-    function getETHBalance() public view returns (uint) {
+    function getETHBalance() public view returns (uint256) {
 
         // NOTE: when verifyWithdrawalCredentials is enabled
         // the eigenpod will be credited with shares. Those shares represent 1 share = 1 ETH

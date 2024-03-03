@@ -24,6 +24,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
     error ZeroAddress();
+    error NotLSDRestakingManager();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -35,6 +36,10 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
+
+    constructor() {
+       _disableInitializers();
+    }
 
     function initialize(Init memory init)
         public
@@ -81,7 +86,9 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //--------------------------------------------------------------------------------------
 
     modifier onlyLSDRestakingManager() {
-        require(ynLSD.hasLSDRestakingManagerRole(msg.sender), "Caller is not an LSD restaking manager");
+        if (!ynLSD.hasLSDRestakingManagerRole(msg.sender)) {
+            revert NotLSDRestakingManager();
+        }
         _;
     }
 

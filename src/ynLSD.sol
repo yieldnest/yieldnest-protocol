@@ -74,6 +74,10 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
+    constructor() {
+       _disableInitializers();
+    }
+
     struct Init {
         IERC20[] tokens;
         IStrategy[] strategies;

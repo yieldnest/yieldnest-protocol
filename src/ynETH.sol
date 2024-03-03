@@ -63,8 +63,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
 
     constructor(
     ) {
-        // TODO; re-enable this
-         //_disableInitializers();
+         _disableInitializers();
     }
 
 

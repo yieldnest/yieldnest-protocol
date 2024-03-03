@@ -24,6 +24,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     error NotOracle();
     error Paused();
     error ZeroAddress();
+    error FeeSendFailed();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -51,6 +52,10 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
+
+    constructor() {
+       _disableInitializers();
+    }
 
     /// @notice Configuration for contract initialization.
     struct Init {
@@ -113,9 +118,10 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         // Send protocol fees (if they exist) to the fee receiver wallet.
         if (fees > 0) {
             emit FeesCollected(fees);
-            //Address.sendValue(feesReceiver, fees);
             (bool success, ) = feesReceiver.call{value: fees}("");
-            require(success, "Failed to send fees");
+            if (!success) {
+                revert FeeSendFailed();
+            }
         }
     }
 
