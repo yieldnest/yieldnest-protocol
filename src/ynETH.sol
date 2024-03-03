@@ -47,9 +47,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
 
     uint256 public totalDepositedInPool;
 
-    // mapping (address => bool) public pauseWhiteList;
-    // bool public transfersPaused;
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -87,7 +84,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
-        
+
         if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
             revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
         }
