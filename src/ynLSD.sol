@@ -5,9 +5,6 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {ERC4626Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
@@ -21,7 +18,7 @@ interface IynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
-    event MaxNodeCountUpdated(uint256 maxNodeCount);
+    event MaxNodeCountUpdated(uint256 maxNodeCount); 
 }
 
 contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
@@ -37,6 +34,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     error ZeroAddress();
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
+    error TooManyStakingNodes(uint256 maxNodeCount);
+    error NotLSDStakingNode(address sender, uint256 nodeId);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -253,11 +252,13 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     function createLSDStakingNode()
         public
+        notZeroAddress((address(upgradeableBeacon)))
         onlyRole(LSD_STAKING_NODE_CREATOR_ROLE)
         returns (ILSDStakingNode) {
 
-        require(address(upgradeableBeacon) != address(0), "LSDStakingNode: upgradeableBeacon is not set");
-        require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
+        if (nodes.length >= maxNodeCount) {
+            revert TooManyStakingNodes(maxNodeCount);
+        }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         ILSDStakingNode node = ILSDStakingNode(payable(proxy));
@@ -290,9 +291,9 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     function registerLSDStakingNodeImplementationContract(address _implementationContract)
+        public
         onlyRole(STAKING_ADMIN_ROLE)
-        notZeroAddress(_implementationContract)
-        public{
+        notZeroAddress(_implementationContract) {
 
         if (address(upgradeableBeacon) != address(0)) {
             revert BeaconImplementationAlreadyExists();
@@ -301,10 +302,10 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
-    function upgradeLSDStakingNodeImplementation(address _implementationContract)   
+    function upgradeLSDStakingNodeImplementation(address _implementationContract)  
+        public 
         onlyRole(STAKING_ADMIN_ROLE) 
-        notZeroAddress(_implementationContract)
-        public {
+        notZeroAddress(_implementationContract) {
 
         if (address(upgradeableBeacon) == address(0)) {
             revert NoBeaconImplementationExists();
@@ -330,7 +331,9 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     function retrieveAsset(uint256 nodeId, IERC20 asset, uint256 amount) external {
-        require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
+        if (address(nodes[nodeId]) != msg.sender) {
+            revert NotLSDStakingNode(msg.sender, nodeId);
+        }
 
         IStrategy strategy = strategies[asset];
         if (address(strategy) == address(0)) {

@@ -2,9 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
 import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
@@ -26,6 +23,8 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     error ZeroETH();
     error NoDirectETHDeposit();
     error CallerNotStakingNodeManager(address expected, address provided);
+    error NotRewardsDistributor();
+    error InsufficientBalance();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -175,15 +174,19 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     //--------------------------------------------------------------------------------------
 
     function receiveRewards() external payable {
-        require(msg.sender == address(rewardsDistributor), "Caller is not the stakingNodesManager");
+        if (msg.sender != address(rewardsDistributor)) {
+            revert NotRewardsDistributor();
+        }
         totalDepositedInPool += msg.value;
     }
 
     function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
-        require(totalDepositedInPool >= ethAmount, "Insufficient balance");
+        if (totalDepositedInPool < ethAmount) {
+            revert InsufficientBalance();
+        }
 
-        payable(address(stakingNodesManager)).transfer(ethAmount);
         totalDepositedInPool -= ethAmount;
+        payable(address(stakingNodesManager)).transfer(ethAmount);
     }
 
     function processWithdrawnETH() public payable onlyStakingNodesManager {
