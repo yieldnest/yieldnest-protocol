@@ -51,9 +51,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     IStakingNodesManager public stakingNodesManager;
     IStrategyManager public strategyManager;
     IEigenPod public eigenPod;
-    uint public nodeId;
+    uint256 public nodeId;
 
-    uint pendingWithdrawnValidatorPrincipal;
+    uint256 pendingWithdrawnValidatorPrincipal;
 
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
     uint256 public allocatedETH;

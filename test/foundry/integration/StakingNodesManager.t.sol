@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./IntegrationBaseTest.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
+import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {MockStakingNode} from "../mocks/MockStakingNode.sol";
 import "forge-std/console.sol";
-import "../../../src/StakingNodesManager.sol";
-import "../mocks/MockStakingNode.sol";
+
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
 
@@ -78,6 +82,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         }
         
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();
@@ -90,6 +95,7 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
         MockStakingNode mockStakingNode = new MockStakingNode();
         bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
         UpgradeableBeacon beacon = stakingNodesManager.upgradeableBeacon();
@@ -108,12 +114,35 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
 
     function testFailRegisterStakingNodeImplementationTwice() public {
         address initialImplementation = address(new MockStakingNode());
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
 
         address newImplementation = address(new MockStakingNode());
         vm.expectRevert("StakingNodesManager: Implementation already exists");
+        vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
     }
 
+    function testFailUpgradeStakingNodeImplementationWithoutCallData() public {
+        address initialImplementation = address(new MockStakingNode());
+        stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
 
+        address newImplementation = address(new MockStakingNode());
+        vm.expectRevert("StakingNodesManager: Call data is empty");
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(newImplementation), "");
+    }
+
+    function testIsStakingNodesAdmin() public {
+        stakingNodesManager.nodesLength();
+        assertEq(stakingNodesManager.isStakingNodesAdmin(address(this)), false);
+        assertEq(stakingNodesManager.isStakingNodesAdmin(actors.STAKING_NODES_ADMIN), true);
+    }
+
+    // TODO: Should createStakingNode be open to public?
+    function testStakingNodesLength() public {
+        uint256 initialLength = stakingNodesManager.nodesLength();
+        stakingNodesManager.createStakingNode();
+        uint256 newLength = stakingNodesManager.nodesLength();
+        assertEq(newLength, initialLength + 1);
+    }
 }

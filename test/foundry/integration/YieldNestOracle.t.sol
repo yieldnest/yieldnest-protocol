@@ -3,24 +3,25 @@ import "./IntegrationBaseTest.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AggregatorV3Interface} from "../../../src/external/chainlink/AggregatorV3Interface.sol";
 
 contract YieldNestOracleTest is IntegrationBaseTest {
-    ContractAddresses contractAddresses = new ContractAddresses();
-    ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+    // ContractAddresses contractAddresses = new ContractAddresses();
+    // ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
     function testSetAssetWithZeroAge() public {
         vm.expectRevert(YieldNestOracle.ZeroAge.selector);
-        yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, chainAddresses.RETH_FEED_ADDRESS, 0); // zero age
+        yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, 0); // zero age
     }
 
     function testSetAssetWithZeroAssetAddress() public {
         vm.expectRevert(YieldNestOracle.ZeroAddress.selector);
-        yieldNestOracle.setAssetPriceFeed(address(0), chainAddresses.RETH_FEED_ADDRESS, 3600); // one hour, zero asset address
+        yieldNestOracle.setAssetPriceFeed(address(0), chainAddresses.lsd.RETH_FEED_ADDRESS, 3600); // one hour, zero asset address
     }
 
     function testSetAssetWithZeroPriceFeedAddress() public {
         vm.expectRevert(YieldNestOracle.ZeroAddress.selector);
-        yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, address(0), 3600); // one hour, zero price feed address
+        yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, address(0), 3600); // one hour, zero price feed address
     }
 
     function testSetAssetWithBothAddressesZero() public {
@@ -29,8 +30,8 @@ contract YieldNestOracleTest is IntegrationBaseTest {
     }
 
     function testSetAssetSuccessfully() public {
-        address assetAddress = chainAddresses.RETH_ADDRESS;
-        address priceFeedAddress = chainAddresses.RETH_FEED_ADDRESS;
+        address assetAddress = chainAddresses.lsd.RETH_ADDRESS;
+        address priceFeedAddress = chainAddresses.lsd.RETH_FEED_ADDRESS;
         uint256 age = 3600; // one hour
 
         // Expect no revert, successful execution
@@ -46,8 +47,8 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         vm.expectRevert(bytes("Price feed not set"));
         yieldNestOracle.getLatestPrice(address(0));
 
-        IERC20 token = IERC20(chainAddresses.RETH_ADDRESS);
-        AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.RETH_FEED_ADDRESS);
+        IERC20 token = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.lsd.RETH_FEED_ADDRESS);
         (, int256 price, , uint256 timeStamp, ) = assetPriceFeed.latestRoundData();
         
         assertEq(timeStamp > 0, true, "Zero timestamp");
@@ -55,7 +56,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
 
         // One hour age
         uint256 age = 1;
-        yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, chainAddresses.RETH_FEED_ADDRESS, age);
+        yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
         vm.expectRevert(
             abi.encodeWithSelector(PriceFeedTooStale.selector, block.timestamp - timeStamp, age)
         );
@@ -63,7 +64,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         
         // 24 hours age
         age = 86400;
-        yieldNestOracle.setAssetPriceFeed(chainAddresses.RETH_ADDRESS, chainAddresses.RETH_FEED_ADDRESS, age);
+        yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
         uint256 obtainedPrice = yieldNestOracle.getLatestPrice(address(token));
         assertEq(uint256(price), obtainedPrice, "Price mismatch");
     }

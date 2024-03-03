@@ -27,6 +27,7 @@ interface IStakingNodesManager {
         bytes32 _depositRoot,
         ValidatorData[] calldata _depositData
     ) external;
+    function nodesLength() external view returns (uint);
 
     function upgradeableBeacon() external returns (UpgradeableBeacon);
 }

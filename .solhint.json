@@ -14,6 +14,7 @@
     "var-name-mixedcase": "off",
     "compiler-version": "off",
     "no-global-import": "off",
-    "no-console": "warn"
+    "no-console": "warn",
+    "state-visibility": "off"
   }
 }
