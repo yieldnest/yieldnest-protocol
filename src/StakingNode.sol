@@ -240,7 +240,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
       https://github.com/OpenZeppelin/openzeppelin-contracts/blob/afb20119b33072da041c97ea717d3ce4417b5e01/contracts/proxy/ERC1967/ERC1967Upgrade.sol#L142
      */
     function implementation() public view returns (address) {
-        bytes32 slot = bytes32(uint256(keccak256('eip1967.proxy.beacon')) - 1);
+        bytes32 slot = bytes32(uint256(keccak256("eip1967.proxy.beacon")) - 1);
         address implementationVariable;
         assembly {
             implementationVariable := sload(slot)

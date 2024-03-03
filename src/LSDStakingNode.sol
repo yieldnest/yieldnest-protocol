@@ -7,7 +7,6 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {IynLSD} from "./interfaces/IynLSD.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 
@@ -95,7 +94,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
       https://github.com/OpenZeppelin/openzeppelin-contracts/blob/afb20119b33072da041c97ea717d3ce4417b5e01/contracts/proxy/ERC1967/ERC1967Upgrade.sol#L142
      */
     function implementation() public view returns (address) {
-        bytes32 slot = bytes32(uint256(keccak256('eip1967.proxy.beacon')) - 1);
+        bytes32 slot = bytes32(uint256(keccak256("eip1967.proxy.beacon")) - 1);
         address implementationVariable;
         assembly {
             implementationVariable := sload(slot)
