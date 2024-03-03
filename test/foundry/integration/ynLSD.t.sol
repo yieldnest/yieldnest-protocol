@@ -227,3 +227,120 @@ contract ynLSDTest is IntegrationBaseTest {
         ynlsd.registerLSDStakingNodeImplementationContract(newImplementation);
     }
 }
+
+contract ynLSDTransferPauseTest is IntegrationBaseTest {
+
+    function testTransferFailsForNonWhitelistedAddresses() public {
+        // Arrange
+        uint256 transferAmount = 1 ether;
+        address nonWhitelistedAddress = address(4); // An arbitrary address not in the whitelist
+        address recipient = address(5); // An arbitrary recipient address
+
+        // Act & Assert
+        // Ensure transfer from a non-whitelisted address reverts
+        vm.expectRevert(ynBase.TransfersPaused.selector);
+        vm.prank(nonWhitelistedAddress);
+        yneth.transfer(recipient, transferAmount);
+    }
+
+    function testTransferSucceedsForWhitelistedAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address whitelistedAddress = actors.TRANSFER_ENABLED_EOA; // Using the pre-defined whitelisted address from setup
+        address recipient = address(6); // An arbitrary recipient address
+
+        // get stETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
+        require(success, "ETH transfer failed");
+
+        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        steth.approve(address(ynlsd), depositAmount);
+        ynlsd.deposit(steth, depositAmount, whitelistedAddress); 
+
+        uint transferAmount = ynlsd.balanceOf(whitelistedAddress);
+
+        // Act
+        address[] memory whitelist = new address[](1);
+        whitelist[0] = whitelistedAddress;
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.addToPauseWhitelist(whitelist); // Whitelisting the address
+        vm.prank(whitelistedAddress);
+        ynlsd.transfer(recipient, transferAmount);
+
+        // Assert
+        uint256 recipientBalance = ynlsd.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for whitelisted address");
+    }
+
+    function testAddToPauseWhitelist() public {
+        // Arrange
+        address[] memory addressesToWhitelist = new address[](2);
+        addressesToWhitelist[0] = address(1);
+        addressesToWhitelist[1] = address(2);
+
+        // Act
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.addToPauseWhitelist(addressesToWhitelist);
+
+        // Assert
+        assertTrue(ynlsd.pauseWhiteList(addressesToWhitelist[0]), "Address 1 should be whitelisted");
+        assertTrue(ynlsd.pauseWhiteList(addressesToWhitelist[1]), "Address 2 should be whitelisted");
+    }
+
+    function testTransferSucceedsForNewlyWhitelistedAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address newWhitelistedAddress = vm.addr(7); // Using a new address for whitelisting
+        address recipient = address(8); // An arbitrary recipient address
+
+         // get stETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
+        require(success, "ETH transfer failed");
+
+        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        steth.approve(address(ynlsd), depositAmount);
+        ynlsd.deposit(steth, depositAmount, newWhitelistedAddress);
+
+        address[] memory whitelistAddresses = new address[](1);
+        whitelistAddresses[0] = newWhitelistedAddress;
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
+
+        uint transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
+
+        // Act
+        vm.prank(newWhitelistedAddress);
+        ynlsd.transfer(recipient, transferAmount);
+
+        // Assert
+        uint256 recipientBalance = ynlsd.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for newly whitelisted address");
+    }
+
+    function testTransferEnabledForAnyAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address arbitraryAddress = vm.addr(9999); // Using an arbitrary address
+        address recipient = address(10000); // An arbitrary recipient address
+
+         // get stETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
+        require(success, "ETH transfer failed");
+        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        steth.approve(address(ynlsd), depositAmount);
+        ynlsd.deposit(steth, depositAmount, arbitraryAddress);
+
+        uint transferAmount = ynlsd.balanceOf(arbitraryAddress);
+
+        // Act
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.unpauseTransfers(); // Unpausing transfers for all
+        
+        vm.prank(arbitraryAddress);
+        ynlsd.transfer(recipient, transferAmount);
+
+        // Assert
+        uint256 recipientBalance = ynlsd.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
+    }
+}

@@ -87,13 +87,13 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
-        _setTransfersPaused(true);  // transfers are initially paused
-
+        
         if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
             revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
         }
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
 
+        _setTransfersPaused(true);  // transfers are initially paused
         _addToPauseWhitelist(init.pauseWhitelist);
     }
 

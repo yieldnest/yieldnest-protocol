@@ -13,6 +13,9 @@ contract ActorAddresses {
         address VALIDATOR_MANAGER;
         address FEE_RECEIVER;
         address PAUSE_ADMIN;
+        address LSD_RESTAKING_MANAGER;
+        address STAKING_NODE_CREATOR_ROLE;
+        address ORACLE_MANAGER;
     }
 
     mapping(uint256 => Actors) public actors;
@@ -27,7 +30,10 @@ contract ActorAddresses {
             STAKING_NODES_ADMIN: 	0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc,
             VALIDATOR_MANAGER: 		0x976EA74026E726554dB657fA54763abd0C3a0aa9,
             FEE_RECEIVER: 			0x14dC79964da2C08b23698B3D3cc7Ca32193d9955,
-            PAUSE_ADMIN:            0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f
+            PAUSE_ADMIN:            0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f,
+            LSD_RESTAKING_MANAGER:  0xa0Ee7A142d267C1f36714E4a8F75612F20a79720,
+            STAKING_NODE_CREATOR_ROLE: 0xBcd4042DE499D14e55001CcbB24a551F3b954096,
+            ORACLE_MANAGER: 0x71bE63f3384f5fb98995898A86B02Fb2426c5788 // TODO: put the next addres here
         });
 
         actors[5] = Actors({
@@ -39,8 +45,10 @@ contract ActorAddresses {
             STAKING_NODES_ADMIN: 	0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc,
             VALIDATOR_MANAGER: 		0x976EA74026E726554dB657fA54763abd0C3a0aa9,
             FEE_RECEIVER: 			0x14dC79964da2C08b23698B3D3cc7Ca32193d9955,
-            PAUSE_ADMIN:            0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f
-
+            PAUSE_ADMIN:            0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f,
+            LSD_RESTAKING_MANAGER:  0xa0Ee7A142d267C1f36714E4a8F75612F20a79720,
+            STAKING_NODE_CREATOR_ROLE: 0xBcd4042DE499D14e55001CcbB24a551F3b954096,
+            ORACLE_MANAGER: 0x71bE63f3384f5fb98995898A86B02Fb2426c5788 // TODO: put the next addres here
         });
     }
 

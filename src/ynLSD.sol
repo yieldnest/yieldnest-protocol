@@ -82,9 +82,11 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         uint256 exchangeAdjustmentRate;
         uint256 maxNodeCount;
         address admin;
+        address pauser;
         address stakingAdmin;
         address lsdRestakingManager;
         address lsdStakingNodeCreatorRole;
+        address[] pauseWhitelist;
     }
 
     function initialize(Init memory init)
@@ -104,6 +106,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(LSD_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
         _grantRole(LSD_STAKING_NODE_CREATOR_ROLE, init.lsdStakingNodeCreatorRole);
+        _grantRole(PAUSER_ROLE, init.pauser);
 
         for (uint256 i = 0; i < init.tokens.length; i++) {
             if (address(init.tokens[i]) == address(0) || address(init.strategies[i]) == address(0)) {
@@ -121,6 +124,9 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         }
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         maxNodeCount = init.maxNodeCount;
+
+        _setTransfersPaused(true);  // transfers are initially paused
+        _addToPauseWhitelist(init.pauseWhitelist);
     }
 
     //--------------------------------------------------------------------------------------

@@ -48,7 +48,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
             if(init.priceFeedAddresses[i] == address(0)) {
                 revert ZeroAddress();
             }
-            setAssetPriceFeed(init.assets[i], init.priceFeedAddresses[i], init.maxAges[i]);
+            _setAssetPriceFeed(init.assets[i], init.priceFeedAddresses[i], init.maxAges[i]);
         }
     }
 
