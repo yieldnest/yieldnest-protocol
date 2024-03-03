@@ -54,8 +54,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     uint256 public totalDepositedInPool;
 
-    mapping (address => bool) pauseWhiteList;
-    bool transfersPaused;
+    mapping (address => bool) public pauseWhiteList;
+    bool public transfersPaused;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
