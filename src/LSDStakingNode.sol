@@ -18,23 +18,39 @@ interface ILSDStakingNodeEvents {
 
 contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     error UnsupportedAsset(IERC20 token);
     error ZeroAmount();
     error ZeroAddress();
 
-   IynLSD public ynLSD;
-   uint256 public nodeId;
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
-   function initialize(Init memory init)
+    IynLSD public ynLSD;
+    uint256 public nodeId;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function initialize(Init memory init)
         public
         notZeroAddress(address(init.ynLSD))
         initializer {
-       __ReentrancyGuard_init();
-       ynLSD = init.ynLSD;
-       nodeId = init.nodeId;
-   }
+        __ReentrancyGuard_init();
+        ynLSD = init.ynLSD;
+        nodeId = init.nodeId;
+    }
 
-   function depositAssetsToEigenlayer(
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EIGENLAYER DEPOSITS  -----------------------------
+    //--------------------------------------------------------------------------------------
+
+    function depositAssetsToEigenlayer(
         IERC20[] memory assets,
         uint256[] memory amounts
     )
