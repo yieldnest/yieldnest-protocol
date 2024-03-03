@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
@@ -97,7 +98,8 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
 
-        address upgradedImplementationAddress = stakingNodesManager.implementationContract();
+        UpgradeableBeacon beacon = stakingNodesManager.upgradeableBeacon();
+        address upgradedImplementationAddress = beacon.implementation();
         assertEq(upgradedImplementationAddress, payable(mockStakingNode));
 
         address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
@@ -136,34 +138,11 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         assertEq(stakingNodesManager.isStakingNodesAdmin(actors.STAKING_NODES_ADMIN), true);
     }
 
-
     // TODO: Should createStakingNode be open to public?
     function testStakingNodesLength() public {
         uint256 initialLength = stakingNodesManager.nodesLength();
         stakingNodesManager.createStakingNode();
         uint256 newLength = stakingNodesManager.nodesLength();
         assertEq(newLength, initialLength + 1);
-    }
-
-    function testUpgradeStakingNodeImplementationWithCallData() public {
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-        address eigenPodAddress = address(stakingNodeInstance.eigenPod());
-
-        MockStakingNode mockStakingNode = new MockStakingNode();
-        bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
-        vm.prank(actors.STAKING_ADMIN);
-        stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
-
-        address upgradedImplementationAddress = stakingNodesManager.implementationContract();
-        assertEq(upgradedImplementationAddress, payable(mockStakingNode));
-
-        address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
-        assertEq(newEigenPodAddress, eigenPodAddress);
-
-        MockStakingNode mockStakingNodeInstance = MockStakingNode(payable(address(stakingNodeInstance)));
-        uint redundantFunctionResult = mockStakingNodeInstance.redundantFunction();
-        assertEq(redundantFunctionResult, 1234567);
-
-        assertEq(mockStakingNodeInstance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
 }

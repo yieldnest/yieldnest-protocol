@@ -11,6 +11,8 @@ contract YieldNestOracle is AccessControlUpgradeable {
     }
 
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
+    error ZeroAddress();
+    error ZeroAge();
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;
 
@@ -25,7 +27,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
-    function initialize(Init memory init) external {
+    function initialize(Init memory init) external initializer {
          __AccessControl_init();
         _grantRole(ADMIN_ROLE, init.admin);
         _grantRole(ORACLE_MANAGER_ROLE, init.oracleManager);
@@ -38,6 +40,8 @@ contract YieldNestOracle is AccessControlUpgradeable {
 
 
     function setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) public onlyRole(ORACLE_MANAGER_ROLE) {
+        if(priceFeedAddress == address(0) || asset == address(0)) revert ZeroAddress();
+        if(maxAge <= 0) revert ZeroAge();
         _setAssetPriceFeed(asset, priceFeedAddress, maxAge);
     }
 
@@ -45,7 +49,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
         assetPriceFeeds[asset] = AssetPriceFeed(AggregatorV3Interface(priceFeedAddress), maxAge);
     }
 
-    function getLatestPrice(address asset) public view returns (int256) {
+    function getLatestPrice(address asset) public view returns (uint256) {
         AssetPriceFeed storage priceFeed = assetPriceFeeds[asset];
         require(address(priceFeed.priceFeed) != address(0), "Price feed not set");
 
@@ -55,6 +59,6 @@ contract YieldNestOracle is AccessControlUpgradeable {
             revert PriceFeedTooStale(age, priceFeed.maxAge);
         }
 
-        return price;
+        return uint256(price);
     }
 }

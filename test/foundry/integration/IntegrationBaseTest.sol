@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IStrategyManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDepositContract} from "../../../src/external/ethereum/IDepositContract.sol";
 import {IEigenPodManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStrategy} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IDelegationManager.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
@@ -15,6 +17,10 @@ import {IWETH} from "../../../src/external/tokens/IWETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {WETH} from "../../../src/external/tokens/WETH.sol";
 import {ynETH} from "../../../src/ynETH.sol";
+import {ynLSD} from "../../../src/ynLSD.sol";
+import {YieldNestOracle} from "../../../src/YieldNestOracle.sol";
+import {LSDStakingNode} from "../../../src/LSDStakingNode.sol";
+
 import {ynViewer} from "../../../src/ynViewer.sol";
 import {StakingNodesManager} from "../../../src/StakingNodesManager.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
@@ -24,15 +30,18 @@ import {ContractAddresses} from "../ContractAddresses.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
 import {Utils} from "../../../scripts/forge/Utils.sol";
 import {ActorAddresses} from "../ActorAddresses.sol";
+import "forge-std/console.sol";
+
 
 contract IntegrationBaseTest is Test, Utils {
 
     // State
-    uint256 startingExchangeAdjustmentRate;
-    bytes   ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
-    bytes   ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
-    bytes   ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes32 ZERO_DEPOSIT_ROOT = bytes32(0);
+    bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
+    bytes constant ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
+    bytes constant  ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    bytes32 constant ZERO_DEPOSIT_ROOT = bytes32(0);
+
+   uint256 startingExchangeAdjustmentRate = 4;
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -44,17 +53,19 @@ contract IntegrationBaseTest is Test, Utils {
     // Rewards
     RewardsReceiver public executionLayerReceiver;
     RewardsReceiver public consensusLayerReceiver;
-    TransparentUpgradeableProxy public rewardsDistributorProxy;
     RewardsDistributor public rewardsDistributor;
 
     // Staking
     StakingNodesManager public stakingNodesManager;
-    TransparentUpgradeableProxy public stakingNodesManagerProxy;
     StakingNode public stakingNodeImplementation;
 
+
     // Tokens
-    TransparentUpgradeableProxy public ynethProxy;
     ynETH public yneth;
+    ynLSD public ynlsd;
+
+    // Oracles
+    YieldNestOracle public yieldNestOracle;
 
     // Eigen
     IEigenPodManager public eigenPodManager;
@@ -65,37 +76,71 @@ contract IntegrationBaseTest is Test, Utils {
     // Ethereum
     IDepositContract public depositContractEth2;
 
+    address public transferEnabledEOA;
+
     function setUp() public virtual {
+
 
         // Setup Addresses
         contractAddresses = new ContractAddresses();
         actorAddresses = new ActorAddresses();
 
         // Setup Protocol
+        console.log("Setting up Utils");
         setupUtils();
+        console.log("Setting up Proxies");
         setupProxies();
+        console.log("Setting up Ethereum");
         setupEthereum();
+        console.log("Setting up Eigen Layer");
         setupEigenLayer();
+        console.log("Setting up Rewards Distributor");
         setupRewardsDistributor();
+        console.log("Setting up Staking Nodes Manager");
         setupStakingNodesManager();
+        console.log("Setting up ynETH");
         setupYnETH();
+        console.log("Setting up Yield Nest Oracle and ynLSD");
+        setupYieldNestOracleAndYnLSD();
     }
 
     function setupProxies() public {
-        // Rewards
-        RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
-        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), actors.PROXY_ADMIN_OWNER, "");
+
+        TransparentUpgradeableProxy ynethProxy;
+        TransparentUpgradeableProxy ynLSDProxy;
+        TransparentUpgradeableProxy rewardsDistributorProxy;
+        TransparentUpgradeableProxy stakingNodesManagerProxy;
+        TransparentUpgradeableProxy yieldNestOracleProxy;
+        // Initializing RewardsDistributor contract and creating its proxy
+        rewardsDistributor = new RewardsDistributor();
+        yneth = new ynETH();
+        stakingNodesManager = new StakingNodesManager();
+        yieldNestOracle = new YieldNestOracle();
+        ynlsd = new ynLSD();
+
+        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributor), actors.PROXY_ADMIN_OWNER, "");
+        rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
         
-        // ETH
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.PROXY_ADMIN_OWNER, "");
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.PROXY_ADMIN_OWNER, "");
+
+        // Wrapping proxies with their respective interfaces
+        yneth = ynETH(payable(ynethProxy));
+        stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
+        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
+        ynlsd = ynLSD(address(ynLSDProxy));
+
+        // Re-deploying ynETH and creating its proxy again
         yneth = new ynETH();
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
         yneth = ynETH(payable(ynethProxy));
 
-        // Staking
+        // Re-deploying StakingNodesManager and creating its proxy again
         stakingNodesManager = new StakingNodesManager();
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-        vm.stopPrank();
     }
 
     function setupUtils() public {
@@ -105,7 +150,7 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupEthereum() public {
-        depositContractEth2 = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
+        depositContractEth2 = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
     }
 
     function setupEigenLayer() public {
@@ -113,17 +158,17 @@ contract IntegrationBaseTest is Test, Utils {
         delegationManager = IDelegationManager(vm.addr(5));
         delayedWithdrawalRouter = IDelayedWithdrawalRouter(vm.addr(6));
         strategyManager = IStrategyManager(vm.addr(7));
-        eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
-        delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
-        strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
+        eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
+        delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
     }
 
     function setupYnETH() public {
         WETH weth = new WETH();
-        startingExchangeAdjustmentRate = 4;
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
+        
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: actors.ADMIN,
             pauser: actors.PAUSE_ADMIN,
@@ -140,7 +185,6 @@ contract IntegrationBaseTest is Test, Utils {
     function setupRewardsDistributor() public {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
-        rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: actors.ADMIN,
             executionLayerReceiver: executionLayerReceiver,
@@ -180,6 +224,56 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager.initialize(stakingNodesManagerInit);
         vm.prank(actors.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
+    }
+
+    function setupYieldNestOracleAndYnLSD() public {
+        IERC20[] memory tokens = new IERC20[](2);
+        address[] memory assetsAddresses = new address[](2);
+        address[] memory priceFeeds = new address[](2);
+        uint256[] memory maxAges = new uint256[](2);
+        IStrategy[] memory strategies = new IStrategy[](2);
+
+        // rETH
+        tokens[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        assetsAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
+        strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
+        priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
+        maxAges[0] = uint256(86400);
+
+        // stETH
+        tokens[1] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        assetsAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
+        strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
+        priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+        maxAges[1] = uint256(86400); //one hour
+
+        YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
+            assets: assetsAddresses,
+            priceFeedAddresses: priceFeeds,
+            maxAges: maxAges,
+            admin: address(this),
+            oracleManager: address(this)
+        });
+        yieldNestOracle.initialize(oracleInit);
+
+        uint startingExchangeAdjustmentRateForYnLSD = 0;
+
+        LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
+        ynLSD.Init memory init = ynLSD.Init({
+            tokens: tokens,
+            strategies: strategies,
+            strategyManager: strategyManager,
+            oracle: yieldNestOracle,
+            exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD,
+            maxNodeCount: 10,
+            admin: address(this),
+            stakingAdmin: address(this),
+            lsdRestakingManager: address(this)
+        });
+
+        ynlsd.initialize(init);
+
+        ynlsd.registerStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }
 
