@@ -9,8 +9,9 @@ import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
 import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
+import {ynBase} from "./ynBase.sol";
  
-contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {
+contract ynETH is IynETH, ynBase, IStakingEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -20,19 +21,11 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
     error ValueOutOfBounds(uint256 value);
-    error TransfersPaused();
     error ZeroAddress();
     error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
     error ZeroETH();
     error NoDirectETHDeposit();
     error CallerNotStakingNodeManager(address expected, address provided);
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  ROLES  -------------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    /// @notice  Role is allowed to set the pause state
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -54,8 +47,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     uint256 public totalDepositedInPool;
 
-    mapping (address => bool) public pauseWhiteList;
-    bool public transfersPaused;
+    // mapping (address => bool) public pauseWhiteList;
+    // bool public transfersPaused;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -88,13 +81,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         notZeroAddress(address(init.rewardsDistributor))
         initializer {
         __AccessControl_init();
-        __ERC20_init("ynETH", "ynETH");
+        __ynBase_init("ynETH", "ynETH");
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
-        transfersPaused = true; // transfers are initially paused
+        _setTransfersPaused(true);  // transfers are initially paused
 
         if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
             revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
@@ -214,34 +207,33 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         emit ExchangeAdjustmentRateUpdated(newRate);
     }
 
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  BOOTSTRAP TRANSFERS PAUSE  ------------------------
-    //--------------------------------------------------------------------------------------
+    // //--------------------------------------------------------------------------------------
+    // //----------------------------------  BOOTSTRAP TRANSFERS PAUSE  -----------------------
+    // //--------------------------------------------------------------------------------------
 
+    // function _update(address from, address to, uint256 amount) internal virtual override {
+    //     // revert if transfers are paused, the from is not on the whitelist and
+    //     // it's neither a mint (from = 0) nor a burn (to = 0)
+    //     if (transfersPaused && !pauseWhiteList[from] && from != address(0) && to != address(0)) {
+    //         revert TransfersPaused();
+    //     }
+    //     super._update(from, to, amount);
+    // }
 
-    function _update(address from, address to, uint256 amount) internal virtual override {
-        // revert if transfers are paused, the from is not on the whitelist and
-        // it's neither a mint (from = 0) nor a burn (to = 0)
-        if (transfersPaused && !pauseWhiteList[from] && from != address(0) && to != address(0)) {
-            revert TransfersPaused();
-        }
-        super._update(from, to, amount);
-    }
-
-    /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
-    function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
-        transfersPaused = false;
-    }
+    // /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
+    // function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
+    //     transfersPaused = false;
+    // }
     
-    function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
-        _addToPauseWhitelist(whitelistedForTransfers);
-    }
+    // function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
+    //     _addToPauseWhitelist(whitelistedForTransfers);
+    // }
 
-    function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
-        for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
-            pauseWhiteList[whitelistedForTransfers[i]] = true;
-        }
-    }
+    // function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
+    //     for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
+    //         pauseWhiteList[whitelistedForTransfers[i]] = true;
+    //     }
+    // }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------
     //--------------------------------------------------------------------------------------

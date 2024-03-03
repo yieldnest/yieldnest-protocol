@@ -15,6 +15,7 @@ import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrateg
 import {IynLSD} from "./interfaces/IynLSD.sol";
 import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
+import {ynBase} from "./ynBase.sol";
 
 interface IynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
@@ -23,7 +24,7 @@ interface IynLSDEvents {
     event MaxNodeCountUpdated(uint256 maxNodeCount);
 }
 
-contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IynLSDEvents {
+contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     using SafeERC20 for IERC20;
 
     //--------------------------------------------------------------------------------------
@@ -97,6 +98,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
         initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
+        __ynBase_init("ynLSD", "ynLSD");
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);

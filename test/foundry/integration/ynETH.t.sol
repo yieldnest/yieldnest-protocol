@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {ynETH} from "../../../src/ynETH.sol";
+import {ynBase} from "../../../src/ynBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import "forge-std/Console.sol";
 
@@ -226,7 +227,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         // Act & Assert
         // Ensure transfer from a non-whitelisted address reverts
-        vm.expectRevert(ynETH.TransfersPaused.selector);
+        vm.expectRevert(ynBase.TransfersPaused.selector);
         vm.prank(nonWhitelistedAddress);
         yneth.transfer(recipient, transferAmount);
     }
