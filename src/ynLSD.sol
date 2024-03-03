@@ -55,7 +55,7 @@ contract ynLSD is IynLSD, ERC20Upgradeable, AccessControlUpgradeable, Reentrancy
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    YieldNestOracle oracle;
+    YieldNestOracle  public oracle;
     IStrategyManager public strategyManager;
         
     UpgradeableBeacon public upgradeableBeacon;

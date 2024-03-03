@@ -5,6 +5,16 @@ import "../../../src/StakingNodesManager.sol";
 import "./TestStakingNodeV2.sol";
 
 contract TestStakingNodesManagerV2 is StakingNodesManager {
+
+    uint256 public newV2Value;
+    struct ReInit {
+        uint256 newV2Value;
+    }
+
+    function initializeV2(ReInit memory reInit) public reinitializer(2) {
+        newV2Value = reInit.newV2Value;
+    }
+
     function initializeStakingNode(IStakingNode node) override internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
@@ -20,5 +30,11 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
             TestStakingNodeV2(payable(address(node)))
                 .initializeV2(TestStakingNodeV2.ReInit({valueToBeInitialized: 23}));
          }
+    }
+
+    /// @notice Retrieve the version number of the highest/newest initialize
+    ///         function that was executed.
+    function getInitializedVersion() external view returns (uint64) {
+        return _getInitializedVersion();
     }
 }

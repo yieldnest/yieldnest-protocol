@@ -12,6 +12,7 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {IRewardsDistributor} from "../../../src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TestStakingNodesManagerV2} from "../mocks/TestStakingNodesManagerV2.sol";
 
 contract UpgradesTest is IntegrationBaseTest {
 
@@ -58,6 +59,27 @@ contract UpgradesTest is IntegrationBaseTest {
         
         address currentYieldNestOracleImpl = getTransparentUpgradeableProxyImplementationAddress(address(yieldNestOracle));
         assertEq(currentYieldNestOracleImpl, newYieldNestOracleImpl);
+    }
+
+    function testUpgradeStakingNodesManagerToV2AndReinit() public {
+        TestStakingNodesManagerV2.ReInit memory reInit = TestStakingNodesManagerV2.ReInit({
+            newV2Value: 42
+        });
+
+        address newStakingNodesManagerV2Impl = address(new TestStakingNodesManagerV2());
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
+            .upgradeAndCall(
+                ITransparentUpgradeableProxy(address(stakingNodesManager)),
+                newStakingNodesManagerV2Impl,
+                abi.encodeWithSelector(TestStakingNodesManagerV2.initializeV2.selector, reInit)
+            );
+
+        address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
+        assertEq(currentStakingNodesManagerImpl, newStakingNodesManagerV2Impl);
+
+        TestStakingNodesManagerV2 upgradedStakingNodesManager = TestStakingNodesManagerV2(payable(stakingNodesManager));
+        assertEq(upgradedStakingNodesManager.newV2Value(), 42, "Reinit value not set correctly");
     }
 
     function testUpgradeabilityofYnETHToAnERC4626() public {
