@@ -27,6 +27,7 @@ contract ynLSDTest is IntegrationBaseTest {
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
 
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
         address destination = address(this);
@@ -48,6 +49,7 @@ contract ynLSDTest is IntegrationBaseTest {
         amounts[0] = amount;
 
         vm.expectRevert(bytes("Pausable: index is paused"));
+        vm.prank(actors.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
     
@@ -58,6 +60,7 @@ contract ynLSDTest is IntegrationBaseTest {
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
 
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
 
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
@@ -81,6 +84,7 @@ contract ynLSDTest is IntegrationBaseTest {
         assets[0] = token;
         amounts[0] = amount;
 
+        vm.prank(actors.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
     
@@ -125,7 +129,7 @@ contract ynLSDTest is IntegrationBaseTest {
         uint256 expectedAmount = ynlsd.convertToShares(token, amount);
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
-
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
 
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
@@ -150,6 +154,7 @@ contract ynLSDTest is IntegrationBaseTest {
             assets[0] = token;
             amounts[0] = amount;
 
+            vm.prank(actors.LSD_RESTAKING_MANAGER);
             lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
         }
 
@@ -165,8 +170,8 @@ contract ynLSDTest is IntegrationBaseTest {
         // Assert that totalAssets reflects the deposit
         assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
     }
-
     function testCreateLSDStakingNode() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
         uint expectedNodeId = 0;
@@ -174,15 +179,16 @@ contract ynLSDTest is IntegrationBaseTest {
     }
 
     function testCreate2LSDStakingNodes() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance1 = ynlsd.createLSDStakingNode();
         uint expectedNodeId1 = 0;
         assertEq(lsdStakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
 
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance2 = ynlsd.createLSDStakingNode();
         uint expectedNodeId2 = 1;
         assertEq(lsdStakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
     }
-
     function testCreateLSDStakingNodeAfterUpgradeWithoutUpgradeability() public {
         // Upgrade the ynLSD implementation to TestYnLSDV2
         address newImplementation = address(new TestYnLSDV2());
@@ -192,10 +198,12 @@ contract ynLSDTest is IntegrationBaseTest {
 
         // Attempt to create a LSD staking node after the upgrade - should fail since implementation is not there
         vm.expectRevert();
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
     }
 
     function testUpgradeLSDStakingNodeImplementation() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
         // upgrade the ynLSD to support the new initialization version.
@@ -205,6 +213,7 @@ contract ynLSDTest is IntegrationBaseTest {
             .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newYnLSDImpl, "");
 
         TestLSDStakingNodeV2 testLSDStakingNodeV2 = new TestLSDStakingNodeV2();
+        vm.prank(actors.STAKING_ADMIN);
         ynlsd.upgradeLSDStakingNodeImplementation(address(testLSDStakingNodeV2));
 
         UpgradeableBeacon beacon = ynlsd.upgradeableBeacon();

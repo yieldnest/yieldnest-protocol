@@ -208,7 +208,7 @@ contract IntegrationBaseTest is Test, Utils {
             delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            stakingNodeCreatorRole:  actors.STAKING_NODE_CREATOR_ROLE
+            stakingNodeCreatorRole:  actors.STAKING_NODE_CREATOR
         });
         vm.prank(actors.PROXY_ADMIN_OWNER);
         stakingNodesManager.initialize(stakingNodesManagerInit);
@@ -262,7 +262,7 @@ contract IntegrationBaseTest is Test, Utils {
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,
             lsdRestakingManager: actors.LSD_RESTAKING_MANAGER,
-            lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR_ROLE,
+            lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
             pauser: actors.PAUSE_ADMIN
         });
