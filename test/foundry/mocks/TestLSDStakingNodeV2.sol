@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {StakingNode} from "../../../src/StakingNode.sol";
+import "../../../src/LSDStakingNode.sol";
 
-contract MockStakingNode is StakingNode {
+contract TestLSDStakingNodeV2 is LSDStakingNode {
 
     uint public valueToBeInitialized;
 
@@ -11,7 +11,7 @@ contract MockStakingNode is StakingNode {
         uint valueToBeInitialized;
     }
 
-    function reinitialize(ReInit memory reInit) public reinitializer(2) {
+    function initializeV2(ReInit memory reInit) public reinitializer(2) {
         valueToBeInitialized = reInit.valueToBeInitialized;
     }
 

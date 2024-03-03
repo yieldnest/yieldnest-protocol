@@ -13,6 +13,12 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 contract RewardsReceiver is Initializable, AccessControlUpgradeable {
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+    
+    error ZeroAddress();
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -35,7 +41,11 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
 
     /// @notice Inititalizes the contract.
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
-    function initialize(Init memory init) external initializer {
+    function initialize(Init memory init)
+        external
+        notZeroAddress(init.admin)
+        notZeroAddress(init.withdrawer)
+        initializer {
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
@@ -61,5 +71,18 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     /// @dev Only called by the withdrawer.
     function transferERC20(IERC20 token, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
         SafeERC20.safeTransfer(token, to, amount);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }

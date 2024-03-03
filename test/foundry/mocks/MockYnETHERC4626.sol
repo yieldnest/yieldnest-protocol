@@ -30,20 +30,20 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
-    error ValueOutOfBounds(uint value);
+    error ValueOutOfBounds(uint256 value);
 
 
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
-    uint public allocatedETHForDeposits;
-    bool public isDepositETHPaused;
+    uint256 public allocatedETHForDeposits;
+    bool public depositsPaused;
     // Storage variables
 
 
     /// @dev The value is in basis points (1/10000).
-    uint public exchangeAdjustmentRate;
+    uint256 public exchangeAdjustmentRate;
 
-    uint public totalDepositedInPool;
+    uint256 public totalDepositedInPool;
 
     struct ReInit {
 
@@ -58,9 +58,9 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
          
     }
 
-    function deposit(uint assets, address receiver) public override returns (uint shares) {
+    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
 
-        if (isDepositETHPaused) {
+        if (depositsPaused) {
             console.log("System is paused");
             revert Paused();
         }
@@ -108,8 +108,8 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    function totalAssets() public view override returns (uint) {
-        uint total = 0;
+    function totalAssets() public view override returns (uint256) {
+        uint256 total = 0;
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
         /// The total ETH sent to the beacon chain 
@@ -117,10 +117,10 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         return total;
     }
 
-    function totalDepositedInValidators() internal view returns (uint) {
+    function totalDepositedInValidators() internal view returns (uint256) {
         IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
-        uint totalDeposited = 0;
-        for (uint i = 0; i < nodes.length; i++) {
+        uint256 totalDeposited = 0;
+        for (uint256 i = 0; i < nodes.length; i++) {
             totalDeposited += nodes[i].getETHBalance();
         }
         return totalDeposited;
@@ -139,7 +139,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         totalDepositedInPool += msg.value;
     }
 
-    function withdrawETH(uint ethAmount) public onlyStakingNodesManager override {
+    function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
         payable(address(stakingNodesManager)).transfer(ethAmount);
@@ -150,9 +150,9 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         totalDepositedInPool += msg.value;
     }
 
-    function setIsDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        isDepositETHPaused = isPaused;
-        emit DepositETHPausedUpdated(isDepositETHPaused);
+    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        depositsPaused = isPaused;
+        emit DepositETHPausedUpdated(depositsPaused);
     }
 
     function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {

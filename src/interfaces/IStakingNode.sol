@@ -31,7 +31,6 @@ interface IStakingNode {
     /// @notice Configuration for contract initialization.
     struct Init {
         IStakingNodesManager stakingNodesManager;
-        IStrategyManager strategyManager;
         uint nodeId;
     }
 
@@ -67,4 +66,5 @@ interface IStakingNode {
         bytes32[][] calldata validatorFields
     ) external;
 
+    function getInitializedVersion() external view returns (uint64);
 }

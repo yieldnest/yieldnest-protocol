@@ -5,17 +5,12 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IDepositPool} from "./interfaces/IDepositPool.sol";
 import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
-import {IWETH} from "./external/tokens/IWETH.sol";
  
 contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEvents {
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -24,8 +19,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
-    error ValueOutOfBounds(uint value);
+    error ValueOutOfBounds(uint256 value);
     error TransfersPaused();
+    error ZeroAddress();
+    error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
+    error ZeroETH();
+    error NoDirectETHDeposit();
+    error CallerNotStakingNodeManager(address expected, address provided);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -38,7 +38,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
+    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -46,13 +46,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
-    uint public allocatedETHForDeposits;
-    bool public isDepositETHPaused;
+    uint256 public allocatedETHForDeposits;
+    bool public depositsPaused;
 
     /// @dev The value is in basis points (1/10000).
-    uint public exchangeAdjustmentRate;
+    uint256 public exchangeAdjustmentRate;
 
-    uint public totalDepositedInPool;
+    uint256 public totalDepositedInPool;
 
     mapping (address => bool) pauseWhiteList;
     bool transfersPaused;
@@ -67,8 +67,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         address pauser;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
-        IWETH wETH;
-        uint exchangeAdjustmentRate;
+        uint256 exchangeAdjustmentRate;
         address[] pauseWhitelist;
     }
 
@@ -81,7 +80,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
 
     /// @notice Initializes the contract.
     /// @dev MUST be called during the contract upgrade to set up the proxies state.
-    function initialize(Init memory init) external initializer {
+    function initialize(Init memory init)
+        external
+        notZeroAddress(init.admin)
+        notZeroAddress(init.pauser)
+        notZeroAddress(address(init.stakingNodesManager))
+        notZeroAddress(address(init.rewardsDistributor))
+        initializer {
         __AccessControl_init();
         __ERC20_init("ynETH", "ynETH");
 
@@ -89,30 +94,35 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
-        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         transfersPaused = true; // transfers are initially paused
+
+        if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
+            revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
+        }
+        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
 
         _addToPauseWhitelist(init.pauseWhitelist);
     }
 
     receive() external payable {
-        revert("ynETH: Cannot receive ETH directly");
+        revert NoDirectETHDeposit();
     }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  DEPOSITS   ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function depositETH(address receiver) public payable returns (uint shares) {
+    function depositETH(address receiver) public payable returns (uint256 shares) {
 
-        if (isDepositETHPaused) {
+        if (depositsPaused) {
             revert Paused();
         }
-    
 
-        require(msg.value > 0, "msg.value == 0");
+        if (msg.value == 0) {
+            revert ZeroETH();
+        }
 
-        uint assets = msg.value;
+        uint256 assets = msg.value;
 
         shares = previewDeposit(assets);
 
@@ -140,8 +150,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR),
+            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
+            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
             rounding
         );
     }
@@ -153,8 +163,8 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    function totalAssets() public view returns (uint) {
-        uint total = 0;
+    function totalAssets() public view returns (uint256) {
+        uint256 total = 0;
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
         /// The total ETH sent to the beacon chain 
@@ -162,10 +172,10 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         return total;
     }
 
-    function totalDepositedInValidators() internal view returns (uint) {
+    function totalDepositedInValidators() internal view returns (uint256) {
         IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
-        uint totalDeposited = 0;
-        for (uint i = 0; i < nodes.length; i++) {
+        uint256 totalDeposited = 0;
+        for (uint256 i = 0; i < nodes.length; i++) {
             totalDeposited += nodes[i].getETHBalance();
         }
         return totalDeposited;
@@ -180,7 +190,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         totalDepositedInPool += msg.value;
     }
 
-    function withdrawETH(uint ethAmount) public onlyStakingNodesManager override {
+    function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
         require(totalDepositedInPool >= ethAmount, "Insufficient balance");
 
         payable(address(stakingNodesManager)).transfer(ethAmount);
@@ -191,13 +201,13 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
         totalDepositedInPool += msg.value;
     }
 
-    function setIsDepositETHPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        isDepositETHPaused = isPaused;
-        emit DepositETHPausedUpdated(isDepositETHPaused);
+    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        depositsPaused = isPaused;
+        emit DepositETHPausedUpdated(depositsPaused);
     }
 
     function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {
-        if (newRate > _BASIS_POINTS_DENOMINATOR) {
+        if (newRate > BASIS_POINTS_DENOMINATOR) {
             revert ValueOutOfBounds(newRate);
         }
         exchangeAdjustmentRate = newRate;
@@ -228,7 +238,7 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     }
 
     function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
-        for (uint i = 0; i < whitelistedForTransfers.length; i++) {
+        for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
             pauseWhiteList[whitelistedForTransfers[i]] = true;
         }
     }
@@ -237,7 +247,21 @@ contract ynETH is IynETH, ERC20Upgradeable, AccessControlUpgradeable, IStakingEv
     //--------------------------------------------------------------------------------------
 
     modifier onlyStakingNodesManager() {
-        require(msg.sender == address(stakingNodesManager), "Caller is not the stakingNodesManager");
+        if (msg.sender != address(stakingNodesManager)) {
+            revert CallerNotStakingNodeManager(
+                address(stakingNodesManager),
+                msg.sender
+            );
+        }
+        _;
+    }
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
         _;
     }
 }

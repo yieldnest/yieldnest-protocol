@@ -5,7 +5,7 @@ import {IERC20} from  "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategyManager,IStrategy} from "../external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {ILSDStakingNode} from "./ILSDStakingNode.sol";
 import {ILSDStakingNode} from "./ILSDStakingNode.sol";
-
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 interface IynLSD {
 
@@ -15,6 +15,8 @@ interface IynLSD {
         address receiver
     ) external returns (uint256 shares);
 
+    function upgradeableBeacon() external view returns (UpgradeableBeacon);
+
     function strategies(IERC20 asset) external view returns (IStrategy);
 
     function totalAssets() external view returns (uint);
@@ -23,9 +25,9 @@ interface IynLSD {
 
     function createLSDStakingNode() external returns (ILSDStakingNode);
 
-    function registerStakingNodeImplementationContract(address _implementationContract) external;
+    function registerLSDStakingNodeImplementationContract(address _implementationContract) external;
 
-    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) external;
+    function upgradeLSDStakingNodeImplementation(address _implementationContract) external;
 
     function setMaxNodeCount(uint _maxNodeCount) external;
 

@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
-import {MockStakingNode} from "../mocks/MockStakingNode.sol";
 import "forge-std/console.sol";
+import "../../../src/StakingNodesManager.sol";
+import "../mocks/TestStakingNodeV2.sol";
+import "../mocks/TestStakingNodesManagerV2.sol";
 
 
 contract StakingNodesManagerTest is IntegrationBaseTest {
@@ -39,6 +43,18 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         assertEq(eigenPodOwner2, address(stakingNodeInstance2), "EigenPod owner for node 2 is not the staking node instance");
         uint expectedNodeId2 = 1;
         assertEq(stakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
+    }
+
+    function testCreateStakingNodeAfterUpgradeWithoutUpgradeability() public {
+        // Upgrade the StakingNodesManager implementation to TestStakingNodesManagerV2
+        address newImplementation = address(new TestStakingNodesManagerV2());
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newImplementation, "");
+
+        // Attempt to create a staking node after the upgrade - should fail since implementation is not there
+        vm.expectRevert();
+        stakingNodesManager.createStakingNode();
     }
 
     function testRegisterValidators() public {
@@ -93,43 +109,40 @@ contract StakingNodesManagerTest is IntegrationBaseTest {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         address eigenPodAddress = address(stakingNodeInstance.eigenPod());
 
-        MockStakingNode mockStakingNode = new MockStakingNode();
-        bytes memory callData = abi.encodeWithSelector(MockStakingNode.reinitialize.selector, MockStakingNode.ReInit({valueToBeInitialized: 23}));
+        // upgrade the StakingNodeManager to support the new initialization version.
+        address newStakingNodesManagerImpl = address(new TestStakingNodesManagerV2());
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
+
+        TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
         vm.prank(actors.STAKING_ADMIN);
-        stakingNodesManager.upgradeStakingNodeImplementation(payable(mockStakingNode), callData);
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(testStakingNodeV2));
 
         UpgradeableBeacon beacon = stakingNodesManager.upgradeableBeacon();
         address upgradedImplementationAddress = beacon.implementation();
-        assertEq(upgradedImplementationAddress, payable(mockStakingNode));
+        assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
 
         address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
         assertEq(newEigenPodAddress, eigenPodAddress);
 
-        MockStakingNode mockStakingNodeInstance = MockStakingNode(payable(address(stakingNodeInstance)));
-        uint redundantFunctionResult = mockStakingNodeInstance.redundantFunction();
+        TestStakingNodeV2 testStakingNodeV2Instance = TestStakingNodeV2(payable(address(stakingNodeInstance)));
+        uint redundantFunctionResult = testStakingNodeV2Instance.redundantFunction();
         assertEq(redundantFunctionResult, 1234567);
 
-        assertEq(mockStakingNodeInstance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
+        assertEq(testStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
 
     function testFailRegisterStakingNodeImplementationTwice() public {
-        address initialImplementation = address(new MockStakingNode());
+        address initialImplementation = address(new TestStakingNodeV2());
         vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
 
-        address newImplementation = address(new MockStakingNode());
+        address newImplementation = address(new TestStakingNodeV2());
         vm.expectRevert("StakingNodesManager: Implementation already exists");
         vm.prank(actors.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
-    }
-
-    function testFailUpgradeStakingNodeImplementationWithoutCallData() public {
-        address initialImplementation = address(new MockStakingNode());
-        stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
-
-        address newImplementation = address(new MockStakingNode());
-        vm.expectRevert("StakingNodesManager: Call data is empty");
-        stakingNodesManager.upgradeStakingNodeImplementation(payable(newImplementation), "");
     }
 
     function testIsStakingNodesAdmin() public {

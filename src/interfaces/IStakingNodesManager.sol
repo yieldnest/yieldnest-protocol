@@ -16,10 +16,15 @@ interface IStakingNodesManager {
         uint nodeId;
     }
 
+    struct Validator {
+        bytes publicKey;
+        uint nodeId;
+    }
+
     function eigenPodManager() external view returns (IEigenPodManager);
     function delegationManager() external view returns (IDelegationManager);
     function delayedWithdrawalRouter() external view returns (IDelayedWithdrawalRouter);
-    function getAllValidators() external view returns (bytes[] memory);
+    function getAllValidators() external view returns (Validator[] memory);
     function getAllNodes() external view returns (IStakingNode[] memory);
     function isStakingNodesAdmin(address) external view returns (bool);
     function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable;

@@ -12,6 +12,8 @@ interface ILSDStakingNode {
         uint nodeId;
     }
 
+    function nodeId() external returns (uint256);
+
     function initialize(Init calldata init) external;
     
    function depositAssetsToEigenlayer(
@@ -21,4 +23,6 @@ interface ILSDStakingNode {
 
 
     function implementation() external view returns (address);
+
+    function getInitializedVersion() external view returns (uint64);
 }

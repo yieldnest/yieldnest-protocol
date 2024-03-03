@@ -5,7 +5,7 @@ import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {IynViewer} from "../../../src/interfaces/IynViewer.sol";
 import {ynViewer as YnViewer} from "../../../src/ynViewer.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
-
+import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 
 contract ynViewerTest is IntegrationBaseTest {
     IynViewer ynViewer;
@@ -16,7 +16,7 @@ contract ynViewerTest is IntegrationBaseTest {
     }
 
     function testGetAllValidators() public {
-        bytes[] memory validators = ynViewer.getAllValidators();
+        IStakingNodesManager.Validator[] memory validators = ynViewer.getAllValidators();
         assertEq(validators.length, 0, "There should be no validators");
     }
     

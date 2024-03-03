@@ -31,14 +31,13 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     function testDepositETHWhenPaused() public {
         // Arrange
         vm.prank(actors.PAUSE_ADMIN);
-        yneth.setIsDepositETHPaused(true);
+        yneth.updateDepositsPaused(true);
 
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
         // Arrange
 
-        bool pauseState = yneth.isDepositETHPaused();
-        console.log("Pause state:", pauseState);
+        bool pauseState = yneth.depositsPaused();
 
         // Act & Assert
         vm.expectRevert(ynETH.Paused.selector);
@@ -48,21 +47,21 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     function testPauseDepositETH() public {
         // Arrange
         vm.prank(actors.PAUSE_ADMIN);
-        yneth.setIsDepositETHPaused(true);
+        yneth.updateDepositsPaused(true);
 
         // Act & Assert
-        bool pauseState = yneth.isDepositETHPaused();
+        bool pauseState = yneth.depositsPaused();
         assertTrue(pauseState, "Deposit ETH should be paused");
     }
 
     function testUnpauseDepositETH() public {
         // Arrange
         vm.startPrank(actors.PAUSE_ADMIN);
-        yneth.setIsDepositETHPaused(true);
-        yneth.setIsDepositETHPaused(false);
+        yneth.updateDepositsPaused(true);
+        yneth.updateDepositsPaused(false);
 
         // Act & Assert
-        bool pauseState = yneth.isDepositETHPaused();
+        bool pauseState = yneth.depositsPaused();
         assertFalse(pauseState, "Deposit ETH should be unpaused");
     }
 
@@ -195,10 +194,10 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     function testPauseDepositETHFunctionality() public {
         // Arrange
         vm.prank(actors.PAUSE_ADMIN);
-        yneth.setIsDepositETHPaused(true);
+        yneth.updateDepositsPaused(true);
 
         // Act & Assert
-        bool pauseState = yneth.isDepositETHPaused();
+        bool pauseState = yneth.depositsPaused();
         assertTrue(pauseState, "Deposit ETH should be paused after setting pause state to true");
 
         // Trying to deposit ETH while paused
@@ -208,8 +207,9 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         // Unpause and try depositing again
         vm.prank(actors.PAUSE_ADMIN);
-        yneth.setIsDepositETHPaused(false);
-        pauseState = yneth.isDepositETHPaused();
+        yneth.updateDepositsPaused(false);
+        pauseState = yneth.depositsPaused();
+
         assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
 
         // Deposit should succeed now

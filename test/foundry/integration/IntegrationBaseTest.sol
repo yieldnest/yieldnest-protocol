@@ -30,7 +30,6 @@ import {ContractAddresses} from "../ContractAddresses.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
 import {Utils} from "../../../scripts/forge/Utils.sol";
 import {ActorAddresses} from "../ActorAddresses.sol";
-import "forge-std/console.sol";
 
 
 contract IntegrationBaseTest is Test, Utils {
@@ -86,21 +85,13 @@ contract IntegrationBaseTest is Test, Utils {
         actorAddresses = new ActorAddresses();
 
         // Setup Protocol
-        console.log("Setting up Utils");
         setupUtils();
-        console.log("Setting up Proxies");
         setupProxies();
-        console.log("Setting up Ethereum");
         setupEthereum();
-        console.log("Setting up Eigen Layer");
         setupEigenLayer();
-        console.log("Setting up Rewards Distributor");
         setupRewardsDistributor();
-        console.log("Setting up Staking Nodes Manager");
         setupStakingNodesManager();
-        console.log("Setting up ynETH");
         setupYnETH();
-        console.log("Setting up Yield Nest Oracle and ynLSD");
         setupYieldNestOracleAndYnLSD();
     }
 
@@ -165,7 +156,6 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupYnETH() public {
-        WETH weth = new WETH();
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
         
@@ -174,7 +164,6 @@ contract IntegrationBaseTest is Test, Utils {
             pauser: actors.PAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            wETH: IWETH(address(weth)),  // Deployed WETH address
             exchangeAdjustmentRate: startingExchangeAdjustmentRate,
             pauseWhitelist: pauseWhitelist
         });
@@ -218,7 +207,8 @@ contract IntegrationBaseTest is Test, Utils {
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
-            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            stakingNodeCreatorRole: address(this)
         });
         vm.prank(actors.PROXY_ADMIN_OWNER);
         stakingNodesManager.initialize(stakingNodesManagerInit);
@@ -268,12 +258,13 @@ contract IntegrationBaseTest is Test, Utils {
             maxNodeCount: 10,
             admin: address(this),
             stakingAdmin: address(this),
-            lsdRestakingManager: address(this)
+            lsdRestakingManager: address(this),
+            lsdStakingNodeCreatorRole: address(this)
         });
 
         ynlsd.initialize(init);
 
-        ynlsd.registerStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
+        ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }
 

@@ -61,7 +61,14 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         IynETH ynETH;
     }
 
-    function initialize(Init memory init) public initializer {
+    function initialize(Init memory init)
+        external
+        notZeroAddress(init.admin)
+        notZeroAddress(address(init.executionLayerReceiver))
+        notZeroAddress(address(init.consensusLayerReceiver))
+        notZeroAddress(address(init.feesReceiver))
+        notZeroAddress(address(init.ynETH))
+        initializer {
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
@@ -133,13 +140,16 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         assert(address(this).balance == before);
     }
 
-    /// @notice Ensures that the given address is not the zero address.
-    /// @param addr The address to check.
-    modifier notZeroAddress(address addr) {
-        if (addr == address(0)) {
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
             revert ZeroAddress();
         }
         _;
     }
-
 }

@@ -12,18 +12,17 @@ import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDeleg
 import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IStrategyManager,IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {StakingNode} from "./StakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
 import {stdMath} from "forge-std/StdMath.sol";
 
-
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-    event ValidatorRegistered(uint nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
-    event MaxNodeCountUpdated(uint maxNodeCount);
+    event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event MaxNodeCountUpdated(uint256 maxNodeCount);
 }
 
 contract StakingNodesManager is
@@ -39,12 +38,17 @@ contract StakingNodesManager is
 
     error MinimumStakeBoundNotSatisfied();
     error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
-    error DepositAllocationUnbalanced(uint nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
+    error DepositAllocationUnbalanced(uint256 nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
     error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
     error DirectETHDepositsNotAllowed();
-    error InvalidNodeId(uint nodeId);
+    error InvalidNodeId(uint256 nodeId);
+    error ZeroAddress();
+    error NotStakingNode(address caller, uint256 nodeId);
+    error TooManyStakingNodes(uint256 maxNodeCount);
+    error BeaconImplementationAlreadyExists();
+    error NoBeaconImplementationExists();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -59,11 +63,14 @@ contract StakingNodesManager is
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
 
+    /// @notice Role is able to create staking nodes
+    bytes32 public constant STAKING_NODE_CREATOR_ROLE = keccak256("STAKING_NODE_CREATOR_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint constant DEFAULT_VALIDATOR_STAKE = 32 ether;
+    uint256 constant DEFAULT_VALIDATOR_STAKE = 32 ether;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -80,7 +87,7 @@ contract StakingNodesManager is
     IynETH public ynETH;
     IRewardsDistributor rewardsDistributor;
 
-    bytes[] public validators;
+    Validator[] public validators;
 
     uint128 public maxBatchDepositSize;
     uint128 public stakeAmount;
@@ -98,7 +105,7 @@ contract StakingNodesManager is
      * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
      */
     IStakingNode[] public nodes;
-    uint public maxNodeCount;
+    uint256 public maxNodeCount;
 
     mapping(bytes pubkey => bool) usedValidators;
 
@@ -108,39 +115,74 @@ contract StakingNodesManager is
 
     /// @notice Configuration for contract initialization.
     struct Init {
+        // roles
         address admin;
         address stakingAdmin;
         address stakingNodesAdmin;
         address validatorManager;
-        uint maxNodeCount;
-        IDepositContract depositContract;
+        address stakingNodeCreatorRole;
+
+        // internal
+        uint256 maxNodeCount;
         IynETH ynETH;
+        IRewardsDistributor rewardsDistributor; 
+
+        // external contracts
+        IDepositContract depositContract;
         IEigenPodManager eigenPodManager;
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
-        IRewardsDistributor rewardsDistributor; // Added rewardsDistributor dependency
     }
     
-    function initialize(Init memory init) external initializer {
+    function initialize(Init calldata init)
+    external
+    notZeroAddress(address(init.ynETH))
+    notZeroAddress(address(init.rewardsDistributor))
+    initializer
+    {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
-        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        initializeRoles(init);
+        initializeExternalContracts(init);
+
+        rewardsDistributor = init.rewardsDistributor;
+        maxNodeCount = init.maxNodeCount;
+        ynETH = init.ynETH;
+
+    }
+
+    function initializeRoles(Init calldata init)
+        notZeroAddress(init.admin)
+        notZeroAddress(init.stakingAdmin)
+        notZeroAddress(init.stakingNodesAdmin)
+        notZeroAddress(init.validatorManager)
+        notZeroAddress(init.stakingNodeCreatorRole)
+        internal {
+       _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
         _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
+        _grantRole(STAKING_NODE_CREATOR_ROLE, init.stakingNodeCreatorRole);
+    }
 
-        depositContractEth2 = init.depositContract;
-        maxNodeCount = init.maxNodeCount;
-        eigenPodManager = init.eigenPodManager;
-        ynETH = init.ynETH;
+    function initializeExternalContracts(Init calldata init)
+        notZeroAddress(address(init.depositContract))
+        notZeroAddress(address(init.eigenPodManager))
+        notZeroAddress(address(init.delegationManager))
+        notZeroAddress(address(init.delayedWithdrawalRouter))
+        notZeroAddress(address(init.strategyManager))
+        internal {
+        // Ethereum
+        depositContractEth2 = init.depositContract;    
+
+        // Eigenlayer
+        eigenPodManager = init.eigenPodManager;    
         delegationManager = init.delegationManager;
         delayedWithdrawalRouter = init.delayedWithdrawalRouter;
         strategyManager = init.strategyManager;
-        rewardsDistributor = init.rewardsDistributor;
     }
-
 
     receive() external payable {
         require(msg.sender == address(ynETH));
@@ -168,11 +210,11 @@ contract StakingNodesManager is
 
         validateDepositDataAllocation(newValidators);
 
-        uint totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
+        uint256 totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        uint validatorsLength = newValidators.length;
-        for (uint i = 0; i < validatorsLength; i++) {
+        uint256 validatorsLength = newValidators.length;
+        for (uint256 i = 0; i < validatorsLength; i++) {
 
             ValidatorData calldata validator = newValidators[i];
             if (usedValidators[validator.publicKey]) {
@@ -192,35 +234,12 @@ contract StakingNodesManager is
      * @param newValidators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
      */
     function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
-        uint[] memory nodeBalances = new uint[](nodes.length);
-        uint[] memory newNodeBalances = new uint[](nodes.length); // New array with same values as nodeBalances
-        uint totalBalance = 0;
-        for (uint i = 0; i < nodes.length; i++) {
-            nodeBalances[i] = IStakingNode(nodes[i]).getETHBalance();
-            newNodeBalances[i] = nodeBalances[i]; // Assigning the value from nodeBalances to newNodeBalances
-            totalBalance += nodeBalances[i];
-        }
 
-        if (totalBalance == 0) {
-            return;
-        }
-        uint averageBalance = totalBalance / nodes.length;
-
-        uint newTotalBalance = totalBalance;
-        for (uint i = 0; i < newValidators.length; i++) {
-            uint nodeId = newValidators[i].nodeId;
+        for (uint256 i = 0; i < newValidators.length; i++) {
+            uint256 nodeId = newValidators[i].nodeId;
 
             if (nodeId >= nodes.length) {
                 revert InvalidNodeId(nodeId);
-            }
-            newNodeBalances[nodeId] += DEFAULT_VALIDATOR_STAKE;
-            newTotalBalance += DEFAULT_VALIDATOR_STAKE;
-        }
-        uint newAverageBalance = newTotalBalance / nodes.length;
-
-        for (uint i = 0; i < nodes.length; i++) {
-            if (stdMath.abs(int256(nodeBalances[i]) - int256(averageBalance)) < stdMath.abs(int256(newNodeBalances[i]) - int256(newAverageBalance))) {
-                revert DepositAllocationUnbalanced(i, nodeBalances[i], averageBalance, newNodeBalances[i], newAverageBalance);
             }
         }
     }
@@ -241,8 +260,7 @@ contract StakingNodesManager is
 
         // Deposit to the Beacon Chain
         depositContractEth2.deposit{value: _depositAmount}(validator.publicKey, withdrawalCredentials, validator.signature, depositDataRoot);
-
-        validators.push(validator.publicKey);
+        validators.push(Validator({publicKey: validator.publicKey, nodeId: validator.nodeId}));
 
         // notify node of ETH _depositAmount
         IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
@@ -282,20 +300,21 @@ contract StakingNodesManager is
     //----------------------------------  STAKING NODE CREATION  ---------------------------
     //--------------------------------------------------------------------------------------
 
-    function createStakingNode() public returns (IStakingNode) {
+    function createStakingNode()
+        public
+        notZeroAddress((address(upgradeableBeacon)))
+        onlyRole(STAKING_NODE_CREATOR_ROLE) 
+        returns (IStakingNode) {
 
-        require(address(upgradeableBeacon) != address(0), "LSDStakingNode: upgradeableBeacon is not set");
-        require(nodes.length < maxNodeCount, "StakingNodesManager: nodes.length >= maxNodeCount");
+        if (nodes.length >= maxNodeCount) {
+            revert TooManyStakingNodes(maxNodeCount);
+        }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
-        StakingNode node = StakingNode(payable(proxy));
+        IStakingNode node = IStakingNode(payable(proxy));
 
-        uint nodeId = nodes.length;
+        initializeStakingNode(node);
 
-        node.initialize(
-            IStakingNode.Init(IStakingNodesManager(address(this)), strategyManager, nodeId)
-        );
- 
         IEigenPod eigenPod = node.createEigenPod();
 
         nodes.push(node);
@@ -305,34 +324,53 @@ contract StakingNodesManager is
         return node;
     }
 
-    function registerStakingNodeImplementationContract(address _implementationContract) onlyRole(STAKING_ADMIN_ROLE) public {
+    function initializeStakingNode(IStakingNode node) virtual internal {
 
-        require(_implementationContract != address(0), "StakingNodesManager:No zero address");
-        require(address(upgradeableBeacon) == address(0), "StakingNodesManager: Implementation already exists");
+        uint64 initializedVersion = node.getInitializedVersion();
+        if (initializedVersion == 0) {
+            uint256 nodeId = nodes.length;
+            node.initialize(
+            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
+            );
+
+            // update to the newly upgraded version.
+            initializedVersion = node.getInitializedVersion();
+        }
+
+         // NOTE: for future versions add additional if clauses that initialize the node 
+         // for the next version while keeping the previous initializers
+    }
+
+    function registerStakingNodeImplementationContract(address _implementationContract)
+        onlyRole(STAKING_ADMIN_ROLE)
+        notZeroAddress(_implementationContract)
+        public {
+
+        if (address(upgradeableBeacon) != address(0)) {
+            revert BeaconImplementationAlreadyExists();
+        }
 
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
-    function upgradeStakingNodeImplementation(address _implementationContract, bytes memory callData) public onlyRole(STAKING_ADMIN_ROLE) {
-
-        require(address(upgradeableBeacon) != address(0), "StakingNodesManager: A Staking node implementation has never been registered");
-        require(_implementationContract != address(0), "StakingNodesManager: Implementation cannot be zero address");
+    function upgradeStakingNodeImplementation(address _implementationContract)
+        onlyRole(STAKING_ADMIN_ROLE)
+        notZeroAddress(_implementationContract)
+        public {
+        if (address(upgradeableBeacon) == address(0)) {
+            revert NoBeaconImplementationExists();
+        }
         upgradeableBeacon.upgradeTo(_implementationContract);
 
-        if (callData.length == 0) {
-            // no function to initialize with
-            return;
-        }
         // reinitialize all nodes
-        for (uint i = 0; i < nodes.length; i++) {
-            (bool success, ) = address(nodes[i]).call(callData);
-            require(success, "StakingNodesManager: Failed to call method on upgraded node");
+        for (uint256 i = 0; i < nodes.length; i++) {
+            initializeStakingNode(nodes[i]);
         }
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
     /// @param _maxNodeCount The maximum number of staking nodes
-    function setMaxNodeCount(uint _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
+    function setMaxNodeCount(uint256 _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
         maxNodeCount = _maxNodeCount;
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
@@ -341,10 +379,12 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable {
-        require(address(nodes[nodeId]) == msg.sender, "msg.sender does not match nodeId");
+    function processWithdrawnETH(uint256 nodeId, uint256 withdrawnValidatorPrincipal) external payable {
+        if (address(nodes[nodeId]) != msg.sender) {
+            revert NotStakingNode(msg.sender, nodeId);
+        }
 
-        uint rewards = msg.value - withdrawnValidatorPrincipal;
+        uint256 rewards = msg.value - withdrawnValidatorPrincipal;
 
         IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
         (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
@@ -357,7 +397,7 @@ contract StakingNodesManager is
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function getAllValidators() public view returns (bytes[] memory) {
+    function getAllValidators() public view returns (Validator[] memory) {
         return validators;
     }
 
@@ -374,4 +414,16 @@ contract StakingNodesManager is
         return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
+    }
 }

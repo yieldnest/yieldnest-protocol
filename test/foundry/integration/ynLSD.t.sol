@@ -1,12 +1,19 @@
 import "./IntegrationBaseTest.sol";
 
 
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../../src/external/chainlink/AggregatorV3Interface.sol";
 import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IPausable.sol";
 import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 // import "../../../src/mocks/MockERC20.sol";
+
+import "../mocks/TestLSDStakingNodeV2.sol";
+import "../mocks/TestYnLSDV2.sol";
+
 
 
 contract ynLSDTest is IntegrationBaseTest {
@@ -158,5 +165,66 @@ contract ynLSDTest is IntegrationBaseTest {
 
         // Assert that totalAssets reflects the deposit
         assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
+    }
+
+    function testCreateLSDStakingNode() public {
+        ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
+
+        uint expectedNodeId = 0;
+        assertEq(lsdStakingNodeInstance.nodeId(), expectedNodeId, "Node ID does not match expected value");
+    }
+
+    function testCreate2LSDStakingNodes() public {
+        ILSDStakingNode lsdStakingNodeInstance1 = ynlsd.createLSDStakingNode();
+        uint expectedNodeId1 = 0;
+        assertEq(lsdStakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
+
+        ILSDStakingNode lsdStakingNodeInstance2 = ynlsd.createLSDStakingNode();
+        uint expectedNodeId2 = 1;
+        assertEq(lsdStakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
+    }
+
+    function testCreateLSDStakingNodeAfterUpgradeWithoutUpgradeability() public {
+        // Upgrade the ynLSD implementation to TestYnLSDV2
+        address newImplementation = address(new TestYnLSDV2());
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newImplementation, "");
+
+        // Attempt to create a LSD staking node after the upgrade - should fail since implementation is not there
+        vm.expectRevert();
+        ynlsd.createLSDStakingNode();
+    }
+
+    function testUpgradeLSDStakingNodeImplementation() public {
+        ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
+
+        // upgrade the ynLSD to support the new initialization version.
+        address newYnLSDImpl = address(new TestYnLSDV2());
+        vm.prank(actors.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newYnLSDImpl, "");
+
+        TestLSDStakingNodeV2 testLSDStakingNodeV2 = new TestLSDStakingNodeV2();
+        ynlsd.upgradeLSDStakingNodeImplementation(address(testLSDStakingNodeV2));
+
+        UpgradeableBeacon beacon = ynlsd.upgradeableBeacon();
+        address upgradedImplementationAddress = beacon.implementation();
+        assertEq(upgradedImplementationAddress, address(testLSDStakingNodeV2));
+
+        TestLSDStakingNodeV2 testLSDStakingNodeV2Instance = TestLSDStakingNodeV2(payable(address(lsdStakingNodeInstance)));
+        uint redundantFunctionResult = testLSDStakingNodeV2Instance.redundantFunction();
+        assertEq(redundantFunctionResult, 1234567);
+
+        assertEq(testLSDStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
+    }
+
+    function testFailRegisterLSDStakingNodeImplementationTwice() public {
+        address initialImplementation = address(new TestLSDStakingNodeV2());
+        ynlsd.registerLSDStakingNodeImplementationContract(initialImplementation);
+
+        address newImplementation = address(new TestLSDStakingNodeV2());
+        vm.expectRevert("ynLSD: Implementation already exists");
+        ynlsd.registerLSDStakingNodeImplementationContract(newImplementation);
     }
 }
