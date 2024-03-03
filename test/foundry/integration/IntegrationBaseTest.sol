@@ -156,7 +156,6 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupYnETH() public {
-        WETH weth = new WETH();
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
         
