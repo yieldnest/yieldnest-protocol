@@ -123,7 +123,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         maxNodeCount = init.maxNodeCount;
 
         _setTransfersPaused(true);  // transfers are initially paused
-        _addToPauseWhitelist(init.pauseWhitelist);
+        _updatePauseWhitelist(init.pauseWhitelist, true);
     }
 
     //--------------------------------------------------------------------------------------

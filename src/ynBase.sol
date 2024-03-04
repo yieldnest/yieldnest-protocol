@@ -80,14 +80,18 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
     }
     
     function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
-        _addToPauseWhitelist(whitelistedForTransfers);
+        _updatePauseWhitelist(whitelistedForTransfers, true);
     }
 
-    function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
+    function removeFromPauseWhitelist(address[] memory unlisted) external onlyRole(PAUSER_ROLE) {
+        _updatePauseWhitelist(unlisted, false);
+    }
+
+    function _updatePauseWhitelist(address[] memory whitelistedForTransfers, bool whitelisted) internal {
 
         ynBaseStorage storage $ = _getYnBaseStorage();
         for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
-            $.pauseWhiteList[whitelistedForTransfers[i]] = true;
+            $.pauseWhiteList[whitelistedForTransfers[i]] = whitelisted;
         }
     }
 

@@ -83,7 +83,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
 
         _setTransfersPaused(true);  // transfers are initially paused
-        _addToPauseWhitelist(init.pauseWhitelist);
+        _updatePauseWhitelist(init.pauseWhitelist, true);
     }
 
     receive() external payable {
