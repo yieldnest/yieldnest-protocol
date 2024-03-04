@@ -328,7 +328,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
-    function hasLSDRestakingManagerRole(address account) external returns (bool) {
+    function hasLSDRestakingManagerRole(address account) external view returns (bool) {
         return hasRole(LSD_RESTAKING_MANAGER_ROLE, account);
     }
 

@@ -318,12 +318,11 @@ contract StakingNodeTest is IntegrationBaseTest {
 
     function testVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
 
-        uint depositAmount = 32 ether;
+        uint256 depositAmount = 32 ether;
 
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
 
         MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
-        bytes memory tempCode = address(mainnetEigenPodMock).code;
 
         address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
         address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
@@ -334,12 +333,10 @@ contract StakingNodeTest is IntegrationBaseTest {
         vm.prank(beaconOwner);
         beacon.upgradeTo(address(mainnetEigenPodMock));
 
-        uint withdrawalAmount = 1 ether;
-
         MainnetEigenPodMock(address(eigenPodInstance)).sethasRestaked(true);
 
         {
-                        // unpausing deposits artificially
+            // unpausing deposits artificially
             IPausable pausableStrategyManager = IPausable(address(strategyManager));
             address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
             vm.startPrank(unpauser);
