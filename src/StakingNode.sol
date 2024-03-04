@@ -78,7 +78,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
-    receive() external payable nonReentrant {
+    receive() external payable {
         // Consensus Layer rewards and the validator principal will be sent this way.
        if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())) {
             revert ETHDepositorNotDelayedWithdrawalRouter();
@@ -102,7 +102,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  EIGENPOD CREATION   ------------------------------
     //--------------------------------------------------------------------------------------
 
-    function createEigenPod() public returns (IEigenPod) {
+    function createEigenPod() public nonReentrant returns (IEigenPod) {
         if (address(eigenPod) != address(0)) return eigenPod; // already have pod
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
@@ -130,7 +130,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
     /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
     ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint256 withdrawnValidatorPrincipal) public onlyAdmin {
+    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint256 withdrawnValidatorPrincipal) public nonReentrant onlyAdmin {
 
         if (withdrawnValidatorPrincipal > allocatedETH) {
             revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
