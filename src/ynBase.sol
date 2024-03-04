@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
@@ -15,6 +18,12 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
 
     /// @notice  Role is allowed to set the pause state
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STORAGE  -----------------------------------------
@@ -71,14 +80,18 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
     }
     
     function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
-        _addToPauseWhitelist(whitelistedForTransfers);
+        _updatePauseWhitelist(whitelistedForTransfers, true);
     }
 
-    function _addToPauseWhitelist(address[] memory whitelistedForTransfers) internal {
+    function removeFromPauseWhitelist(address[] memory unlisted) external onlyRole(PAUSER_ROLE) {
+        _updatePauseWhitelist(unlisted, false);
+    }
+
+    function _updatePauseWhitelist(address[] memory whitelistedForTransfers, bool whitelisted) internal {
 
         ynBaseStorage storage $ = _getYnBaseStorage();
         for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
-            $.pauseWhiteList[whitelistedForTransfers[i]] = true;
+            $.pauseWhiteList[whitelistedForTransfers[i]] = whitelisted;
         }
     }
 

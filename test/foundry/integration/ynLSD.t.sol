@@ -352,4 +352,39 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         uint256 recipientBalance = ynlsd.balanceOf(recipient);
         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
     }
+
+    function testRemoveInitialWhitelistedAddress() public {
+        // Arrange
+        address[] memory whitelistAddresses = new address[](1);
+        whitelistAddresses[0] = actors.TRANSFER_ENABLED_EOA; // EOA address to be removed from whitelist
+
+        // Act
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
+
+        // Assert
+        bool isWhitelisted = ynlsd.isAddressWhitelisted(actors.TRANSFER_ENABLED_EOA);
+        assertFalse(isWhitelisted, "EOA address was not removed from whitelist");
+    }
+
+    function testRemoveMultipleNewWhitelistAddresses() public {
+        // Arrange
+        address[] memory newWhitelistAddresses = new address[](2);
+        newWhitelistAddresses[0] = address(20000); // First new whitelist address
+        newWhitelistAddresses[1] = address(20001); // Second new whitelist address
+
+        // Adding addresses to whitelist first
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.addToPauseWhitelist(newWhitelistAddresses);
+
+        // Act
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
+
+        // Assert
+        bool isFirstAddressWhitelisted = ynlsd.isAddressWhitelisted(newWhitelistAddresses[0]);
+        bool isSecondAddressWhitelisted = ynlsd.isAddressWhitelisted(newWhitelistAddresses[1]);
+        assertFalse(isFirstAddressWhitelisted, "First new whitelist address was not removed");
+        assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
+    }
 }

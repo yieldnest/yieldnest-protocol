@@ -27,12 +27,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     error InsufficientBalance();
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTANTS  ---------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
-
-    //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -89,7 +83,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         exchangeAdjustmentRate = init.exchangeAdjustmentRate;
 
         _setTransfersPaused(true);  // transfers are initially paused
-        _addToPauseWhitelist(init.pauseWhitelist);
+        _updatePauseWhitelist(init.pauseWhitelist, true);
     }
 
     receive() external payable {

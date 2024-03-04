@@ -46,12 +46,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     bytes32 public constant LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTANTS  ---------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
-
-    //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -129,7 +123,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         maxNodeCount = init.maxNodeCount;
 
         _setTransfersPaused(true);  // transfers are initially paused
-        _addToPauseWhitelist(init.pauseWhitelist);
+        _updatePauseWhitelist(init.pauseWhitelist, true);
     }
 
     //--------------------------------------------------------------------------------------
