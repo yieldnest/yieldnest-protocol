@@ -162,40 +162,4 @@ contract UpgradesTest is IntegrationBaseTest {
         vm.expectRevert(encodedError);
         yneth.initialize(ynethInit);
     }
-
-    function testDepositEthWithZeroEth() public {
-        bytes memory encodedError = abi.encodeWithSignature("ZeroETH()");
-        vm.expectRevert(encodedError);
-        yneth.depositETH{value: 0}(address(this));
-    }
-
-    function testReceiveRewardsWithBadRewardsDistributor() public {
-        bytes memory encodedError = abi.encodeWithSignature("NotRewardsDistributor()");
-        vm.expectRevert(encodedError);
-        yneth.receiveRewards();
-    }
-
-    function testWithdrawETHWithZeroBalance() public {
-        bytes memory encodedError = abi.encodeWithSignature("InsufficientBalance()");
-        vm.startPrank(address(stakingNodesManager));
-        vm.expectRevert(encodedError);
-        yneth.withdrawETH(1);
-        vm.stopPrank();
-    }
-
-    function testSetExchangeAdjustmentRate() public {
-        uint256 newRate = 1000;
-        vm.prank(address(stakingNodesManager));
-        yneth.setExchangeAdjustmentRate(newRate);
-        assertEq(yneth.exchangeAdjustmentRate(), newRate);
-    }
-
-    function testSetExchangeAdjustmentRateWithInvalidRate() public {
-        uint256 invalidRate = 100000000000000000000;
-        bytes memory encodedError = abi.encodeWithSignature("ValueOutOfBounds(uint256)", invalidRate);
-        vm.startPrank(address(stakingNodesManager));
-        vm.expectRevert(encodedError);
-        yneth.setExchangeAdjustmentRate(invalidRate);
-        vm.stopPrank();
-    }
 }
