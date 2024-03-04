@@ -165,6 +165,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         if (totalSupply() == 0) {
             return ethAmount;
         }
+        
 
         // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
         //  If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
@@ -173,8 +174,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
+            totalSupply() * (uint256(BASIS_POINTS_DENOMINATOR) - exchangeAdjustmentRate),
+            totalAssets() == 0 ? 1 :  * uint256(BASIS_POINTS_DENOMINATOR),
             rounding
         );
     }

@@ -14,7 +14,8 @@ import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
 import {ynBase} from "../../../src/ynBase.sol";
-
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import "forge-std/Console.sol";
 
 contract ynLSDTest is IntegrationBaseTest {
     // ContractAddresses contractAddresses = new ContractAddresses();
@@ -235,17 +236,43 @@ contract ynLSDTest is IntegrationBaseTest {
 
     function testDepositConvertToSharesMath() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 128 ether;
 
-        address user = address(15243);
+        // Obtain STETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
+        uint256 balance = stETH.balanceOf(address(this));
+        assertEq(balance, amount, "Amount not received");
+        stETH.approve(address(ynlsd), amount);
 
-        vm.prank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-        stETH.transfer(user, 100 ether);
-
-        vm.startPrank(user);
+        // vm.startPrank(user);
         stETH.approve(address(ynlsd), 100 ether);
-        ynlsd.deposit(stETH, 330_000_000, user);
-        ynlsd.deposit(stETH, 44_000_000, user);
-        vm.stopPrank();
+        ynlsd.deposit(stETH, 32 ether, address(this));
+        ynlsd.deposit(stETH, 32 ether, address(this));
+        ynlsd.deposit(stETH, 32 ether, address(this));
+        // vm.stopPrank();
+
+        // ynlsd.totalSupply();
+
+        // uint16 BASIS_POINTS_DENOMINATOR = 10_000;
+
+
+        // // console.log("%i", ynlsd.totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - ynlsd.exchangeAdjustmentRate()));
+        // console.log("%i", ynlsd.totalSupply());
+        ynlsd.totalAssets();
+        (uint256[] memory assetBalances) = ynlsd.getTotalAssets();
+        console.log("%i", assetBalances[0]);
+
+
+        // uint256 result = Math.mulDiv(
+        //     32 ether,
+        //     ynlsd.totalSupply() * (uint256(BASIS_POINTS_DENOMINATOR) - ynlsd.exchangeAdjustmentRate()),
+        //     ynlsd.totalSupply() * uint256(BASIS_POINTS_DENOMINATOR),
+        //     Math.Rounding.Ceil
+        // );
+
+        // console.log("%i", result);
+ 
     }
 }
 
