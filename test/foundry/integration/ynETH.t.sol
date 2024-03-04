@@ -319,4 +319,5 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 recipientBalance = yneth.balanceOf(recipient);
         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
     }
+
 }

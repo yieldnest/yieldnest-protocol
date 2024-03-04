@@ -11,6 +11,7 @@ import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IRewardsDistributor} from "../../../src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {TestStakingNodesManagerV2} from "../mocks/TestStakingNodesManagerV2.sol";
 
@@ -129,5 +130,72 @@ contract UpgradesTest is IntegrationBaseTest {
         nETH.approve(address(yneth), nETHDepositAmount);
         vm.prank(address(this));
         upgradedYnETH.deposit(nETHDepositAmount, address(this));
+    }
+
+    function testUpgradeYnETHRevertswithInvalidAdjustmentRate() public {
+
+        TransparentUpgradeableProxy ynethProxy;
+        yneth = ynETH(payable(ynethProxy));
+
+        // Re-deploying ynETH and creating its proxy again
+        yneth = new ynETH();
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
+        yneth = ynETH(payable(ynethProxy));
+
+
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
+        
+        uint256 invalidRate = 100000000000000000000;
+
+        ynETH.Init memory ynethInit = ynETH.Init({
+            admin: actors.ADMIN,
+            pauser: actors.PAUSE_ADMIN,
+            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            exchangeAdjustmentRate: invalidRate,
+            pauseWhitelist: pauseWhitelist
+        });
+
+        bytes memory encodedError = abi.encodeWithSignature("ExchangeAdjustmentRateOutOfBounds(uint256)", invalidRate);
+
+        vm.expectRevert(encodedError);
+        yneth.initialize(ynethInit);
+    }
+
+    function testDepositEthWithZeroEth() public {
+        bytes memory encodedError = abi.encodeWithSignature("ZeroETH()");
+        vm.expectRevert(encodedError);
+        yneth.depositETH{value: 0}(address(this));
+    }
+
+    function testReceiveRewardsWithBadRewardsDistributor() public {
+        bytes memory encodedError = abi.encodeWithSignature("NotRewardsDistributor()");
+        vm.expectRevert(encodedError);
+        yneth.receiveRewards();
+    }
+
+    function testWithdrawETHWithZeroBalance() public {
+        bytes memory encodedError = abi.encodeWithSignature("InsufficientBalance()");
+        vm.startPrank(address(stakingNodesManager));
+        vm.expectRevert(encodedError);
+        yneth.withdrawETH(1);
+        vm.stopPrank();
+    }
+
+    function testSetExchangeAdjustmentRate() public {
+        uint256 newRate = 1000;
+        vm.prank(address(stakingNodesManager));
+        yneth.setExchangeAdjustmentRate(newRate);
+        assertEq(yneth.exchangeAdjustmentRate(), newRate);
+    }
+
+    function testSetExchangeAdjustmentRateWithInvalidRate() public {
+        uint256 invalidRate = 100000000000000000000;
+        bytes memory encodedError = abi.encodeWithSignature("ValueOutOfBounds(uint256)", invalidRate);
+        vm.startPrank(address(stakingNodesManager));
+        vm.expectRevert(encodedError);
+        yneth.setExchangeAdjustmentRate(invalidRate);
+        vm.stopPrank();
     }
 }
