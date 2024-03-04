@@ -252,26 +252,6 @@ contract ynLSDTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, 32 ether, address(this));
         // vm.stopPrank();
 
-        // ynlsd.totalSupply();
-
-        // uint16 BASIS_POINTS_DENOMINATOR = 10_000;
-
-
-        // // console.log("%i", ynlsd.totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - ynlsd.exchangeAdjustmentRate()));
-        // console.log("%i", ynlsd.totalSupply());
-        ynlsd.totalAssets();
-        (uint256[] memory assetBalances) = ynlsd.getTotalAssets();
-        console.log("%i", assetBalances[0]);
-
-
-        // uint256 result = Math.mulDiv(
-        //     32 ether,
-        //     ynlsd.totalSupply() * (uint256(BASIS_POINTS_DENOMINATOR) - ynlsd.exchangeAdjustmentRate()),
-        //     ynlsd.totalSupply() * uint256(BASIS_POINTS_DENOMINATOR),
-        //     Math.Rounding.Ceil
-        // );
-
-        // console.log("%i", result);
  
     }
 }
