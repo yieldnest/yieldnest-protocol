@@ -15,6 +15,8 @@
     "compiler-version": "off",
     "no-global-import": "off",
     "no-console": "warn",
-    "state-visibility": "off"
+    "state-visibility": "off",
+    "one-contract-per-file": "off",
+    "custom-errors": "off"
   }
 }

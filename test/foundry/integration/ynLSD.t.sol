@@ -1,18 +1,19 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity 0.8.24;
+
 import "./IntegrationBaseTest.sol";
 
 
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../../../src/external/chainlink/AggregatorV3Interface.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AggregatorV3Interface} from "../../../src/external/chainlink/AggregatorV3Interface.sol";
 import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IPausable.sol";
 import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
-// import "../../../src/mocks/MockERC20.sol";
-
-import "../mocks/TestLSDStakingNodeV2.sol";
-import "../mocks/TestYnLSDV2.sol";
+import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
+import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
+import {ynBase} from "../../../src/ynBase.sol";
 
 
 contract ynLSDTest is IntegrationBaseTest {
@@ -23,28 +24,23 @@ contract ynLSDTest is IntegrationBaseTest {
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
         IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
-        uint256 expectedAmount = ynlsd.convertToShares(token, amount);
-
-        IPausable pausableStrategyManager = IPausable(address(strategyManager));
 
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
-        address destination = address(this);
         // Obtain STETH 
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         //token.transfer(destination, amount + 1);
         vm.stopPrank();
-        uint balance = token.balanceOf(address(this));
+        uint256 balance = token.balanceOf(address(this));
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
 
         token.approve(address(ynlsd), amount);
-        uint256 shares = ynlsd.deposit(token, amount, destination);
 
         IERC20[] memory assets = new IERC20[](1);
-        uint[] memory amounts = new uint[](1);
+        uint256[] memory amounts = new uint256[](1);
         assets[0] = token;
         amounts[0] = amount;
 
@@ -56,7 +52,6 @@ contract ynLSDTest is IntegrationBaseTest {
     function testDepositSTETH() public {
         IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
-        uint256 expectedAmount = ynlsd.convertToShares(token, amount);
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
 
@@ -69,18 +64,16 @@ contract ynLSDTest is IntegrationBaseTest {
         pausableStrategyManager.unpause(0);
         vm.stopPrank();
         
-        address destination = address(this);
         // Obtain STETH 
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        uint balance = token.balanceOf(address(this));
+        uint256 balance = token.balanceOf(address(this));
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
         token.approve(address(ynlsd), amount);
-        uint256 shares = ynlsd.deposit(token, amount, destination);
 
         IERC20[] memory assets = new IERC20[](1);
-        uint[] memory amounts = new uint[](1);
+        uint256[] memory amounts = new uint256[](1);
         assets[0] = token;
         amounts[0] = amount;
 
@@ -90,9 +83,7 @@ contract ynLSDTest is IntegrationBaseTest {
     
     function testWrongStrategy() public {
         IERC20 token = IERC20(address(1));
-        uint256 amount = 100;
         vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(token)));
-        uint256 shares = ynlsd.deposit(token, amount, address(this));
     }
 
     function testDepositWithZeroAmount() public {
@@ -126,7 +117,6 @@ contract ynLSDTest is IntegrationBaseTest {
     function testTotalAssetsAfterDeposit() public {
         IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
-        uint256 expectedAmount = ynlsd.convertToShares(token, amount);
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
         vm.prank(actors.STAKING_NODE_CREATOR);
@@ -138,19 +128,17 @@ contract ynLSDTest is IntegrationBaseTest {
         pausableStrategyManager.unpause(0);
         vm.stopPrank();
         
-        address destination = address(this);
         // Obtain STETH 
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        uint balance = token.balanceOf(address(this));
+        uint256 balance = token.balanceOf(address(this));
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
         token.approve(address(ynlsd), amount);
-        uint256 shares = ynlsd.deposit(token, amount, destination);
 
         {
             IERC20[] memory assets = new IERC20[](1);
-            uint[] memory amounts = new uint[](1);
+            uint256[] memory amounts = new uint256[](1);
             assets[0] = token;
             amounts[0] = amount;
 
@@ -165,7 +153,7 @@ contract ynLSDTest is IntegrationBaseTest {
         IStrategy strategy = ynlsd.strategies(IERC20(chainAddresses.lsd.STETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(lsdStakingNode)));
 
-        uint expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
+        uint256 expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
 
         // Assert that totalAssets reflects the deposit
         assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
@@ -174,19 +162,19 @@ contract ynLSDTest is IntegrationBaseTest {
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
-        uint expectedNodeId = 0;
+        uint256 expectedNodeId = 0;
         assertEq(lsdStakingNodeInstance.nodeId(), expectedNodeId, "Node ID does not match expected value");
     }
 
     function testCreate2LSDStakingNodes() public {
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance1 = ynlsd.createLSDStakingNode();
-        uint expectedNodeId1 = 0;
+        uint256 expectedNodeId1 = 0;
         assertEq(lsdStakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
 
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance2 = ynlsd.createLSDStakingNode();
-        uint expectedNodeId2 = 1;
+        uint256 expectedNodeId2 = 1;
         assertEq(lsdStakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
     }
     function testCreateLSDStakingNodeAfterUpgradeWithoutUpgradeability() public {
@@ -221,7 +209,7 @@ contract ynLSDTest is IntegrationBaseTest {
         assertEq(upgradedImplementationAddress, address(testLSDStakingNodeV2));
 
         TestLSDStakingNodeV2 testLSDStakingNodeV2Instance = TestLSDStakingNodeV2(payable(address(lsdStakingNodeInstance)));
-        uint redundantFunctionResult = testLSDStakingNodeV2Instance.redundantFunction();
+        uint256 redundantFunctionResult = testLSDStakingNodeV2Instance.redundantFunction();
         assertEq(redundantFunctionResult, 1234567);
 
         assertEq(testLSDStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
@@ -234,6 +222,30 @@ contract ynLSDTest is IntegrationBaseTest {
         address newImplementation = address(new TestLSDStakingNodeV2());
         vm.expectRevert("ynLSD: Implementation already exists");
         ynlsd.registerLSDStakingNodeImplementationContract(newImplementation);
+    }
+
+    function testDespositUnsupportedAsset() public {
+        IERC20 token = IERC20(address(1));
+        uint256 amount = 1 ether;
+        address receiver = address(this);
+
+        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(token)));
+        ynlsd.deposit(token, amount, receiver);
+    }
+
+    function testDepositConvertToSharesMath() public {
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+
+        address user = address(15243);
+
+        vm.prank(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+        stETH.transfer(user, 100 ether);
+
+        vm.startPrank(user);
+        stETH.approve(address(ynlsd), 100 ether);
+        ynlsd.deposit(stETH, 330_000_000, user);
+        ynlsd.deposit(stETH, 44_000_000, user);
+        vm.stopPrank();
     }
 }
 
@@ -266,7 +278,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         steth.approve(address(ynlsd), depositAmount);
         ynlsd.deposit(steth, depositAmount, whitelistedAddress); 
 
-        uint transferAmount = ynlsd.balanceOf(whitelistedAddress);
+        uint256 transferAmount = ynlsd.balanceOf(whitelistedAddress);
 
         // Act
         address[] memory whitelist = new address[](1);
@@ -315,7 +327,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         vm.prank(actors.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
 
-        uint transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
+        uint256 transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
 
         // Act
         vm.prank(newWhitelistedAddress);
@@ -339,7 +351,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         steth.approve(address(ynlsd), depositAmount);
         ynlsd.deposit(steth, depositAmount, arbitraryAddress);
 
-        uint transferAmount = ynlsd.balanceOf(arbitraryAddress);
+        uint256 transferAmount = ynlsd.balanceOf(arbitraryAddress);
 
         // Act
         vm.prank(actors.PAUSE_ADMIN);
