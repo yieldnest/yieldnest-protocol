@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
@@ -15,6 +18,12 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
 
     /// @notice  Role is allowed to set the pause state
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint16 internal constant BASIS_POINTS_DENOMINATOR = 10_000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STORAGE  -----------------------------------------
