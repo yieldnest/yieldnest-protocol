@@ -14,6 +14,7 @@ import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
 import {ynBase} from "./ynBase.sol";
 
+
 interface IynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
@@ -223,8 +224,13 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         IStrategy[] memory assetStrategies = new IStrategy[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
             assetStrategies[i] = strategies[tokens[i]];
+
+            // add balances for funds at rest in ynLSD
+            uint256 balanceThis = tokens[i].balanceOf(address(this));
+            assetBalances[i] += balanceThis;
         }
 
+        // add balances contained in each LSDStakingNode
         uint256 nodeCount = nodes.length;
         for (uint256 i; i < nodeCount; i++ ) {
             
@@ -232,9 +238,11 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             for (uint256 j = 0; j < tokens.length; j++) {
                 
                 IERC20 asset = tokens[i];
-                assetBalances[j] += asset.balanceOf(address(this));
-                assetBalances[j] += asset.balanceOf(address(node));
-                assetBalances[j] += assetStrategies[j].userUnderlyingView((address(node)));
+                uint256 balanceNode = asset.balanceOf(address(node));
+                assetBalances[j] += balanceNode;
+
+                uint256 strategyBalance = assetStrategies[j].userUnderlyingView((address(node)));
+                assetBalances[j] += strategyBalance;
             }
         }
     }
