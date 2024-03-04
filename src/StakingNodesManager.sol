@@ -49,6 +49,7 @@ contract StakingNodesManager is
     error NoBeaconImplementationExists();
     error DepositorNotYnETH();
     error TransferFailed();
+    error NoValidatorsProvided();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -204,7 +205,7 @@ contract StakingNodesManager is
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
         if (newValidators.length == 0) {
-            return;
+            revert NoValidatorsProvided();
         }
 
         // check deposit root matches the deposit contract deposit root
