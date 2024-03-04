@@ -157,7 +157,7 @@ contract UpgradesTest is IntegrationBaseTest {
             pauseWhitelist: pauseWhitelist
         });
 
-        bytes memory encodedError = abi.encodeWithSignature("ExchangeAdjustmentRateOutOfBounds(uint256)", invalidRate);
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.ExchangeAdjustmentRateOutOfBounds.selector, invalidRate);
 
         vm.expectRevert(encodedError);
         yneth.initialize(ynethInit);
