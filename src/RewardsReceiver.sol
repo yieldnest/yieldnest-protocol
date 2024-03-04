@@ -24,7 +24,7 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice The withdrawer role can withdraw ETH and ERC20 tokens from this contract.
+    /// @notice The withdrawer role can withdraw ETH and ERC20 assets from this contract.
     bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
 
     //--------------------------------------------------------------------------------------
@@ -69,10 +69,10 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
         }
     }
 
-    /// @notice Transfers the given amount of an ERC20 token to an address.
+    /// @notice Transfers the given amount of an ERC20 asset to an address.
     /// @dev Only called by the withdrawer.
-    function transferERC20(IERC20 token, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
-        SafeERC20.safeTransfer(token, to, amount);
+    function transferERC20(IERC20 asset, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
+        SafeERC20.safeTransfer(asset, to, amount);
     }
 
     //--------------------------------------------------------------------------------------

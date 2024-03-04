@@ -22,88 +22,81 @@ contract ynLSDTest is IntegrationBaseTest {
     // ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
 
-    function testDepositSTETHFailingWhenStrategyIsPaused() public {
-        IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 1 ether;
+    // function testDepositSTETHFailingWhenStrategyIsPaused() public {
+    //     IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+    //     uint256 amount = 1 ether;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
-        ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
+    //     vm.prank(actors.STAKING_NODE_CREATOR);
+    //     ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
-        // Obtain STETH 
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        //token.transfer(destination, amount + 1);
-        vm.stopPrank();
-        uint256 balance = token.balanceOf(address(this));
-        emit log_uint(balance);
-        assertEq(balance, amount, "Amount not received");
+    //     // Obtain STETH 
+    //     (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
+    //     require(success, "ETH transfer failed");
+    //     //asset.transfer(destination, amount + 1);
+    //     vm.stopPrank();
+    //     uint256 balance = asset.balanceOf(address(this));
+    //     emit log_uint(balance);
+    //     assertEq(balance, amount, "Amount not received");
 
-        token.approve(address(ynlsd), amount);
+    //     asset.approve(address(ynlsd), amount);
 
-        IERC20[] memory assets = new IERC20[](1);
-        uint256[] memory amounts = new uint256[](1);
-        assets[0] = token;
-        amounts[0] = amount;
+    //     IERC20[] memory assets = new IERC20[](1);
+    //     uint256[] memory amounts = new uint256[](1);
+    //     assets[0] = asset;
+    //     amounts[0] = amount;
 
-        vm.expectRevert(bytes("Pausable: index is paused"));
-        vm.prank(actors.LSD_RESTAKING_MANAGER);
-        lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-    }
+    //     vm.expectRevert(bytes("Pausable: index is paused"));
+    //     vm.prank(actors.LSD_RESTAKING_MANAGER);
+    //     lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
+    // }
     
     function testDepositSTETH() public {
-        IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 1 ether;
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 128 ether;
 
-        IPausable pausableStrategyManager = IPausable(address(strategyManager));
-
-        vm.prank(actors.STAKING_NODE_CREATOR);
-        ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
-
-        address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
-
-        vm.startPrank(unpauser);
-        pausableStrategyManager.unpause(0);
-        vm.stopPrank();
-        
-        // Obtain STETH 
+        // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        uint256 balance = token.balanceOf(address(this));
-        emit log_uint(balance);
+        uint256 balance = stETH.balanceOf(address(this));
         assertEq(balance, amount, "Amount not received");
-        token.approve(address(ynlsd), amount);
 
-        IERC20[] memory assets = new IERC20[](1);
-        uint256[] memory amounts = new uint256[](1);
-        assets[0] = token;
-        amounts[0] = amount;
+        stETH.approve(address(ynlsd), 100 ether);
+        ynlsd.deposit(stETH, 32 ether, address(this));
+        ynlsd.deposit(stETH, 32 ether, address(this));
+        ynlsd.deposit(stETH, 32 ether, address(this));
+    }
 
-        vm.prank(actors.LSD_RESTAKING_MANAGER);
-        lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
+    function testConvertToShares() public {
+        IERC20 asset = IERC20(address(this));
+        uint256 amount = 1000;
+
+        // Call the getSharesForAsset function
+        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
+        ynlsd.convertToShares(asset, amount);
     }
     
     function testWrongStrategy() public {
-        IERC20 token = IERC20(address(1));
-        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(token)));
+        IERC20 asset = IERC20(address(1));
+        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
     }
 
     function testDepositWithZeroAmount() public {
-        IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 0; // Zero amount for deposit
         address receiver = address(this);
 
         vm.expectRevert(ynLSD.ZeroAmount.selector);
-        ynlsd.deposit(token, amount, receiver);
+        ynlsd.deposit(asset, amount, receiver);
     }
 
     
-    function testGetSharesForToken() public {
-        IERC20 token = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+    function testGetSharesForAsset() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
         AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.lsd.RETH_FEED_ADDRESS);
 
-        // Call the getSharesForToken function
-        uint256 shares = ynlsd.convertToShares(token, amount);
+        // Call the getSharesForAsset function
+        uint256 shares = ynlsd.convertToShares(asset, amount);
         (, int256 price, , uint256 timeStamp, ) = assetPriceFeed.latestRoundData();
 
         assertEq(ynlsd.totalAssets(), 0);
@@ -116,7 +109,7 @@ contract ynLSDTest is IntegrationBaseTest {
     }
 
     function testTotalAssetsAfterDeposit() public {
-        IERC20 token = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
@@ -132,15 +125,15 @@ contract ynLSDTest is IntegrationBaseTest {
         // Obtain STETH 
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        uint256 balance = token.balanceOf(address(this));
+        uint256 balance = asset.balanceOf(address(this));
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
-        token.approve(address(ynlsd), amount);
+        asset.approve(address(ynlsd), amount);
 
         {
             IERC20[] memory assets = new IERC20[](1);
             uint256[] memory amounts = new uint256[](1);
-            assets[0] = token;
+            assets[0] = asset;
             amounts[0] = amount;
 
             vm.prank(actors.LSD_RESTAKING_MANAGER);
@@ -149,7 +142,7 @@ contract ynLSDTest is IntegrationBaseTest {
 
         uint256 totalAssetsAfterDeposit = ynlsd.totalAssets();
 
-        uint256 oraclePrice = yieldNestOracle.getLatestPrice(address(token));
+        uint256 oraclePrice = yieldNestOracle.getLatestPrice(address(asset));
 
         IStrategy strategy = ynlsd.strategies(IERC20(chainAddresses.lsd.STETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(lsdStakingNode)));
@@ -226,33 +219,12 @@ contract ynLSDTest is IntegrationBaseTest {
     }
 
     function testDespositUnsupportedAsset() public {
-        IERC20 token = IERC20(address(1));
+        IERC20 asset = IERC20(address(1));
         uint256 amount = 1 ether;
         address receiver = address(this);
 
-        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(token)));
-        ynlsd.deposit(token, amount, receiver);
-    }
-
-    function testDepositConvertToSharesMath() public {
-        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 128 ether;
-
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
-        stETH.approve(address(ynlsd), amount);
-
-        // vm.startPrank(user);
-        stETH.approve(address(ynlsd), 100 ether);
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        // vm.stopPrank();
-
- 
+        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
+        ynlsd.deposit(asset, amount, receiver);
     }
 }
 

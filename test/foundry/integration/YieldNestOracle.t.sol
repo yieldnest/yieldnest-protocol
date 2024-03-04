@@ -50,7 +50,7 @@ contract YieldNestOracleTest is IntegrationBaseTest {
     
     function testForGetLatestPrice() public {
 
-        IERC20 token = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.lsd.RETH_FEED_ADDRESS);
         (, int256 price, , uint256 timeStamp, ) = assetPriceFeed.latestRoundData();
         
@@ -63,13 +63,13 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(PriceFeedTooStale.selector, block.timestamp - timeStamp, age)
         );
-        yieldNestOracle.getLatestPrice(address(token));
+        yieldNestOracle.getLatestPrice(address(asset));
         
         // 24 hours age
         age = 86400;
         vm.prank(actors.ORACLE_MANAGER);
         yieldNestOracle.setAssetPriceFeed(chainAddresses.lsd.RETH_ADDRESS, chainAddresses.lsd.RETH_FEED_ADDRESS, age);
-        uint256 obtainedPrice = yieldNestOracle.getLatestPrice(address(token));
+        uint256 obtainedPrice = yieldNestOracle.getLatestPrice(address(asset));
         assertEq(uint256(price), obtainedPrice, "Price mismatch");
     }
 

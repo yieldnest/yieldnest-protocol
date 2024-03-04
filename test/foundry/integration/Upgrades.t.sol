@@ -165,7 +165,7 @@ contract UpgradesTest is IntegrationBaseTest {
         yneth.initialize(ynethInit);
     }
 
-    function setupInitializeYnLSD(uint256 adjustmentRate, address tokenAddress) internal returns (ynLSD.Init memory, ynLSD ynlsd) {
+    function setupInitializeYnLSD(uint256 adjustmentRate, address assetAddress) internal returns (ynLSD.Init memory, ynLSD ynlsd) {
         TransparentUpgradeableProxy ynlsdProxy;
         ynlsd = ynLSD(payable(ynlsdProxy));
 
@@ -177,28 +177,28 @@ contract UpgradesTest is IntegrationBaseTest {
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
 
-        IERC20[] memory tokens = new IERC20[](2);
+        IERC20[] memory assets = new IERC20[](2);
         address[] memory assetsAddresses = new address[](2);
         address[] memory priceFeeds = new address[](2);
         uint256[] memory maxAges = new uint256[](2);
         IStrategy[] memory strategies = new IStrategy[](2);
 
         // rETH
-        tokens[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        assets[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         assetsAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
         strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
         priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
         maxAges[0] = uint256(86400);
 
         // Zero Addresses
-        tokens[1] = IERC20(tokenAddress);
+        assets[1] = IERC20(assetAddress);
         assetsAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
         strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
         priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
         maxAges[1] = uint256(86400); //one hour
 
         ynLSD.Init memory init = ynLSD.Init({
-            tokens: tokens,
+            assets: assets,
             strategies: strategies,
             strategyManager: strategyManager,
             oracle: yieldNestOracle,
@@ -215,7 +215,7 @@ contract UpgradesTest is IntegrationBaseTest {
         return (init, ynlsd);
     }
 
-    function testYnLSDInitializeRevertsTokenAddressZero() public {
+    function testYnLSDInitializeRevertsAssetAddressZero() public {
         (ynLSD.Init memory init, ynLSD ynlsd) = setupInitializeYnLSD(1000, address(0));
         bytes memory encodedError = abi.encodeWithSelector(ynLSD.ZeroAddress.selector);
         vm.expectRevert(encodedError);

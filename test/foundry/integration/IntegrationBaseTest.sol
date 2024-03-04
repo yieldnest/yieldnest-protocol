@@ -59,7 +59,7 @@ contract IntegrationBaseTest is Test, Utils {
     StakingNode public stakingNodeImplementation;
 
 
-    // Tokens
+    // Assets
     ynETH public yneth;
     ynLSD public ynlsd;
 
@@ -217,7 +217,7 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupYieldNestOracleAndYnLSD() public {
-        IERC20[] memory tokens = new IERC20[](2);
+        IERC20[] memory assets = new IERC20[](2);
         address[] memory assetsAddresses = new address[](2);
         address[] memory priceFeeds = new address[](2);
         uint256[] memory maxAges = new uint256[](2);
@@ -227,14 +227,14 @@ contract IntegrationBaseTest is Test, Utils {
         pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
 
         // rETH
-        tokens[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        assets[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         assetsAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
         strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
         priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
         maxAges[0] = uint256(86400);
 
         // stETH
-        tokens[1] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        assets[1] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         assetsAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
         strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
         priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
@@ -253,7 +253,7 @@ contract IntegrationBaseTest is Test, Utils {
 
         LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
         ynLSD.Init memory init = ynLSD.Init({
-            tokens: tokens,
+            assets: assets,
             strategies: strategies,
             strategyManager: strategyManager,
             oracle: yieldNestOracle,

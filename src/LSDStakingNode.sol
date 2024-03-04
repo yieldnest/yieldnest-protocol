@@ -21,7 +21,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error UnsupportedAsset(IERC20 token);
+    error UnsupportedAsset(IERC20 asset);
     error ZeroAmount();
     error ZeroAddress();
     error NotLSDRestakingManager();
