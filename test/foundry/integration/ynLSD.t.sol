@@ -314,6 +314,13 @@ contract ynLSDTest is IntegrationBaseTest {
         // ynlsd.retrieveAsset(0, asset, amount);
         vm.stopPrank();
     }
+
+    function testSetMaxNodeCount() public {
+        uint256 maxNodeCount = 10;
+        vm.prank(actors.STAKING_ADMIN);
+        ynlsd.setMaxNodeCount(maxNodeCount);
+        assertEq(ynlsd.maxNodeCount(), maxNodeCount, "Max node count does not match expected value");
+    }
 }
 
 contract ynLSDTransferPauseTest is IntegrationBaseTest {
