@@ -36,9 +36,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
-        // Arrange
-
-        bool pauseState = yneth.depositsPaused();
 
         // Act & Assert
         vm.expectRevert(ynETH.Paused.selector);
@@ -111,7 +108,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         uint256 sharesAfterFirstDeposit = yneth.previewDeposit(ethAmount);
 
-        uint expectedShares = Math.mulDiv(ethAmount, 10000 - startingExchangeAdjustmentRate, 10000, Math.Rounding.Floor);
+        uint256 expectedShares = Math.mulDiv(ethAmount, 10000 - startingExchangeAdjustmentRate, 10000, Math.Rounding.Floor);
 
         // Assert
         assertEq(sharesAfterFirstDeposit, expectedShares, "Fuzz: Shares should match expected shares");
@@ -241,7 +238,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         yneth.depositETH{value: depositAmount}(whitelistedAddress); 
 
-        uint transferAmount = yneth.balanceOf(whitelistedAddress);
+        uint256 transferAmount = yneth.balanceOf(whitelistedAddress);
 
         // Act
         address[] memory whitelist = new address[](1);
@@ -285,7 +282,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         vm.prank(newWhitelistedAddress);
         yneth.depositETH{value: depositAmount}(newWhitelistedAddress); // Depositing ETH to get ynETH
 
-        uint transferAmount = yneth.balanceOf(newWhitelistedAddress);
+        uint256 transferAmount = yneth.balanceOf(newWhitelistedAddress);
 
         // Act
         vm.prank(newWhitelistedAddress);
@@ -306,7 +303,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         vm.prank(arbitraryAddress);
         yneth.depositETH{value: depositAmount}(arbitraryAddress); // Depositing ETH to get ynETH
 
-        uint transferAmount = yneth.balanceOf(arbitraryAddress);
+        uint256 transferAmount = yneth.balanceOf(arbitraryAddress);
 
         // Act
         vm.prank(actors.PAUSE_ADMIN);
@@ -319,4 +316,40 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 recipientBalance = yneth.balanceOf(recipient);
         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
     }
+
+    function testDepositEthWithZeroEth() public {
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.ZeroETH.selector);
+        vm.expectRevert(encodedError);
+        yneth.depositETH{value: 0}(address(this));
+    }
+
+    function testReceiveRewardsWithBadRewardsDistributor() public {
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector);
+        vm.expectRevert(encodedError);
+        yneth.receiveRewards();
+    }
+
+    function testWithdrawETHWithZeroBalance() public {
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.InsufficientBalance.selector);
+        vm.startPrank(address(stakingNodesManager));
+        vm.expectRevert(encodedError);
+        yneth.withdrawETH(1);
+        vm.stopPrank();
+    }
+
+    function testSetExchangeAdjustmentRate() public {
+        uint256 newRate = 1000;
+        vm.prank(address(stakingNodesManager));
+        yneth.setExchangeAdjustmentRate(newRate);
+        assertEq(yneth.exchangeAdjustmentRate(), newRate);
+    }
+
+    function testSetExchangeAdjustmentRateWithInvalidRate() public {
+        uint256 invalidRate = 100000000000000000000;
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.ValueOutOfBounds.selector, invalidRate);
+        vm.startPrank(address(stakingNodesManager));
+        vm.expectRevert(encodedError);
+        yneth.setExchangeAdjustmentRate(invalidRate);
+        vm.stopPrank();
+    }    
 }
