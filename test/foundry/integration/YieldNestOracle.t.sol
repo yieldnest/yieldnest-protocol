@@ -99,4 +99,112 @@ contract YieldNestOracleTest is IntegrationBaseTest {
         assertEq(address(updatedPriceFeedAddress), newPriceFeedAddress, "Price feed address not updated correctly");
         assertEq(updatedAge, newAge, "Age not updated correctly");
     }
+
+    function setupIntializationTests(address[] memory assetAddresses, address[] memory priceFeeds, uint256[] memory maxAges) 
+        public returns (YieldNestOracle, YieldNestOracle.Init memory) {
+        TransparentUpgradeableProxy yieldNestOracleProxy;
+        yieldNestOracle = new YieldNestOracle();
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.PROXY_ADMIN_OWNER, "");
+        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
+
+        IStrategy[] memory strategies = new IStrategy[](2);
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
+
+        strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
+        strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
+
+        YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
+            assets: assetAddresses,
+            priceFeedAddresses: priceFeeds,
+            maxAges: maxAges,
+            admin: actors.ADMIN,
+            oracleManager: actors.ORACLE_MANAGER
+        });
+        return (yieldNestOracle, oracleInit);
+    }
+
+    function testInitializeAssetAddressesArraysLengthMismatch() public {
+        address[] memory assetAddresses = new address[](3);
+        address[] memory priceFeeds = new address[](2);
+        uint256[] memory maxAges = new uint256[](2);
+
+        assetAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
+        assetAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
+        assetAddresses[2] = chainAddresses.lsd.STETH_ADDRESS;
+        priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
+        priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+        maxAges[1] = uint256(86400);
+        maxAges[0] = uint256(86400);
+
+       (YieldNestOracle oracle, YieldNestOracle.Init memory init) = setupIntializationTests(assetAddresses, priceFeeds, maxAges);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                YieldNestOracle.ArraysLengthMismatch.selector,
+                assetAddresses.length,
+                priceFeeds.length,
+                maxAges.length
+            )
+        );
+        oracle.initialize(init);
+    }
+
+    function testInitializeAssetMaxAgesLengthMismatch() public {
+        address[] memory assetAddresses = new address[](2);
+        address[] memory priceFeeds = new address[](2);
+        uint256[] memory maxAges = new uint256[](3);
+
+        assetAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
+        assetAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
+
+        priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
+        priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+        maxAges[0] = uint256(86400);
+        maxAges[1] = uint256(86400);
+        maxAges[2] = uint256(86400);
+
+       (YieldNestOracle oracle, YieldNestOracle.Init memory init) = setupIntializationTests(assetAddresses, priceFeeds, maxAges);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                YieldNestOracle.ArraysLengthMismatch.selector,
+                assetAddresses.length,
+                priceFeeds.length,
+                maxAges.length
+            )
+        );
+        oracle.initialize(init);
+    }
+
+    function testInitializePriceFeedZeroAddress() public {
+        address[] memory assetAddresses = new address[](2);
+        address[] memory priceFeeds = new address[](2);
+        uint256[] memory maxAges = new uint256[](2);
+        assetAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
+        assetAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
+        priceFeeds[0] = address(0);
+        priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+        maxAges[0] = uint256(86400);
+        maxAges[1] = uint256(86400);
+
+       (YieldNestOracle oracle, YieldNestOracle.Init memory init) = setupIntializationTests(assetAddresses, priceFeeds, maxAges);
+        vm.expectRevert(abi.encodeWithSelector(YieldNestOracle.ZeroAddress.selector));
+        oracle.initialize(init);
+    }
+
+    function testInitializeAssetZeroAddress() public {
+        address[] memory assets = new address[](2);
+        address[] memory priceFeeds = new address[](2);
+        uint256[] memory maxAges = new uint256[](2);
+        assets[0] = address(0);
+        assets[1] = address(0);
+        priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
+        priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+        maxAges[0] = uint256(86400);
+        maxAges[1] = uint256(86400);
+
+       (YieldNestOracle oracle, YieldNestOracle.Init memory init) = setupIntializationTests(assets, priceFeeds, maxAges);
+        vm.expectRevert(abi.encodeWithSelector(YieldNestOracle.ZeroAddress.selector));
+        oracle.initialize(init);
+    }    
 }
+
