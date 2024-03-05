@@ -30,7 +30,10 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 
 	function testImplementationView() public {
 		address _implementation = lsdStakingNode.implementation();
-		assertEq(_implementation, address(lsdStakingNode));
+		vm.prank(actors.STAKING_NODE_CREATOR);
+		ynlsd.createLSDStakingNode();
+		ILSDStakingNode _lsdStakingNode = ynlsd.nodes(0);
+		assertEq(_implementation, address(_lsdStakingNode.implementation()));
 	}
 
 	function testDepositAssetsToEigenlayerUnsupportedAsset() public {
