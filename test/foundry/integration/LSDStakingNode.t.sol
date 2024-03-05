@@ -41,10 +41,9 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 
 	function testDepositAssetsToEigenlayerSuccess() public {
 
-
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
 		IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 32 ether;
+        uint256 amount = 1 ether;
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
@@ -52,11 +51,7 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 		stETH.approve(address(ynlsd), amount);
 		ynlsd.deposit(stETH, amount, address(this));
 
-		// // 2. retrieve the assets from ynLSD by Staking Admin
-		// vm.prank(address(lsdStakingNode));
-		// ynlsd.retrieveAsset(0, stETH, amount - 1);
-
-		// 3. Deposit assets to Eigenlayer by LSD ReStaking Manager
+		// 2. Deposit assets to Eigenlayer by LSD ReStaking Manager
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
         vm.prank(actors.STAKING_NODE_CREATOR);
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
