@@ -10,6 +10,7 @@ import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEig
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 import "forge-std/console.sol";
 import "../../../src/StakingNodesManager.sol";
+import "../../../src/ynETH.sol";
 import "../mocks/TestStakingNodeV2.sol";
 import "../mocks/TestStakingNodesManagerV2.sol";
 
@@ -89,8 +90,6 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
         vm.expectRevert("AccessControlUnauthorizedAccount");
         stakingNodesManager.createStakingNode();
     }
-
-
 }
 
 contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
@@ -313,7 +312,68 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.ValidatorAlreadyUsed.selector, ONE_PUBLIC_KEY) );
         stakingNodesManager.registerValidators(depositRoot, validatorData);
     }
-    
+
+    function testRegisterValidatorsWithInsufficientDeposit() public {
+        address addr1 = vm.addr(100);
+        vm.deal(addr1, 100 ether);
+        uint validatorCount = 1;
+        uint depositAmount = 16 ether; // Insufficient deposit amount
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+        // Attempt to register a validator with insufficient deposit
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](1);
+        validatorData[0] = IStakingNodesManager.ValidatorData({
+            publicKey: ONE_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: 0,
+            depositDataRoot: bytes32(0)
+        });
+
+        for (uint i = 0; i < validatorData.length; i++) {
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            uint amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(ynETH.InsufficientBalance.selector));
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+    }
+
+    function testRegisterValidatorsWithExceedingMaxNodeCount() public {
+        address addr1 = vm.addr(100);
+        vm.deal(addr1, 100 ether);
+        uint validatorCount = 1;
+        uint depositAmount = 32 ether * validatorCount;
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+
+        // Create nodes up to the max node count
+        uint256 maxNodeCount = stakingNodesManager.maxNodeCount();
+        for (uint256 i = 0; i < maxNodeCount; i++) {
+            vm.prank(actors.STAKING_NODE_CREATOR);
+            stakingNodesManager.createStakingNode();
+        }
+
+        // Attempt to register a validator when max node count is reached
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](1);
+        validatorData[0] = IStakingNodesManager.ValidatorData({
+            publicKey: ONE_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: uint256(maxNodeCount), // Node ID equal to max node count
+            depositDataRoot: bytes32(0)
+        });
+
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.InvalidNodeId.selector, maxNodeCount));
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+    } 
 }
 
 contract StakingNodesManagerViews is IntegrationBaseTest {
@@ -357,5 +417,17 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
         address nonAdminAddress = vm.addr(9999);
         isAdmin = stakingNodesManager.isStakingNodesAdmin(nonAdminAddress);
         assertFalse(isAdmin, "Address should not be an admin");
+    }
+}
+
+contract StakingNodesManagerMisc is IntegrationBaseTest {
+
+    function testSendingETHToStakingNodesManagerShouldRevert() public {
+        uint256 initialBalance = address(stakingNodesManager).balance;
+        uint256 amountToSend = 1 ether;
+
+        // Send ETH to the StakingNodesManager contract
+        (bool sent, ) = address(stakingNodesManager).call{value: amountToSend}("");
+        assertFalse(sent, "Sending ETH should fail");
     }
 }

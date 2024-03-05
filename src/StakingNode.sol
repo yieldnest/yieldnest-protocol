@@ -33,7 +33,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error ETHDepositorNotDelayedWithdrawalRouter();
     error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
-    error ClaimableAnmountExceedsPrincipal(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
+    error ValidatorPrincipalExceedsTotalClaimable(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
@@ -143,8 +143,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         for (uint256 i = 0; i < claimableWithdrawals.length; i++) {
             totalClaimable += claimableWithdrawals[i].amount;
         }
+
         if (totalClaimable < withdrawnValidatorPrincipal) {
-            revert ClaimableAnmountExceedsPrincipal(withdrawnValidatorPrincipal, totalClaimable);
+            revert ValidatorPrincipalExceedsTotalClaimable(withdrawnValidatorPrincipal, totalClaimable);
         }
 
         // only claim if we have active unclaimed withdrawals
@@ -156,6 +157,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             uint256 balanceAfter = address(this).balance;
 
             uint256 claimedAmount = balanceAfter - balanceBefore;
+
             if (totalClaimable > claimedAmount) {
                 revert ClaimAmountTooLow(totalClaimable, claimedAmount);
             }
