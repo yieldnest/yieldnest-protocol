@@ -90,8 +90,6 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
         vm.expectRevert("AccessControlUnauthorizedAccount");
         stakingNodesManager.createStakingNode();
     }
-
-
 }
 
 contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
@@ -419,5 +417,17 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
         address nonAdminAddress = vm.addr(9999);
         isAdmin = stakingNodesManager.isStakingNodesAdmin(nonAdminAddress);
         assertFalse(isAdmin, "Address should not be an admin");
+    }
+}
+
+contract StakingNodesManagerMisc is IntegrationBaseTest {
+
+    function testSendingETHToStakingNodesManagerShouldRevert() public {
+        uint256 initialBalance = address(stakingNodesManager).balance;
+        uint256 amountToSend = 1 ether;
+
+        // Send ETH to the StakingNodesManager contract
+        (bool sent, ) = address(stakingNodesManager).call{value: amountToSend}("");
+        assertFalse(sent, "Sending ETH should fail");
     }
 }

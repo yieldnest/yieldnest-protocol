@@ -13,20 +13,11 @@ import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEig
 import {IDelayedWithdrawalRouter} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {BeaconChainProofs} from "../../../src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {MainnetEigenPodMock} from "../mocks/mainnet/MainnetEigenPodMock.sol";
+import "../../../src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 
 
-contract StakingNodeTest is IntegrationBaseTest {
-    using stdStorage for StdStorage;
-
-    function testCreateNodeAndAssertETHBalanceWithoutRegisteredValidators() public {
-        
-        vm.prank(actors.STAKING_NODE_CREATOR);
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-
-        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
-        assertEq(actualETHBalance, 0, "ETH balance does not match expected value");
-    }
+contract StakingNodeTestBase is IntegrationBaseTest {
 
     function setupStakingNode(uint depositAmount) public returns (IStakingNode, IEigenPod) {
 
@@ -77,6 +68,10 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         return (stakingNodeInstance, eigenPodInstance);
     }
+}
+
+
+contract StakingNodeEigenPod is StakingNodeTestBase {
 
     function testCreateNodeAndVerifyPodStateIsValid() public {
 
@@ -114,6 +109,12 @@ contract StakingNodeTest is IntegrationBaseTest {
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
     }
+}
+
+
+contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
+    using stdStorage for StdStorage;
+
 
     function testWithdrawBeforeRestakingAndClaimDelayedWithdrawals() public {
 
@@ -206,7 +207,72 @@ contract StakingNodeTest is IntegrationBaseTest {
         uint expectedRewards = rewardsSweeped - validatorPrincipal;
         assertEq(rewardsAmount, expectedRewards, "Rewards amount does not match expected value");
     }
-      
+
+    function testValidatorPrincipalExceedsTotalClaimable() public {
+
+        uint activeValidators = 5;
+
+        uint depositAmount = activeValidators * 32 ether;
+        uint validatorPrincipal = depositAmount; // Total principal for all validators
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+
+        // Simulate rewards being sweeped into the StakingNode's balance
+        uint rewardsSweeped = 3 * 32 ether;
+        address payable eigenPodAddress = payable(address(eigenPodInstance));
+        vm.deal(eigenPodAddress, rewardsSweeped);
+
+        // Trigger withdraw before restaking successfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        stakingNodeInstance.withdrawBeforeRestaking();
+
+        // Simulate time passing for withdrawal delay
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
+
+        uint256 tooLargeValidatorPrincipal = validatorPrincipal;
+
+        // Attempt to claim withdrawals with a validator principal that exceeds total claimable amount
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(StakingNode.ValidatorPrincipalExceedsTotalClaimable.selector, tooLargeValidatorPrincipal, rewardsSweeped));
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, tooLargeValidatorPrincipal); // Exceeding by 1 ether
+    }
+
+
+    function testWithdrawalPrincipalAmountTooHigh() public {
+
+        uint activeValidators = 5;
+
+        uint depositAmount = activeValidators * 32 ether;
+        uint validatorPrincipal = depositAmount; // Total principal for all validators
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+
+        // Simulate rewards being sweeped into the StakingNode's balance
+        uint rewardsSweeped = 5 * 32 ether;
+        address payable eigenPodAddress = payable(address(eigenPodInstance));
+        vm.deal(eigenPodAddress, rewardsSweeped);
+
+        // Trigger withdraw before restaking successfully
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        stakingNodeInstance.withdrawBeforeRestaking();
+
+        // Simulate time passing for withdrawal delay
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
+
+        uint256 tooLargeValidatorPrincipal = validatorPrincipal + 1 ether;
+        uint256 expectedAllocatedETH = depositAmount;
+
+        // Attempt to claim withdrawals with a validator principal that exceeds total claimable amount
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(StakingNode.WithdrawalPrincipalAmountTooHigh.selector, tooLargeValidatorPrincipal, expectedAllocatedETH));
+        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, tooLargeValidatorPrincipal); // Exceeding by 1 ether
+    }
+}
+
+contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
+    using stdStorage for StdStorage;
 
     function testVerifyWithdrawalCredentialsRevertingWhenPaused() public {
 
@@ -376,3 +442,15 @@ contract StakingNodeTest is IntegrationBaseTest {
     }  
 }
 
+contract StakingNodeMiscTests is StakingNodeTestBase {
+
+    function testSendingETHToStakingNodeShouldRevert() public {
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        uint256 initialBalance = address(stakingNodeInstance).balance;
+        uint256 amountToSend = 1 ether;
+
+        // Attempt to send ETH to the StakingNode contract
+        (bool sent, ) = address(stakingNodeInstance).call{value: amountToSend}("");
+        assertFalse(sent, "Sending ETH should fail");
+    }
+}
