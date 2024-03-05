@@ -342,7 +342,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             revert UnsupportedAsset(asset);
         }
 
-        IERC20(asset).balanceOf(msg.sender);
         IERC20(asset).transfer(msg.sender, amount);
         emit AssetRetrieved(asset, amount, nodeId, msg.sender);
     }

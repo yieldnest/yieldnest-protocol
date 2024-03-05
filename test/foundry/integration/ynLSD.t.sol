@@ -303,15 +303,17 @@ contract ynLSDTest is IntegrationBaseTest {
         ILSDStakingNode lsdStakingNode = ynlsd.nodes(0);
         vm.deal(address(lsdStakingNode), 1000);
 
-        vm.startPrank(address(lsdStakingNode));
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        uint256 balance = asset.balanceOf(address(lsdStakingNode));
+        uint256 balance = asset.balanceOf(address(this));
         assertEq(balance, amount, "Amount not received");
 
+        asset.approve(address(ynlsd), amount);
+        ynlsd.deposit(asset, amount, address(this));
+
+        vm.startPrank(address(lsdStakingNode));
         asset.approve(address(ynlsd), 32 ether);
-        // ynlsd.deposit(asset, 32 ether, address(lsdStakingNode));
-        // ynlsd.retrieveAsset(0, asset, amount);
+        ynlsd.retrieveAsset(0, asset, amount);
         vm.stopPrank();
     }
 
@@ -474,3 +476,12 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
     }
 }
+
+
+
+/**
+
+    1. user desposits assets to ynLSD
+    2. 
+
+ */
