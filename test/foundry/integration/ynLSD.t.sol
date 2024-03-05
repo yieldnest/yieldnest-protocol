@@ -476,12 +476,3 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
     }
 }
-
-
-
-/**
-
-    1. user desposits assets to ynLSD
-    2. 
-
- */
