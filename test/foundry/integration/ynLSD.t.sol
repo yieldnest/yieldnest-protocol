@@ -14,13 +14,8 @@ import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
 import {ynBase} from "../../../src/ynBase.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-
-// contract ynLSDTest is IntegrationBaseTest {
-//     // ContractAddresses contractAddresses = new ContractAddresses();
-//     // ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-//     error PriceFeedTooStale(uint256 age, uint256 maxAge);
-// }
 
 contract ynLSDAssetTest is IntegrationBaseTest {
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
@@ -51,7 +46,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
     
-    function testDepositSTETH() public {
+    function testDepositSTETHSuccess() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 32 ether;
 
@@ -65,6 +60,8 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, 5 ether, address(this));
         ynlsd.deposit(stETH, 3 ether, address(this));
         ynlsd.deposit(stETH, 7 ether, address(this));
+        assertTrue((15 ether - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertTrue((ynlsd.totalAssets() - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDespositUnsupportedAsset() public {
@@ -480,12 +477,3 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
     }
 }
-
-
-
-/**
-
-    1. user desposits assets to ynLSD
-    2. 
-
- */
