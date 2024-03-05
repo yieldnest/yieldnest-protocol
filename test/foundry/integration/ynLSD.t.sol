@@ -53,7 +53,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
     
     function testDepositSTETH() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 128 ether;
+        uint256 amount = 32 ether;
 
         // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
@@ -61,10 +61,10 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 balance = stETH.balanceOf(address(this));
         assertEq(balance, amount, "Amount not received");
 
-        stETH.approve(address(ynlsd), 100 ether);
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        ynlsd.deposit(stETH, 32 ether, address(this));
+        stETH.approve(address(ynlsd), 32 ether);
+        ynlsd.deposit(stETH, 5 ether, address(this));
+        ynlsd.deposit(stETH, 3 ether, address(this));
+        ynlsd.deposit(stETH, 7 ether, address(this));
     }
     
     function testDespositUnsupportedAsset() public {
