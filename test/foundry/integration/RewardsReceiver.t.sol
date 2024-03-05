@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
-import "forge-std/Test.sol";
+import {RewardsReceiver} from "../../../src/RewardsReceiver.sol";
 
 contract RewardsReceiverTest is IntegrationBaseTest {
 
@@ -28,11 +28,20 @@ contract RewardsReceiverTest is IntegrationBaseTest {
 		executionLayerReceiver.transferETH(payable(newReceiver), 100);
 	}
 
-	function testFailTransferETHNotEnoughBalance() public {
+	function testTransferETHInsufficientBalance() public {
 		address newReceiver = address(33);
-		vm.prank(address(executionLayerReceiver));
+		vm.prank(address(rewardsDistributor));
+		vm.expectRevert(abi.encodeWithSelector(RewardsReceiver.InsufficientBalance.selector));
 		executionLayerReceiver.transferETH(payable(newReceiver), 100);
 	}
+
+	function testTransferETHTransferFailed() public {
+		address newReceiver = address(this);
+		vm.deal(address(executionLayerReceiver), 1);
+		vm.prank(address(rewardsDistributor));
+		vm.expectRevert(abi.encodeWithSelector(RewardsReceiver.TransferFailed.selector));
+		executionLayerReceiver.transferETH(payable(newReceiver), 1);
+	}	
 
 	function testERC20TransferOnlyWithrdrawerRole() public {
 		address receiver = address(33);
@@ -47,11 +56,4 @@ contract RewardsReceiverTest is IntegrationBaseTest {
 		mockERC20.mint(address(executionLayerReceiver), 100);
 		executionLayerReceiver.transferERC20(mockERC20, receiver, 100);
 	}
-
-	function testFailERC20TransferNotEnoughBalance() public {
-		address receiver = address(33);
-		vm.prank(address(executionLayerReceiver));
-		executionLayerReceiver.transferERC20(mockERC20, receiver, 100);
-	}
-
 }
