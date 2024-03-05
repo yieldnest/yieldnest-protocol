@@ -39,6 +39,7 @@ interface IStakingNode {
     function initialize(Init memory init) external;
     function createEigenPod() external returns (IEigenPod);
     function delegate(address operator) external;
+    function undelegate() external;
     function withdrawBeforeRestaking() external;
     function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint PendingWithdrawnValidatorPrincipal) external;
 
