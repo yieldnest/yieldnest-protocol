@@ -73,4 +73,26 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 		assertGt(deposits[0], 1);
 	}
 
+	function testDepositAssetsToEigenlayerFail() public {
+
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+		IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 1 ether;
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
+        uint256 balance = stETH.balanceOf(address(this));
+        assertEq(balance, amount, "Amount not received");
+		stETH.approve(address(ynlsd), amount);
+		ynlsd.deposit(stETH, amount, address(this));
+
+		// 2. Deposit should fail when paused
+		IERC20[] memory assets = new IERC20[](1);
+		assets[0] = stETH;
+		uint256[] memory amounts = new uint256[](1);
+		amounts[0] = 1 ether;
+		vm.prank(actors.LSD_RESTAKING_MANAGER);
+		vm.expectRevert("Pausable: index is paused");
+		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
+	}
+
 }
