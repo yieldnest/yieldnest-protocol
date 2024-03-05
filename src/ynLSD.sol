@@ -14,6 +14,7 @@ import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
 import {ynBase} from "./ynBase.sol";
 
+
 interface IynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
@@ -28,7 +29,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error UnsupportedAsset(IERC20 token);
+    error UnsupportedAsset(IERC20 asset);
     error ZeroAmount();
     error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
     error ZeroAddress();
@@ -56,7 +57,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     mapping(IERC20 => IStrategy) public strategies;
 
-    IERC20[] public tokens;
+    IERC20[] public assets;
 
     uint256 public exchangeAdjustmentRate;
 
@@ -72,7 +73,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     struct Init {
-        IERC20[] tokens;
+        IERC20[] assets;
         IStrategy[] strategies;
         IStrategyManager strategyManager;
         YieldNestOracle oracle;
@@ -105,12 +106,12 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         _grantRole(LSD_STAKING_NODE_CREATOR_ROLE, init.lsdStakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
 
-        for (uint256 i = 0; i < init.tokens.length; i++) {
-            if (address(init.tokens[i]) == address(0) || address(init.strategies[i]) == address(0)) {
+        for (uint256 i = 0; i < init.assets.length; i++) {
+            if (address(init.assets[i]) == address(0) || address(init.strategies[i]) == address(0)) {
                 revert ZeroAddress();
             }
-            tokens.push(init.tokens[i]);
-            strategies[init.tokens[i]] = init.strategies[i];
+            assets.push(init.assets[i]);
+            strategies[init.assets[i]] = init.strategies[i];
         }
 
         strategyManager = init.strategyManager;
@@ -181,16 +182,16 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     /**
      * @notice This function calculates the total assets of the contract
-     * @dev It iterates over all the tokens in the contract, gets the latest price for each token from the oracle, 
-     * multiplies it with the balance of the token and adds it to the total
+     * @dev It iterates over all the assets in the contract, gets the latest price for each asset from the oracle, 
+     * multiplies it with the balance of the asset and adds it to the total
      * @return total The total assets of the contract in the form of uint
      */
     function totalAssets() public view returns (uint256) {
         uint256 total = 0;
 
         uint256[] memory depositedBalances = getTotalAssets();
-        for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 price = oracle.getLatestPrice(address(tokens[i]));
+        for (uint256 i = 0; i < assets.length; i++) {
+            uint256 price = oracle.getLatestPrice(address(assets[i]));
             uint256 balance = depositedBalances[i];
             total += uint256(price) * balance / 1e18;
         }
@@ -198,17 +199,17 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
    /**
-     * @notice Converts a given amount of a specific token to shares
-     * @param asset The ERC-20 token to be converted
-     * @param amount The amount of the token to be converted
-     * @return shares The equivalent amount of shares for the given amount of the token
+     * @notice Converts a given amount of a specific asset to shares
+     * @param asset The ERC-20 asset to be converted
+     * @param amount The amount of the asset to be converted
+     * @return shares The equivalent amount of shares for the given amount of the asset
      */
     function convertToShares(IERC20 asset, uint256 amount) external view returns(uint256 shares) {
         IStrategy strategy = strategies[asset];
         if(address(strategy) != address(0)){
-           uint256 tokenPriceInETH = oracle.getLatestPrice(address(asset));
-           uint256 tokenAmountInETH = tokenPriceInETH * amount / 1e18;
-           shares = _convertToShares(tokenAmountInETH, Math.Rounding.Floor);
+           uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
+           uint256 assetAmountInETH = assetPriceInETH * amount / 1e18;
+           shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
         } else {
             revert UnsupportedAsset(asset);
         }
@@ -219,22 +220,29 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         view
         returns (uint256[] memory assetBalances)
     {
-        assetBalances = new uint256[](tokens.length);
-        IStrategy[] memory assetStrategies = new IStrategy[](tokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            assetStrategies[i] = strategies[tokens[i]];
+        assetBalances = new uint256[](assets.length);
+        IStrategy[] memory assetStrategies = new IStrategy[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            assetStrategies[i] = strategies[assets[i]];
+
+            // add balances for funds at rest in ynLSD
+            uint256 balanceThis = assets[i].balanceOf(address(this));
+            assetBalances[i] += balanceThis;
         }
 
+        // add balances contained in each LSDStakingNode
         uint256 nodeCount = nodes.length;
         for (uint256 i; i < nodeCount; i++ ) {
             
             ILSDStakingNode node = nodes[i];
-            for (uint256 j = 0; j < tokens.length; j++) {
+            for (uint256 j = 0; j < assets.length; j++) {
                 
-                IERC20 asset = tokens[i];
-                assetBalances[j] += asset.balanceOf(address(this));
-                assetBalances[j] += asset.balanceOf(address(node));
-                assetBalances[j] += assetStrategies[j].userUnderlyingView((address(node)));
+                IERC20 asset = assets[i];
+                uint256 balanceNode = asset.balanceOf(address(node));
+                assetBalances[j] += balanceNode;
+
+                uint256 strategyBalance = assetStrategies[j].userUnderlyingView((address(node)));
+                assetBalances[j] += strategyBalance;
             }
         }
     }
@@ -320,7 +328,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
-    function hasLSDRestakingManagerRole(address account) external returns (bool) {
+    function hasLSDRestakingManagerRole(address account) external view returns (bool) {
         return hasRole(LSD_RESTAKING_MANAGER_ROLE, account);
     }
 
