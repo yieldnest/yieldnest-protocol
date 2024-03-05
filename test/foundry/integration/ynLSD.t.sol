@@ -14,13 +14,10 @@ import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
 import {ynBase} from "../../../src/ynBase.sol";
-import "forge-std/Console.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract ynLSDTest is IntegrationBaseTest {
-    // ContractAddresses contractAddresses = new ContractAddresses();
-    // ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-    error PriceFeedTooStale(uint256 age, uint256 maxAge);
 
+contract ynLSDAssetTest is IntegrationBaseTest {
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
@@ -48,10 +45,10 @@ contract ynLSDTest is IntegrationBaseTest {
         vm.prank(actors.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
-    
-    function testDepositSTETH() public {
+
+    function testDepositSTETHSuccessWithOneDeposit() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 128 ether;
+        uint256 amount = 32 ether;
 
         // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
@@ -59,10 +56,58 @@ contract ynLSDTest is IntegrationBaseTest {
         uint256 balance = stETH.balanceOf(address(this));
         assertEq(balance, amount, "Amount not received");
 
-        stETH.approve(address(ynlsd), 100 ether);
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        ynlsd.deposit(stETH, 32 ether, address(this));
-        ynlsd.deposit(stETH, 32 ether, address(this));
+        uint depositAmount = 15 ether;
+
+        stETH.approve(address(ynlsd), 32 ether);
+        ynlsd.deposit(stETH, depositAmount, address(this));
+
+        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply(), "ynlsd balance does not match total supply");
+        assertTrue((depositAmount - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertTrue((depositAmount - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
+    }
+    
+    function testDepositSTETHSuccessWithMultipleDeposits() public {
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 32 ether;
+
+        // Obtain STETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
+        uint256 balance = stETH.balanceOf(address(this));
+        assertEq(balance, amount, "Amount not received");
+
+        stETH.approve(address(ynlsd), 32 ether);
+        uint256 depositAmountOne = 5 ether;
+        uint256 depositAmountTwo = 3 ether;
+        uint256 depositAmountThree = 7 ether;
+
+        ynlsd.deposit(stETH, depositAmountOne, address(this));
+        ynlsd.deposit(stETH, depositAmountTwo, address(this));
+        ynlsd.deposit(stETH, depositAmountThree, address(this));
+
+        uint256 totalDeposit = depositAmountOne + depositAmountTwo + depositAmountThree;
+
+        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply(), "ynlsd balance does not match total supply");
+        assertTrue((totalDeposit - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertTrue(totalDeposit - ynlsd.balanceOf(address(this)) < 1e18, "Invalid ynLSD Balance");
+    }
+    
+    function testDespositUnsupportedAsset() public {
+        IERC20 asset = IERC20(address(1));
+        uint256 amount = 1 ether;
+        address receiver = address(this);
+
+        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
+        ynlsd.deposit(asset, amount, receiver);
+    }
+    
+    function testDepositWithZeroAmount() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 0; // Zero amount for deposit
+        address receiver = address(this);
+
+        vm.expectRevert(ynLSD.ZeroAmount.selector);
+        ynlsd.deposit(asset, amount, receiver);
     }
 
     function testConvertToShares() public {
@@ -89,15 +134,6 @@ contract ynLSDTest is IntegrationBaseTest {
         // IERC20 asset = IERC20(address(1));
         // vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
         // TODO: Come back to this
-    }
-
-    function testDepositWithZeroAmount() public {
-        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 0; // Zero amount for deposit
-        address receiver = address(this);
-
-        vm.expectRevert(ynLSD.ZeroAmount.selector);
-        ynlsd.deposit(asset, amount, receiver);
     }
 
     function testGetSharesForAsset() public {
@@ -164,6 +200,9 @@ contract ynLSDTest is IntegrationBaseTest {
         // Assert that totalAssets reflects the deposit
         assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
     }
+}
+
+contract ynLSDAdminTest is IntegrationBaseTest {
 
     function testCreateLSDStakingNode() public {
         vm.prank(actors.STAKING_NODE_CREATOR);
@@ -242,15 +281,6 @@ contract ynLSDTest is IntegrationBaseTest {
         ynlsd.registerLSDStakingNodeImplementationContract(newImplementation);
     }
 
-    function testDespositUnsupportedAsset() public {
-        IERC20 asset = IERC20(address(1));
-        uint256 amount = 1 ether;
-        address receiver = address(this);
-
-        vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
-        ynlsd.deposit(asset, amount, receiver);
-    }
-
     function testRegisterLSDStakingNodeImplementationAlreadyExists() public {
         // address initialImplementation = address(new TestLSDStakingNodeV2());
         // vm.startPrank(actors.STAKING_ADMIN);
@@ -273,11 +303,11 @@ contract ynLSDTest is IntegrationBaseTest {
         ynlsd.retrieveAsset(0, asset, amount);
     }
 
-    function testLSDRetrieveAssetsUnsupportedAsset() public {
+    function testRetrieveAssetsUnsupportedAsset() public {
         // come back to this
     }
 
-    function testLSDRetrieveTransferExceedsBalance() public {
+    function testRetrieveTransferExceedsBalance() public {
         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
 
@@ -292,7 +322,7 @@ contract ynLSDTest is IntegrationBaseTest {
         vm.stopPrank();
     }
 
-    function testLSDRetrieveAssetsSuccess() public {
+    function testRetrieveAssetsSuccess() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 64;
 

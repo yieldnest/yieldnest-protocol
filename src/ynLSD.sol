@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -145,16 +146,18 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         if (amount == 0) {
             revert ZeroAmount();
         }
-        asset.safeTransferFrom(msg.sender, address(this), amount);
-         // Convert the value of the asset deposited to ETH
-        uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
-        uint256 assetAmountInETH = assetPriceInETH * amount / 1e18; // Assuming price is in 18 decimal places
 
+         // Convert the value of the asset deposited to ETH
+        uint256 assetAmountInETH = convertToETH(asset, amount);
         // Calculate how many shares to be minted using the same formula as ynETH
         shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
 
-        // Mint the calculated shares to the receiver
+        // Mint the calculated shares to the receiver 
         _mint(receiver, shares);
+
+        // transfer assets in after shares are computed since _convertToShares relies on totalAssets
+        // which inspects asset.balanceOf(address(this))
+        asset.safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, receiver, amount, shares);
     }
@@ -180,6 +183,15 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         );
     }
 
+
+    /// @notice Calculates the amount of shares to be minted for a given deposit.
+    /// @param asset The asset to be deposited.
+    /// @param amount The amount of asset to be deposited.
+    /// @return The amount of shares to be minted.
+    function previewDeposit(IERC20 asset, uint256 amount) public view virtual returns (uint256) {
+        return convertToShares(asset, amount);
+    }
+
     /**
      * @notice This function calculates the total assets of the contract
      * @dev It iterates over all the assets in the contract, gets the latest price for each asset from the oracle, 
@@ -191,9 +203,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         uint256[] memory depositedBalances = getTotalAssets();
         for (uint256 i = 0; i < assets.length; i++) {
-            uint256 price = oracle.getLatestPrice(address(assets[i]));
-            uint256 balance = depositedBalances[i];
-            total += uint256(price) * balance / 1e18;
+            uint256 balanceInETH = convertToETH(assets[i], depositedBalances[i]);
+            total += balanceInETH;
         }
         return total;
     }
@@ -204,11 +215,10 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
      * @param amount The amount of the asset to be converted
      * @return shares The equivalent amount of shares for the given amount of the asset
      */
-    function convertToShares(IERC20 asset, uint256 amount) external view returns(uint256 shares) {
+    function convertToShares(IERC20 asset, uint256 amount) public view returns(uint256 shares) {
         IStrategy strategy = strategies[asset];
         if(address(strategy) != address(0)){
-           uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
-           uint256 assetAmountInETH = assetPriceInETH * amount / 1e18;
+           uint256 assetAmountInETH = convertToETH(asset, amount);
            shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
         } else {
             revert UnsupportedAsset(asset);
@@ -247,6 +257,14 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         }
     }
 
+    function convertToETH(IERC20 asset, uint amount) public view returns (uint256) {
+
+        uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
+        uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
+        return assetDecimals < 18 || assetDecimals > 18
+            ? assetPriceInETH * amount / (10 ** assetDecimals)
+            : assetPriceInETH * amount / 1e18;
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
