@@ -14,7 +14,6 @@ import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
 import {ynBase} from "../../../src/ynBase.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import "forge-std/Console.sol";
 
 contract ynLSDTest is IntegrationBaseTest {
@@ -476,12 +475,3 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
     }
 }
-
-
-
-/**
-
-    1. user desposits assets to ynLSD
-    2. 
-
- */

@@ -21,7 +21,8 @@ interface ILSDStakingNode {
         uint[] memory amounts
     ) external;
 
-
+    function ynLSD() external view returns (IynLSD);
+    
     function implementation() external view returns (address);
 
     function getInitializedVersion() external view returns (uint64);
