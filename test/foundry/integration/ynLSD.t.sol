@@ -45,8 +45,28 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         vm.prank(actors.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
+
+    function testDepositSTETHSuccessWithOneDeposit() public {
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 32 ether;
+
+        // Obtain STETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
+        require(success, "ETH transfer failed");
+        uint256 balance = stETH.balanceOf(address(this));
+        assertEq(balance, amount, "Amount not received");
+
+        uint depositAmount = 15 ether;
+
+        stETH.approve(address(ynlsd), 32 ether);
+        ynlsd.deposit(stETH, depositAmount, address(this));
+
+        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply(), "ynlsd balance does not match total supply");
+        assertTrue((depositAmount - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertTrue((depositAmount - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
+    }
     
-    function testDepositSTETHSuccess() public {
+    function testDepositSTETHSuccessWithMultipleDeposits() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 32 ether;
 
@@ -57,11 +77,19 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         assertEq(balance, amount, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
-        ynlsd.deposit(stETH, 5 ether, address(this));
-        ynlsd.deposit(stETH, 3 ether, address(this));
-        ynlsd.deposit(stETH, 7 ether, address(this));
-        assertTrue((15 ether - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
-        assertTrue((ynlsd.totalAssets() - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
+        uint256 depositAmountOne = 5 ether;
+        uint256 depositAmountTwo = 3 ether;
+        uint256 depositAmountThree = 7 ether;
+
+        ynlsd.deposit(stETH, depositAmountOne, address(this));
+        ynlsd.deposit(stETH, depositAmountTwo, address(this));
+        ynlsd.deposit(stETH, depositAmountThree, address(this));
+
+        uint256 totalDeposit = depositAmountOne + depositAmountTwo + depositAmountThree;
+
+        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply(), "ynlsd balance does not match total supply");
+        assertTrue((totalDeposit - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertTrue(totalDeposit - ynlsd.balanceOf(address(this)) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDespositUnsupportedAsset() public {
