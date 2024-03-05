@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity 0.8.24;
+
 import "./IntegrationBaseTest.sol";
-
-
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {AggregatorV3Interface} from "../../../src/external/chainlink/AggregatorV3Interface.sol";
 
+
 contract YieldNestOracleTest is IntegrationBaseTest {
-    // ContractAddresses contractAddresses = new ContractAddresses();
-    // ContractAddresses.ChainAddresses public chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
     function testSetAssetWithZeroAge() public {
         vm.expectRevert(YieldNestOracle.ZeroAge.selector);
