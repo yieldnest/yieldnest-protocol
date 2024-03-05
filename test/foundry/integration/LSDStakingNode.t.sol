@@ -7,7 +7,6 @@ import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 import {IynLSD} from "../../../src/interfaces/IynLSD.sol";
 import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPausable.sol";
 
-import "forge-std/Console.sol";
 
 contract LSDStakingNodeTest is IntegrationBaseTest {
 
@@ -27,6 +26,11 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 	function testNodeIdView() public {
 		uint256 _nodeId = lsdStakingNode.nodeId();
 		assertEq(_nodeId, 0);
+	}
+
+	function testImplementationView() public {
+		address _implementation = lsdStakingNode.implementation();
+		assertEq(_implementation, address(lsdStakingNode));
 	}
 
 	function testDepositAssetsToEigenlayerUnsupportedAsset() public {
@@ -62,9 +66,11 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 		IERC20[] memory assets = new IERC20[](1);
 		assets[0] = stETH;
 		uint256[] memory amounts = new uint256[](1);
-		amounts[0] = stETH.balanceOf(address(lsdStakingNode));
+		amounts[0] = 1 ether;
 		vm.prank(actors.LSD_RESTAKING_MANAGER);
 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
+		(, uint256[] memory deposits) = strategyManager.getDeposits(address(lsdStakingNode));
+		assertGt(deposits[0], 1);
 	}
 
 }
