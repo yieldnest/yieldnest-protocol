@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from  "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategyManager,IStrategy} from "../external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "../external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
 import {ILSDStakingNode} from "./ILSDStakingNode.sol";
 import {ILSDStakingNode} from "./ILSDStakingNode.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -36,4 +37,7 @@ interface IynLSD {
     function retrieveAsset(uint nodeId, IERC20 asset, uint256 amount) external;
 
     function strategyManager() external returns (IStrategyManager);
+
+    function delegationManager() external returns (IDelegationManager);
+    
 }

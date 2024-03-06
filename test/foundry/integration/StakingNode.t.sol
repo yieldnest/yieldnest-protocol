@@ -376,6 +376,38 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         stakingNodeInstance.delegate(address(this));
     }
 
+    function testStakingNodeUndelegate() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
+        
+        // Unpause delegation manager to allow delegation
+        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
+
+        // Register as operator and delegate
+        delegationManager.registerAsOperator(IDelegationTerms(address(this)));
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        stakingNodeInstance.delegate(address(this));
+
+        // // Attempt to undelegate
+        vm.expectRevert();
+        stakingNodeInstance.undelegate();
+
+        IStrategyManager strategyManager = stakingNodesManager.strategyManager();
+        uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(stakingNodeInstance));
+        assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
+        
+        // Now actually undelegate with the correct role
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        stakingNodeInstance.undelegate();
+        
+        // Verify undelegation
+        address delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
+        assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+    }
+
     function testImplementViewFunction() public {
         vm.prank(actors.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();

@@ -7,7 +7,7 @@ import {IEigenPodManager} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPo
 import {IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
 import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
-import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IStrategy, IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
@@ -215,11 +215,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     function undelegate() public virtual onlyAdmin {
-        
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        delegationManager.undelegate(address(this));
 
-        address operator = delegationManager.delegatedTo(address(this));
+        address operator = stakingNodesManager.delegationManager().delegatedTo(address(this));
+        
+        IStrategyManager strategyManager = stakingNodesManager.strategyManager();
+        strategyManager.undelegate();
+
         emit Undelegated(operator);
     }
 

@@ -26,4 +26,8 @@ interface ILSDStakingNode {
     function implementation() external view returns (address);
 
     function getInitializedVersion() external view returns (uint64);
+
+    function delegate(address operator) external;
+
+    function undelegate() external;
 }

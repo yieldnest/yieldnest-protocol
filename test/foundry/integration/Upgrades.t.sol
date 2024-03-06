@@ -201,6 +201,7 @@ contract UpgradesTest is IntegrationBaseTest {
             assets: assets,
             strategies: strategies,
             strategyManager: strategyManager,
+            delegationManager: delegationManager,
             oracle: yieldNestOracle,
             exchangeAdjustmentRate: adjustmentRate,
             maxNodeCount: 10,
