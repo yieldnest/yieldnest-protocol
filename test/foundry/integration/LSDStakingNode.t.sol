@@ -7,7 +7,6 @@ import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
 import {IynLSD} from "../../../src/interfaces/IynLSD.sol";
 import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IPausable.sol";
 import {IDelegationTerms} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IDelegationTerms.sol";
-import "forge-std/console.sol";
 
 
 contract LSDStakingNodeTest is IntegrationBaseTest {
@@ -135,12 +134,12 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
         lsdStakingNodeInstance.delegate(address(this));
 
         // // Attempt to undelegate
-        // vm.expectRevert();
-        // lsdStakingNodeInstance.undelegate();
+        vm.expectRevert();
+        lsdStakingNodeInstance.undelegate();
 
         IStrategyManager strategyManager = ynlsd.strategyManager();
         uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(lsdStakingNodeInstance));
-        console.log("Staker Strategy List Length for LSD Staking Node:", stakerStrategyListLength);
+        assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
         // Now actually undelegate with the correct role
         vm.prank(actors.LSD_RESTAKING_MANAGER);

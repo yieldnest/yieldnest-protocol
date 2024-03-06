@@ -102,7 +102,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         address operator = delegationManager.delegatedTo(address(this));
         
         IStrategyManager strategyManager = ynLSD.strategyManager();
-        strategyManager.undelegate(address(this));
+        strategyManager.undelegate();
 
         emit Undelegated(operator);
     }

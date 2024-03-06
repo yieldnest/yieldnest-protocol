@@ -15,7 +15,6 @@ import {BeaconChainProofs} from "../../../src/external/eigenlayer/v0.1.0/BeaconC
 import {MainnetEigenPodMock} from "../mocks/mainnet/MainnetEigenPodMock.sol";
 import "../../../src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
-import "forge-std/console.sol";
 
 
 contract StakingNodeTestBase is IntegrationBaseTest {
@@ -393,16 +392,16 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         stakingNodeInstance.delegate(address(this));
 
         // // Attempt to undelegate
-        // vm.expectRevert();
-        // stakingNodeInstance.undelegate();
+        vm.expectRevert();
+        stakingNodeInstance.undelegate();
 
         IStrategyManager strategyManager = stakingNodesManager.strategyManager();
         uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(stakingNodeInstance));
-        console.log("Staker Strategy List Length for Staking Node:", stakerStrategyListLength);
+        assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
         // Now actually undelegate with the correct role
-        // vm.prank(actors.STAKING_NODES_ADMIN);
-        // stakingNodeInstance.undelegate();
+        vm.prank(actors.STAKING_NODES_ADMIN);
+        stakingNodeInstance.undelegate();
         
         // Verify undelegation
         address delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));

@@ -219,7 +219,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         address operator = stakingNodesManager.delegationManager().delegatedTo(address(this));
         
         IStrategyManager strategyManager = stakingNodesManager.strategyManager();
-        strategyManager.undelegate(address(this));
+        strategyManager.undelegate();
 
         emit Undelegated(operator);
     }
