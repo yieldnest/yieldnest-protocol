@@ -58,12 +58,19 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     UpgradeableBeacon public upgradeableBeacon;
 
+    /// @notice Mapping of ERC20 tokens to their corresponding EigenLayer strategy contracts.
     mapping(IERC20 => IStrategy) public strategies;
 
+    /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
 
     uint256 public exchangeAdjustmentRate;
-
+    
+    /**
+     * @notice Array of LSD Staking Node contracts.
+     * @dev These nodes are crucial for the delegation process within the YieldNest protocol. Each node represents a unique staking entity
+     * that can delegate LSD tokens to various operators for yield optimization. 
+     */
     ILSDStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
@@ -136,6 +143,16 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     //----------------------------------  DEPOSITS   ---------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Deposits a specified amount of an asset into the contract and mints shares to the receiver.
+     * @dev This function first checks if the asset is supported, then converts the asset amount to ETH equivalent,
+     * calculates the shares to be minted based on the ETH value, mints the shares to the receiver, and finally
+     * transfers the asset from the sender to the contract. Emits a Deposit event upon success.
+     * @param asset The ERC20 asset to be deposited.
+     * @param amount The amount of the asset to be deposited.
+     * @param receiver The address to receive the minted shares.
+     * @return shares The amount of shares minted to the receiver.
+     */
     function deposit(
         IERC20 asset,
         uint256 amount,
@@ -151,7 +168,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             revert ZeroAmount();
         }
 
-         // Convert the value of the asset deposited to ETH
+        // Convert the value of the asset deposited to ETH
         uint256 assetAmountInETH = convertToETH(asset, amount);
         // Calculate how many shares to be minted using the same formula as ynETH
         shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
@@ -159,23 +176,32 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         // Mint the calculated shares to the receiver 
         _mint(receiver, shares);
 
-        // transfer assets in after shares are computed since _convertToShares relies on totalAssets
+        // Transfer assets in after shares are computed since _convertToShares relies on totalAssets
         // which inspects asset.balanceOf(address(this))
         asset.safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, receiver, amount, shares);
     }
 
-
+    /**
+     * @dev Converts an ETH amount to shares based on the current exchange rate and specified rounding method.
+     * If it's the first stake (bootstrap phase), uses a 1:1 exchange rate. Otherwise, calculates shares based on
+     * the formula: deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount.
+     * This calculation can result in 0 during the bootstrap phase if `totalControlled` and `ynETHSupply` could be
+     * manipulated independently, which should not be possible.
+     * @param ethAmount The amount of ETH to convert to shares.
+     * @param rounding The rounding method to use for the calculation.
+     * @return The number of shares equivalent to the given ETH amount.
+     */
     function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
-        // Use totalSupply to see if this is the boostrap call, not totalAssets
+        // Use totalSupply to see if this is the bootstrap call, not totalAssets
         if (totalSupply() == 0) {
             return ethAmount;
         }
 
         // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        //  If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
+        // If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
         
         // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
         // independently. That should not be possible.
@@ -229,6 +255,12 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         }
     }
 
+    /**
+     * @notice Retrieves the total balances of all assets managed by the contract, both held directly and managed through strategies.
+     * @dev This function aggregates the balances of each asset held directly by the contract and in each LSDStakingNode, 
+     * including those managed by strategies associated with each asset.
+     * @return assetBalances An array of the total balances for each asset, indexed in the same order as the `assets` array.
+     */
     function getTotalAssets()
         public
         view
@@ -236,6 +268,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     {
         assetBalances = new uint256[](assets.length);
         IStrategy[] memory assetStrategies = new IStrategy[](assets.length);
+        
+        // First, add balances for funds held directly in ynLSD.
         for (uint256 i = 0; i < assets.length; i++) {
             assetStrategies[i] = strategies[assets[i]];
 
@@ -244,7 +278,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             assetBalances[i] += balanceThis;
         }
 
-        // add balances contained in each LSDStakingNode
+        // Next, add balances contained in each LSDStakingNode, including those managed by strategies.
         uint256 nodeCount = nodes.length;
         for (uint256 i; i < nodeCount; i++ ) {
             
@@ -260,9 +294,14 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             }
         }
     }
-
+    /**
+     * @notice Converts the amount of a given asset to its equivalent value in ETH based on the latest price from the oracle.
+     * @dev This function takes into account the decimal places of the asset to ensure accurate conversion.
+     * @param asset The ERC20 token to be converted to ETH.
+     * @param amount The amount of the asset to be converted.
+     * @return The equivalent amount of the asset in ETH.
+     */
     function convertToETH(IERC20 asset, uint amount) public view returns (uint256) {
-
         uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
         uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
         return assetDecimals < 18 || assetDecimals > 18
@@ -273,7 +312,13 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
     //--------------------------------------------------------------------------------------
-
+    /**
+     * @notice Creates a new LSD Staking Node using the Upgradeable Beacon pattern.
+     * @dev This function creates a new BeaconProxy instance pointing to the current implementation set in the upgradeableBeacon.
+     * It initializes the staking node, adds it to the nodes array, and emits an event.
+     * Reverts if the maximum number of staking nodes has been reached.
+     * @return ILSDStakingNode The interface of the newly created LSD Staking Node.
+     */
     function createLSDStakingNode()
         public
         notZeroAddress((address(upgradeableBeacon)))
@@ -297,6 +342,12 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         return node;
     }
 
+    /**
+     * @notice Initializes a newly created LSD Staking Node.
+     * @dev This function checks the current initialized version of the node and performs initialization if it hasn't been done.
+     * For future versions, additional conditional blocks should be added to handle version-specific initialization.
+     * @param node The ILSDStakingNode instance to be initialized.
+     */
     function initializeLSDStakingNode(ILSDStakingNode node) virtual internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
@@ -314,6 +365,12 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
          // for the next version while keeping the previous initializers
     }
 
+    /**
+     * @notice Registers a new LSD Staking Node implementation contract.
+     * @dev This function sets a new implementation contract for the LSD Staking Node by creating a new UpgradeableBeacon.
+     * It can only be called once to boostrap the first implementation.
+     * @param _implementationContract The address of the new LSD Staking Node implementation contract.
+     */
     function registerLSDStakingNodeImplementationContract(address _implementationContract)
         public
         onlyRole(STAKING_ADMIN_ROLE)
@@ -326,6 +383,13 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
     }
 
+    /**
+     * @notice Upgrades the LSD Staking Node implementation to a new version.
+     * @dev This function upgrades the implementation contract of the LSD Staking Nodes by setting a new implementation address in the upgradeable beacon.
+     * It then reinitializes all existing staking nodes to ensure they are compatible with the new implementation.
+     * This function can only be called by an account with the STAKING_ADMIN_ROLE.
+     * @param _implementationContract The address of the new implementation contract.
+     */
     function upgradeLSDStakingNodeImplementation(address _implementationContract)  
         public 
         onlyRole(STAKING_ADMIN_ROLE) 
@@ -337,7 +401,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         upgradeableBeacon.upgradeTo(_implementationContract);
 
-        // reinitialize all nodes
+        // Reinitialize all nodes to ensure compatibility with the new implementation.
         for (uint256 i = 0; i < nodes.length; i++) {
             initializeLSDStakingNode(nodes[i]);
         }
@@ -354,6 +418,14 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         return hasRole(LSD_RESTAKING_MANAGER_ROLE, account);
     }
 
+    /**
+     * @notice Retrieves a specified amount of an asset from the staking node.
+     * @dev Transfers the specified `amount` of `asset` to the caller, if the caller is the staking node.
+     * Reverts if the caller is not the staking node or if the asset is not supported.
+     * @param nodeId The ID of the staking node attempting to retrieve the asset.
+     * @param asset The ERC20 token to be retrieved.
+     * @param amount The amount of the asset to be retrieved.
+     */
     function retrieveAsset(uint256 nodeId, IERC20 asset, uint256 amount) external {
         if (address(nodes[nodeId]) != msg.sender) {
             revert NotLSDStakingNode(msg.sender, nodeId);

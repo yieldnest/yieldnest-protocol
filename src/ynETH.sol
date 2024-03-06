@@ -7,7 +7,13 @@ import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
 import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
 import {ynBase} from "./ynBase.sol";
- 
+
+/**
+ * @title ynETH
+ * @dev The ynETH contract is a core component of the YieldNEst restaking protocol, facilitating the native restaking of ETH
+ /// management of staking nodes, and distribution of rewards. It serves as the entry point for users to deposit ETH
+ /// in exchange for ynETH tokens, representing their share of the staked ETH. 
+ */
 contract ynETH is IynETH, ynBase, IStakingEvents {
 
     //--------------------------------------------------------------------------------------
