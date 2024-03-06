@@ -112,23 +112,31 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         // Assert
         assertEq(sharesAfterFirstDeposit, expectedShares, "Fuzz: Shares should match expected shares");
+        
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+        // Assert
+        assertEq(totalAssetsAfterDeposit, ethAmount, "Total assets should increase by the deposit amount");
     }
 
     function testConvertToSharesAfterSecondDeposit() public {
         // Arrange
-        uint256 ethAmount = 1 ether;
-        yneth.depositETH{value: ethAmount}(address(this));
-        yneth.depositETH{value: ethAmount}(address(this));
+        uint256 firstDepositAmount = 10 ether;
+        uint256 secondDepositAmount = 20 ether;
+        uint256 thirdDepositAmount = 15 ether;
+        yneth.depositETH{value: firstDepositAmount}(address(this));
+        yneth.depositETH{value: secondDepositAmount}(address(this));
 
         // Act
-        uint256 sharesAfterSecondDeposit = yneth.previewDeposit(ethAmount);
+        uint256 sharesAfterSecondDeposit = yneth.previewDeposit(thirdDepositAmount);
 
-        uint256 expectedTotalAssets = 2 * ethAmount; // Assuming initial total assets were equal to ethAmount before rewards
-        uint256 expectedTotalSupply = 2 * ethAmount - startingExchangeAdjustmentRate * ethAmount / 10000; // Assuming initial total supply equals shares after first deposit
+        // Assuming initial total assets were equal to firstDepositAmount before rewards
+        uint256 expectedTotalAssets = firstDepositAmount + secondDepositAmount; 
+        // Assuming initial total supply equals shares after first deposit
+        uint256 expectedTotalSupply = firstDepositAmount + secondDepositAmount - startingExchangeAdjustmentRate * secondDepositAmount / 10000; 
         // Using the formula from ynETH to calculate expectedShares
         // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
         uint256 expectedShares = Math.mulDiv(
-                ethAmount,
+                thirdDepositAmount,
                 expectedTotalSupply * uint256(10000 - startingExchangeAdjustmentRate),
                 expectedTotalAssets * uint256(10000),
                 Math.Rounding.Floor
