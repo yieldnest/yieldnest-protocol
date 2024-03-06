@@ -159,11 +159,14 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesAfterSecondDeposit, expectedShares, "Shares should equal ETH amount after second deposit");
     }
 
-    function testConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver() public {
+    function testFuzzConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver(uint256 ethAmount, uint256 rawRewardAmount) public {
+
+        vm.assume(ethAmount > 0 ether && ethAmount <= 10000 ether);
+        vm.assume(rawRewardAmount > 0 ether && rawRewardAmount <= 10000 ether);
         // Arrange
-        uint256 ethAmount = 1 ether;
+        //uint256 ethAmount = 1 ether;
         yneth.depositETH{value: ethAmount}(address(this));
-        uint256 rawRewardAmount = 1 ether;
+        //uint256 rawRewardAmount = 1 ether;
         // Deal directly to the executionLayerReceiver
         vm.deal(address(executionLayerReceiver), rawRewardAmount);
         // Simulate RewardsDistributor processing rewards which are then forwarded to yneth
@@ -185,7 +188,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
             );
 
         // Assert
-        assertEq(sharesAfterDepositAndRewards, expectedShares, "Shares should equal ETH amount after deposit and rewards processed through RewardsReceiver");
+        assertTrue(compareWithThreshold(sharesAfterDepositAndRewards, expectedShares, 1), "Shares should be within threshold of 1 of the expected ETH amount after deposit and rewards processed through RewardsReceiver");
     }
 
     function testRewardsDistributionToYnETHAndFeeReceiver() public {
