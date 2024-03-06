@@ -8,11 +8,10 @@ import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
-import "forge-std/console.sol";
-import "../../../src/StakingNodesManager.sol";
-import "../../../src/ynETH.sol";
-import "../mocks/TestStakingNodeV2.sol";
-import "../mocks/TestStakingNodesManagerV2.sol";
+import {StakingNodesManager} from "../../../src/StakingNodesManager.sol";
+import {ynETH} from "../../../src/ynETH.sol";
+import {TestStakingNodeV2} from "../mocks/TestStakingNodeV2.sol";
+import {TestStakingNodesManagerV2} from "../mocks/TestStakingNodesManagerV2.sol";
 
 
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
@@ -89,6 +88,15 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
         // Attempt to create a staking node without STAKING_NODE_CREATOR_ROLE should fail
         vm.expectRevert("AccessControlUnauthorizedAccount");
         stakingNodesManager.createStakingNode();
+    }
+
+    function testSetMaxNodeCount() public {
+        uint256 initialMaxNodeCount = stakingNodesManager.maxNodeCount();
+        uint256 newMaxNodeCount = initialMaxNodeCount + 1;
+        vm.prank(actors.STAKING_ADMIN);
+        stakingNodesManager.setMaxNodeCount(newMaxNodeCount);
+        uint256 updatedMaxNodeCount = stakingNodesManager.maxNodeCount();
+        assertEq(updatedMaxNodeCount, newMaxNodeCount, "Max node count does not match expected value");
     }
 }
 
@@ -316,7 +324,6 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
     function testRegisterValidatorsWithInsufficientDeposit() public {
         address addr1 = vm.addr(100);
         vm.deal(addr1, 100 ether);
-        uint validatorCount = 1;
         uint depositAmount = 16 ether; // Insufficient deposit amount
         vm.prank(addr1);
         yneth.depositETH{value: depositAmount}(addr1);
@@ -423,7 +430,6 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
 contract StakingNodesManagerMisc is IntegrationBaseTest {
 
     function testSendingETHToStakingNodesManagerShouldRevert() public {
-        uint256 initialBalance = address(stakingNodesManager).balance;
         uint256 amountToSend = 1 ether;
 
         // Send ETH to the StakingNodesManager contract
