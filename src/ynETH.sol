@@ -93,7 +93,12 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     //--------------------------------------------------------------------------------------
     //----------------------------------  DEPOSITS   ---------------------------------------
     //--------------------------------------------------------------------------------------
-
+    /**
+     * @notice Allows depositing ETH into the contract in exchange for shares.
+     * @dev Mints shares equivalent to the deposited ETH value and assigns them to the receiver.
+     * @param receiver The address to receive the minted shares.
+     * @return shares The amount of shares minted for the deposited ETH.
+     */
     function depositETH(address receiver) public payable returns (uint256 shares) {
 
         if (depositsPaused) {
@@ -143,15 +148,21 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
+    /// @notice Calculates the total assets controlled by the protocol.
+    /// @dev This includes both the ETH deposited in the pool awaiting processing and the ETH already sent to validators on the beacon chain.
+    /// @return total The total amount of ETH in wei.
     function totalAssets() public view returns (uint256) {
         uint256 total = 0;
-        // allocated ETH for deposits pending to be processed
+        // Allocated ETH for deposits pending to be processed.
         total += totalDepositedInPool;
-        /// The total ETH sent to the beacon chain 
+        // The total ETH sent to the beacon chain.
         total += totalDepositedInValidators();
         return total;
     }
 
+    /// @notice Calculates the total amount of ETH deposited across all validators.
+    /// @dev Iterates through all staking nodes to sum up their ETH balances.
+    /// @return totalDeposited The total amount of ETH deposited in all validators.
     function totalDepositedInValidators() internal view returns (uint256) {
         IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
         uint256 totalDeposited = 0;
@@ -165,6 +176,9 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------
     //--------------------------------------------------------------------------------------
 
+    /// @notice Receives rewards in ETH and adds them to the total deposited in the pool.
+    /// @dev Only the rewards distributor contract can call this function.
+    /// Reverts if called by any address other than the rewards distributor.
     function receiveRewards() external payable {
         if (msg.sender != address(rewardsDistributor)) {
             revert NotRewardsDistributor();
@@ -172,25 +186,41 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         totalDepositedInPool += msg.value;
     }
 
+    /// @notice Withdraws a specified amount of ETH from the pool to the Staking Nodes Manager.
+    /// @dev This function can only be called by the Staking Nodes Manager.
+    /// @param ethAmount The amount of ETH to withdraw in wei.
     function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
+        // Check if the pool has enough ETH to fulfill the withdrawal request.
         if (totalDepositedInPool < ethAmount) {
             revert InsufficientBalance();
         }
 
+        // Deduct the withdrawal amount from the total deposited in the pool.
         totalDepositedInPool -= ethAmount;
+        // Transfer the specified amount of ETH to the Staking Nodes Manager.
         payable(address(stakingNodesManager)).transfer(ethAmount);
     }
 
+    /// @notice Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
+    /// @dev This function can only be called by the Staking Nodes Manager.
+    /// It increases the total deposited in the pool by the amount of ETH sent with the call.
     function processWithdrawnETH() public payable onlyStakingNodesManager {
         totalDepositedInPool += msg.value;
     }
 
+    /// @notice Updates the pause state of ETH deposits.
+    /// @dev Can only be called by an account with the PAUSER_ROLE.
+    /// @param isPaused The new pause state to set for ETH deposits.
     function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
         depositsPaused = isPaused;
         emit DepositETHPausedUpdated(depositsPaused);
     }
-
-    function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {
+    
+    /// @notice Sets the exchange adjustment rate.
+    /// @dev Can only be called by the admin..
+    /// Reverts if the new rate exceeds the basis points denominator.
+    /// @param newRate The new exchange adjustment rate to be set.
+    function setExchangeAdjustmentRate(uint256 newRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newRate > BASIS_POINTS_DENOMINATOR) {
             revert ValueOutOfBounds(newRate);
         }

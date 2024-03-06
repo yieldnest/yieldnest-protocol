@@ -362,7 +362,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testSetExchangeAdjustmentRate() public {
         uint256 newRate = 1000;
-        vm.prank(address(stakingNodesManager));
+        vm.prank(address(actors.ADMIN));
         yneth.setExchangeAdjustmentRate(newRate);
         assertEq(yneth.exchangeAdjustmentRate(), newRate);
     }
@@ -370,7 +370,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     function testSetExchangeAdjustmentRateWithInvalidRate() public {
         uint256 invalidRate = 100000000000000000000;
         bytes memory encodedError = abi.encodeWithSelector(ynETH.ValueOutOfBounds.selector, invalidRate);
-        vm.startPrank(address(stakingNodesManager));
+        vm.prank(address(actors.ADMIN));
         vm.expectRevert(encodedError);
         yneth.setExchangeAdjustmentRate(invalidRate);
         vm.stopPrank();
