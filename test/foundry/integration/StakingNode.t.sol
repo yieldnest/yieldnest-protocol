@@ -75,7 +75,9 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
 
     function testCreateNodeAndVerifyPodStateIsValid() public {
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        uint depositAmount = 32 ether;
+
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
 
         // Collapsed variable declarations into direct usage within assertions and conditions
 
@@ -108,6 +110,15 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
+
+        rewardsDistributor.processRewards();
+
+        uint256 fee = uint256(rewardsDistributor.feesBasisPoints());
+        uint finalRewardsReceived = rewardsAmount - (rewardsAmount * fee / 10000);
+
+        // Assert total assets after claiming delayed withdrawals
+        uint256 totalAssets = yneth.totalAssets();
+        assertEq(totalAssets, finalRewardsReceived + depositAmount, "Total assets after claiming delayed withdrawals do not match expected value");
     }
 }
 

@@ -46,4 +46,19 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		rewardsDistributor.processRewards();
 		vm.stopPrank();
 	}
+
+	function testSetFeeBasisPoints() public {
+		uint16 newFeeBasisPoints = 500; // 5%
+		vm.prank(actors.ADMIN);
+		rewardsDistributor.setFeesBasisPoints(newFeeBasisPoints);
+		assertEq(rewardsDistributor.feesBasisPoints(), newFeeBasisPoints);
+	}
+
+	function testFailSetFeeBasisPointsExceedsLimit() public {
+		
+		uint16 newFeeBasisPoints = 15000; // 150%, exceeds 100%
+		vm.prank(actors.ADMIN);
+		vm.expectRevert(abi.encodeWithSelector(RewardsDistributor.InvalidBasisPoints.selector, newFeeBasisPoints));
+		rewardsDistributor.setFeesBasisPoints(newFeeBasisPoints);
+	}
 }
