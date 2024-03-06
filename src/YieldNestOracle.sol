@@ -57,6 +57,12 @@ contract YieldNestOracle is AccessControlUpgradeable {
     }
 
 
+    /**
+     * @notice Sets the price feed for a given asset.
+     * @param asset The address of the asset.
+     * @param priceFeedAddress The address of the price feed.
+     * @param maxAge The maximum age (in seconds) of the price feed data to be considered valid.
+     */
     function setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) public onlyRole(ORACLE_MANAGER_ROLE) {
         if(priceFeedAddress == address(0) || asset == address(0)) {
             revert ZeroAddress();
@@ -73,6 +79,11 @@ contract YieldNestOracle is AccessControlUpgradeable {
         assetPriceFeeds[asset] = AssetPriceFeed(AggregatorV3Interface(priceFeedAddress), maxAge);
     }
 
+    /**
+     * @notice Retrieves the latest price for a given asset.
+     * @param asset The address of the asset.
+     * @return The latest price of the asset.
+     */
     function getLatestPrice(address asset) public view returns (uint256) {
         AssetPriceFeed storage priceFeed = assetPriceFeeds[asset];
         if(address(priceFeed.priceFeed) == address(0)) {

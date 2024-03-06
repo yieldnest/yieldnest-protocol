@@ -93,6 +93,12 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     //----------------------------------  REWARDS PROCESSING  ------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Processes rewards by aggregating them, calculating protocol fees, and distributing net rewards and fees.
+     * This function aggregates rewards from the execution layer and consensus layer receivers, calculates the protocol fees,
+     * transfers the aggregated rewards into this contract, sends the net rewards (after fees) to the ynETH contract, and
+     * transfers the calculated fees to the fees receiver wallet. It ensures the contract's balance remains unchanged after execution.
+     */
     function processRewards()
         external
         assertBalanceUnchanged

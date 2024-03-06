@@ -17,7 +17,11 @@ interface ILSDStakingNodeEvents {
     event Undelegated(address indexed operator);
 }
 
-
+/**
+ * @title LSD Staking Node
+ * @dev Implements staking node functionality for LSD tokens, enabling LSD staking, delegation, and rewards management.
+ * This contract interacts with the Eigenlayer protocol to deposit assets, delegate staking operations, and manage staking rewards.
+ */
 contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
 
     //--------------------------------------------------------------------------------------
@@ -57,6 +61,12 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //----------------------------------  EIGENLAYER DEPOSITS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Deposits multiple assets into their respective strategies on Eigenlayer by retrieving them from ynLSD.
+     * @dev Iterates through the provided arrays of assets and amounts, depositing each into its corresponding strategy.
+     * @param assets An array of IERC20 tokens to be deposited.
+     * @param amounts An array of amounts corresponding to each asset to be deposited.
+     */
     function depositAssetsToEigenlayer(
         IERC20[] memory assets,
         uint256[] memory amounts
@@ -88,6 +98,10 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //----------------------------------  DELEGATION  --------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Delegates the staking operation to a specified operator.
+     * @param operator The address of the operator to whom the staking operation is being delegated.
+     */
     function delegate(address operator) public virtual onlyLSDRestakingManager {
 
         IDelegationManager delegationManager = ynLSD.delegationManager();
@@ -96,6 +110,10 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         emit Delegated(operator, 0);
     }
 
+    /**
+     * @notice Undelegates the staking operation from the current operator.
+     * @dev Retrieves the current operator by calling `delegatedTo` on the DelegationManager for event logging.
+     */
     function undelegate() public virtual onlyLSDRestakingManager {
         
         IDelegationManager delegationManager = ynLSD.delegationManager();
@@ -106,7 +124,6 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
         emit Undelegated(operator);
     }
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
