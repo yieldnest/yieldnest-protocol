@@ -15,6 +15,8 @@ import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
 import {ynBase} from "../../../src/ynBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import "forge-std/console.sol";
+
 
 
 contract ynLSDAssetTest is IntegrationBaseTest {
@@ -175,6 +177,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         emit log_uint(balance);
         assertEq(balance, amount, "Amount not received");
         asset.approve(address(ynlsd), amount);
+        ynlsd.deposit(asset, amount, address(this));
 
         {
             IERC20[] memory assets = new IERC20[](1);
@@ -184,8 +187,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
             vm.prank(actors.LSD_RESTAKING_MANAGER);
 
-            // TODO: Come back to this
-            // lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
+            lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
         }
 
         uint256 totalAssetsAfterDeposit = ynlsd.totalAssets();
@@ -194,7 +196,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
         IStrategy strategy = ynlsd.strategies(IERC20(chainAddresses.lsd.STETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(lsdStakingNode)));
-
+        
         uint256 expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
 
         // Assert that totalAssets reflects the deposit

@@ -11,6 +11,7 @@ import {IynETH} from "./interfaces/IynETH.sol";
 interface RewardsDistributorEvents {
     event FeesCollected(uint256 amount);
     event FeeReceiverSet(address ewReceiver);
+    event FeesBasisPointsSet(uint256 feeBasisPoints);
 }
 
 
@@ -25,6 +26,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     error Paused();
     error ZeroAddress();
     error FeeSendFailed();
+    error InvalidBasisPoints();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -138,6 +140,17 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     {
         feesReceiver = newReceiver;
         emit FeeReceiverSet(newReceiver);
+    }
+
+    /// @notice Sets the fees basis points for the protocol.
+    /// @param newFeesBasisPoints The new fees basis points.
+    function setFeesBasisPoints(uint16 newFeesBasisPoints)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        if (newFeesBasisPoints > _BASIS_POINTS_DENOMINATOR) revert InvalidBasisPoints();
+        feesBasisPoints = newFeesBasisPoints;
+        emit FeesBasisPointsSet(newFeesBasisPoints);
     }
 
     modifier assertBalanceUnchanged() {
