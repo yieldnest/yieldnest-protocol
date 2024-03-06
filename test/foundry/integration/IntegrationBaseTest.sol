@@ -257,6 +257,7 @@ contract IntegrationBaseTest is Test, Utils {
             assets: assets,
             strategies: strategies,
             strategyManager: strategyManager,
+            delegationManager: delegationManager,
             oracle: yieldNestOracle,
             exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD,
             maxNodeCount: 10,

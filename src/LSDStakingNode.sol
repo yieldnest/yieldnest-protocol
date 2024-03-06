@@ -8,10 +8,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {IynLSD} from "./interfaces/IynLSD.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 
 interface ILSDStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
+    event Delegated(address indexed operator, bytes32 approverSalt);
+    event Undelegated(address indexed operator);
 }
 
 
@@ -80,6 +83,30 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
             emit DepositToEigenlayer(assets[i], strategy, amount, eigenShares);
         }
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  DELEGATION  --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function delegate(address operator) public virtual onlyLSDRestakingManager {
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+        delegationManager.delegateTo(operator);
+
+        emit Delegated(operator, 0);
+    }
+
+    function undelegate() public virtual onlyLSDRestakingManager {
+        
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+        address operator = delegationManager.delegatedTo(address(this));
+        
+        IStrategyManager strategyManager = ynLSD.strategyManager();
+        strategyManager.undelegate(address(this));
+
+        emit Undelegated(operator);
+    }
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------

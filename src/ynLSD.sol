@@ -10,6 +10,7 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
 import {IynLSD} from "./interfaces/IynLSD.sol";
 import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "./YieldNestOracle.sol";
@@ -53,7 +54,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     YieldNestOracle  public oracle;
     IStrategyManager public strategyManager;
-        
+    IDelegationManager public delegationManager;
+
     UpgradeableBeacon public upgradeableBeacon;
 
     mapping(IERC20 => IStrategy) public strategies;
@@ -77,6 +79,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         IERC20[] assets;
         IStrategy[] strategies;
         IStrategyManager strategyManager;
+        IDelegationManager delegationManager;
         YieldNestOracle oracle;
         uint256 exchangeAdjustmentRate;
         uint256 maxNodeCount;
@@ -116,6 +119,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         }
 
         strategyManager = init.strategyManager;
+        delegationManager = init.delegationManager;
         oracle = init.oracle;
 
         if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
