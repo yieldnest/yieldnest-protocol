@@ -30,4 +30,19 @@ contract Utils {
         bytes32 implementationSlot = vm.load(proxy, ERC1967Utils.IMPLEMENTATION_SLOT);
         return address(uint160(uint256(implementationSlot)));
     }
+
+    /**
+     * @dev Compares two uint256 values and checks if their difference is within a specified threshold.
+     * @param value1 The first uint256 value.
+     * @param value2 The second uint256 value.
+     * @param threshold The threshold for the difference between value1 and value2.
+     * @return bool Returns true if the difference between value1 and value2 is less than or equal to the threshold.
+     */
+    function compareWithThreshold(uint256 value1, uint256 value2, uint256 threshold) public pure returns (bool) {
+        if(value1 > value2) {
+            return (value1 - value2) <= threshold;
+        } else {
+            return (value2 - value1) <= threshold;
+        }
+    }
 }

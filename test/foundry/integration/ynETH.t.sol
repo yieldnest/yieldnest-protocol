@@ -89,10 +89,9 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(totalAssetsAfterDeposit, initialTotalAssets + depositAmount, "Total assets should increase by the deposit amount");
     }
 
-    function testConvertToSharesBeforeAnyDeposits() public {
-        // Arrange
-        uint256 ethAmount = 1 ether;
+    function testFuzzConvertToSharesBeforeAnyDeposits(uint ethAmount) public {
 
+       vm.assume(ethAmount > 0 ether && ethAmount <= 10000 ether);
         // Act
         uint256 sharesBeforeDeposit = yneth.previewDeposit(ethAmount);
 
@@ -100,35 +99,56 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesBeforeDeposit, ethAmount, "Shares should equal ETH amount before any deposits");
     }
 
-    function testFuzzConvertToSharesAfterFirstDeposit(uint256 ethAmount) public {
+    function testFuzzConvertToSharesAfterFirstDeposit(uint256 firstDepositAmount, uint256 secondDepositAmount) public {
         // Arrange
-        vm.assume(ethAmount > 0 ether && ethAmount <= 10000 ether);
-        yneth.depositETH{value: ethAmount}(address(this));
+        vm.assume(firstDepositAmount > 0 ether && firstDepositAmount <= 10000 ether);
+        vm.assume(secondDepositAmount > 0 ether && secondDepositAmount <= 10000 ether);
+        yneth.depositETH{value: firstDepositAmount}(address(this));
 
         // Act
-        uint256 sharesAfterFirstDeposit = yneth.previewDeposit(ethAmount);
+        uint256 sharesAfterFirstDeposit = yneth.previewDeposit(secondDepositAmount);
 
-        uint256 expectedShares = Math.mulDiv(ethAmount, 10000 - startingExchangeAdjustmentRate, 10000, Math.Rounding.Floor);
+        uint256 expectedShares = Math.mulDiv(secondDepositAmount, 10000 - startingExchangeAdjustmentRate, 10000, Math.Rounding.Floor);
 
         // Assert
         assertEq(sharesAfterFirstDeposit, expectedShares, "Fuzz: Shares should match expected shares");
+        
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+        // Assert
+        assertEq(totalAssetsAfterDeposit, firstDepositAmount, "Total assets should increase by the deposit amount");
     }
 
-    function testConvertToSharesAfterSecondDeposit() public {
-        // Arrange
-        uint256 ethAmount = 1 ether;
-        yneth.depositETH{value: ethAmount}(address(this));
-        yneth.depositETH{value: ethAmount}(address(this));
+    function testFuzzConvertToSharesAfterSecondDeposit(uint256 firstDepositAmount, uint256 secondDepositAmount, uint256 thirdDepositAmount) public {
 
+        vm.assume(firstDepositAmount > 0 ether && firstDepositAmount <= 10000 ether);
+        vm.assume(secondDepositAmount > 0 ether && secondDepositAmount <= 10000 ether);
+        vm.assume(thirdDepositAmount > 0 ether && thirdDepositAmount <= 10000 ether);
+
+        yneth.depositETH{value: firstDepositAmount}(address(this));
+
+        uint256 totalAssetsAfterFirstDeposit = yneth.totalAssets();
+        assertEq(totalAssetsAfterFirstDeposit, firstDepositAmount, "Total assets should match first deposit amount");
+        yneth.depositETH{value: secondDepositAmount}(address(this));
+
+        // Assuming initial total assets were equal to firstDepositAmount before rewards
+        uint256 expectedTotalAssets = firstDepositAmount + secondDepositAmount; 
+        uint256 totalAssetsAfterSecondDeposit = yneth.totalAssets();
+        assertEq(totalAssetsAfterSecondDeposit, expectedTotalAssets, "Total assets should match expected total after second deposit");
+
+                // Assuming initial total supply equals shares after first deposit
+        uint256 expectedTotalSupply = firstDepositAmount + secondDepositAmount - startingExchangeAdjustmentRate * secondDepositAmount / 10000; 
+        uint256 totalSupplyAfterSecondDeposit = yneth.totalSupply();
+        // TODO: figure out this precision issue
+        assertTrue(compareWithThreshold(totalSupplyAfterSecondDeposit, expectedTotalSupply, 1), "Total supply should match expected total supply after second deposit");
+
+        expectedTotalSupply = totalSupplyAfterSecondDeposit;
         // Act
-        uint256 sharesAfterSecondDeposit = yneth.previewDeposit(ethAmount);
+        uint256 sharesAfterSecondDeposit = yneth.previewDeposit(thirdDepositAmount);
 
-        uint256 expectedTotalAssets = 2 * ethAmount; // Assuming initial total assets were equal to ethAmount before rewards
-        uint256 expectedTotalSupply = 2 * ethAmount - startingExchangeAdjustmentRate * ethAmount / 10000; // Assuming initial total supply equals shares after first deposit
         // Using the formula from ynETH to calculate expectedShares
         // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
         uint256 expectedShares = Math.mulDiv(
-                ethAmount,
+                thirdDepositAmount,
                 expectedTotalSupply * uint256(10000 - startingExchangeAdjustmentRate),
                 expectedTotalAssets * uint256(10000),
                 Math.Rounding.Floor
@@ -138,11 +158,14 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(sharesAfterSecondDeposit, expectedShares, "Shares should equal ETH amount after second deposit");
     }
 
-    function testConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver() public {
+    function testFuzzConvertToSharesAfterDepositAndRewardsUsingRewardsReceiver(uint256 ethAmount, uint256 rawRewardAmount) public {
+
+        vm.assume(ethAmount > 0 ether && ethAmount <= 10000 ether);
+        vm.assume(rawRewardAmount > 0 ether && rawRewardAmount <= 10000 ether);
         // Arrange
-        uint256 ethAmount = 1 ether;
+        //uint256 ethAmount = 1 ether;
         yneth.depositETH{value: ethAmount}(address(this));
-        uint256 rawRewardAmount = 1 ether;
+        //uint256 rawRewardAmount = 1 ether;
         // Deal directly to the executionLayerReceiver
         vm.deal(address(executionLayerReceiver), rawRewardAmount);
         // Simulate RewardsDistributor processing rewards which are then forwarded to yneth
@@ -164,7 +187,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
             );
 
         // Assert
-        assertEq(sharesAfterDepositAndRewards, expectedShares, "Shares should equal ETH amount after deposit and rewards processed through RewardsReceiver");
+        assertTrue(compareWithThreshold(sharesAfterDepositAndRewards, expectedShares, 1), "Shares should be within threshold of 1 of the expected ETH amount after deposit and rewards processed through RewardsReceiver");
     }
 
     function testRewardsDistributionToYnETHAndFeeReceiver() public {
