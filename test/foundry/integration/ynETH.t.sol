@@ -89,10 +89,9 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(totalAssetsAfterDeposit, initialTotalAssets + depositAmount, "Total assets should increase by the deposit amount");
     }
 
-    function testConvertToSharesBeforeAnyDeposits() public {
-        // Arrange
-        uint256 ethAmount = 1 ether;
+    function testFuzzConvertToSharesBeforeAnyDeposits(uint ethAmount) public {
 
+       vm.assume(ethAmount > 0 ether && ethAmount <= 10000 ether);
         // Act
         uint256 sharesBeforeDeposit = yneth.previewDeposit(ethAmount);
 
