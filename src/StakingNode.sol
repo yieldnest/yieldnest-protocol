@@ -22,6 +22,11 @@ interface StakingNodeEvents {
      event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 }
 
+/**
+ * @title StakingNode
+ * @dev Implements staking node functionality for the YieldNest protocol, enabling ETH staking, delegation, and rewards management.
+ * Each StakingNode owns exactl one EigenPod which acts as a delegation unit, as it can be associated with exactly one operator.
+ */
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
 
     //--------------------------------------------------------------------------------------
@@ -102,6 +107,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  EIGENPOD CREATION   ------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Creates an EigenPod if it does not already exist for this StakingNode.
+     * @dev If it does not exist, it proceeds to create a new EigenPod via EigenPodManager
+     * @return The address of the EigenPod associated with this StakingNode.
+     */
     function createEigenPod() public nonReentrant returns (IEigenPod) {
         if (address(eigenPod) != address(0)) return eigenPod; // already have pod
 
@@ -206,6 +216,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         }
     }
 
+    /**
+     * @notice Delegates the staking operation to a specified operator.
+     * @param operator The address of the operator to whom the staking operation is being delegated.
+     */
     function delegate(address operator) public virtual onlyAdmin {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
@@ -214,6 +228,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         emit Delegated(operator, 0);
     }
 
+    /**
+     * @notice Undelegates the staking operation from the current operator.
+     * @dev It retrieves the current operator by calling `delegatedTo` on the DelegationManager for event logging.
+     */
     function undelegate() public virtual onlyAdmin {
 
         address operator = stakingNodesManager.delegationManager().delegatedTo(address(this));

@@ -4,6 +4,11 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
+/// @title ynBase
+/// @dev This contract serves as the base for the YieldNest protocol, providing core functionalities such as
+/// ERC20 token mechanics, access control, and transfer pause capabilities.
+/// It integrates with OpenZeppelin's upgradeable contracts for ERC20 and AccessControl functionalities.
+/// The contract includes mechanisms to pause transfers, manage a whitelist for paused transfers, and handle initialization processes.
 contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
 
     //--------------------------------------------------------------------------------------
@@ -62,6 +67,13 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
     //----------------------------------  BOOTSTRAP TRANSFERS PAUSE  -----------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @dev Hooks into the transfer events of ERC20 with checks for paused transfers and whitelist exemptions.
+     * Reverts if transfers are paused, the sender is not whitelisted, and the transfer is not a mint or burn operation.
+     * @param from Address sending the tokens
+     * @param to Address receiving the tokens
+     * @param amount Amount of tokens being transferred
+     */
     function _update(address from, address to, uint256 amount) internal virtual override {
 
         ynBaseStorage storage $ = _getYnBaseStorage();
@@ -72,29 +84,47 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
         }
         super._update(from, to, amount);
     }
-
+    
     /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
     function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
         ynBaseStorage storage $ = _getYnBaseStorage();
         $.transfersPaused = false;
     }
     
+    /**
+     * @dev Adds addresses to the pause whitelist, allowing them to transfer tokens even when transfers are paused.
+     * Can only be called by an account with the `PAUSER_ROLE`.
+     * @param whitelistedForTransfers An array of addresses to be added to the whitelist.
+     */
     function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
         _updatePauseWhitelist(whitelistedForTransfers, true);
     }
 
+    /**
+     * @dev Removes addresses from the pause whitelist, preventing them from transferring tokens when transfers are paused.
+     * Can only be called by an account with the `PAUSER_ROLE`.
+     * @param unlisted An array of addresses to be removed from the whitelist.
+     */
     function removeFromPauseWhitelist(address[] memory unlisted) external onlyRole(PAUSER_ROLE) {
         _updatePauseWhitelist(unlisted, false);
     }
 
+    /**
+     * @dev Internal function to update the pause whitelist status of addresses.
+     * @param whitelistedForTransfers An array of addresses whose whitelist status is to be updated.
+     * @param whitelisted The whitelist status to be set for the provided addresses.
+     */
     function _updatePauseWhitelist(address[] memory whitelistedForTransfers, bool whitelisted) internal {
-
         ynBaseStorage storage $ = _getYnBaseStorage();
         for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
             $.pauseWhiteList[whitelistedForTransfers[i]] = whitelisted;
         }
     }
 
+    /**
+     * @dev Internal function to set the paused status of transfers.
+     * @param _transfersPaused The paused status to be set.
+     */
     function _setTransfersPaused(bool _transfersPaused) internal {
         ynBaseStorage storage $ = _getYnBaseStorage();
         $.transfersPaused = _transfersPaused;

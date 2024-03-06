@@ -38,7 +38,6 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     }
 
     /// @notice Inititalizes the contract.
-    /// @dev MUST be called during the contract upgrade to set up the proxies state.
     function initialize(Init memory init)
         external
         notZeroAddress(init.admin)
