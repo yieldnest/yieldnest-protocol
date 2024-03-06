@@ -114,8 +114,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    // TODO: solve for deposit and mint to adjust to new variables
-
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
     function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
