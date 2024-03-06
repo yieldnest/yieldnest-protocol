@@ -17,4 +17,15 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		address newReceiver = address(0x123);
 		rewardsDistributor.setFeesReceiver(payable(newReceiver));
 	}
+
+	function testProcessRewards() public {
+		// send 1 eth to elr and 2 eth to clr
+		uint256 totalRewards = 5 ether;
+		vm.deal(address(executionLayerReceiver), 2 ether);
+		vm.deal(address(consensusLayerReceiver), 3 ether);
+		vm.prank(actors.ADMIN);
+		uint256 fees = (totalRewards * 100) / rewardsDistributor.feesBasisPoints();
+		rewardsDistributor.processRewards();
+		assertEq(address(actors.FEE_RECEIVER).balance, fees);
+	}
 }
