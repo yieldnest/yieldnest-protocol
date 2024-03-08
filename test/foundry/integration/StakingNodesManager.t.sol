@@ -547,6 +547,7 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
         stakingNodesManager.processWithdrawnETH(0, amountToWithdraw);
     }
 }
+
 contract StakingNodesManagerMisc is IntegrationBaseTest {
 
     function testSendingETHToStakingNodesManagerShouldRevert() public {
