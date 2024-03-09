@@ -16,7 +16,6 @@ import "./BaseScript.s.sol";
 contract DeployYnLSD is BaseScript {
     ynLSD public ynlsd;
     YieldNestOracle public yieldNestOracle;
-    LSDStakingNode lsdStakingNodeImplementation;
 
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
@@ -25,27 +24,12 @@ contract DeployYnLSD is BaseScript {
     IDepositContract public depositContract;
     IWETH public weth;
 
-
-
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployerPublicKey = vm.addr(deployerPrivateKey);
 
         // ynETH.sol ROLES
-        address ynethAdminAddress = vm.envAddress("YNETH_ADMIN_ADDRESS");
-        address pauserAddress = vm.envAddress("PAUSER_ADDRESS");
-        address proxyOwnerAddress = vm.envAddress("PROXY_OWNER");
-
-        address rewardsDistributorAdminAddress = vm.envAddress("REWARDS_DISTRIBUTOR_ADMIN_ADDRESS");
-
-        // StakingNodesManager.sol ROLES
-        address stakingNodesManagerAdminAddress = vm.envAddress("STAKING_NODES_MANAGER_ADMIN_ADDRESS");
-        address stakingAdminAddress = vm.envAddress("STAKING_ADMIN_ADDRESS");
-        address stakingNodesAdminAddress = vm.envAddress("STAKING_NODES_ADMIN_ADDRESS");
-        address validatorManagerAddress = vm.envAddress("VALIDATOR_MANAGER_ADDRESS");
-
-        address lsdRestakingManager = vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS");
-        address lsdStakingNodeCreatorRole = vm.envAddress("LSD_STAKING_NODE_CREATOR_ADDRESS");
-        address yieldNestOracleAdmin = vm.envAddress("YIELDNEST_ORACLE_ADMIN_ADDRESS");
+        ActorAddresses.Actors memory actors = getActors();
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
@@ -72,19 +56,17 @@ contract DeployYnLSD is BaseScript {
         weth = IWETH(chainAddresses.ethereum.WETH_ADDRESS);
 
         // Deploy implementations
-        ynLSD ynLSDImplementation = new ynLSD();
-        TransparentUpgradeableProxy ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), proxyOwnerAddress, "");
-        ynlsd = ynLSD(address(ynLSDProxy));
+        {
+            ynLSD ynLSDImplementation = new ynLSD();
+            TransparentUpgradeableProxy ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), actors.PROXY_ADMIN_OWNER, "");
+            ynlsd = ynLSD(address(ynLSDProxy));
+        }
 
-        YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
-        TransparentUpgradeableProxy yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), proxyOwnerAddress, "");
-        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
-
-        lsdStakingNodeImplementation = new LSDStakingNode();
-
-        // Initialize ynLSD with example parameters
-        address[] memory lsdPauseWhitelist = new address[](1);
-        lsdPauseWhitelist[0] = pauserAddress;
+        {
+            YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
+            TransparentUpgradeableProxy yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), actors.PROXY_ADMIN_OWNER, "");
+            yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
+        }
 
         IERC20[] memory assets = new IERC20[](2);
         assets[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
@@ -93,23 +75,29 @@ contract DeployYnLSD is BaseScript {
         IStrategy[] memory strategies = new IStrategy[](2);
         strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
         strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
+        // Initialize ynLSD with example parameters
+        {
+            address[] memory lsdPauseWhitelist = new address[](1);
+            lsdPauseWhitelist[0] = deployerPublicKey;
 
-        ynLSD.Init memory ynlsdInit = ynLSD.Init({
-            assets: assets,
-            strategies: strategies,
-            strategyManager: strategyManager,
-            delegationManager: delegationManager,
-            oracle: yieldNestOracle,
-            exchangeAdjustmentRate: startingExchangeAdjustmentRate,
-            maxNodeCount: 10,
-            admin: ynethAdminAddress,
-            pauser: pauserAddress,
-            stakingAdmin: stakingAdminAddress,
-            lsdRestakingManager: lsdRestakingManager, // Assuming no restaking manager is set initially
-            lsdStakingNodeCreatorRole: lsdStakingNodeCreatorRole, // Assuming no staking node creator role is set initially
-            pauseWhitelist: lsdPauseWhitelist
-        });
-        ynlsd.initialize(ynlsdInit);
+            ynLSD.Init memory ynlsdInit = ynLSD.Init({
+                assets: assets,
+                strategies: strategies,
+                strategyManager: strategyManager,
+                delegationManager: delegationManager,
+                oracle: yieldNestOracle,
+                exchangeAdjustmentRate: startingExchangeAdjustmentRate,
+                maxNodeCount: 10,
+                admin: actors.ADMIN,
+                pauser: actors.PAUSE_ADMIN,
+                stakingAdmin: actors.STAKING_ADMIN,
+                lsdRestakingManager: actors.LSD_RESTAKING_MANAGER, // Assuming no restaking manager is set initially
+                lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR, // Assuming no staking node creator role is set initially
+                pauseWhitelist: lsdPauseWhitelist
+            });
+            ynlsd.initialize(ynlsdInit);
+        }
+
         uint256[] memory maxAgesArray = new uint256[](assets.length);
         address[] memory priceFeedAddresses = new address[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
@@ -120,17 +108,25 @@ contract DeployYnLSD is BaseScript {
                 priceFeedAddresses[i] = chainAddresses.lsd.STETH_FEED_ADDRESS;
             }
         }
-        address[] memory assetsAddresses = new address[](assets.length);
-        for (uint256 i = 0; i < assets.length; i++) {
-            assetsAddresses[i] = address(assets[i]);
+
+        {
+            address[] memory assetsAddresses = new address[](assets.length);
+            for (uint256 i = 0; i < assets.length; i++) {
+                assetsAddresses[i] = address(assets[i]);
+            }
+            YieldNestOracle.Init memory yieldNestOracleInit = YieldNestOracle.Init({
+                assets: assetsAddresses,
+                priceFeedAddresses: priceFeedAddresses,
+                maxAges: maxAgesArray,
+                admin: actors.ORACLE_MANAGER,
+                oracleManager: actors.ORACLE_MANAGER
+            });
+            yieldNestOracle.initialize(yieldNestOracleInit);
         }
-        YieldNestOracle.Init memory yieldNestOracleInit = YieldNestOracle.Init({
-            assets: assetsAddresses,
-            priceFeedAddresses: priceFeedAddresses,
-            maxAges: maxAgesArray,
-            admin: yieldNestOracleAdmin,
-            oracleManager: yieldNestOracleAdmin
-        });
-        yieldNestOracle.initialize(yieldNestOracleInit);
+
+        {
+            LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
+            ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));   
+        }
     }
 }

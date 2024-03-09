@@ -11,6 +11,7 @@ import "../../src/ynETH.sol";
 import "../../lib/forge-std/src/Script.sol";
 import "../../lib/forge-std/src/StdJson.sol";
 import "./Utils.sol";
+import "../../test/foundry/ActorAddresses.sol";
 
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
@@ -56,6 +57,23 @@ abstract contract BaseScript is Script, Utils {
         deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
 
         return deployment;
+    }
+
+    function getActors() public returns (ActorAddresses.Actors memory actors) {
+        actors = ActorAddresses.Actors({
+            DEFAULT_SIGNER: address(0), // Placeholder, not used in this context
+            PROXY_ADMIN_OWNER: vm.envAddress("PROXY_OWNER"),
+            TRANSFER_ENABLED_EOA: address(0), // Placeholder, not used in this context
+            ADMIN: vm.envAddress("YNETH_ADMIN_ADDRESS"),
+            STAKING_ADMIN: vm.envAddress("STAKING_ADMIN_ADDRESS"),
+            STAKING_NODES_ADMIN: vm.envAddress("STAKING_NODES_ADMIN_ADDRESS"),
+            VALIDATOR_MANAGER: vm.envAddress("VALIDATOR_MANAGER_ADDRESS"),
+            FEE_RECEIVER: address(0), // Placeholder, not used in this context
+            PAUSE_ADMIN: vm.envAddress("PAUSER_ADDRESS"),
+            LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
+            STAKING_NODE_CREATOR: vm.envAddress("LSD_STAKING_NODE_CREATOR_ADDRESS"),
+            ORACLE_MANAGER: vm.envAddress("YIELDNEST_ORACLE_MANAGER_ADDRESS")
+        });
     }
 
 }
