@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../src/StakingNodesManager.sol";
 import "../../src/StakingNode.sol";
 import "../../src/RewardsReceiver.sol";
+import "../../src/ynLSD.sol";
+import "../../src/YieldNestOracle.sol";
+import "../../src/LSDStakingNode.sol";
 import "../../src/RewardsDistributor.sol";
 import "../../src/external/tokens/WETH.sol";
 import "../../src/ynETH.sol";
@@ -24,6 +27,12 @@ abstract contract BaseScript is Script, Utils {
         RewardsReceiver consensusLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
+    }
+
+    struct ynLSDDeployment {
+        ynLSD ynlsd;
+        LSDStakingNode lsdStakingNodeImplementation;
+        YieldNestOracle yieldNestOracle;
     }
 
     function getDeploymentFile() internal view returns (string memory) {
@@ -55,6 +64,28 @@ abstract contract BaseScript is Script, Utils {
         deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".consensusLayerReceiver")));
         deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".rewardsDistributor")));
         deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
+
+        return deployment;
+    }
+
+    function saveynLSDDeployment(ynLSDDeployment memory deployment) public {
+        string memory json = "ynLSDDeployment";
+
+        vm.serializeAddress(json, "ynlsd", address(deployment.ynlsd));
+        vm.serializeAddress(json, "lsdStakingNodeImplementation", address(deployment.lsdStakingNodeImplementation));
+        vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
+
+        string memory finalJson = vm.serializeString(json, "object", "dummy");
+        vm.writeJson(finalJson, getDeploymentFile());
+    }
+
+    function loadynLSDDeployment() public view returns (ynLSDDeployment memory) {
+        string memory deploymentFile = getDeploymentFile();
+        string memory jsonContent = vm.readFile(deploymentFile);
+        ynLSDDeployment memory deployment;
+        deployment.ynlsd = ynLSD(payable(jsonContent.readAddress(".ynlsd")));
+        deployment.lsdStakingNodeImplementation = LSDStakingNode(payable(jsonContent.readAddress(".lsdStakingNodeImplementation")));
+        deployment.yieldNestOracle = YieldNestOracle(payable(jsonContent.readAddress(".yieldNestOracle")));
 
         return deployment;
     }

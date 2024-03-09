@@ -26,7 +26,6 @@ contract DeployYnLSD is BaseScript {
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address deployerPublicKey = vm.addr(deployerPrivateKey);
 
         // ynETH.sol ROLES
         ActorAddresses.Actors memory actors = getActors();
@@ -78,7 +77,7 @@ contract DeployYnLSD is BaseScript {
         // Initialize ynLSD with example parameters
         {
             address[] memory lsdPauseWhitelist = new address[](1);
-            lsdPauseWhitelist[0] = deployerPublicKey;
+            lsdPauseWhitelist[0] = _broadcaster;
 
             ynLSD.Init memory ynlsdInit = ynLSD.Init({
                 assets: assets,
@@ -126,7 +125,15 @@ contract DeployYnLSD is BaseScript {
 
         {
             LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
-            ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));   
+            ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
+            
+            ynLSDDeployment memory deployment = ynLSDDeployment({
+                ynlsd: ynlsd,
+                lsdStakingNodeImplementation: lsdStakingNodeImplementation,
+                yieldNestOracle: yieldNestOracle
+            });
+            
+            saveynLSDDeployment(deployment);
         }
     }
 }

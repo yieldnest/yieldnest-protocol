@@ -176,8 +176,6 @@ contract DeployYieldNest is BaseScript {
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
-        
-
         vm.stopBroadcast();
 
         Deployment memory deployment = Deployment({
