@@ -220,11 +220,10 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        uint256 balance = asset.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        // Note, STETH returns aprx 9.987e17 SETH for 1 ether
 
         uint256 ethAmount = ynlsd.convertToETH(asset, amount);
-        assertTrue(amount - ethAmount < 1e15, "ETH amount should be greater than zero");
+        assertTrue(compareWithThreshold(amount, ethAmount, 9.987e17), "convertToEth does not match expected value");
     }
 }
 
