@@ -210,7 +210,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         // Note, STETH returns aprx 9.987e17 SETH for 1 ether
 
         uint256 previewDeposit = ynlsd.previewDeposit(asset, amount);
-        assertTrue(compareWithThreshold(amount, previewDeposit, 9.987e17), "Preview deposit does not match expected value");
+        assertTrue(compareWithThreshold(amount, previewDeposit, 1.2e16), "Preview deposit does not match expected value");
     }
 
     function testConvertToETH() public {
@@ -223,7 +223,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         // Note, STETH returns aprx 9.987e17 SETH for 1 ether
 
         uint256 ethAmount = ynlsd.convertToETH(asset, amount);
-        assertTrue(compareWithThreshold(amount, ethAmount, 9.987e17), "convertToEth does not match expected value");
+        assertTrue(compareWithThreshold(amount, ethAmount, 1.2e16), "convertToEth does not match expected value");
     }
 }
 
