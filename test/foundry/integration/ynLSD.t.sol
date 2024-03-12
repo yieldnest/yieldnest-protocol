@@ -24,14 +24,12 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
-        // Obtain STETH 
+        // Obtain STETH
+
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        //asset.transfer(destination, amount + 1);
+        assertEq(compareWithThreshold(asset.balanceOf(address(this)), amount, 1), true, "Amount not received");
         vm.stopPrank();
-        uint256 balance = asset.balanceOf(address(this));
-        emit log_uint(balance);
-        assertEq(balance, amount, "Amount not received");
 
         asset.approve(address(ynlsd), amount);
 
@@ -171,8 +169,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = asset.balanceOf(address(this));
-        emit log_uint(balance);
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
         asset.approve(address(ynlsd), amount);
         ynlsd.deposit(asset, amount, address(this));
 
@@ -204,26 +201,27 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        // Note, STETH returns aprx 9.987e17 SETH for 1 ether
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(chainAddresses.lsd.STETH_FEED_ADDRESS);
+        (, int256 price,,,) = priceFeed.latestRoundData();
+        uint256 stethPrice = uint256(price);
 
+        uint256 expectedDepositPreview = amount * stethPrice / 1e18;
         uint256 previewDeposit = ynlsd.previewDeposit(asset, amount);
-        assertTrue(compareWithThreshold(amount, previewDeposit, 1.2e16), "Preview deposit does not match expected value");
+        assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
     }
 
     function testConvertToETH() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        // Note, STETH returns aprx 9.987e17 SETH for 1 ether
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(chainAddresses.lsd.STETH_FEED_ADDRESS);
+        (, int256 price,,,) = priceFeed.latestRoundData();
+        uint256 stethPrice = uint256(price);
+
+        uint256 expectedDepositPreview = amount * stethPrice / 1e18;
 
         uint256 ethAmount = ynlsd.convertToETH(asset, amount);
-        assertTrue(compareWithThreshold(amount, ethAmount, 1.2e16), "convertToEth does not match expected value");
+        assertEq(ethAmount, expectedDepositPreview, "convertToEth does not match expected value");
     }
 }
 
