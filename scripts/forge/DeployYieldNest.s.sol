@@ -58,17 +58,20 @@ contract DeployYieldNest is BaseScript {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // ynETH.sol ROLES
-        address ynethAdminAddress = vm.envAddress("YNETH_ADMIN_ADDRESS");
-        address pauserAddress = vm.envAddress("PAUSER_ADDRESS");
-        address proxyOwnerAddress = vm.envAddress("PROXY_OWNER");
-
-        address rewardsDistributorAdminAddress = vm.envAddress("REWARDS_DISTRIBUTOR_ADMIN_ADDRESS");
-
-        // StakingNodesManager.sol ROLES
-        address stakingNodesManagerAdminAddress = vm.envAddress("STAKING_NODES_MANAGER_ADMIN_ADDRESS");
-        address stakingAdminAddress = vm.envAddress("STAKING_ADMIN_ADDRESS");
-        address stakingNodesAdminAddress = vm.envAddress("STAKING_NODES_ADMIN_ADDRESS");
-        address validatorManagerAddress = vm.envAddress("VALIDATOR_MANAGER_ADDRESS");
+        ActorAddresses.Actors memory actors = ActorAddresses.Actors({
+            DEFAULT_SIGNER: address(0), // Placeholder, not used in this context
+            PROXY_ADMIN_OWNER: vm.envAddress("PROXY_OWNER"),
+            TRANSFER_ENABLED_EOA: address(0), // Placeholder, not used in this context
+            ADMIN: vm.envAddress("YNETH_ADMIN_ADDRESS"),
+            STAKING_ADMIN: vm.envAddress("STAKING_ADMIN_ADDRESS"),
+            STAKING_NODES_ADMIN: vm.envAddress("STAKING_NODES_ADMIN_ADDRESS"),
+            VALIDATOR_MANAGER: vm.envAddress("VALIDATOR_MANAGER_ADDRESS"),
+            FEE_RECEIVER: address(0), // Placeholder, not used in this context
+            PAUSE_ADMIN: vm.envAddress("PAUSER_ADDRESS"),
+            LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
+            STAKING_NODE_CREATOR:  vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
+            ORACLE_MANAGER: address(0) // Placeholder, not used in this context
+        });
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
@@ -172,8 +175,6 @@ contract DeployYieldNest is BaseScript {
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
-
-        
 
         vm.stopBroadcast();
 
