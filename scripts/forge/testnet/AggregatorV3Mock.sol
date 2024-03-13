@@ -1,5 +1,7 @@
 import "../../../src/external/chainlink/AggregatorV3Interface.sol";
 
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
 contract AggregatorV3Mock is AggregatorV3Interface {
     uint8 private _decimals;
