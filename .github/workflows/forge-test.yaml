@@ -3,7 +3,7 @@ name: Forge Tests
 on: push
 
 jobs:
-  tests:
+  Forge-Tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
