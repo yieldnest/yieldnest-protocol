@@ -7,6 +7,7 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {IntegrationBaseTest} from "test/foundry/integration/IntegrationBaseTest.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {ynETH} from "src/ynETH.sol";
@@ -441,15 +442,27 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
     }
 }
 
-contract StakingNodesManagerValidators is IntegrationBaseTest {
+contract StakingNodesManagerUtils {
     
+    IntegrationBaseTest baseTest;
+    ynETH yneth;
+    IDepositContract depositContract;
+    StakingNodesManager stakingNodesManager;
+    
+    constructor (IntegrationBaseTest _baseTest, ynETH _yneth, IDepositContract _depositContract, StakingNodesManager _stakingNodesManager) {
+        baseTest = _baseTest;
+        yneth = _yneth;
+        depositContract = _depositContract;
+        stakingNodesManager = _stakingNodesManager;
+    }
+
     function makeTestValidators(uint256 _depositAmount) public returns(IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) {
         address addr1 = vm.addr(100);
         vm.deal(addr1, 100 ether);
         validatorCount = 3;
         uint256 depositAmount = _depositAmount * validatorCount;
         vm.prank(addr1);
-        yneth.depositETH{value: depositAmount}(addr1);
+        _yneth.depositETH{value: depositAmount}(addr1);
         
         vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
@@ -493,10 +506,15 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
     }
+}
+
+contract StakingNodesManagerValidators is IntegrationBaseTest {
+
+    StakingNodesManagerUtils utils = new StakingNodesManagerUtils(this, yneth, depositContractEth2, stakingNodesManager);
 
     function testRegisterValidatorDepositDataRootMismatch() public {
         uint256 depositAmount = 33 ether;
-        (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
+        (IStakingNodesManager.ValidatorData[] memory validatorData,) = utils.makeTestValidators(depositAmount);
         // try to create a bad deposit root
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
 
@@ -510,7 +528,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
     }
 
     function testRegisterValidatorSuccess() public {
-        (IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) = makeTestValidators(32 ether);
+        (IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) = utils.makeTestValidators(32 ether);
         // Call validateDepositDataAllocation to ensure the deposit data allocation ßis valid
         stakingNodesManager.validateDepositDataAllocation(validatorData);
         
@@ -541,10 +559,10 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(addr1);
         vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
-        uint256 amountToWithdraw = 10 ether;
+        uint256 withdrawnValidatorPrincipal = 10 ether;
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.NotStakingNode.selector, actors.STAKING_NODE_CREATOR, 0));
         vm.prank(actors.STAKING_NODE_CREATOR);
-        stakingNodesManager.processWithdrawnETH(0, amountToWithdraw);
+        stakingNodesManager.processWithdrawnETH(0, withdrawnValidatorPrincipal);
     }
 }
 
