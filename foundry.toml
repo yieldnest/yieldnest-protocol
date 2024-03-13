@@ -8,8 +8,8 @@ cache_path  = 'cache_forge'
 fs_permissions = [{ access = "read-write", path = "./deployments"}, { access = "read", path = "./"}]
 
 remappings = [
-  "src/:src",
-  "lib/:lib",
-  "test/:test",
-  "script/:script"
+  "src/=src/",
+  "lib/=lib/",
+  "test/=test/",
+  "script/=script/"
 ]
