@@ -1,5 +1,5 @@
 
-### Usage Scenario Tests
+## Usage Scenario Tests
 
 These tests are designed to verify the correct behavior of the ynETH contract in various usage scenarios.
 
@@ -13,25 +13,24 @@ Objective: Ensure that deposits are correctly paused and resumed, preventing or 
 Objective: Test that only the Staking Nodes Manager can withdraw ETH from the contract.
 
 **Scenario 4:** Share Accouting and Yield Accrual
-Objective: Verify that the share price correctly increases after the contract earns yield.
+Objective: Verify that the share price correctly increases after the contract earns yield from consensus and execution rewards.
 
 **Scenario 5:** Emergency Withdrawal of ETH
-Objective: Ensure that users can withdraw their ETH in case of an emergency, bypassing the normal withdrawal restrictions.
+Objective: Test the ynETH's ability to administer beacon upgrades to Staking Nodes.
 
 **Scenario 6:** Validator and Staking Node Administration
 Objective: Test the ynETH's ability to update the address of the Staking Nodes Manager.
 
 **Scenario 7:** Accrual and Distribution of Fees
-Objective: Ensure that ynETH correctly accrues and distributes fees from yield earnings or other sources.
+Objective: Ensure that ynETH correctly accrues and distributes fees from yield earnings from execution and consensus rewards.
 
 **Scenario 8:** Staking Rewards Distribution
-Objective: Test the distribution of staking rewards to share holders.
+Objective: Test the distribution of staking rewards to a multisig.
 
 **Scenario 9:** EigenLayer Accounting and Distribution
-Objective: Verify that ynETH correctly accounts for and withdrawals from EigenLayer.
+Objective: Verify that ynETH correctly accounts for fund balances and withdrawals from EigenLayer.
 
-
-### Invariant Scenarios
+## Invariant Scenarios
 
 The following invariant scenarios are designed to verify the correct behavior of the ynETH contract in various usage scenarios. These scenarios should never fail, and if they do, it indicates there is an implementation issue somewhere in the protocol.
 
