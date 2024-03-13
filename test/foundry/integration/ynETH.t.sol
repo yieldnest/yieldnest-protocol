@@ -5,7 +5,7 @@ import {IntegrationBaseTest} from "test/foundry/integration/IntegrationBaseTest.
 import {ynETH} from "src/ynETH.sol";
 import {ynBase} from "src/ynBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import "lib/forge-std/src/Console.sol";
+import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
