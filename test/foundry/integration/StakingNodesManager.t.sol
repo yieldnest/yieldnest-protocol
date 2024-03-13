@@ -4,14 +4,14 @@ pragma solidity ^0.8.24;
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
-import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
-import {IEigenPod} from "../../../src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
-import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
-import {StakingNodesManager} from "../../../src/StakingNodesManager.sol";
-import {ynETH} from "../../../src/ynETH.sol";
-import {TestStakingNodeV2} from "../mocks/TestStakingNodeV2.sol";
-import {TestStakingNodesManagerV2} from "../mocks/TestStakingNodesManagerV2.sol";
+import {IntegrationBaseTest} from "test/foundry/integration/IntegrationBaseTest.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {StakingNodesManager} from "src/StakingNodesManager.sol";
+import {ynETH} from "src/ynETH.sol";
+import {TestStakingNodeV2} from "test/foundry/mocks/TestStakingNodeV2.sol";
+import {TestStakingNodesManagerV2} from "test/foundry/mocks/TestStakingNodesManagerV2.sol";
 
 
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
@@ -98,6 +98,20 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
         uint256 updatedMaxNodeCount = stakingNodesManager.maxNodeCount();
         assertEq(updatedMaxNodeCount, newMaxNodeCount, "Max node count does not match expected value");
     }
+
+    function testTooManyStakingNodes() public {
+        // set the max node count to 1
+        vm.prank(actors.STAKING_ADMIN);
+        stakingNodesManager.setMaxNodeCount(1);
+        uint256 maxNodeCount = stakingNodesManager.maxNodeCount();
+        // create first statking node
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+        // create second staking node should fail
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.TooManyStakingNodes.selector, maxNodeCount));
+        stakingNodesManager.createStakingNode();
+    }
 }
 
 contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
@@ -149,7 +163,6 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
         assertEq(stakingNodesManager.isStakingNodesAdmin(actors.STAKING_NODES_ADMIN), true);
     }
 
-    // TODO: Should createStakingNode be open to public?
     function testStakingNodesLength() public {
         uint256 initialLength = stakingNodesManager.nodesLength();
         vm.prank(actors.STAKING_NODE_CREATOR);
@@ -157,6 +170,7 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
         uint256 newLength = stakingNodesManager.nodesLength();
         assertEq(newLength, initialLength + 1);
     }
+
 }
 
 contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
@@ -424,6 +438,113 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
         address nonAdminAddress = vm.addr(9999);
         isAdmin = stakingNodesManager.isStakingNodesAdmin(nonAdminAddress);
         assertFalse(isAdmin, "Address should not be an admin");
+    }
+}
+
+contract StakingNodesManagerValidators is IntegrationBaseTest {
+    
+    function makeTestValidators(uint256 _depositAmount) public returns(IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) {
+        address addr1 = vm.addr(100);
+        vm.deal(addr1, 100 ether);
+        validatorCount = 3;
+        uint256 depositAmount = _depositAmount * validatorCount;
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+        
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+
+        validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
+
+        validatorData[0] = IStakingNodesManager.ValidatorData({
+            publicKey: ZERO_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: 0,
+            depositDataRoot: bytes32(0)
+        });
+        validatorData[1] = IStakingNodesManager.ValidatorData({
+            publicKey: ONE_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: 1,
+            depositDataRoot: bytes32(0)
+        });
+
+       validatorData[2] = IStakingNodesManager.ValidatorData({
+            publicKey: TWO_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: 2,
+            depositDataRoot: bytes32(0)
+        });
+
+        for (uint256 i = 0; i < validatorData.length; i++) {
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            uint256 amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(
+                validatorData[i].publicKey, 
+                validatorData[i].signature, 
+                withdrawalCredentials, amount
+            );
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+    }
+
+    function testRegisterValidatorDepositDataRootMismatch() public {
+        uint256 depositAmount = 33 ether;
+        (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
+        // try to create a bad deposit root
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+
+        vm.prank(actors.VALIDATOR_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(
+            StakingNodesManager.DepositDataRootMismatch.selector, 
+            0x7be1a5aee0180c84f2d1b0ef721fb62bf323ee9aabeac0bd5bb551da1782f805, 
+            validatorData[0].depositDataRoot)
+        );
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+    }
+
+    function testRegisterValidatorSuccess() public {
+        (IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) = makeTestValidators(32 ether);
+        // Call validateDepositDataAllocation to ensure the deposit data allocation ßis valid
+        stakingNodesManager.validateDepositDataAllocation(validatorData);
+        
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+
+        StakingNodesManager.Validator[] memory registeredValidators = stakingNodesManager.getAllValidators();
+        assertEq(registeredValidators.length, validatorCount, "Incorrect number of registered validators");    
+    }
+
+    function testGenerateWithdrawalCredentials() public {
+        makeTestValidators(32 ether);
+
+        bytes memory withdrawalCredentials = stakingNodesManager.generateWithdrawalCredentials(actors.VALIDATOR_MANAGER);
+        assertEq(withdrawalCredentials.length, 32, "Withdrawal credentials length does not match expected value");
+    }
+    
+}
+
+contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
+
+    function testProcessWithdrawnETH() public {
+        address addr1 = vm.addr(100);
+        vm.deal(addr1, 100 ether);
+        uint256 depositAmount = 32 ether;
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+        uint256 amountToWithdraw = 10 ether;
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.NotStakingNode.selector, actors.STAKING_NODE_CREATOR, 0));
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.processWithdrawnETH(0, amountToWithdraw);
     }
 }
 

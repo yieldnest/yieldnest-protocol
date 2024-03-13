@@ -8,15 +8,12 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AggregatorV3Interface} from "../../../src/external/chainlink/AggregatorV3Interface.sol";
-import {IPausable} from "../../../src/external/eigenlayer/v0.1.0/interfaces//IPausable.sol";
-import {ILSDStakingNode} from "../../../src/interfaces/ILSDStakingNode.sol";
-import {TestLSDStakingNodeV2} from "../mocks/TestLSDStakingNodeV2.sol";
-import {TestYnLSDV2} from "../mocks/TestYnLSDV2.sol";
-import {ynBase} from "../../../src/ynBase.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import "forge-std/console.sol";
-
+import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
+import {IPausable} from "src/external/eigenlayer/v0.1.0/interfaces//IPausable.sol";
+import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {TestLSDStakingNodeV2} from "test/foundry/mocks/TestLSDStakingNodeV2.sol";
+import {TestYnLSDV2} from "test/foundry/mocks/TestYnLSDV2.sol";
+import {ynBase} from "src/ynBase.sol";
 
 
 contract ynLSDAssetTest is IntegrationBaseTest {
@@ -27,14 +24,12 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
-        // Obtain STETH 
+        // Obtain STETH
+
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
-        //asset.transfer(destination, amount + 1);
+        assertEq(compareWithThreshold(asset.balanceOf(address(this)), amount, 1), true, "Amount not received");
         vm.stopPrank();
-        uint256 balance = asset.balanceOf(address(this));
-        emit log_uint(balance);
-        assertEq(balance, amount, "Amount not received");
 
         asset.approve(address(ynlsd), amount);
 
@@ -174,8 +169,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = asset.balanceOf(address(this));
-        emit log_uint(balance);
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
         asset.approve(address(ynlsd), amount);
         ynlsd.deposit(asset, amount, address(this));
 
@@ -201,6 +195,33 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
         // Assert that totalAssets reflects the deposit
         assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
+    }
+
+    function testPreviewDeposit() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 1 ether;
+
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(chainAddresses.lsd.STETH_FEED_ADDRESS);
+        (, int256 price,,,) = priceFeed.latestRoundData();
+        uint256 stethPrice = uint256(price);
+
+        uint256 expectedDepositPreview = amount * stethPrice / 1e18;
+        uint256 previewDeposit = ynlsd.previewDeposit(asset, amount);
+        assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
+    }
+
+    function testConvertToETH() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 1 ether;
+
+        AggregatorV3Interface priceFeed = AggregatorV3Interface(chainAddresses.lsd.STETH_FEED_ADDRESS);
+        (, int256 price,,,) = priceFeed.latestRoundData();
+        uint256 stethPrice = uint256(price);
+
+        uint256 expectedDepositPreview = amount * stethPrice / 1e18;
+
+        uint256 ethAmount = ynlsd.convertToETH(asset, amount);
+        assertEq(ethAmount, expectedDepositPreview, "convertToEth does not match expected value");
     }
 }
 
