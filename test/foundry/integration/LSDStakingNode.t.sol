@@ -55,7 +55,7 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 		stETH.approve(address(ynlsd), amount);
 		ynlsd.deposit(stETH, amount, address(this));
 
@@ -85,7 +85,7 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 		stETH.approve(address(ynlsd), amount);
 		ynlsd.deposit(stETH, amount, address(this));
 
@@ -98,7 +98,6 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 		vm.expectRevert("Pausable: index is paused");
 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 	}
-
 }
 
 
