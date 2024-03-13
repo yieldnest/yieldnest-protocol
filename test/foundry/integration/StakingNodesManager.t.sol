@@ -442,19 +442,12 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
     }
 }
 
-contract StakingNodesManagerUtils {
-    
-    IntegrationBaseTest baseTest;
-    ynETH yneth;
-    IDepositContract depositContract;
-    StakingNodesManager stakingNodesManager;
-    
-    constructor (IntegrationBaseTest _baseTest, ynETH _yneth, IDepositContract _depositContract, StakingNodesManager _stakingNodesManager) {
-        baseTest = _baseTest;
-        yneth = _yneth;
-        depositContract = _depositContract;
-        stakingNodesManager = _stakingNodesManager;
-    }
+contract StakingNodesManagerUtils is IntegrationBaseTest {
+
+
+}
+
+contract StakingNodesManagerValidators is IntegrationBaseTest {
 
     function makeTestValidators(uint256 _depositAmount) public returns(IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) {
         address addr1 = vm.addr(100);
@@ -462,7 +455,7 @@ contract StakingNodesManagerUtils {
         validatorCount = 3;
         uint256 depositAmount = _depositAmount * validatorCount;
         vm.prank(addr1);
-        _yneth.depositETH{value: depositAmount}(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
         
         vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
@@ -506,15 +499,10 @@ contract StakingNodesManagerUtils {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
     }
-}
-
-contract StakingNodesManagerValidators is IntegrationBaseTest {
-
-    StakingNodesManagerUtils utils = new StakingNodesManagerUtils(this, yneth, depositContractEth2, stakingNodesManager);
 
     function testRegisterValidatorDepositDataRootMismatch() public {
         uint256 depositAmount = 33 ether;
-        (IStakingNodesManager.ValidatorData[] memory validatorData,) = utils.makeTestValidators(depositAmount);
+        (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
         // try to create a bad deposit root
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
 
@@ -528,7 +516,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
     }
 
     function testRegisterValidatorSuccess() public {
-        (IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) = utils.makeTestValidators(32 ether);
+        (IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) = makeTestValidators(32 ether);
         // Call validateDepositDataAllocation to ensure the deposit data allocation ßis valid
         stakingNodesManager.validateDepositDataAllocation(validatorData);
         
