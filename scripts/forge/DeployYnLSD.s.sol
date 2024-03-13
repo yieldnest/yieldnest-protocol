@@ -1,13 +1,10 @@
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {ynLSD} from "../../../src/ynLSD.sol";
-import {StakingNodesManager} from "../../../src/StakingNodesManager.sol";
-import {RewardsReceiver} from "../../../src/RewardsReceiver.sol";
 import {YieldNestOracle} from "../../../src/YieldNestOracle.sol";
 import {LSDStakingNode} from "../../../src/LSDStakingNode.sol";
-import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";
@@ -34,16 +31,14 @@ contract DeployYnLSD is BaseScript {
 
         vm.startBroadcast(deployerPrivateKey);
 
-
+        // solhint-disable-next-line no-console
         console.log("Default Signer Address:", _broadcaster);
+        // solhint-disable-next-line no-console
         console.log("Current Block Number:", block.number);
+        // solhint-disable-next-line no-console
         console.log("Current Chain ID:", block.chainid);
 
-
-        address feeReceiver = payable(_broadcaster); // Casting the default signer address to payable
-
-
-        uint startingExchangeAdjustmentRate = 0;
+        uint256 startingExchangeAdjustmentRate = 0;
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
