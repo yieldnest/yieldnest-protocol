@@ -4,7 +4,7 @@ install		:;	npm i && git submodule update --init --recursive
 
 # Linting and Formatting
 
-lint		:;	solhint ./src/* # Solhint from Protofire: https://github.com/protofire/solhint
+lint		:;	solhint ./src/* ./scripts/forge/* # Solhint from Protofire: https://github.com/protofire/solhint
 
 # Coverage https://github.com/linux-test-project/lcov (brew install lcov)
 
