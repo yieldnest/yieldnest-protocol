@@ -80,6 +80,32 @@ contract ContractAddresses {
                 STETH_STRATEGY_ADDRESS: 0xB613E78E2068d7489bb66419fB1cfa11275d14da
             })
         });
+
+        // In absence of Eigenlayer a placeholder address is used for all Eigenlayer addresses
+        address placeholderAddress = address(1);
+
+        addresses[17000] = ChainAddresses({
+            ethereum: EthereumAddresses({
+                WETH_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                DEPOSIT_2_ADDRESS: 0x4242424242424242424242424242424242424242
+            }),
+            eigenlayer: EigenlayerAddresses({
+                EIGENPOD_MANAGER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                DELEGATION_MANAGER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                DELEGATION_PAUSER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                STRATEGY_MANAGER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                DELAYED_WITHDRAWAL_ROUTER_ADDRESS: placeholderAddress // Placeholder address, replaced with address(1) for holesky
+            }),
+            lsd: LSDAddresses({
+                SFRXETH_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                RETH_ADDRESS: 0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1, // source: https://docs.rocketpool.net/guides/staking/via-rp
+                STETH_ADDRESS: 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034, // source: https://docs.lido.fi/deployed-contracts/holesky/
+                RETH_FEED_ADDRESS: 0xe1e444A5Df450E7640323a21073bF01E0af054fA, // Self-created aggregator
+                STETH_FEED_ADDRESS: 0xe1e444A5Df450E7640323a21073bF01E0af054fA, // Self-created aggregator
+                RETH_STRATEGY_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                STETH_STRATEGY_ADDRESS: placeholderAddress // Placeholder address, replaced with address(1) for holesky
+            })
+        });
     }
 
     function getChainAddresses(uint256 chainId) external view returns (ChainAddresses memory) {
