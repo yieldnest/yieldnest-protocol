@@ -58,20 +58,7 @@ contract DeployYieldNest is BaseScript {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // ynETH.sol ROLES
-        ActorAddresses.Actors memory actors = ActorAddresses.Actors({
-            DEFAULT_SIGNER: address(0), // Placeholder, not used in this context
-            PROXY_ADMIN_OWNER: vm.envAddress("PROXY_OWNER"),
-            TRANSFER_ENABLED_EOA: address(0), // Placeholder, not used in this context
-            ADMIN: vm.envAddress("YNETH_ADMIN_ADDRESS"),
-            STAKING_ADMIN: vm.envAddress("STAKING_ADMIN_ADDRESS"),
-            STAKING_NODES_ADMIN: vm.envAddress("STAKING_NODES_ADMIN_ADDRESS"),
-            VALIDATOR_MANAGER: vm.envAddress("VALIDATOR_MANAGER_ADDRESS"),
-            FEE_RECEIVER: address(0), // Placeholder, not used in this context
-            PAUSE_ADMIN: vm.envAddress("PAUSER_ADDRESS"),
-            LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
-            STAKING_NODE_CREATOR:  vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
-            ORACLE_MANAGER: address(0) // Placeholder, not used in this context
-        });
+        ActorAddresses.Actors memory actors = getActors();
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
@@ -90,13 +77,12 @@ contract DeployYieldNest is BaseScript {
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        eigenPodManager = IEigenPodManager(chainAddresses.EIGENLAYER_EIGENPOD_MANAGER_ADDRESS);
-        delegationManager = IDelegationManager(chainAddresses.EIGENLAYER_DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.EIGENLAYER_DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
-        strategyManager = IStrategyManager(chainAddresses.EIGENLAYER_STRATEGY_MANAGER_ADDRESS);
-        depositContract = IDepositContract(chainAddresses.DEPOSIT_2_ADDRESS);
-        weth = IWETH(chainAddresses.WETH_ADDRESS);
-
+        eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
+        delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+        strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        depositContract = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
+        weth = IWETH(chainAddresses.ethereum.WETH_ADDRESS);
         // Deploy implementations
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
@@ -107,31 +93,31 @@ contract DeployYieldNest is BaseScript {
         ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
-        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), proxyOwnerAddress, "");
+        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), actors.PROXY_ADMIN_OWNER, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
 
         YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), proxyOwnerAddress, "");
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), actors.PROXY_ADMIN_OWNER, "");
         yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
 
         ynLSD ynLSDImplementation = new ynLSD();
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), proxyOwnerAddress, "");
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), actors.PROXY_ADMIN_OWNER, "");
         ynlsd = ynLSD(address(ynLSDProxy));
 
         // Deploy proxies
-        ynethProxy = new TransparentUpgradeableProxy(address(yneth), proxyOwnerAddress, "");
-        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), proxyOwnerAddress, "");
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
     
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = pauserAddress;
+        pauseWhitelist[0] = actors.PAUSE_ADMIN;
 
         ynETH.Init memory ynethInit = ynETH.Init({
-            admin: ynethAdminAddress,
-            pauser: pauserAddress,
+            admin: actors.ADMIN,
+            pauser: actors.PAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             exchangeAdjustmentRate: startingExchangeAdjustmentRate,
@@ -142,10 +128,11 @@ contract DeployYieldNest is BaseScript {
 
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
-            admin: stakingNodesManagerAdminAddress,
-            stakingAdmin: stakingAdminAddress,
-            stakingNodesAdmin: stakingNodesAdminAddress,
-            validatorManager: validatorManagerAddress,
+            admin: actors.ADMIN,
+            stakingAdmin: actors.STAKING_ADMIN,
+            stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
+            validatorManager: actors.VALIDATOR_MANAGER,
+            stakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             maxNodeCount: 10,
             depositContract: depositContract,
             ynETH: IynETH(address(yneth)),
@@ -160,7 +147,7 @@ contract DeployYieldNest is BaseScript {
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
 
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
-            admin: rewardsDistributorAdminAddress,
+            admin: actors.ADMIN,
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the initialization
             feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
@@ -170,7 +157,7 @@ contract DeployYieldNest is BaseScript {
 
         // Initialize RewardsReceiver with example parameters
         RewardsReceiver.Init memory rewardsReceiverInit = RewardsReceiver.Init({
-            admin: rewardsDistributorAdminAddress,
+            admin: actors.ADMIN,
             withdrawer: address(rewardsDistributor)
         });
         executionLayerReceiver.initialize(rewardsReceiverInit);
@@ -190,6 +177,4 @@ contract DeployYieldNest is BaseScript {
         saveDeployment(deployment);
     }
 }
-
-
 
