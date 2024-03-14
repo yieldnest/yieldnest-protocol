@@ -15,4 +15,9 @@ show		:;	npx http-server ./coverage
 
 clean		:;	forge clean
 
+# Testing
+
+ci-test 	:;	forge test --rpc-url ${rpc} --summary --detailed --gas-report
+
 # Build and Deploy
+

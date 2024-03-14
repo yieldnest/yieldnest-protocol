@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
-import {ynETH} from "../../../src/ynETH.sol";
-import {ynBase} from "../../../src/ynBase.sol";
+import {IntegrationBaseTest} from "test/foundry/integration/IntegrationBaseTest.sol";
+import {ynETH} from "src/ynETH.sol";
+import {ynBase} from "src/ynBase.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import "forge-std/Console.sol";
+import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
