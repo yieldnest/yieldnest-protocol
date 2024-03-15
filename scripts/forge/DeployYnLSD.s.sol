@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ynLSD} from "../../../src/ynLSD.sol";
-import {YieldNestOracle} from "../../../src/YieldNestOracle.sol";
-import {LSDStakingNode} from "../../../src/LSDStakingNode.sol";
+import {ynLSD} from "../../src/ynLSD.sol";
+import {YieldNestOracle} from "../../src/YieldNestOracle.sol";
+import {LSDStakingNode} from "../../src/LSDStakingNode.sol";
 import "../../src/external/tokens/IWETH.sol";
 import "../../test/foundry/ContractAddresses.sol";
 import "./BaseScript.s.sol";

@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 library Invariants {
 
+  /// Share and Assets Invariants
   function shareMintIntegrity (uint256 totalSupply, uint256 previousTotal, uint256 newShares) public pure {
     require(totalSupply == previousTotal + newShares,
       "Invariant: Total supply should be equal to previous total plus new shares"

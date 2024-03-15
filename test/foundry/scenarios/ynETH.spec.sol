@@ -4,6 +4,11 @@ pragma solidity ^0.8.24;
 import { IntegrationBaseTest } from "test/foundry/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/foundry/scenarios/Invariants.sol";
 import { IynETH } from "src/interfaces/IynETH.sol";
+import { IStakingNodesManager } from "src/interfaces/IStakingNodesManager.sol";
+import { IStakingNode } from "src/interfaces/IStakingNode.sol";
+import { BeaconChainProofs } from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import { IEigenPod } from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import { IEigenPodManager } from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
 
 contract YnETHScenarioTest1 is IntegrationBaseTest {
 
@@ -78,7 +83,6 @@ contract YnETHScenarioTest1 is IntegrationBaseTest {
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
 
-	// NOTE: Various efforts to circumvent the deposit mechanism are not included in this test
 }
 
 contract YnETHScenarioTest2 is IntegrationBaseTest {
@@ -145,17 +149,110 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 		assertEq(yneth.balanceOf(user2), transferEnabledEOABalance);
 	}
 
-	// NOTE: circumvention experiments are not included with these tests
-	// that overlap with integration tests. Just leaving a few tests above...
 }
 
 contract YnETHScenarioTest3 is IntegrationBaseTest {
 
 	/**
-		Scenario 3: Withdraw ETH to Staking Nodes Manager 
+		Scenario 3: Deposit, Delegate and Withdraw ETH to Staking Nodes Manager 
 		Objective: Test that only the Staking Nodes Manager 
 		can withdraw ETH from the contract.
 	 */
+
+	address user1 = address(0x01);
+	
+	// Deposit 32 ETH to ynETH and Register a Validator
+	function test_ynETH_Scenario_3_Deposit_Withdraw() public {
+
+		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
+		(IStakingNode stakingNode,) = depositEth_and_createValidator();
+
+		// Verify withdraw credentials
+		verifyEigenWithdrawCredentials();
+	}
+
+	function depositEth_and_createValidator() public returns (IStakingNode stakingNode, IStakingNodesManager.ValidatorData[] memory validatorData) {
+		// 1. Create Validator and deposit 32 ETH
+
+		//  Deposit 32 ETH to ynETH
+		uint256 depositAmount = 32 ether;
+		vm.deal(user1, depositAmount);
+		yneth.depositETH{value: depositAmount}(user1);
+
+		// Staking Node Creator Role creates the staking nodes
+		vm.prank(actors.STAKING_NODE_CREATOR);
+		stakingNode = stakingNodesManager.createStakingNode();
+
+		// Create a new Validator Data object
+		validatorData = new IStakingNodesManager.ValidatorData[](1);
+		validatorData[0] = IStakingNodesManager.ValidatorData({
+            publicKey: ONE_PUBLIC_KEY,
+            signature: ZERO_SIGNATURE,
+            nodeId: 0,
+            depositDataRoot: bytes32(0)
+		});
+
+		// Generate the deposit data root with withdrawal credentials
+		bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[0].nodeId);
+		validatorData[0].depositDataRoot = stakingNodesManager.generateDepositRoot(
+			validatorData[0].publicKey, 
+			validatorData[0].signature, 
+			withdrawalCredentials,
+			depositAmount
+		);
+
+		// checks the deposit Validator Data
+        stakingNodesManager.validateDepositDataAllocation(validatorData);
+
+		// get a deposit root from the ethereum deposit contract
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+
+		// Validator Manager Role registers the validators
+		vm.prank(actors.VALIDATOR_MANAGER);
+		stakingNodesManager.registerValidators(depositRoot, validatorData);
+
+		assertEq(address(yneth).balance, 0);
+
+		return (stakingNode, validatorData);
+	}
+
+	function verifyEigenWithdrawCredentials() public {
+		// EigenLayer must not be paused:
+		address pauser = 0x369e6F597e22EaB55fFb173C6d9cD234BD699111;
+		IEigenPodManager eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
+		vm.prank(pauser);
+		eigenPodManager.unpause(0);
+
+
+		// 	eigenPod.verifyWithdrawalCredentials
+		//  @param oracleBlockNumber is the Beacon Chain blockNumber whose state root the `proof` will be proven against.
+		uint64[] memory oracleBlockNumbers = new uint64[](1);
+		oracleBlockNumbers[0] = uint32(block.number); 
+		
+		//  @param validatorIndex is the index of the validator being proven, refer to consensus specs 
+		uint40[] memory validatorIndexes = new uint40[](1);
+		validatorIndexes[0] = 1234567; // Validator index
+
+		//  @param proofs is the bytes that prove the ETH validator's balance and withdrawal credentials against a beacon chain state root
+		BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] memory proofs = new BeaconChainProofs.ValidatorFieldsAndBalanceProofs[](1);
+		proofs[0] = BeaconChainProofs.ValidatorFieldsAndBalanceProofs({
+			validatorFieldsProof: new bytes(3), 
+			validatorBalanceProof: new bytes(0), 
+			balanceRoot: bytes32(0) 
+		});
+
+		//  @param validatorFields are the fields of the "Validator Container", refer to consensus specs
+		//  https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#validator
+		// https://github.com/Layr-Labs/eigenpod-proofs-generation/blob/m1-mainet-frozen/generate_validator_proof.go  
+		bytes32[][] memory validatorFields = new bytes32[][](1);
+        validatorFields[0] = new bytes32[](0);		
+
+		vm.prank(actors.STAKING_NODES_ADMIN);
+		stakingNode.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
+
+		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
+		eigenPod.validatorStatus(0);
+	}
 }
 
 contract YnETHScenarioTest4 is IntegrationBaseTest {
@@ -171,8 +268,9 @@ contract YnETHScenarioTest4 is IntegrationBaseTest {
 contract YnETHScenarioTest5 is IntegrationBaseTest {
 
 	/**
-		Scenario 5: Emergency Withdrawal of ETH 
+		Scenario 5: Withdrawal of ETH 
 		Objective: Test ynETH's ability to 
-		administer beacon upgrades to Staking Nodes.
+		withdraw ETH to the Staking Nodes Manager.
 	 */
 }
+
