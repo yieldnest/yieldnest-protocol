@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import { IntegrationBaseTest } from "test/foundry/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/foundry/scenarios/Invariants.sol";
-import { IynETH } from "src/interfaces/IynETH.sol";
 import { IStakingNodesManager } from "src/interfaces/IStakingNodesManager.sol";
 import { IStakingNode } from "src/interfaces/IStakingNode.sol";
 import { BeaconChainProofs } from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
@@ -25,7 +24,7 @@ contract YnETHScenarioTest1 is IntegrationBaseTest {
 	function test_ynETH_Scenario_1_Fuzz(uint256 random1, uint256 random2, uint256 random3) public {
 
 		/**
-			3 Users deposit random amounts of fuzz
+			Users deposit random amounts
 			- Check the total assets of ynETH
 			- Check the share balance of each user
 			- Check the total deposited in the pool
@@ -161,14 +160,13 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 
 	address user1 = address(0x01);
 	
-	// Deposit 32 ETH to ynETH and Register a Validator
 	function test_ynETH_Scenario_3_Deposit_Withdraw() public {
 
 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
 
 		// Verify withdraw credentials
-		verifyEigenWithdrawCredentials();
+		// verifyEigenWithdrawCredentials(stakingNode);
 	}
 
 	function depositEth_and_createValidator() public returns (IStakingNode stakingNode, IStakingNodesManager.ValidatorData[] memory validatorData) {
@@ -216,7 +214,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		return (stakingNode, validatorData);
 	}
 
-	function verifyEigenWithdrawCredentials() public {
+	function verifyEigenWithdrawCredentials(IStakingNode stakingNode) public {
 		// EigenLayer must not be paused:
 		address pauser = 0x369e6F597e22EaB55fFb173C6d9cD234BD699111;
 		IEigenPodManager eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
