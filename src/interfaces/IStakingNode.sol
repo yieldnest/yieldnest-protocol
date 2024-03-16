@@ -40,7 +40,7 @@ interface IStakingNode {
     function delegate(address operator) external;
     function undelegate() external;
     function withdrawBeforeRestaking() external;
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint PendingWithdrawnValidatorPrincipal) external;
+    function claimDelayedWithdrawals(uint PendingWithdrawnValidatorPrincipal) external;
 
 
     function implementation() external view returns (address);

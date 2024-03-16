@@ -131,46 +131,23 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     /// @notice Retrieves and processes withdrawals that have been queued in the EigenPod, transferring them to the StakingNode.
-    /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
-    /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
-    ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint256 withdrawnValidatorPrincipal) public nonReentrant onlyAdmin {
+    /// @param withdrawnValidatorPrincipal the amount considered to be validator principal as opposed to rewards
+    /// @dev tThe Validator Principal is not subject to any fees.
+    function claimDelayedWithdrawals(uint256 withdrawnValidatorPrincipal) public nonReentrant onlyAdmin {
 
         if (withdrawnValidatorPrincipal > allocatedETH) {
             revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
         }
+        uint256 claimedAmount = address(this).balance;
 
-        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-
-        uint256 totalClaimable = 0;
-        IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableWithdrawals = delayedWithdrawalRouter.getClaimableUserDelayedWithdrawals(address(this));
-        for (uint256 i = 0; i < claimableWithdrawals.length; i++) {
-            totalClaimable += claimableWithdrawals[i].amount;
+        if (claimedAmount < withdrawnValidatorPrincipal) {
+            revert ValidatorPrincipalExceedsTotalClaimable(withdrawnValidatorPrincipal, claimedAmount);
         }
-
-        if (totalClaimable < withdrawnValidatorPrincipal) {
-            revert ValidatorPrincipalExceedsTotalClaimable(withdrawnValidatorPrincipal, totalClaimable);
-        }
-
-        // only claim if we have active unclaimed withdrawals
-        // the ETH funds are sent to address(this) and trigger the receive() function
-        if (totalClaimable > 0) {
-
-            uint256 balanceBefore = address(this).balance;
-            delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);
-            uint256 balanceAfter = address(this).balance;
-
-            uint256 claimedAmount = balanceAfter - balanceBefore;
-
-            if (totalClaimable > claimedAmount) {
-                revert ClaimAmountTooLow(totalClaimable, claimedAmount);
-            }
-            // substract validator principal
-            allocatedETH -= withdrawnValidatorPrincipal;
-            
-            stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId, withdrawnValidatorPrincipal);
-            emit ClaimedDelayedWithdrawal(claimedAmount, claimedAmount, allocatedETH);
-        }
+        // substract validator principal
+        allocatedETH -= withdrawnValidatorPrincipal;
+        
+        stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId, withdrawnValidatorPrincipal);
+        emit ClaimedDelayedWithdrawal(claimedAmount, claimedAmount, allocatedETH);
     }
 
     //--------------------------------------------------------------------------------------

@@ -105,7 +105,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.STAKING_NODES_ADMIN);
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
+        stakingNodeInstance.claimDelayedWithdrawals(0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -145,9 +145,11 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
+        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.STAKING_NODES_ADMIN);
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
+        stakingNodeInstance.claimDelayedWithdrawals(0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -172,9 +174,11 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
 
+        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.STAKING_NODES_ADMIN);
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 0);
+        stakingNodeInstance.claimDelayedWithdrawals(0);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -208,8 +212,15 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 withdrawnValidators = activeValidators - 1;
         uint256 validatorPrincipal = withdrawnValidators * 32 ether;
 
+        {
+            uint256 stakingNodeBalanceBeforeClaim = address(stakingNodeInstance).balance;
+            delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+            uint256 stakingNodeBalanceAfterClaim = address(stakingNodeInstance).balance;
+            uint256 stakingNodeRewardsAmount = stakingNodeBalanceAfterClaim - stakingNodeBalanceBeforeClaim;
+            assertEq(stakingNodeRewardsAmount, rewardsSweeped, "StakingNode ETH balance after claim does not match expected rewards");
+        }
         vm.prank(actors.STAKING_NODES_ADMIN);
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, validatorPrincipal);
+        stakingNodeInstance.claimDelayedWithdrawals(validatorPrincipal);
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -243,10 +254,12 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
 
         uint256 tooLargeValidatorPrincipal = validatorPrincipal;
 
+        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+
         // Attempt to claim withdrawals with a validator principal that exceeds total claimable amount
         vm.prank(actors.STAKING_NODES_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(StakingNode.ValidatorPrincipalExceedsTotalClaimable.selector, tooLargeValidatorPrincipal, rewardsSweeped));
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, tooLargeValidatorPrincipal); // Exceeding by 1 ether
+        stakingNodeInstance.claimDelayedWithdrawals(tooLargeValidatorPrincipal); // Exceeding by 1 ether
     }
 
 
@@ -275,10 +288,12 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 tooLargeValidatorPrincipal = validatorPrincipal + 1 ether;
         uint256 expectedAllocatedETH = depositAmount;
 
+        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+
         // Attempt to claim withdrawals with a validator principal that exceeds total claimable amount
         vm.prank(actors.STAKING_NODES_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(StakingNode.WithdrawalPrincipalAmountTooHigh.selector, tooLargeValidatorPrincipal, expectedAllocatedETH));
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, tooLargeValidatorPrincipal); // Exceeding by 1 ether
+        stakingNodeInstance.claimDelayedWithdrawals(tooLargeValidatorPrincipal); // Exceeding by 1 ether
     }
 }
 
@@ -363,7 +378,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
         vm.prank(actors.STAKING_NODES_ADMIN);
         vm.expectRevert();
-        stakingNodeInstance.claimDelayedWithdrawals(type(uint256).max, 1);
+        stakingNodeInstance.claimDelayedWithdrawals(1);
     }
 
     function testDelegateFailWhenNotAdmin() public {
