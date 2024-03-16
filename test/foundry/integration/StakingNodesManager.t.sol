@@ -442,10 +442,6 @@ contract StakingNodesManagerViews is IntegrationBaseTest {
     }
 }
 
-contract StakingNodesManagerUtils is IntegrationBaseTest {
-
-
-}
 
 contract StakingNodesManagerValidators is IntegrationBaseTest {
 
