@@ -11,9 +11,9 @@ Objective: Test that a user can deposit ETH and receive the correct amount of sh
 
 Objective: Ensure that deposits are correctly paused and resumed, preventing or allowing ETH deposits accordingly.
 
-**Scenario 3:** Withdraw ETH to Staking Nodes Manager
+**Scenario 3:** Deposit and Withdraw ETH to Staking Nodes Manager
 
-Objective: Test that only the Staking Nodes Manager can withdraw ETH from the contract.
+Objective: Test the end-to-end flow of depositing ETH to an eigenpod, and withdrawing ETH to the staking nodes manager.
 
 **Scenario 4:** Share Accouting and Yield Accrual
 
