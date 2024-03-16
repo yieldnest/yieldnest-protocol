@@ -12,9 +12,9 @@ import { IEigenPodManager } from "src/external/eigenlayer/v0.1.0/interfaces/IEig
 contract YnETHScenarioTest1 is IntegrationBaseTest {
 
 	/**
-	Scenario 1: Successful ETH Deposit and Share Minting 
-	Objective: Test that a user can deposit ETH and receive 
-	the correct amount of shares in return.
+		Scenario 1: Successful ETH Deposit and Share Minting 
+		Objective: Test that a user can deposit ETH and receive 
+		the correct amount of shares in return.
 	*/
 
 	address user1 = address(0x01);
@@ -81,7 +81,6 @@ contract YnETHScenarioTest1 is IntegrationBaseTest {
 		Invariants.shareMintIntegrity(yneth.totalSupply(), previousTotalShares, userShares);
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
-
 }
 
 contract YnETHScenarioTest2 is IntegrationBaseTest {
