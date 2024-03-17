@@ -173,6 +173,6 @@ contract StakingNodeM2 is StakingNode {
         uint256 fundsWithdrawn = balanceAfter - balanceBefore;
 
         // TODO: revise if rewards may be captured in here as well
-        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId, fundsWithdrawn);
+        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId);
     }
 }

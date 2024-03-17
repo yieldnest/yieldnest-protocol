@@ -48,6 +48,8 @@ contract StakingNodesManager is
     error DepositorNotYnETH();
     error TransferFailed();
     error NoValidatorsProvided();
+    error InvalidValidatorIndex(uint indexToRemove);
+    error WithdrawalBelowPendingPrincipalBalance(uint256 value);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -87,6 +89,7 @@ contract StakingNodesManager is
     IRewardsDistributor public rewardsDistributor;
 
     Validator[] public validators;
+    mapping(uint256 => uint256) pendingPrincipalWithdrawalBalancePerNode;
 
     /**
     /**
@@ -381,12 +384,40 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint256 nodeId, uint256 withdrawnValidatorPrincipal) external payable {
-        if (address(nodes[nodeId]) != msg.sender) {
+    function registerRemovedValidators(uint[] memory indexes) public {
+
+        for (uint i = 0; i < indexes.length; i++) {
+            uint indexToRemove = indexes[i];
+
+            // Ensure the index is within bounds
+            if (indexToRemove < validators.length) {
+                // Increment pending withdrawal balance for the specific node by the stake amount
+                pendingPrincipalWithdrawalBalancePerNode[validators[indexToRemove].nodeId] += DEFAULT_VALIDATOR_STAKE;
+
+                // Remove validator from the array by shifting elements
+                for (uint j = indexToRemove; j < validators.length - 1; j++) {
+                    validators[j] = validators[j + 1];
+                }
+                validators.pop(); // Remove the last element
+            } else {
+                revert InvalidValidatorIndex(indexToRemove);
+            }
+        }
+    }
+
+    function processWithdrawnETH(uint256 nodeId) external payable {
+        IStakingNode node = nodes[nodeId];
+        if (address(node) != msg.sender) {
             revert NotStakingNode(msg.sender, nodeId);
         }
 
-        uint256 rewards = msg.value - withdrawnValidatorPrincipal;
+        uint256 pendingPrincipalWithdrawalBalance = pendingPrincipalWithdrawalBalancePerNode[nodeId];
+
+        if (msg.value < pendingPrincipalWithdrawalBalance) {
+            revert WithdrawalBelowPendingPrincipalBalance(msg.value);
+        }
+
+        uint256 rewards = msg.value - pendingPrincipalWithdrawalBalance;
 
         IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
         (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
@@ -394,7 +425,9 @@ contract StakingNodesManager is
             revert TransferFailed();
         }
 
-        ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
+        node.deallocateStakedETH(pendingPrincipalWithdrawalBalance);
+
+        ynETH.processWithdrawnETH{value: pendingPrincipalWithdrawalBalance}();
     }
 
     //--------------------------------------------------------------------------------------

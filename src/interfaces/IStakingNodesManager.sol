@@ -31,7 +31,7 @@ interface IStakingNodesManager {
     function getAllValidators() external view returns (Validator[] memory);
     function getAllNodes() external view returns (IStakingNode[] memory);
     function isStakingNodesAdmin(address) external view returns (bool);
-    function processWithdrawnETH(uint nodeId, uint withdrawnValidatorPrincipal) external payable;
+    function processWithdrawnETH(uint nodeId) external payable;
     function registerValidators(
         bytes32 _depositRoot,
         ValidatorData[] calldata _depositData

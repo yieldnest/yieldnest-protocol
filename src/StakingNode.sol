@@ -18,6 +18,9 @@ interface StakingNodeEvents {
      event Delegated(address indexed operator, bytes32 approverSalt);
      event Undelegated(address indexed operator);
      event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
+     event WithdrawalStarted(uint256 amount, address indexed strategy, uint96 nonce);
+     event RewardsProcessed(uint256 rewardsAmount);
+     event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 allocatedETH);
 }
 
 /**
@@ -33,8 +36,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     error NotStakingNodesAdmin();
     error ETHDepositorNotDelayedWithdrawalRouter();
-    error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
-    error ValidatorPrincipalExceedsTotalClaimable(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
@@ -131,23 +132,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     /// @notice Retrieves and processes withdrawals that have been queued in the EigenPod, transferring them to the StakingNode.
-    /// @param withdrawnValidatorPrincipal the amount considered to be validator principal as opposed to rewards
     /// @dev tThe Validator Principal is not subject to any fees.
-    function claimDelayedWithdrawals(uint256 withdrawnValidatorPrincipal) public nonReentrant onlyAdmin {
+    function claimDelayedWithdrawals() public nonReentrant onlyAdmin {
 
-        if (withdrawnValidatorPrincipal > allocatedETH) {
-            revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
-        }
         uint256 claimedAmount = address(this).balance;
-
-        if (claimedAmount < withdrawnValidatorPrincipal) {
-            revert ValidatorPrincipalExceedsTotalClaimable(withdrawnValidatorPrincipal, claimedAmount);
-        }
-        // substract validator principal
-        allocatedETH -= withdrawnValidatorPrincipal;
         
-        stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId, withdrawnValidatorPrincipal);
-        emit ClaimedDelayedWithdrawal(claimedAmount, claimedAmount, allocatedETH);
+        stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId);
+        emit ClaimedDelayedWithdrawal(claimedAmount, allocatedETH);
     }
 
     //--------------------------------------------------------------------------------------
@@ -219,6 +210,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
+        allocatedETH += amount;
+    }
+
+    function deallocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
         allocatedETH += amount;
     }
 

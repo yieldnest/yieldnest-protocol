@@ -40,12 +40,13 @@ interface IStakingNode {
     function delegate(address operator) external;
     function undelegate() external;
     function withdrawBeforeRestaking() external;
-    function claimDelayedWithdrawals(uint PendingWithdrawnValidatorPrincipal) external;
+    function claimDelayedWithdrawals() external;
 
 
     function implementation() external view returns (address);
 
-    function allocateStakedETH(uint amount) external payable;   
+    function allocateStakedETH(uint amount) external payable;
+    function deallocateStakedETH(uint amount) external payable;
     function getETHBalance() external view returns (uint);
     function nodeId() external view returns (uint);
 

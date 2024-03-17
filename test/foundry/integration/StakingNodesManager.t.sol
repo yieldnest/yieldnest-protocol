@@ -549,10 +549,9 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(addr1);
         vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
-        uint256 withdrawnValidatorPrincipal = 10 ether;
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.NotStakingNode.selector, actors.STAKING_NODE_CREATOR, 0));
         vm.prank(actors.STAKING_NODE_CREATOR);
-        stakingNodesManager.processWithdrawnETH(0, withdrawnValidatorPrincipal);
+        stakingNodesManager.processWithdrawnETH(0);
     }
 }
 
