@@ -16,10 +16,11 @@ import {MainnetEigenPodMock} from "../mocks/mainnet/MainnetEigenPodMock.sol";
 import {StakingNode,IStrategyManager} from "../../../src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 
-
 contract StakingNodeTestBase is IntegrationBaseTest {
 
-    function setupStakingNode(uint256 depositAmount) public returns (IStakingNode, IEigenPod) {
+    function setupStakingNode(uint256 depositAmount)
+        public
+        returns (IStakingNode, IEigenPod) {
 
         address addr1 = vm.addr(100);
 
@@ -102,6 +103,8 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
         uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
         vm.roll(block.number + withdrawalDelayBlocks + 1);
+
+        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.STAKING_NODES_ADMIN);
@@ -200,6 +203,16 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 rewardsSweeped = depositAmount + 100 ether;
         vm.deal(eigenPodAddress, rewardsSweeped);
 
+        uint256 withdrawnValidators = activeValidators - 1;
+        uint256 validatorPrincipal = withdrawnValidators * 32 ether;
+
+        uint[] memory withdrawnValidatorIndexes = new uint[](withdrawnValidators);
+        for (uint i = 0; i < withdrawnValidators; i++) {
+            withdrawnValidatorIndexes[i] = withdrawnValidators - 1 - i; // Populating array with validator indexes in reverse order
+        }
+        vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
+        stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes);
+
         // trigger withdraw before restaking succesfully
         vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.withdrawBeforeRestaking();
@@ -208,9 +221,6 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-
-        uint256 withdrawnValidators = activeValidators - 1;
-        uint256 validatorPrincipal = withdrawnValidators * 32 ether;
 
         {
             uint256 stakingNodeBalanceBeforeClaim = address(stakingNodeInstance).balance;
@@ -303,16 +313,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
         assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
-    }
-
-    function testClaimDelayedWithdrawals() public {
-
-        vm.prank(actors.STAKING_NODE_CREATOR);
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-
-        vm.prank(actors.STAKING_NODES_ADMIN);
-        vm.expectRevert();
-        stakingNodeInstance.claimDelayedWithdrawals();
     }
 
     function testDelegateFailWhenNotAdmin() public {

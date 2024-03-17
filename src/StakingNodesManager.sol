@@ -50,6 +50,7 @@ contract StakingNodesManager is
     error NoValidatorsProvided();
     error InvalidValidatorIndex(uint indexToRemove);
     error WithdrawalBelowPendingPrincipalBalance(uint256 value);
+    error IndexesNotSortedDescending();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -66,6 +67,9 @@ contract StakingNodesManager is
 
     /// @notice Role is able to create staking nodes
     bytes32 public constant STAKING_NODE_CREATOR_ROLE = keccak256("STAKING_NODE_CREATOR_ROLE");
+
+    /// @notice Role is able to remove validators
+    bytes32 public constant VALIDATOR_REMOVER_MANAGER_ROLE = keccak256("VALIDATOR_REMOVER_MANAGER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -124,6 +128,7 @@ contract StakingNodesManager is
         address stakingNodesAdmin;
         address validatorManager;
         address stakingNodeCreatorRole;
+        address validatorRemoverManager;
 
         // internal
         uint256 maxNodeCount;
@@ -162,12 +167,14 @@ contract StakingNodesManager is
         notZeroAddress(init.stakingAdmin)
         notZeroAddress(init.stakingNodesAdmin)
         notZeroAddress(init.validatorManager)
+        notZeroAddress(init.validatorRemoverManager)
         notZeroAddress(init.stakingNodeCreatorRole) {
        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
         _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
         _grantRole(STAKING_NODE_CREATOR_ROLE, init.stakingNodeCreatorRole);
+        _grantRole(VALIDATOR_REMOVER_MANAGER_ROLE, init.validatorRemoverManager);   
     }
 
     function initializeExternalContracts(Init calldata init)
@@ -386,6 +393,13 @@ contract StakingNodesManager is
 
     function registerRemovedValidators(uint[] memory indexes) public {
 
+        // Check if indexes are sorted in reverse order
+        for (uint i = 1; i < indexes.length; i++) {
+            if (indexes[i - 1] <= indexes[i]) {
+                revert IndexesNotSortedDescending();
+            }
+        }
+
         for (uint i = 0; i < indexes.length; i++) {
             uint indexToRemove = indexes[i];
 
@@ -394,9 +408,12 @@ contract StakingNodesManager is
                 // Increment pending withdrawal balance for the specific node by the stake amount
                 pendingPrincipalWithdrawalBalancePerNode[validators[indexToRemove].nodeId] += DEFAULT_VALIDATOR_STAKE;
 
-                // Remove validator from the array by shifting elements
-                for (uint j = indexToRemove; j < validators.length - 1; j++) {
-                    validators[j] = validators[j + 1];
+                // Remove validator from the array by shifting current and last if not last
+
+                uint256 lastElementIndex = validators.length - 1;
+                if (indexToRemove < lastElementIndex) {
+                    // overwrite with the last emeent
+                    validators[indexToRemove] = validators[lastElementIndex];
                 }
                 validators.pop(); // Remove the last element
             } else {

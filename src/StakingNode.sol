@@ -214,7 +214,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     function deallocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
-        allocatedETH += amount;
+        allocatedETH -= amount;
     }
 
     function getETHBalance() public view returns (uint256) {
