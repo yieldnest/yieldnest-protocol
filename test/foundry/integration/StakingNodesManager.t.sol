@@ -396,6 +396,117 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.InvalidNodeId.selector, maxNodeCount));
         stakingNodesManager.registerValidators(depositRoot, validatorData);
     } 
+
+    function testRemoveAllValidators() public {
+        uint validatorCount = 5;
+        uint depositAmount = 32 ether * validatorCount;
+        address addr1 = vm.addr(100);
+        vm.deal(addr1, depositAmount);
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+
+        // Register validators
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
+        for (uint i = 0; i < validatorCount; i++) {
+
+            bytes memory publicKey = abi.encodePacked(uint256(i));
+            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
+
+            validatorData[i] = IStakingNodesManager.ValidatorData({
+                publicKey: publicKey, // Unique public key for each validator
+                signature: ZERO_SIGNATURE,
+                nodeId: 0,
+                depositDataRoot: bytes32(0)
+            });
+
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            uint amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+
+
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+
+        // Remove validators
+        uint[] memory indexesToRemove = new uint[](validatorCount);
+        for (uint i = 0; i < validatorCount; i++) {
+            indexesToRemove[i] = validatorCount - i - 1; // Reverse order
+        }
+        vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
+        stakingNodesManager.registerRemovedValidators(indexesToRemove);
+
+        // Check validators were removed
+        assertEq(stakingNodesManager.validatorsLength(), 0, "Expected validators length to be 0");
+    }
+
+    function testRemoveSomeValidators() public {
+        uint validatorCount = 5;
+        uint depositAmount = 32 ether * validatorCount;
+        address addr1 = vm.addr(100);
+        vm.deal(addr1, depositAmount);
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
+
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        stakingNodesManager.createStakingNode();
+
+        // Register validators
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
+        for (uint i = 0; i < validatorCount; i++) {
+
+            bytes memory publicKey = abi.encodePacked(uint256(i));
+            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
+
+            validatorData[i] = IStakingNodesManager.ValidatorData({
+                publicKey: publicKey, // Unique public key for each validator
+                signature: ZERO_SIGNATURE,
+                nodeId: 0,
+                depositDataRoot: bytes32(0)
+            });
+
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            uint amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+
+
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        vm.prank(actors.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+
+        // Remove some validators
+        uint[] memory indexesToRemove = new uint[](3);
+        indexesToRemove[0] = 3;
+        indexesToRemove[1] = 1;
+        indexesToRemove[2] = 0;
+        bytes[] memory expectedPublicKeysToRemove = new bytes[](indexesToRemove.length);
+        expectedPublicKeysToRemove[0] = validatorData[indexesToRemove[0]].publicKey;
+        expectedPublicKeysToRemove[1] = validatorData[indexesToRemove[1]].publicKey;
+        expectedPublicKeysToRemove[2] = validatorData[indexesToRemove[2]].publicKey;
+
+        vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
+        stakingNodesManager.registerRemovedValidators(indexesToRemove);
+
+        // Check validators were removed
+        assertEq(stakingNodesManager.validatorsLength(), validatorCount - indexesToRemove.length, "Expected validators length to match new count");
+        StakingNodesManager.Validator[] memory remainingValidators = stakingNodesManager.getAllValidators();
+        for (uint i = 0; i < expectedPublicKeysToRemove.length; i++) {
+            for (uint j = 0; j < remainingValidators.length; j++) {
+                assertNotEq(
+                    keccak256(remainingValidators[j].publicKey),
+                    keccak256(expectedPublicKeysToRemove[i]),
+                    "Validator should have been removed"
+                );
+            }
+        }
+    }
 }
 
 contract StakingNodesManagerViews is IntegrationBaseTest {

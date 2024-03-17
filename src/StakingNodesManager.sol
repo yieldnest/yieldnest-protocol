@@ -391,7 +391,9 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function registerRemovedValidators(uint[] memory indexes) public {
+    function registerRemovedValidators(uint[] memory indexes)
+        public
+        onlyRole(VALIDATOR_REMOVER_MANAGER_ROLE) {
 
         // Check if indexes are sorted in reverse order
         for (uint i = 1; i < indexes.length; i++) {
@@ -457,6 +459,10 @@ contract StakingNodesManager is
 
     function getAllNodes() public view returns (IStakingNode[] memory) {
         return nodes;
+    }
+
+    function validatorsLength()  public view returns (uint256) {
+        return validators.length;
     }
 
     function nodesLength() public view returns (uint256) {
