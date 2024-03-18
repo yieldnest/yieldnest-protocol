@@ -364,15 +364,15 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         ynlsd.deposit(asset, amount, address(this));
 
         vm.startPrank(address(lsdStakingNode));
-        uint256 initialBalanceInStrategy = asset.balanceOf(address(lsdStakingNode));
+        uint256 initialBalanceInNode = asset.balanceOf(address(lsdStakingNode));
         asset.approve(address(ynlsd), 32 ether);
 
         ynlsd.retrieveAsset(0, asset, amount);
-        uint256 finalBalanceInStrategy = asset.balanceOf(address(lsdStakingNode));
+        uint256 finalBalanceInNode = asset.balanceOf(address(lsdStakingNode));
         assertEq(
-            compareWithThreshold(finalBalanceInStrategy, initialBalanceInStrategy + amount, 1), 
+            compareWithThreshold(finalBalanceInNode, initialBalanceInNode + amount, 1), 
             true, 
-            "Final balance in strategy does not match expected value"
+            "Final balance in staking node does not match expected value"
         );
         vm.stopPrank();
     }
