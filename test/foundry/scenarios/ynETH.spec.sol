@@ -152,7 +152,7 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 contract YnETHScenarioTest3 is IntegrationBaseTest {
 
 	/**
-		Scenario 3: Deposit, Delegate and Withdraw ETH to Staking Nodes Manager 
+		Scenario 3: Deposit and Withdraw ETH to Staking Nodes Manager
 		Objective: Test that only the Staking Nodes Manager 
 		can withdraw ETH from the contract.
 	 */
