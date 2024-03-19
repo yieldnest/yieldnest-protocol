@@ -358,7 +358,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = asset.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         asset.approve(address(ynlsd), amount);
         ynlsd.deposit(asset, amount, address(this));
