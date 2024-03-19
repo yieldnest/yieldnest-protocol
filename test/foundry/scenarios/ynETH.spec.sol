@@ -265,14 +265,14 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 	event Log(string message, uint256 value);
 	event LogAddress(string message, address value);
 	
-	function test_ynETH_Scenario_8_Rewards_Distribution(uint256 depositAmount) public {
-		vm.assume(depositAmount > 1_000 && depositAmount < 100_000_000 ether);
+	function test_ynETH_Scenario_8_Rewards_Distribution(uint256 randomAmount) public {
+		vm.assume(randomAmount > 1_000 && randomAmount < 100_000_000 ether);
 
 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
 
-		// send eth to the eigen pod
-		uint256 amount = depositAmount;
+		// send concensus rewards to eigen pod
+		uint256 amount = 32 ether + 1 wei;
 		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
 		uint256 initialPodBalance = address(eigenPod).balance;
 		vm.deal(address(eigenPod), amount);
@@ -284,7 +284,6 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(address(eigenPod).balance, initialPodBalance);
 
 		// There should be a delayedWithdraw on the DelayedWithdrawalRouter
-		uint256 initialStakingNodeBalance = address(stakingNode).balance;
 		IDelayedWithdrawalRouter withdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
 		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals = withdrawalRouter.getUserDelayedWithdrawals(address(stakingNode));
 		assertEq(delayedWithdrawals.length, 1);
@@ -301,24 +300,40 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
 
 		// We can now claim the delayedWithdrawal
+		uint256 withdrawnValidatorPrincipal = stakingNode.getETHBalance();
 		vm.prank(address(actors.STAKING_NODES_ADMIN));
-		stakingNode.claimDelayedWithdrawals(amount, 1);
-		// withdrawalRouter.claimDelayedWithdrawals(1);
-		// IDelayedWithdrawalRouter.UserDelayedWithdrawals memory userDelayedWithdrawals = withdrawalRouter.userWithdrawals(address(stakingNode));
-		
-		
-		// assertEq(userDelayedWithdrawals.delayedWithdrawalsCompleted, 1);
-		// IRewardsDistributor rewardsDistributor = IRewardsDistributor(stakingNodesManager.rewardsDistributor());
-		uint256 concensusRewards = 0xDB25A7b768311dE128BBDa7B8426c3f9C74f3240.balance;
-		uint256 executionRewards = 0x3381cD18e2Fb4dB236BF0525938AB6E43Db0440f.balance;
-		emit Log("stakingNode.balance", address(stakingNode).balance);
-		emit Log("yneth.balance", address(yneth).balance);
-		emit Log("eigenPod.balance", address(eigenPod).balance);
-		emit Log("withdrawalRouter.balance", address(withdrawalRouter).balance);
-		emit Log("executionLayerReceiver.balance", concensusRewards);
-		emit Log("consensusLayerReceiver.balance", executionRewards);
 
-		assertEq(address(yneth).balance, concensusRewards - amount, "stakingNode.balance != amount");
+		// Divided the withdrawnValidatorPrincipal by 2 to simulate the rewards distribution
+		stakingNode.claimDelayedWithdrawals(1, withdrawnValidatorPrincipal / 2);
+
+		// Get the rewards receiver addresses from the rewards distributor		
+		IRewardsDistributor rewardsDistributor = IRewardsDistributor(stakingNodesManager.rewardsDistributor());
+		address consensusLayerReceiver = address(rewardsDistributor.consensusLayerReceiver());
+		address executionLayerReceiver = address(rewardsDistributor.executionLayerReceiver());
+
+		uint256 concensusRewards = consensusLayerReceiver.balance;
+
+		// Mock execution rewards coming from a node operator service (eg. figment)
+		vm.deal(executionLayerReceiver, 1 ether);
+		
+		uint256 concensusRewardsExpected = withdrawnValidatorPrincipal / 2;
+		assertEq(
+			compareWithThreshold(concensusRewards, concensusRewardsExpected, 1),
+			true, 
+			"concensusRewards != concensusRewardsExpected"
+		);
+		assertEq(
+			compareWithThreshold(address(yneth).balance, withdrawnValidatorPrincipal / 2, 1), 
+			true,
+			"yneth.balance != concensusRewardsExpected"
+		);
+
+		// finally, process rewards from the rewards distributor
+		rewardsDistributor.processRewards();
+
+		// uint256 fees = Math.mulDiv(feesBasisPoints, totalRewards, _BASIS_POINTS_DENOMINATOR);
+
+
 	}
 
 }
