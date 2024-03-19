@@ -6,6 +6,8 @@ import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import {IynLSD} from "./interfaces/IynLSD.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
@@ -23,6 +25,8 @@ interface ILSDStakingNodeEvents {
  * This contract interacts with the Eigenlayer protocol to deposit assets, delegate staking operations, and manage staking rewards.
  */
 contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
+
+    using SafeERC20 for IERC20;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -87,7 +91,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
             ynLSD.retrieveAsset(nodeId, assets[i], amount);
 
-            asset.approve(address(strategyManager), amount);
+            asset.forceApprove(address(strategyManager), amount);
 
             uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
             emit DepositToEigenlayer(assets[i], strategy, amount, eigenShares);
