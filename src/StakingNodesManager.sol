@@ -86,7 +86,7 @@ contract StakingNodesManager is
     UpgradeableBeacon public upgradeableBeacon;
 
     IynETH public ynETH;
-    IRewardsDistributor rewardsDistributor;
+    IRewardsDistributor public rewardsDistributor;
 
     Validator[] public validators;
 
