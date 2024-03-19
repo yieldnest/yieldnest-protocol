@@ -8,6 +8,8 @@ import { IStakingNode } from "src/interfaces/IStakingNode.sol";
 import { BeaconChainProofs } from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import { IEigenPod } from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 import { IEigenPodManager } from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import { IDelayedWithdrawalRouter } from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
 
 contract YnETHScenarioTest1 is IntegrationBaseTest {
 
@@ -174,6 +176,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		//  Deposit 32 ETH to ynETH
 		uint256 depositAmount = 32 ether;
 		vm.deal(user1, depositAmount);
+		vm.prank(user1);
 		yneth.depositETH{value: depositAmount}(user1);
 
 		// Staking Node Creator Role creates the staking nodes
@@ -252,22 +255,73 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 	}
 }
 
-contract YnETHScenarioTest4 is IntegrationBaseTest {
+contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 	/**
-		Scenario 4: Share Accouting and Yield Accrual 
-		Objective: Verify that the share price correctly 
-		increases after the contract earns yield from 
-		consensus and execution rewards.
+		Scenario 8: Staking Rewards Distribution
+		Objective: Test the distribution of staking rewards to a multisig.
 	 */
+
+	event Log(string message, uint256 value);
+	event LogAddress(string message, address value);
+	
+	function test_ynETH_Scenario_8_Rewards_Distribution(uint256 depositAmount) public {
+		vm.assume(depositAmount > 1_000 && depositAmount < 100_000_000 ether);
+
+		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
+		(IStakingNode stakingNode,) = depositEth_and_createValidator();
+
+		// send eth to the eigen pod
+		uint256 amount = depositAmount;
+		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
+		uint256 initialPodBalance = address(eigenPod).balance;
+		vm.deal(address(eigenPod), amount);
+		assertEq(address(eigenPod).balance, initialPodBalance + amount);
+
+		// To withdraw, create a DelayedWithdrawal on the DelayedWithdrawalRouter
+		vm.prank(actors.STAKING_NODES_ADMIN);
+		stakingNode.withdrawBeforeRestaking();
+		assertEq(address(eigenPod).balance, initialPodBalance);
+
+		// There should be a delayedWithdraw on the DelayedWithdrawalRouter
+		uint256 initialStakingNodeBalance = address(stakingNode).balance;
+		IDelayedWithdrawalRouter withdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals = withdrawalRouter.getUserDelayedWithdrawals(address(stakingNode));
+		assertEq(delayedWithdrawals.length, 1);
+		assertEq(delayedWithdrawals[0].amount, amount);
+
+		// Because of the delay, the delayedWithdrawal should not be claimable yet
+		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawals = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
+		assertEq(claimableDelayedWithdrawals.length, 0);
+
+		// Move ahead in time to make the delayedWithdrawal claimable
+		vm.roll(block.number + withdrawalRouter.withdrawalDelayBlocks() + 1);
+		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawalsWarp = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
+		assertEq(claimableDelayedWithdrawalsWarp.length, 1);
+		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
+
+		// We can now claim the delayedWithdrawal
+		vm.prank(address(actors.STAKING_NODES_ADMIN));
+		stakingNode.claimDelayedWithdrawals(amount, 1);
+		// withdrawalRouter.claimDelayedWithdrawals(1);
+		// IDelayedWithdrawalRouter.UserDelayedWithdrawals memory userDelayedWithdrawals = withdrawalRouter.userWithdrawals(address(stakingNode));
+		
+		
+		// assertEq(userDelayedWithdrawals.delayedWithdrawalsCompleted, 1);
+		// IRewardsDistributor rewardsDistributor = IRewardsDistributor(stakingNodesManager.rewardsDistributor());
+		uint256 concensusRewards = 0xDB25A7b768311dE128BBDa7B8426c3f9C74f3240.balance;
+		uint256 executionRewards = 0x3381cD18e2Fb4dB236BF0525938AB6E43Db0440f.balance;
+		emit Log("stakingNode.balance", address(stakingNode).balance);
+		emit Log("yneth.balance", address(yneth).balance);
+		emit Log("eigenPod.balance", address(eigenPod).balance);
+		emit Log("withdrawalRouter.balance", address(withdrawalRouter).balance);
+		emit Log("executionLayerReceiver.balance", concensusRewards);
+		emit Log("consensusLayerReceiver.balance", executionRewards);
+
+		assertEq(address(yneth).balance, concensusRewards - amount, "stakingNode.balance != amount");
+	}
+
 }
 
-contract YnETHScenarioTest5 is IntegrationBaseTest {
 
-	/**
-		Scenario 5: Withdrawal of ETH 
-		Objective: Test ynETH's ability to 
-		withdraw ETH to the Staking Nodes Manager.
-	 */
-}
 
