@@ -347,7 +347,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 
     function testRetrieveAssetsSuccess() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 64;
+        uint256 amount = 64 ether;
 
         vm.prank(actors.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
