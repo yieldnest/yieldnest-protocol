@@ -38,7 +38,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IynETH ynETH;
+    IynETH public ynETH;
 
     /// @notice The contract receiving execution layer rewards, both tips and MEV rewards.
     RewardsReceiver public executionLayerReceiver;
