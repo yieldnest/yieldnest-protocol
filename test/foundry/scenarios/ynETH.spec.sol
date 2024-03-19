@@ -164,7 +164,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 	function test_ynETH_Scenario_3_Deposit_Withdraw() public {
 
 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
-		(IStakingNode stakingNode,) = depositEth_and_createValidator();
+		depositEth_and_createValidator();
 
 		// Verify withdraw credentials
 		// verifyEigenWithdrawCredentials(stakingNode);
