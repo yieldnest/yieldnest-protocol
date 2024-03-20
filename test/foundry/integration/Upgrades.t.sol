@@ -210,7 +210,8 @@ contract UpgradesTest is IntegrationBaseTest {
             lsdRestakingManager: actors.LSD_RESTAKING_MANAGER,
             lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.PAUSE_ADMIN
+            pauser: actors.PAUSE_ADMIN,
+            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPER
         });
 
         return (init, ynlsd);

@@ -15,7 +15,6 @@ import {TestLSDStakingNodeV2} from "test/foundry/mocks/TestLSDStakingNodeV2.sol"
 import {TestYnLSDV2} from "test/foundry/mocks/TestYnLSDV2.sol";
 import {ynBase} from "src/ynBase.sol";
 
-
 contract ynLSDAssetTest is IntegrationBaseTest {
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -38,7 +37,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         assets[0] = asset;
         amounts[0] = amount;
 
-        vm.expectRevert(bytes("BALANCE_EXCEEDED"));
+        vm.expectRevert(bytes("Pausable: index is paused"));
         vm.prank(actors.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
@@ -46,6 +45,9 @@ contract ynLSDAssetTest is IntegrationBaseTest {
     function testDepositSTETHSuccessWithOneDeposit() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 32 ether;
+
+        uint256 initialSupply = ynlsd.totalSupply();
+        uint256 initialTotalAssets = ynlsd.totalAssets();
 
         // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
@@ -58,14 +60,17 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         stETH.approve(address(ynlsd), 32 ether);
         ynlsd.deposit(stETH, depositAmount, address(this));
 
-        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply(), "ynlsd balance does not match total supply");
-        assertTrue((depositAmount - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
+        assertTrue((depositAmount - (ynlsd.totalAssets() - initialTotalAssets)) < 1e18, "Total assets do not match user deposits");
         assertTrue((depositAmount - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDepositSTETHSuccessWithMultipleDeposits() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 32 ether;
+
+        uint256 initialSupply = ynlsd.totalSupply();
+        uint256 initialTotalAssets = ynlsd.totalAssets();
 
         // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
@@ -84,8 +89,8 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
         uint256 totalDeposit = depositAmountOne + depositAmountTwo + depositAmountThree;
 
-        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply(), "ynlsd balance does not match total supply");
-        assertTrue((totalDeposit - ynlsd.totalAssets()) < 1e18, "Total assets do not match user deposits");
+        assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
+        assertTrue((totalDeposit - (ynlsd.totalAssets() - initialTotalAssets)) < 1e18, "Total assets do not match user deposits");
         assertTrue(totalDeposit - ynlsd.balanceOf(address(this)) < 1e18, "Invalid ynLSD Balance");
     }
     
@@ -114,17 +119,29 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         ynlsd.convertToShares(asset, amount);
     }
 
+    function testConvertToSharesBootstrapStrategy() public {
+        vm.prank(actors.STAKING_NODE_CREATOR);
+        ynlsd.createLSDStakingNode();
+        uint256[] memory totalAssets = ynlsd.getTotalAssets();
+        ynlsd.nodes(0);
+        
+        uint256 bootstrapAmountUnits = ynlsd.BOOTSTRAP_AMOUNT_UNITS() * 1e18 - 1;
+        assertTrue(compareWithThreshold(totalAssets[0], bootstrapAmountUnits, 1), "Total assets should be equal to bootstrap amount");
+    }
+
     function testConvertToSharesZeroStrategy() public {
         vm.prank(actors.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         uint256[] memory totalAssets = ynlsd.getTotalAssets();
         ynlsd.nodes(0);
-        assertEq(totalAssets[0], 0, "Total assets should be zero");
+
+        assertEq(totalAssets[1], 0, "Total assets should be equal to bootstrap 0");
     }
 
     function testGetTotalAssets() public {
+        uint256 totalAssetsInETH = ynlsd.convertToETH(ynlsd.assets(0), ynlsd.BOOTSTRAP_AMOUNT_UNITS() * 1e18 - 1);
         uint256 totalAssets = ynlsd.totalAssets();
-        assertEq(totalAssets, 0, "Total assets should be zero");
+        assertTrue(compareWithThreshold(totalAssets, totalAssetsInETH, 1), "Total assets should be equal to bootstrap amount converted to its ETH value");
     }
     
     function testLSDWrongStrategy() public {
@@ -142,8 +159,8 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 shares = ynlsd.convertToShares(asset, amount);
         (, int256 price, , uint256 timeStamp, ) = assetPriceFeed.latestRoundData();
 
-        assertEq(ynlsd.totalAssets(), 0);
-        assertEq(ynlsd.totalSupply(), 0);
+        // assertEq(ynlsd.totalAssets(), 0);
+        // assertEq(ynlsd.totalSupply(), 0);
 
         assertEq(timeStamp > 0, true, "Zero timestamp");
         assertEq(price > 0, true, "Zero price");
@@ -164,6 +181,8 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         vm.startPrank(unpauser);
         pausableStrategyManager.unpause(0);
         vm.stopPrank();
+
+        uint256 totalAssetsBeforeDeposit = ynlsd.totalAssets();
         
         // Obtain STETH
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
@@ -172,6 +191,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
         asset.approve(address(ynlsd), amount);
         ynlsd.deposit(asset, amount, address(this));
+
 
         {
             IERC20[] memory assets = new IERC20[](1);
@@ -194,7 +214,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
 
         // Assert that totalAssets reflects the deposit
-        assertEq(totalAssetsAfterDeposit, expectedBalance, "Total assets do not reflect the deposit");
+        assertEq(totalAssetsAfterDeposit - totalAssetsBeforeDeposit, expectedBalance, "Total assets do not reflect the deposit");
     }
 
     function testPreviewDeposit() public {
@@ -527,4 +547,54 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         assertFalse(isFirstAddressWhitelisted, "First new whitelist address was not removed");
         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
     }
+}
+
+
+contract ynLSDDonationsTest is IntegrationBaseTest {
+
+    function testYnLSDdonationToZeroShareAttackResistance() public {
+
+        uint INITIAL_AMOUNT = 10_000 ether;
+
+        address _alice = makeAddr("Alice");
+        address _bob = makeAddr("Bob");
+
+        IERC20 assetToken = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+
+        vm.deal(_alice, INITIAL_AMOUNT);
+        vm.deal(_bob, INITIAL_AMOUNT);
+
+
+        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+
+        // get stETH
+         vm.startPrank(_alice);
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: INITIAL_AMOUNT}("");
+        require(success, "ETH transfer failed");
+
+        steth.approve(address(ynlsd), type(uint256).max);
+
+        vm.startPrank(_bob);
+        (success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: INITIAL_AMOUNT}("");
+        require(success, "ETH transfer failed");
+
+        steth.approve(address(ynlsd), type(uint256).max);
+
+        // Front-running part
+        uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
+        // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 ATK to the Vault by observing the mempool
+        vm.startPrank(_alice);
+        uint256 aliceDepositAmount = 1;
+        uint256 aliceShares = ynlsd.deposit(assetToken, aliceDepositAmount, _alice);
+        assertEq(aliceShares, 0); // Since there are boostrap funds, this has no effect
+        // Try to inflate shares value
+        assetToken.transfer(address(ynlsd), bobDepositAmount);
+        vm.stopPrank();
+
+        // Check that Bob did not get 0 share when he deposits
+        vm.prank(_bob);
+        uint256 bobShares = ynlsd.deposit(assetToken, bobDepositAmount, _bob);
+
+        assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
+    }   
 }

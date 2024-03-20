@@ -227,19 +227,20 @@ contract IntegrationBaseTest is Test, Utils {
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
 
-        // rETH
-        assets[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        assetsAddresses[0] = chainAddresses.lsd.RETH_ADDRESS;
-        strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
-        priceFeeds[0] = chainAddresses.lsd.RETH_FEED_ADDRESS;
-        maxAges[0] = uint256(86400);
 
         // stETH
-        assets[1] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        assetsAddresses[1] = chainAddresses.lsd.STETH_ADDRESS;
-        strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
-        priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
-        maxAges[1] = uint256(86400); //one hour
+        assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        assetsAddresses[0] = chainAddresses.lsd.STETH_ADDRESS;
+        strategies[0] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
+        priceFeeds[0] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+        maxAges[0] = uint256(86400); //one hour
+
+        // rETH
+        assets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        assetsAddresses[1] = chainAddresses.lsd.RETH_ADDRESS;
+        strategies[1] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
+        priceFeeds[1] = chainAddresses.lsd.RETH_FEED_ADDRESS;
+        maxAges[1] = uint256(86400);
 
         YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
             assets: assetsAddresses,
@@ -266,9 +267,18 @@ contract IntegrationBaseTest is Test, Utils {
             lsdRestakingManager: actors.LSD_RESTAKING_MANAGER,
             lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.PAUSE_ADMIN
+            pauser: actors.PAUSE_ADMIN,
+            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPER
         });
 
+        vm.deal(actors.DEPOSIT_BOOTSTRAPER, 10000 ether);
+
+        vm.prank(actors.DEPOSIT_BOOTSTRAPER);
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: 1000 ether}("");
+        require(success, "ETH transfer failed");
+
+        vm.prank(actors.DEPOSIT_BOOTSTRAPER);
+        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynlsd), type(uint256).max);
         ynlsd.initialize(init);
 
         vm.prank(actors.STAKING_ADMIN);

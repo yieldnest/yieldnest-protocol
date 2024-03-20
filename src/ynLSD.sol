@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
@@ -47,6 +46,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
     bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
     bytes32 public constant LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
+
+    uint256 public constant BOOTSTRAP_AMOUNT_UNITS = 10;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -96,6 +97,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         address lsdRestakingManager;
         address lsdStakingNodeCreatorRole;
         address[] pauseWhitelist;
+        address depositBootstrapper;
     }
 
     function initialize(Init memory init)
@@ -137,6 +139,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
+
+        _deposit(assets[0], BOOTSTRAP_AMOUNT_UNITS * (10 ** (IERC20Metadata(address(assets[0])).decimals())), init.depositBootstrapper, init.depositBootstrapper);
     }
 
     //--------------------------------------------------------------------------------------
@@ -157,7 +161,16 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         IERC20 asset,
         uint256 amount,
         address receiver
-    ) external nonReentrant returns (uint256 shares) {
+    ) public nonReentrant returns (uint256 shares) {
+        return _deposit(asset, amount, receiver, msg.sender);
+    }
+
+    function _deposit(
+        IERC20 asset,
+        uint256 amount,
+        address receiver,
+        address sender
+    ) internal returns (uint256 shares) {
 
         IStrategy strategy = strategies[asset];
         if(address(strategy) == address(0x0)){
@@ -178,9 +191,9 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         // Transfer assets in after shares are computed since _convertToShares relies on totalAssets
         // which inspects asset.balanceOf(address(this))
-        asset.safeTransferFrom(msg.sender, address(this), amount);
+        asset.safeTransferFrom(sender, address(this), amount);
 
-        emit Deposit(msg.sender, receiver, amount, shares);
+        emit Deposit(sender, receiver, amount, shares);
     }
 
     /**
