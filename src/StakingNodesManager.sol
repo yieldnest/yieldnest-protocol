@@ -34,8 +34,6 @@ contract StakingNodesManager is
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error MinimumStakeBoundNotSatisfied();
-    error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error DepositAllocationUnbalanced(uint256 nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
     error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
     error ValidatorAlreadyUsed(bytes publicKey);
@@ -89,9 +87,6 @@ contract StakingNodesManager is
     IRewardsDistributor public rewardsDistributor;
 
     Validator[] public validators;
-
-    uint128 public maxBatchDepositSize;
-    uint128 public stakeAmount;
 
     /**
     /**

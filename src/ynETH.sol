@@ -20,8 +20,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error MinimumStakeBoundNotSatisfied();
-    error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
     error ValueOutOfBounds(uint256 value);
     error ZeroAddress();
@@ -38,7 +36,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
 
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
-    uint256 public allocatedETHForDeposits;
     bool public depositsPaused;
 
     /// @dev The value is in basis points (1/10000).
@@ -170,6 +167,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     /// @dev Iterates through all staking nodes to sum up their ETH balances.
     /// @return totalDeposited The total amount of ETH deposited in all validators.
     function totalDepositedInValidators() internal view returns (uint256) {
+        
         IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
         uint256 totalDeposited = 0;
         for (uint256 i = 0; i < nodes.length; i++) {

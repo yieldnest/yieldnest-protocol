@@ -97,7 +97,7 @@ contract UpgradesTest is IntegrationBaseTest {
         // Save original ynETH state
         IStakingNodesManager originalStakingNodesManager = yneth.stakingNodesManager();
         IRewardsDistributor originalRewardsDistributor = yneth.rewardsDistributor();
-        uint originalAllocatedETHForDeposits = yneth.allocatedETHForDeposits();
+        uint originalAllocatedETHForDeposits = yneth.totalDepositedInPool();
         bool originalIsDepositETHPaused = yneth.depositsPaused();
         uint originalExchangeAdjustmentRate = yneth.exchangeAdjustmentRate();
         uint originalTotalDepositedInPool = yneth.totalDepositedInPool();
@@ -120,7 +120,7 @@ contract UpgradesTest is IntegrationBaseTest {
         // Assert that all fields are equal post-upgrade
         assertEq(address(upgradedYnETH.stakingNodesManager()), address(originalStakingNodesManager), "StakingNodesManager mismatch");
         assertEq(address(upgradedYnETH.rewardsDistributor()), address(originalRewardsDistributor), "RewardsDistributor mismatch");
-        assertEq(upgradedYnETH.allocatedETHForDeposits(), originalAllocatedETHForDeposits, "AllocatedETHForDeposits mismatch");
+        assertEq(upgradedYnETH.totalDepositedInPool(), originalAllocatedETHForDeposits, "AllocatedETHForDeposits mismatch");
         assertEq(upgradedYnETH.depositsPaused(), originalIsDepositETHPaused, "IsDepositETHPaused mismatch");
         assertEq(upgradedYnETH.exchangeAdjustmentRate(), originalExchangeAdjustmentRate, "ExchangeAdjustmentRate mismatch");
         assertEq(upgradedYnETH.totalDepositedInPool(), originalTotalDepositedInPool, "TotalDepositedInPool mismatch");

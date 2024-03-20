@@ -15,6 +15,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
     error ZeroAge();
     error ArraysLengthMismatch(uint256 assetsLength, uint256 priceFeedAddressesLength, uint256 maxAgesLength);
     error PriceFeedNotSet();
+    error InvalidPriceValue(int256 price);
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;
 
@@ -94,6 +95,10 @@ contract YieldNestOracle is AccessControlUpgradeable {
         uint256 age = block.timestamp - timeStamp;
         if (age > priceFeed.maxAge) {
             revert PriceFeedTooStale(age, priceFeed.maxAge);
+        }
+
+        if (price <= 0) {
+            revert InvalidPriceValue(price);
         }
 
         return uint256(price);

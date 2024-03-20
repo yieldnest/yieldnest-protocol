@@ -27,15 +27,12 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    error MinimumStakeBoundNotSatisfied();
-    error StakeBelowMinimumynETHAmount(uint256 ynETHAmount, uint256 expectedMinimum);
     error Paused();
     error ValueOutOfBounds(uint256 value);
 
 
     IStakingNodesManager public stakingNodesManager;
     IRewardsDistributor public rewardsDistributor;
-    uint256 public allocatedETHForDeposits;
     bool public depositsPaused;
     // Storage variables
 
