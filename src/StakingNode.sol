@@ -98,6 +98,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         external
         notZeroAddress(address(init.stakingNodesManager))
         initializer {
+        __ReentrancyGuard_init();
 
         stakingNodesManager = init.stakingNodesManager;
         nodeId = init.nodeId;
