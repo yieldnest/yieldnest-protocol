@@ -269,23 +269,22 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         assetBalances = new uint256[](assets.length);
         IStrategy[] memory assetStrategies = new IStrategy[](assets.length);
         
-        // First, add balances for funds held directly in ynLSD.
+        // Add balances for funds held directly in ynLSD.
         for (uint256 i = 0; i < assets.length; i++) {
             assetStrategies[i] = strategies[assets[i]];
 
-            // add balances for funds at rest in ynLSD
             uint256 balanceThis = assets[i].balanceOf(address(this));
             assetBalances[i] += balanceThis;
         }
 
-        // Next, add balances contained in each LSDStakingNode, including those managed by strategies.
+        // Add balances contained in each LSDStakingNode, including those managed by strategies.
         uint256 nodeCount = nodes.length;
         for (uint256 i; i < nodeCount; i++ ) {
             
             ILSDStakingNode node = nodes[i];
             for (uint256 j = 0; j < assets.length; j++) {
                 
-                IERC20 asset = assets[i];
+                IERC20 asset = assets[j];
                 uint256 balanceNode = asset.balanceOf(address(node));
                 assetBalances[j] += balanceNode;
 
