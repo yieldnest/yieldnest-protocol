@@ -17,8 +17,6 @@ interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event Undelegated(address indexed operator);
-     event WithdrawalStarted(uint256 amount, address indexed strategy, uint96 nonce);
-     event RewardsProcessed(uint256 rewardsAmount);
      event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
 }
 
@@ -34,9 +32,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     error NotStakingNodesAdmin();
-    error StrategyIndexMismatch(address strategy, uint256 index);
     error ETHDepositorNotDelayedWithdrawalRouter();
-    error WithdrawalAmountTooLow(uint256 sentAmount, uint256 pendingWithdrawnValidatorPrincipal);
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
     error ValidatorPrincipalExceedsTotalClaimable(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
@@ -52,7 +48,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     IStrategy public constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
-    uint256 public constant GWEI_TO_WEI = 1e9;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -61,8 +56,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     IStakingNodesManager public stakingNodesManager;
     IEigenPod public eigenPod;
     uint256 public nodeId;
-
-    uint256 pendingWithdrawnValidatorPrincipal;
 
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
     uint256 public allocatedETH;

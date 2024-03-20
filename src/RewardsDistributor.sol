@@ -21,8 +21,6 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error InvalidConfiguration();
-    error NotOracle();
     error Paused();
     error ZeroAddress();
     error FeeSendFailed();
