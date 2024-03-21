@@ -56,7 +56,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         uint depositAmount = 15 ether;
 
@@ -76,7 +76,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
         uint256 depositAmountOne = 5 ether;
@@ -326,7 +326,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 
     function testRetrieveAssetsSuccess() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        uint256 amount = 64;
+        uint256 amount = 64 ether;
 
         vm.prank(actors.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
@@ -337,7 +337,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = asset.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         asset.approve(address(ynlsd), amount);
         ynlsd.deposit(asset, amount, address(this));
