@@ -103,6 +103,9 @@ contract IntegrationBaseTest is Test, Utils {
         TransparentUpgradeableProxy rewardsDistributorProxy;
         TransparentUpgradeableProxy stakingNodesManagerProxy;
         TransparentUpgradeableProxy yieldNestOracleProxy;
+        TransparentUpgradeableProxy executionLayerReceiverProxy;
+        TransparentUpgradeableProxy consensusLayerReceiverProxy;
+
         // Initializing RewardsDistributor contract and creating its proxy
         rewardsDistributor = new RewardsDistributor();
         yneth = new ynETH();
@@ -110,13 +113,23 @@ contract IntegrationBaseTest is Test, Utils {
         yieldNestOracle = new YieldNestOracle();
         ynlsd = new ynLSD();
 
+        executionLayerReceiver = new RewardsReceiver();
+        consensusLayerReceiver = new RewardsReceiver();
+
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributor), actors.PROXY_ADMIN_OWNER, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
         
+
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
         yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.PROXY_ADMIN_OWNER, "");
         ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.PROXY_ADMIN_OWNER, "");
+
+        executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiver), actors.PROXY_ADMIN_OWNER, "");
+        consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiver), actors.PROXY_ADMIN_OWNER, "");
+
+        executionLayerReceiver = RewardsReceiver(payable(executionLayerReceiverProxy));
+        consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
 
         // Wrapping proxies with their respective interfaces
         yneth = ynETH(payable(ynethProxy));
@@ -173,17 +186,7 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupRewardsDistributor() public {
-        executionLayerReceiver = new RewardsReceiver();
-        consensusLayerReceiver = new RewardsReceiver();
-        RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
-            admin: actors.ADMIN,
-            executionLayerReceiver: executionLayerReceiver,
-            consensusLayerReceiver: consensusLayerReceiver,
-            feesReceiver: payable(actors.FEE_RECEIVER),
-            ynETH: IynETH(address(yneth))
-        });
 
-        rewardsDistributor.initialize(rewardsDistributorInit);
         RewardsReceiver.Init memory rewardsReceiverInit = RewardsReceiver.Init({
             admin: actors.ADMIN,
             withdrawer: address(rewardsDistributor)
@@ -192,6 +195,15 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit);
         vm.stopPrank();
+
+        RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
+            admin: actors.ADMIN,
+            executionLayerReceiver: executionLayerReceiver,
+            consensusLayerReceiver: consensusLayerReceiver,
+            feesReceiver: payable(actors.FEE_RECEIVER),
+            ynETH: IynETH(address(yneth))
+        });
+        rewardsDistributor.initialize(rewardsDistributorInit);
     }
 
     function setupStakingNodesManager() public {
