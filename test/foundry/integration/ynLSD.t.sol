@@ -503,7 +503,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         ynlsd.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
 
         // Assert
-        bool isWhitelisted = ynlsd.isAddressWhitelisted(actors.TRANSFER_ENABLED_EOA);
+        bool isWhitelisted = ynlsd.pauseWhiteList(actors.TRANSFER_ENABLED_EOA);
         assertFalse(isWhitelisted, "EOA address was not removed from whitelist");
     }
 
@@ -522,8 +522,8 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         ynlsd.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
 
         // Assert
-        bool isFirstAddressWhitelisted = ynlsd.isAddressWhitelisted(newWhitelistAddresses[0]);
-        bool isSecondAddressWhitelisted = ynlsd.isAddressWhitelisted(newWhitelistAddresses[1]);
+        bool isFirstAddressWhitelisted = ynlsd.pauseWhiteList(newWhitelistAddresses[0]);
+        bool isSecondAddressWhitelisted = ynlsd.pauseWhiteList(newWhitelistAddresses[1]);
         assertFalse(isFirstAddressWhitelisted, "First new whitelist address was not removed");
         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
     }

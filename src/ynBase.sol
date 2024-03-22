@@ -131,14 +131,6 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
     }
 
     /**
-     * @dev Returns true if the address is whitelisted for transfers during pause, false otherwise.
-     */
-    function isAddressWhitelisted(address addr) public view returns (bool) {
-        ynBaseStorage storage $ = _getYnBaseStorage();
-        return $.pauseWhiteList[addr];
-    }
-
-    /**
      * @dev Returns true if the address is in the pause whitelist, false otherwise.
      */
     function pauseWhiteList(address addr) public view returns (bool) {
