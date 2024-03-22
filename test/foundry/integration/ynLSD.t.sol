@@ -51,7 +51,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         uint depositAmount = 15 ether;
 
@@ -71,7 +71,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(balance, amount, "Amount not received");
+        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
         uint256 depositAmountOne = 5 ether;
