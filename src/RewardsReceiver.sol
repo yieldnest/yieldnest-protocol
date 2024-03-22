@@ -31,6 +31,10 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;

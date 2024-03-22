@@ -57,8 +57,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         address[] pauseWhitelist;
     }
 
-    constructor(
-    ) {
+    constructor() {
          _disableInitializers();
     }
 

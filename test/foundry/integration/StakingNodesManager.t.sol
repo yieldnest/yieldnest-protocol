@@ -505,11 +505,17 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
         // try to create a bad deposit root
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
+        bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[0].nodeId);
 
+        bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(
+            validatorData[0].publicKey, 
+            validatorData[0].signature, 
+            withdrawalCredentials, 32 ether
+        );
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(
             StakingNodesManager.DepositDataRootMismatch.selector, 
-            0x7be1a5aee0180c84f2d1b0ef721fb62bf323ee9aabeac0bd5bb551da1782f805, 
+            depositDataRoot, 
             validatorData[0].depositDataRoot)
         );
         stakingNodesManager.registerValidators(depositRoot, validatorData);
