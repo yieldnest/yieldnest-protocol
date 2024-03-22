@@ -38,8 +38,6 @@ contract DeployYnLSD is BaseScript {
         // solhint-disable-next-line no-console
         console.log("Current Chain ID:", block.chainid);
 
-        uint256 startingExchangeAdjustmentRate = 0;
-
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
@@ -80,7 +78,6 @@ contract DeployYnLSD is BaseScript {
                 strategyManager: strategyManager,
                 delegationManager: delegationManager,
                 oracle: yieldNestOracle,
-                exchangeAdjustmentRate: startingExchangeAdjustmentRate,
                 maxNodeCount: 10,
                 admin: actors.ADMIN,
                 pauser: actors.PAUSE_ADMIN,

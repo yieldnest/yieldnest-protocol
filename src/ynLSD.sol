@@ -32,7 +32,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     error UnsupportedAsset(IERC20 asset);
     error ZeroAmount();
-    error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
     error ZeroAddress();
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
@@ -64,8 +63,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
-
-    uint256 public exchangeAdjustmentRate;
     
     /**
      * @notice Array of LSD Staking Node contracts.
@@ -89,7 +86,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
         YieldNestOracle oracle;
-        uint256 exchangeAdjustmentRate;
         uint256 maxNodeCount;
         address admin;
         address pauser;
@@ -130,11 +126,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
         oracle = init.oracle;
-
-        if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
-            revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
-        }
-        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         maxNodeCount = init.maxNodeCount;
 
         _setTransfersPaused(true);  // transfers are initially paused
@@ -199,7 +190,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     /**
      * @dev Converts an ETH amount to shares based on the current exchange rate and specified rounding method.
      * If it's the first stake (bootstrap phase), uses a 1:1 exchange rate. Otherwise, calculates shares based on
-     * the formula: deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount.
+     * the formula: deltaynETH = (ynETHSupply / totalControlled) * ethAmount.
      * This calculation can result in 0 during the bootstrap phase if `totalControlled` and `ynETHSupply` could be
      * manipulated independently, which should not be possible.
      * @param ethAmount The amount of ETH to convert to shares.
@@ -213,15 +204,14 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             return ethAmount;
         }
 
-        // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        // If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
+        // deltaynETH = (ynETHSupply / totalControlled) * ethAmount
         
         // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
         // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
+            totalSupply(),
+            totalAssets(),
             rounding
         );
     }
@@ -465,3 +455,4 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         _;
     }
 }
+

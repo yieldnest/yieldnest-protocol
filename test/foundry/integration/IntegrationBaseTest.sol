@@ -41,8 +41,6 @@ contract IntegrationBaseTest is Test, Utils {
     bytes constant  ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     bytes32 constant ZERO_DEPOSIT_ROOT = bytes32(0);
 
-   uint256 startingExchangeAdjustmentRate = 4;
-
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
@@ -165,7 +163,6 @@ contract IntegrationBaseTest is Test, Utils {
             pauser: actors.PAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            exchangeAdjustmentRate: startingExchangeAdjustmentRate,
             pauseWhitelist: pauseWhitelist
         });
 
@@ -251,8 +248,6 @@ contract IntegrationBaseTest is Test, Utils {
         });
         yieldNestOracle.initialize(oracleInit);
 
-        uint startingExchangeAdjustmentRateForYnLSD = 0;
-
         LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
         ynLSD.Init memory init = ynLSD.Init({
             assets: assets,
@@ -260,7 +255,6 @@ contract IntegrationBaseTest is Test, Utils {
             strategyManager: strategyManager,
             delegationManager: delegationManager,
             oracle: yieldNestOracle,
-            exchangeAdjustmentRate: startingExchangeAdjustmentRateForYnLSD,
             maxNodeCount: 10,
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,

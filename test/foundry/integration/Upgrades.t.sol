@@ -99,7 +99,6 @@ contract UpgradesTest is IntegrationBaseTest {
         IRewardsDistributor originalRewardsDistributor = yneth.rewardsDistributor();
         uint originalAllocatedETHForDeposits = yneth.totalDepositedInPool();
         bool originalIsDepositETHPaused = yneth.depositsPaused();
-        uint originalExchangeAdjustmentRate = yneth.exchangeAdjustmentRate();
         uint originalTotalDepositedInPool = yneth.totalDepositedInPool();
 
         MockERC20 nETH = new MockERC20("Nest ETH", "nETH");
@@ -122,7 +121,6 @@ contract UpgradesTest is IntegrationBaseTest {
         assertEq(address(upgradedYnETH.rewardsDistributor()), address(originalRewardsDistributor), "RewardsDistributor mismatch");
         assertEq(upgradedYnETH.totalDepositedInPool(), originalAllocatedETHForDeposits, "AllocatedETHForDeposits mismatch");
         assertEq(upgradedYnETH.depositsPaused(), originalIsDepositETHPaused, "IsDepositETHPaused mismatch");
-        assertEq(upgradedYnETH.exchangeAdjustmentRate(), originalExchangeAdjustmentRate, "ExchangeAdjustmentRate mismatch");
         assertEq(upgradedYnETH.totalDepositedInPool(), originalTotalDepositedInPool, "TotalDepositedInPool mismatch");
 
         assertEq(finalTotalAssets, yneth.totalAssets(), "Total assets mismatch after upgrade");
@@ -134,38 +132,7 @@ contract UpgradesTest is IntegrationBaseTest {
         upgradedYnETH.deposit(nETHDepositAmount, address(this));
     }
 
-    function testUpgradeYnETHRevertswithInvalidAdjustmentRate() public {
-
-        TransparentUpgradeableProxy ynethProxy;
-        yneth = ynETH(payable(ynethProxy));
-
-        // Re-deploying ynETH and creating its proxy again
-        yneth = new ynETH();
-        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
-        yneth = ynETH(payable(ynethProxy));
-
-
-        address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.TRANSFER_ENABLED_EOA;
-        
-        uint256 invalidRate = 100000000000000000000;
-
-        ynETH.Init memory ynethInit = ynETH.Init({
-            admin: actors.ADMIN,
-            pauser: actors.PAUSE_ADMIN,
-            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
-            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            exchangeAdjustmentRate: invalidRate,
-            pauseWhitelist: pauseWhitelist
-        });
-
-        bytes memory encodedError = abi.encodeWithSelector(ynETH.ExchangeAdjustmentRateOutOfBounds.selector, invalidRate);
-
-        vm.expectRevert(encodedError);
-        yneth.initialize(ynethInit);
-    }
-
-    function setupInitializeYnLSD(uint256 adjustmentRate, address assetAddress) internal returns (ynLSD.Init memory, ynLSD ynlsd) {
+    function setupInitializeYnLSD(address assetAddress) internal returns (ynLSD.Init memory, ynLSD ynlsd) {
         TransparentUpgradeableProxy ynlsdProxy;
         ynlsd = ynLSD(payable(ynlsdProxy));
 
@@ -203,7 +170,6 @@ contract UpgradesTest is IntegrationBaseTest {
             strategyManager: strategyManager,
             delegationManager: delegationManager,
             oracle: yieldNestOracle,
-            exchangeAdjustmentRate: adjustmentRate,
             maxNodeCount: 10,
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,
@@ -218,15 +184,8 @@ contract UpgradesTest is IntegrationBaseTest {
     }
 
     function testYnLSDInitializeRevertsAssetAddressZero() public {
-        (ynLSD.Init memory init, ynLSD ynlsd) = setupInitializeYnLSD(1000, address(0));
+        (ynLSD.Init memory init, ynLSD ynlsd) = setupInitializeYnLSD(address(0));
         bytes memory encodedError = abi.encodeWithSelector(ynLSD.ZeroAddress.selector);
-        vm.expectRevert(encodedError);
-        ynlsd.initialize(init);
-    }
-
-    function testYnLSDInitializeRevertsInvalidAdjustmentRate() public {
-        (ynLSD.Init memory init, ynLSD ynlsd) = setupInitializeYnLSD(1 ether, chainAddresses.lsd.STETH_ADDRESS);
-        bytes memory encodedError = abi.encodeWithSelector(ynLSD.ExchangeAdjustmentRateOutOfBounds.selector, 1 ether);
         vm.expectRevert(encodedError);
         ynlsd.initialize(init);
     }

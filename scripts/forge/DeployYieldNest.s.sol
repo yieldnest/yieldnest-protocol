@@ -44,8 +44,6 @@ contract DeployYieldNest is BaseScript {
     IDepositContract public depositContract;
     IWETH public weth;
 
-    uint startingExchangeAdjustmentRate;
-
     bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
     bytes ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
     bytes TWO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002";
@@ -71,9 +69,6 @@ contract DeployYieldNest is BaseScript {
 
 
         feeReceiver = payable(_broadcaster); // Casting the default signer address to payable
-
-
-        startingExchangeAdjustmentRate = 4;
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
@@ -120,7 +115,6 @@ contract DeployYieldNest is BaseScript {
             pauser: actors.PAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            exchangeAdjustmentRate: startingExchangeAdjustmentRate,
             pauseWhitelist: pauseWhitelist
         });
         yneth.initialize(ynethInit);

@@ -23,7 +23,6 @@ interface IStakingEvents {
     event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
     event DepositETHPausedUpdated(bool isPaused);
     event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares);
-    event ExchangeAdjustmentRateUpdated(uint256 newRate);
 }
 
 interface IStakingNode {

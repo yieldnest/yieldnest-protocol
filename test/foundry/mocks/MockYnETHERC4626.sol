@@ -22,7 +22,6 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     /// @param ynETHAmount The amount of ynETH received.
     event Staked(address indexed staker, uint256 ethAmount, uint256 ynETHAmount);
     event DepositETHPausedUpdated(bool isPaused);
-    event ExchangeAdjustmentRateUpdated(uint256 newRate);
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -35,10 +34,6 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     IRewardsDistributor public rewardsDistributor;
     bool public depositsPaused;
     // Storage variables
-
-
-    /// @dev The value is in basis points (1/10000).
-    uint256 public exchangeAdjustmentRate;
 
     uint256 public totalDepositedInPool;
 
@@ -84,16 +79,10 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         if (totalSupply() == 0) {
             return ethAmount;
         }
-
-        // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        //  If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
-        
-        // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
-        // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(_BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(_BASIS_POINTS_DENOMINATOR),
+            totalSupply(),
+            totalAssets(),
             rounding
         );
     }
@@ -152,13 +141,6 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         emit DepositETHPausedUpdated(depositsPaused);
     }
 
-    function setExchangeAdjustmentRate(uint256 newRate) external onlyStakingNodesManager {
-        if (newRate > _BASIS_POINTS_DENOMINATOR) {
-            revert ValueOutOfBounds(newRate);
-        }
-        exchangeAdjustmentRate = newRate;
-        emit ExchangeAdjustmentRateUpdated(newRate);
-    }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------
     //--------------------------------------------------------------------------------------

@@ -108,7 +108,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         uint256 sharesAfterFirstDeposit = yneth.previewDeposit(secondDepositAmount);
 
-        uint256 expectedShares = Math.mulDiv(secondDepositAmount, 10000 - startingExchangeAdjustmentRate, 10000, Math.Rounding.Floor);
+        uint256 expectedShares = secondDepositAmount;
 
         // Assert
         assertEq(sharesAfterFirstDeposit, expectedShares, "Fuzz: Shares should match expected shares");
@@ -136,7 +136,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(totalAssetsAfterSecondDeposit, expectedTotalAssets, "Total assets should match expected total after second deposit");
 
                 // Assuming initial total supply equals shares after first deposit
-        uint256 expectedTotalSupply = firstDepositAmount + secondDepositAmount - startingExchangeAdjustmentRate * secondDepositAmount / 10000; 
+        uint256 expectedTotalSupply = firstDepositAmount + secondDepositAmount; 
         uint256 totalSupplyAfterSecondDeposit = yneth.totalSupply();
         // TODO: figure out this precision issue
         assertTrue(compareWithThreshold(totalSupplyAfterSecondDeposit, expectedTotalSupply, 1), "Total supply should match expected total supply after second deposit");
@@ -146,11 +146,10 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 sharesAfterSecondDeposit = yneth.previewDeposit(thirdDepositAmount);
 
         // Using the formula from ynETH to calculate expectedShares
-        // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
         uint256 expectedShares = Math.mulDiv(
                 thirdDepositAmount,
-                expectedTotalSupply * uint256(10000 - startingExchangeAdjustmentRate),
-                expectedTotalAssets * uint256(10000),
+                expectedTotalSupply,
+                expectedTotalAssets,
                 Math.Rounding.Floor
             );
 
@@ -178,11 +177,10 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 expectedTotalAssets = ethAmount + expectedNetRewardAmount; // Assuming initial total assets were equal to ethAmount before rewards
         uint256 expectedTotalSupply = ethAmount; // Assuming initial total supply equals shares after first deposit
         // Using the formula from ynETH to calculate expectedShares
-        // Assuming exchangeAdjustmentRate is applied as in the _convertToShares function of ynETH
         uint256 expectedShares = Math.mulDiv(
                 ethAmount,
-                expectedTotalSupply * uint256(10000 - startingExchangeAdjustmentRate),
-                expectedTotalAssets * uint256(10000),
+                expectedTotalSupply,
+                expectedTotalAssets,
                 Math.Rounding.Floor
             );
 
@@ -358,21 +356,5 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         vm.expectRevert(encodedError);
         yneth.withdrawETH(1);
         vm.stopPrank();
-    }
-
-    function testSetExchangeAdjustmentRate() public {
-        uint256 newRate = 1000;
-        vm.prank(address(actors.ADMIN));
-        yneth.setExchangeAdjustmentRate(newRate);
-        assertEq(yneth.exchangeAdjustmentRate(), newRate);
-    }
-
-    function testSetExchangeAdjustmentRateWithInvalidRate() public {
-        uint256 invalidRate = 100000000000000000000;
-        bytes memory encodedError = abi.encodeWithSelector(ynETH.ValueOutOfBounds.selector, invalidRate);
-        vm.prank(address(actors.ADMIN));
-        vm.expectRevert(encodedError);
-        yneth.setExchangeAdjustmentRate(invalidRate);
-        vm.stopPrank();
-    }    
+    } 
 }
