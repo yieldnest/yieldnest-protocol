@@ -90,11 +90,11 @@ contract ContractAddresses {
                 DEPOSIT_2_ADDRESS: 0x4242424242424242424242424242424242424242
             }),
             eigenlayer: EigenlayerAddresses({
-                EIGENPOD_MANAGER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
-                DELEGATION_MANAGER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
+                EIGENPOD_MANAGER_ADDRESS: 0x30770d7E3e71112d7A6b7259542D1f680a70e315, // Placeholder address, replaced with address(1) for holesky
+                DELEGATION_MANAGER_ADDRESS: 0xA44151489861Fe9e3055d95adC98FbD462B948e7, // Placeholder address, replaced with address(1) for holesky
                 DELEGATION_PAUSER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
-                STRATEGY_MANAGER_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
-                DELAYED_WITHDRAWAL_ROUTER_ADDRESS: placeholderAddress // Placeholder address, replaced with address(1) for holesky
+                STRATEGY_MANAGER_ADDRESS: 0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6, // Placeholder address, replaced with address(1) for holesky
+                DELAYED_WITHDRAWAL_ROUTER_ADDRESS: 0x642c646053eaf2254f088e9019ACD73d9AE0FA32 // Placeholder address, replaced with address(1) for holesky
             }),
             lsd: LSDAddresses({
                 SFRXETH_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
@@ -102,8 +102,8 @@ contract ContractAddresses {
                 STETH_ADDRESS: 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034, // source: https://docs.lido.fi/deployed-contracts/holesky/
                 RETH_FEED_ADDRESS: 0xe1e444A5Df450E7640323a21073bF01E0af054fA, // Self-created aggregator
                 STETH_FEED_ADDRESS: 0xe1e444A5Df450E7640323a21073bF01E0af054fA, // Self-created aggregator
-                RETH_STRATEGY_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
-                STETH_STRATEGY_ADDRESS: placeholderAddress // Placeholder address, replaced with address(1) for holesky
+                RETH_STRATEGY_ADDRESS: 0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0, // Placeholder address, replaced with address(1) for holesky
+                STETH_STRATEGY_ADDRESS: 0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3 // Placeholder address, replaced with address(1) for holesky
             })
         });
     }
