@@ -23,7 +23,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     error Paused();
     error ValueOutOfBounds(uint256 value);
     error ZeroAddress();
-    error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
     error ZeroETH();
     error NoDirectETHDeposit();
     error CallerNotStakingNodeManager(address expected, address provided);
@@ -38,9 +37,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     IRewardsDistributor public rewardsDistributor;
     bool public depositsPaused;
 
-    /// @dev The value is in basis points (1/10000).
-    uint256 public exchangeAdjustmentRate;
-
     uint256 public totalDepositedInPool;
 
     //--------------------------------------------------------------------------------------
@@ -53,7 +49,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         address pauser;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
-        uint256 exchangeAdjustmentRate;
         address[] pauseWhitelist;
     }
 
@@ -78,11 +73,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         _grantRole(PAUSER_ROLE, init.pauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
-
-        if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
-            revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
-        }
-        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
@@ -129,16 +119,13 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         if (totalSupply() == 0) {
             return ethAmount;
         }
-
-        // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        //  If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
         
-        // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
-        // independently. That should not be possible.
+
+        // deltaynETH = (ynETHSupply / totalControlled) * ethAmount
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
+            totalSupply(),
+            totalAssets(),
             rounding
         );
     }
@@ -219,18 +206,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         emit DepositETHPausedUpdated(depositsPaused);
     }
     
-    /// @notice Sets the exchange adjustment rate.
-    /// @dev Can only be called by the admin..
-    /// Reverts if the new rate exceeds the basis points denominator.
-    /// @param newRate The new exchange adjustment rate to be set.
-    function setExchangeAdjustmentRate(uint256 newRate) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (newRate > BASIS_POINTS_DENOMINATOR) {
-            revert ValueOutOfBounds(newRate);
-        }
-        exchangeAdjustmentRate = newRate;
-        emit ExchangeAdjustmentRateUpdated(newRate);
-    }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS   ---------------------------------------
     //--------------------------------------------------------------------------------------

@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
 import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
@@ -33,7 +32,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     error UnsupportedAsset(IERC20 asset);
     error ZeroAmount();
-    error ExchangeAdjustmentRateOutOfBounds(uint256 exchangeAdjustmentRate);
     error ZeroAddress();
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
@@ -47,6 +45,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
     bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
     bytes32 public constant LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
+
+    uint256 public constant BOOTSTRAP_AMOUNT_UNITS = 10;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -63,8 +63,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
-
-    uint256 public exchangeAdjustmentRate;
     
     /**
      * @notice Array of LSD Staking Node contracts.
@@ -88,7 +86,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
         YieldNestOracle oracle;
-        uint256 exchangeAdjustmentRate;
         uint256 maxNodeCount;
         address admin;
         address pauser;
@@ -96,6 +93,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         address lsdRestakingManager;
         address lsdStakingNodeCreatorRole;
         address[] pauseWhitelist;
+        address depositBootstrapper;
     }
 
     function initialize(Init memory init)
@@ -128,15 +126,12 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
         oracle = init.oracle;
-
-        if (init.exchangeAdjustmentRate > BASIS_POINTS_DENOMINATOR) {
-            revert ExchangeAdjustmentRateOutOfBounds(init.exchangeAdjustmentRate);
-        }
-        exchangeAdjustmentRate = init.exchangeAdjustmentRate;
         maxNodeCount = init.maxNodeCount;
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
+
+        _deposit(assets[0], BOOTSTRAP_AMOUNT_UNITS * (10 ** (IERC20Metadata(address(assets[0])).decimals())), init.depositBootstrapper, init.depositBootstrapper);
     }
 
     //--------------------------------------------------------------------------------------
@@ -157,7 +152,16 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         IERC20 asset,
         uint256 amount,
         address receiver
-    ) external nonReentrant returns (uint256 shares) {
+    ) public nonReentrant returns (uint256 shares) {
+        return _deposit(asset, amount, receiver, msg.sender);
+    }
+
+    function _deposit(
+        IERC20 asset,
+        uint256 amount,
+        address receiver,
+        address sender
+    ) internal returns (uint256 shares) {
 
         IStrategy strategy = strategies[asset];
         if(address(strategy) == address(0x0)){
@@ -178,15 +182,15 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         // Transfer assets in after shares are computed since _convertToShares relies on totalAssets
         // which inspects asset.balanceOf(address(this))
-        asset.safeTransferFrom(msg.sender, address(this), amount);
+        asset.safeTransferFrom(sender, address(this), amount);
 
-        emit Deposit(msg.sender, receiver, amount, shares);
+        emit Deposit(sender, receiver, amount, shares);
     }
 
     /**
      * @dev Converts an ETH amount to shares based on the current exchange rate and specified rounding method.
      * If it's the first stake (bootstrap phase), uses a 1:1 exchange rate. Otherwise, calculates shares based on
-     * the formula: deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount.
+     * the formula: deltaynETH = (ynETHSupply / totalControlled) * ethAmount.
      * This calculation can result in 0 during the bootstrap phase if `totalControlled` and `ynETHSupply` could be
      * manipulated independently, which should not be possible.
      * @param ethAmount The amount of ETH to convert to shares.
@@ -200,15 +204,14 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             return ethAmount;
         }
 
-        // deltaynETH = (1 - exchangeAdjustmentRate) * (ynETHSupply / totalControlled) * ethAmount
-        // If `(1 - exchangeAdjustmentRate) * ethAmount * ynETHSupply < totalControlled` this will be 0.
+        // deltaynETH = (ynETHSupply / totalControlled) * ethAmount
         
         // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
         // independently. That should not be possible.
         return Math.mulDiv(
             ethAmount,
-            totalSupply() * uint256(BASIS_POINTS_DENOMINATOR - exchangeAdjustmentRate),
-            totalAssets() * uint256(BASIS_POINTS_DENOMINATOR),
+            totalSupply(),
+            totalAssets(),
             rounding
         );
     }
@@ -452,3 +455,4 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         _;
     }
 }
+

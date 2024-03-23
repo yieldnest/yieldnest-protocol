@@ -103,7 +103,8 @@ abstract contract BaseScript is Script, Utils {
             PAUSE_ADMIN: vm.envAddress("PAUSER_ADDRESS"),
             LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
             STAKING_NODE_CREATOR: vm.envAddress("LSD_STAKING_NODE_CREATOR_ADDRESS"),
-            ORACLE_MANAGER: vm.envAddress("YIELDNEST_ORACLE_MANAGER_ADDRESS")
+            ORACLE_MANAGER: vm.envAddress("YIELDNEST_ORACLE_MANAGER_ADDRESS"),
+            DEPOSIT_BOOTSTRAPER: vm.envAddress("DEPOSIT_BOOTSTRAPER_ADDRESS")
         });
     }
 
