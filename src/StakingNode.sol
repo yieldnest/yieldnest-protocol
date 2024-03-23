@@ -9,6 +9,7 @@ import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDeleg
 import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategy, IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "./interfaces/IStakingNode.sol";
 
@@ -180,6 +181,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @notice Delegates the staking operation to a specified operator.
+     * @dev Calls the function on the version v0.2 of the Eigenlayer interface.
      * @param operator The address of the operator to whom the staking operation is being delegated.
      */
     function delegate(address operator) public virtual onlyAdmin {
@@ -193,6 +195,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /**
      * @notice Undelegates the staking operation from the current operator.
      * @dev It retrieves the current operator by calling `delegatedTo` on the DelegationManager for event logging.
+     *      Calls the function on the version v0.2 of the Eigenlayer interface.
      */
     function undelegate() public virtual onlyAdmin {
 
