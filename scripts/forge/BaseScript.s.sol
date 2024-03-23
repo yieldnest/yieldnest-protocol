@@ -92,7 +92,6 @@ abstract contract BaseScript is Script, Utils {
 
     function getActors() public returns (ActorAddresses.Actors memory actors) {
         actors = ActorAddresses.Actors({
-            DEFAULT_SIGNER: address(0), // Placeholder, not used in this context
             PROXY_ADMIN_OWNER: vm.envAddress("PROXY_OWNER"),
             TRANSFER_ENABLED_EOA: address(0), // Placeholder, not used in this context
             ADMIN: vm.envAddress("YNETH_ADMIN_ADDRESS"),
