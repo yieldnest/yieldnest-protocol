@@ -9,6 +9,7 @@ import "../../src/StakingNodesManager.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/RewardsDistributor.sol";
 import "../../src/ynETH.sol";
+import "../../src/StakingNodeV2.sol";
 import "../../src/interfaces/IStakingNode.sol";
 import "../../src/external/ethereum/IDepositContract.sol";
 import "../../src/interfaces/IRewardsDistributor.sol";
@@ -81,9 +82,22 @@ contract DeployYieldNest is BaseScript {
         // Deploy implementations
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
-        executionLayerReceiver = new RewardsReceiver();
-        consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
-        stakingNodeImplementation = new StakingNode();
+
+        {   
+            RewardsReceiver rewardsReceiverImplementation = new RewardsReceiver();
+            TransparentUpgradeableProxy executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(rewardsReceiverImplementation), actors.PROXY_ADMIN_OWNER, "");
+            executionLayerReceiver = RewardsReceiver(payable(executionLayerReceiverProxy));
+            
+            TransparentUpgradeableProxy consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(rewardsReceiverImplementation), actors.PROXY_ADMIN_OWNER, "");
+            consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
+        }
+
+        if (block.chainid == 17000) { // holeksy
+            stakingNodeImplementation = new StakingNode();
+        } else {
+            stakingNodeImplementation = new StakingNodeV2();
+        }
+
         yieldNestOracle = new YieldNestOracle();
         ynlsd = new ynLSD();
 
@@ -119,13 +133,13 @@ contract DeployYieldNest is BaseScript {
         });
         yneth.initialize(ynethInit);
 
-
         // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,
             stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
             validatorManager: actors.VALIDATOR_MANAGER,
+            validatorRemoverManager: actors.VALIDATOR_REMOVER_MANAGER,
             stakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             maxNodeCount: 10,
             depositContract: depositContract,
@@ -157,6 +171,8 @@ contract DeployYieldNest is BaseScript {
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
+        ynViewer ynviewer = new ynViewer(IynETH(address(yneth)), IStakingNodesManager(address(stakingNodesManager)));
+
         vm.stopBroadcast();
 
         Deployment memory deployment = Deployment({
@@ -165,8 +181,11 @@ contract DeployYieldNest is BaseScript {
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
             rewardsDistributor: rewardsDistributor,
+            ynViewer: ynviewer,
             stakingNodeImplementation: stakingNodeImplementation
         });
+
+
         
         saveDeployment(deployment);
     }

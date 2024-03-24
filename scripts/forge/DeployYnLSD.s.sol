@@ -61,16 +61,53 @@ contract DeployYnLSD is BaseScript {
         }
 
         IERC20[] memory assets = new IERC20[](2);
-        assets[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        assets[1] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        assets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+
 
         IStrategy[] memory strategies = new IStrategy[](2);
-        strategies[0] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
-        strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
+        strategies[0] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
+        strategies[1] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
+
+        {
+            uint256[] memory maxAgesArray = new uint256[](assets.length);
+            address[] memory priceFeedAddresses = new address[](assets.length);
+            for (uint256 i = 0; i < assets.length; i++) {
+                maxAgesArray[i] = type(uint256).max;
+                if (assets[i] == IERC20(chainAddresses.lsd.RETH_ADDRESS)) {
+                    priceFeedAddresses[i] = chainAddresses.lsd.RETH_FEED_ADDRESS;
+                } else if (assets[i] == IERC20(chainAddresses.lsd.STETH_ADDRESS)) {
+                    priceFeedAddresses[i] = chainAddresses.lsd.STETH_FEED_ADDRESS;
+                }
+            }
+            {
+                address[] memory assetsAddresses = new address[](assets.length);
+                for (uint256 i = 0; i < assets.length; i++) {
+                    assetsAddresses[i] = address(assets[i]);
+                }
+                YieldNestOracle.Init memory yieldNestOracleInit = YieldNestOracle.Init({
+                    assets: assetsAddresses,
+                    priceFeedAddresses: priceFeedAddresses,
+                    maxAges: maxAgesArray,
+                    admin: actors.ORACLE_MANAGER,
+                    oracleManager: actors.ORACLE_MANAGER
+                });
+                yieldNestOracle.initialize(yieldNestOracleInit);
+            }
+
+
+        }
+        
         // Initialize ynLSD with example parameters
         {
             address[] memory lsdPauseWhitelist = new address[](1);
             lsdPauseWhitelist[0] = _broadcaster;
+
+            IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+            uint256 mintAmount = 1.0001 ether;
+            (bool success, ) = address(stETH).call{value: mintAmount}("");
+            require(success, "ETH to stETH mint failed");
+            stETH.approve(address(ynlsd), mintAmount);
 
             ynLSD.Init memory ynlsdInit = ynLSD.Init({
                 assets: assets,
@@ -84,35 +121,10 @@ contract DeployYnLSD is BaseScript {
                 stakingAdmin: actors.STAKING_ADMIN,
                 lsdRestakingManager: actors.LSD_RESTAKING_MANAGER, // Assuming no restaking manager is set initially
                 lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR, // Assuming no staking node creator role is set initially
-                pauseWhitelist: lsdPauseWhitelist
+                pauseWhitelist: lsdPauseWhitelist,
+                depositBootstrapper: actors.DEPOSIT_BOOTSTRAPER
             });
             ynlsd.initialize(ynlsdInit);
-        }
-
-        uint256[] memory maxAgesArray = new uint256[](assets.length);
-        address[] memory priceFeedAddresses = new address[](assets.length);
-        for (uint256 i = 0; i < assets.length; i++) {
-            maxAgesArray[i] = type(uint256).max;
-            if (assets[i] == IERC20(chainAddresses.lsd.RETH_ADDRESS)) {
-                priceFeedAddresses[i] = chainAddresses.lsd.RETH_FEED_ADDRESS;
-            } else if (assets[i] == IERC20(chainAddresses.lsd.STETH_ADDRESS)) {
-                priceFeedAddresses[i] = chainAddresses.lsd.STETH_FEED_ADDRESS;
-            }
-        }
-
-        {
-            address[] memory assetsAddresses = new address[](assets.length);
-            for (uint256 i = 0; i < assets.length; i++) {
-                assetsAddresses[i] = address(assets[i]);
-            }
-            YieldNestOracle.Init memory yieldNestOracleInit = YieldNestOracle.Init({
-                assets: assetsAddresses,
-                priceFeedAddresses: priceFeedAddresses,
-                maxAges: maxAgesArray,
-                admin: actors.ORACLE_MANAGER,
-                oracleManager: actors.ORACLE_MANAGER
-            });
-            yieldNestOracle.initialize(yieldNestOracleInit);
         }
 
         {
@@ -127,5 +139,7 @@ contract DeployYnLSD is BaseScript {
             
             saveynLSDDeployment(deployment);
         }
+        
+        vm.stopBroadcast();
     }
 }

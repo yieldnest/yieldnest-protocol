@@ -7,6 +7,7 @@ import "../../src/StakingNode.sol";
 import "../../src/RewardsReceiver.sol";
 import "../../src/ynLSD.sol";
 import "../../src/YieldNestOracle.sol";
+import "../../src/ynViewer.sol";
 import "../../src/LSDStakingNode.sol";
 import "../../src/RewardsDistributor.sol";
 import "../../src/external/tokens/WETH.sol";
@@ -27,6 +28,7 @@ abstract contract BaseScript is Script, Utils {
         RewardsReceiver consensusLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
+        ynViewer ynViewer;
     }
 
     struct ynLSDDeployment {
@@ -49,6 +51,7 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
         vm.serializeAddress(json, "rewardsDistributor", address(deployment.rewardsDistributor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
+        vm.serializeAddress(json, "ynViewer", address(deployment.ynViewer));
 
         string memory finalJson = vm.serializeString(json, "object", "dummy");
         vm.writeJson(finalJson, getDeploymentFile());
@@ -59,6 +62,7 @@ abstract contract BaseScript is Script, Utils {
         string memory jsonContent = vm.readFile(deploymentFile);
         Deployment memory deployment;
         deployment.ynETH = ynETH(payable(jsonContent.readAddress(".ynETH")));
+        deployment.ynViewer = ynViewer(payable(jsonContent.readAddress(".ynViewer")));
         deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".stakingNodesManager")));
         deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".executionLayerReceiver")));
         deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".consensusLayerReceiver")));
@@ -103,7 +107,8 @@ abstract contract BaseScript is Script, Utils {
             LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
             STAKING_NODE_CREATOR: vm.envAddress("LSD_STAKING_NODE_CREATOR_ADDRESS"),
             ORACLE_MANAGER: vm.envAddress("YIELDNEST_ORACLE_MANAGER_ADDRESS"),
-            DEPOSIT_BOOTSTRAPER: vm.envAddress("DEPOSIT_BOOTSTRAPER_ADDRESS")
+            DEPOSIT_BOOTSTRAPER: vm.envAddress("DEPOSIT_BOOTSTRAPER_ADDRESS"),
+            VALIDATOR_REMOVER_MANAGER: vm.envAddress("VALIDATOR_REMOVER_MANAGER_ADDRESS")
         });
     }
 
