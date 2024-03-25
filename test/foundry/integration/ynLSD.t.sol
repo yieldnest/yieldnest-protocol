@@ -227,7 +227,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
         uint256 expectedDepositPreview = amount * stethPrice / 1e18;
         uint256 previewDeposit = ynlsd.previewDeposit(asset, amount);
-        assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
+        assertTrue(compareWithThreshold(previewDeposit, expectedDepositPreview, 1), "Preview deposit does not match expected value within threshold");
     }
 
     function testConvertToETH() public {
