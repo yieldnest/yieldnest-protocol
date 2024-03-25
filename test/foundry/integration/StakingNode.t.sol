@@ -207,12 +207,14 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 validatorPrincipal = withdrawnValidators * 32 ether;
 
         uint[] memory withdrawnValidatorIndexes = new uint[](withdrawnValidators);
+        uint256[] memory validatorPrincipalAmounts = new uint256[](withdrawnValidators);
         for (uint i = 0; i < withdrawnValidators; i++) {
             withdrawnValidatorIndexes[i] = withdrawnValidators - 1 - i; // Populating array with validator indexes in reverse order
+            validatorPrincipalAmounts[i] = 32 ether; // Assigning 32 ether for each validator's principal amount
         }
         
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes);
+        stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes, validatorPrincipalAmounts);
 
         // trigger withdraw before restaking succesfully
         vm.prank(actors.STAKING_NODES_ADMIN);

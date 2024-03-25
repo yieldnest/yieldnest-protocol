@@ -435,11 +435,13 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
 
         // Remove validators
         uint[] memory indexesToRemove = new uint[](validatorCount);
+        uint256[] memory validatorPrincipalAmounts = new uint256[](validatorCount);
         for (uint i = 0; i < validatorCount; i++) {
             indexesToRemove[i] = validatorCount - i - 1; // Reverse order
+            validatorPrincipalAmounts[i] = 32 ether; // Assigning 32 ether for each validator's principal amount
         }
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        stakingNodesManager.registerRemovedValidators(indexesToRemove);
+        stakingNodesManager.registerRemovedValidators(indexesToRemove, validatorPrincipalAmounts);
 
         // Check validators were removed
         assertEq(stakingNodesManager.validatorsLength(), 0, "Expected validators length to be 0");
@@ -483,6 +485,7 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
 
         // Remove some validators
         uint[] memory indexesToRemove = new uint[](3);
+        uint256[] memory validatorPrincipalAmounts = new uint256[](3); // Added array for validatorPrincipalAmounts
         indexesToRemove[0] = 3;
         indexesToRemove[1] = 1;
         indexesToRemove[2] = 0;
@@ -490,9 +493,12 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         expectedPublicKeysToRemove[0] = validatorData[indexesToRemove[0]].publicKey;
         expectedPublicKeysToRemove[1] = validatorData[indexesToRemove[1]].publicKey;
         expectedPublicKeysToRemove[2] = validatorData[indexesToRemove[2]].publicKey;
+        for (uint i = 0; i < indexesToRemove.length; i++) {
+            validatorPrincipalAmounts[i] = 32 ether; // Filling in 32 ether for each
+        }
 
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        stakingNodesManager.registerRemovedValidators(indexesToRemove);
+        stakingNodesManager.registerRemovedValidators(indexesToRemove, validatorPrincipalAmounts);
 
         // Check validators were removed
         assertEq(stakingNodesManager.validatorsLength(), validatorCount - indexesToRemove.length, "Expected validators length to match new count");

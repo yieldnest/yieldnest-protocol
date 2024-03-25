@@ -51,6 +51,8 @@ contract StakingNodesManager is
     error InvalidValidatorIndex(uint indexToRemove);
     error WithdrawalBelowPendingPrincipalBalance(uint256 value);
     error IndexesNotSortedDescending();
+    error ArrayLengthMismatch(uint256 indexesLength, uint256 amountsLength);
+    error ValidatorPrincipalAmountIsZero();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -391,12 +393,17 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function registerRemovedValidators(uint[] memory indexes)
-        public
-        onlyRole(VALIDATOR_REMOVER_MANAGER_ROLE) {
+    function registerRemovedValidators(
+        uint[] memory indexes,
+        uint256[] memory validatorPrincipalAmounts
+        ) public onlyRole(VALIDATOR_REMOVER_MANAGER_ROLE) {
+
+        if (indexes.length != validatorPrincipalAmounts.length) {
+            revert ArrayLengthMismatch(indexes.length, validatorPrincipalAmounts.length);
+        }
 
         // Check if indexes are sorted in reverse order
-        for (uint i = 1; i < indexes.length; i++) {
+        for (uint i = 1; i < indexes.length; i++) {     
             if (indexes[i - 1] <= indexes[i]) {
                 revert IndexesNotSortedDescending();
             }
@@ -404,11 +411,15 @@ contract StakingNodesManager is
 
         for (uint i = 0; i < indexes.length; i++) {
             uint indexToRemove = indexes[i];
-
+            if (validatorPrincipalAmounts[i] == 0) {
+                revert ValidatorPrincipalAmountIsZero();
+            }
+            
             // Ensure the index is within bounds
             if (indexToRemove < validators.length) {
+                // TODO: currently slashing is not activated and we do not yet have a way to differntiate between rewards and principal
                 // Increment pending withdrawal balance for the specific node by the stake amount
-                pendingPrincipalWithdrawalBalancePerNode[validators[indexToRemove].nodeId] += DEFAULT_VALIDATOR_STAKE;
+                pendingPrincipalWithdrawalBalancePerNode[validators[indexToRemove].nodeId] += validatorPrincipalAmounts[i];
 
                 // Remove validator from the array by shifting current and last if not last
 
@@ -447,6 +458,8 @@ contract StakingNodesManager is
         node.deallocateStakedETH(pendingPrincipalWithdrawalBalance);
 
         ynETH.processWithdrawnETH{value: pendingPrincipalWithdrawalBalance}();
+
+        pendingPrincipalWithdrawalBalancePerNode[nodeId] = 0;
     }
 
     //--------------------------------------------------------------------------------------

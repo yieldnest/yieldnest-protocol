@@ -306,13 +306,14 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		uint256 withdrawnValidators = 1;
 		{
-
 			uint[] memory withdrawnValidatorIndexes = new uint[](1);
+			uint256[] memory validatorPrincipalAmounts = new uint256[](1);
 
 			withdrawnValidatorIndexes[0] = 0;
+			validatorPrincipalAmounts[0] = 32 ether;
 
 			vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        	stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes);
+        	stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes, validatorPrincipalAmounts);
 		}
 
 		// Divided the withdrawnValidatorPrincipal by 2 to simulate the rewards distribution
