@@ -28,6 +28,7 @@ import {RewardsReceiver} from "../../../src/RewardsReceiver.sol";
 import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
 import {ContractAddresses} from "../ContractAddresses.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
+import {StakingNodeV2} from "../../../src/StakingNodeV2.sol";
 import {Utils} from "../../../scripts/forge/Utils.sol";
 import {ActorAddresses} from "../ActorAddresses.sol";
 
@@ -204,7 +205,12 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupStakingNodesManager() public {
-        stakingNodeImplementation = new StakingNode();
+        if (block.chainid == 17000) {
+            // for holesky use the upgraded version
+            stakingNodeImplementation = new StakingNodeV2();
+        } else {
+            stakingNodeImplementation = new StakingNode();
+        }
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,
@@ -243,14 +249,14 @@ contract IntegrationBaseTest is Test, Utils {
         assetsAddresses[0] = chainAddresses.lsd.STETH_ADDRESS;
         strategies[0] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
         priceFeeds[0] = chainAddresses.lsd.STETH_FEED_ADDRESS;
-        maxAges[0] = uint256(86400); //one hour
+        maxAges[0] = (block.chainid == 17000) ? type(uint256).max : uint256(86400);
 
         // rETH
         assets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         assetsAddresses[1] = chainAddresses.lsd.RETH_ADDRESS;
         strategies[1] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
         priceFeeds[1] = chainAddresses.lsd.RETH_FEED_ADDRESS;
-        maxAges[1] = uint256(86400);
+        maxAges[0] = (block.chainid == 17000) ? type(uint256).max : uint256(86400);
 
         YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
             assets: assetsAddresses,
@@ -281,7 +287,7 @@ contract IntegrationBaseTest is Test, Utils {
         vm.deal(actors.DEPOSIT_BOOTSTRAPER, 10000 ether);
 
         vm.prank(actors.DEPOSIT_BOOTSTRAPER);
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: 1000 ether}("");
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: 100 ether}("");
         require(success, "ETH transfer failed");
 
         vm.prank(actors.DEPOSIT_BOOTSTRAPER);
