@@ -298,13 +298,26 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawalsWarp = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
 		assertEq(claimableDelayedWithdrawalsWarp.length, 1);
 		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
-
+		
 		// We can now claim the delayedWithdrawal
 		uint256 withdrawnValidatorPrincipal = stakingNode.getETHBalance();
-		vm.prank(address(actors.STAKING_NODES_ADMIN));
+
+		delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
+
+		uint256 withdrawnValidators = 1;
+		{
+
+			uint[] memory withdrawnValidatorIndexes = new uint[](1);
+
+			withdrawnValidatorIndexes[0] = 0;
+
+			vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
+        	stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes);
+		}
 
 		// Divided the withdrawnValidatorPrincipal by 2 to simulate the rewards distribution
-		stakingNode.claimDelayedWithdrawals(1, withdrawnValidatorPrincipal / 2);
+		vm.prank(address(actors.STAKING_NODES_ADMIN));
+		stakingNode.claimDelayedWithdrawals();
 
 		// Get the rewards receiver addresses from the rewards distributor		
 		IRewardsDistributor rewardsDistributor = IRewardsDistributor(stakingNodesManager.rewardsDistributor());
@@ -316,14 +329,15 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		// Mock execution rewards coming from a node operator service (eg. figment)
 		vm.deal(executionLayerReceiver, 1 ether);
 		
-		uint256 concensusRewardsExpected = withdrawnValidatorPrincipal / 2;
+		uint256 validatorPrincipal = withdrawnValidators * 32 ether;
+		uint256 consensusRewardsExpected = amount - validatorPrincipal;
 		assertEq(
-			compareWithThreshold(concensusRewards, concensusRewardsExpected, 1),
+			compareWithThreshold(concensusRewards, consensusRewardsExpected, 1),
 			true, 
 			"concensusRewards != concensusRewardsExpected"
 		);
 		assertEq(
-			compareWithThreshold(address(yneth).balance, withdrawnValidatorPrincipal / 2, 1), 
+			compareWithThreshold(address(yneth).balance, validatorPrincipal, 1), 
 			true,
 			"yneth.balance != concensusRewardsExpected"
 		);

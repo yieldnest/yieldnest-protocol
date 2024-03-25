@@ -210,6 +210,7 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         for (uint i = 0; i < withdrawnValidators; i++) {
             withdrawnValidatorIndexes[i] = withdrawnValidators - 1 - i; // Populating array with validator indexes in reverse order
         }
+        
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
         stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes);
 
