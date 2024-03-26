@@ -19,7 +19,8 @@ import {IynETH} from "./interfaces/IynETH.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-    event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event ValidatorRegistered(bytes pubKey, uint256 nodeId, bytes signature, bytes32 depositRoot, uint256 depositAmount, bytes withdrawalCredentials);
+    event ValidatorDeregistered(bytes pubKey, uint256 nodeId, uint256 depositAmount);
     event MaxNodeCountUpdated(uint256 maxNodeCount);
 }
 
@@ -53,6 +54,7 @@ contract StakingNodesManager is
     error IndexesNotSortedDescending();
     error ArrayLengthMismatch(uint256 indexesLength, uint256 amountsLength);
     error ValidatorPrincipalAmountIsZero();
+    error InvalidValidatorStatus(ValidatorStatus status);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -94,7 +96,6 @@ contract StakingNodesManager is
     IynETH public ynETH;
     IRewardsDistributor public rewardsDistributor;
 
-    Validator[] public validators;
     mapping(uint256 => uint256) pendingPrincipalWithdrawalBalancePerNode;
 
     /**
@@ -112,7 +113,8 @@ contract StakingNodesManager is
     IStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
-    mapping(bytes pubkey => bool) usedValidators;
+    mapping(bytes pubkey => Validator) public validators;
+    uint256 public validatorCount;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -231,10 +233,9 @@ contract StakingNodesManager is
         for (uint256 i = 0; i < validatorsLength; i++) {
 
             ValidatorData calldata validator = newValidators[i];
-            if (usedValidators[validator.publicKey]) {
+            if (validators[validator.publicKey].status != ValidatorStatus.Deregistered) {
                 revert ValidatorAlreadyUsed(validator.publicKey);
             }
-            usedValidators[validator.publicKey] = true;
 
             _registerValidator(validator, DEFAULT_VALIDATOR_STAKE);
         }
@@ -274,16 +275,20 @@ contract StakingNodesManager is
 
         // Deposit to the Beacon Chain
         depositContractEth2.deposit{value: _depositAmount}(validator.publicKey, withdrawalCredentials, validator.signature, depositDataRoot);
-        validators.push(Validator({publicKey: validator.publicKey, nodeId: validator.nodeId}));
+
+        validators[validator.publicKey] = Validator({nodeId: validator.nodeId, status: ValidatorStatus.Registered });
+        validatorCount++;
 
         // notify node of ETH _depositAmount
         IStakingNode(nodes[nodeId]).allocateStakedETH(_depositAmount);
 
         emit ValidatorRegistered(
+            validator.publicKey,
             nodeId,
             validator.signature,
-            validator.publicKey,
-            depositDataRoot
+            depositDataRoot,
+            _depositAmount,
+            withdrawalCredentials
         );
     }
 
@@ -393,45 +398,29 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function registerRemovedValidators(
-        uint[] memory indexes,
+    function deregisterValidators(
+        bytes[] memory pubKeys,
         uint256[] memory validatorPrincipalAmounts
         ) public onlyRole(VALIDATOR_REMOVER_MANAGER_ROLE) {
 
-        if (indexes.length != validatorPrincipalAmounts.length) {
-            revert ArrayLengthMismatch(indexes.length, validatorPrincipalAmounts.length);
+        if (pubKeys.length != validatorPrincipalAmounts.length) {
+            revert ArrayLengthMismatch(pubKeys.length, validatorPrincipalAmounts.length);
         }
 
-        // Check if indexes are sorted in reverse order
-        for (uint i = 1; i < indexes.length; i++) {     
-            if (indexes[i - 1] <= indexes[i]) {
-                revert IndexesNotSortedDescending();
-            }
-        }
-
-        for (uint i = 0; i < indexes.length; i++) {
-            uint indexToRemove = indexes[i];
+        for (uint i = 0; i < pubKeys.length; i++) {
             if (validatorPrincipalAmounts[i] == 0) {
                 revert ValidatorPrincipalAmountIsZero();
             }
-            
-            // Ensure the index is within bounds
-            if (indexToRemove < validators.length) {
-                // TODO: currently slashing is not activated and we do not yet have a way to differntiate between rewards and principal
-                // Increment pending withdrawal balance for the specific node by the stake amount
-                pendingPrincipalWithdrawalBalancePerNode[validators[indexToRemove].nodeId] += validatorPrincipalAmounts[i];
-
-                // Remove validator from the array by shifting current and last if not last
-
-                uint256 lastElementIndex = validators.length - 1;
-                if (indexToRemove < lastElementIndex) {
-                    // overwrite with the last emeent
-                    validators[indexToRemove] = validators[lastElementIndex];
-                }
-                validators.pop(); // Remove the last element
-            } else {
-                revert InvalidValidatorIndex(indexToRemove);
+            Validator memory validator = validators[pubKeys[i]];
+            if (validator.status != ValidatorStatus.Registered) {
+                revert InvalidValidatorStatus(validator.status);
             }
+
+            pendingPrincipalWithdrawalBalancePerNode[validator.nodeId] += validatorPrincipalAmounts[i];
+            validators[pubKeys[i]].status = ValidatorStatus.Deregistered;
+            validatorCount--;
+
+            emit ValidatorDeregistered(pubKeys[i], validator.nodeId, validatorPrincipalAmounts[i]);
         }
     }
 
@@ -466,16 +455,8 @@ contract StakingNodesManager is
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function getAllValidators() public view returns (Validator[] memory) {
-        return validators;
-    }
-
     function getAllNodes() public view returns (IStakingNode[] memory) {
         return nodes;
-    }
-
-    function validatorsLength()  public view returns (uint256) {
-        return validators.length;
     }
 
     function nodesLength() public view returns (uint256) {
@@ -485,6 +466,13 @@ contract StakingNodesManager is
     function isStakingNodesAdmin(address _address) public view returns (bool) {
         // TODO: define specific admin
         return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
+    }
+
+    /// @notice Retrieves the validator data for a given public key.
+    /// @param _pubKey The public key of the validator to retrieve.
+    /// @return Validator The validator data structure.
+    function getValidator(bytes memory _pubKey) public view returns (Validator memory) {
+        return validators[_pubKey];
     }
 
     //--------------------------------------------------------------------------------------

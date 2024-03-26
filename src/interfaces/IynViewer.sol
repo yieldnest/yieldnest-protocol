@@ -7,9 +7,6 @@ import {IStakingNodesManager} from "./IStakingNodesManager.sol";
 
 
 interface IynViewer {
-    /// @notice Retrieves all validators' information.
-    /// @return An array of bytes representing the validators' information.
-    function getAllValidators() external view returns (IStakingNodesManager.Validator[] memory);
 
     /// @notice Retrieves all staking nodes in the system.
     /// @return An array of `IStakingNode` contracts representing the staking nodes.

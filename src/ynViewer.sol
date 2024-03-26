@@ -18,11 +18,6 @@ contract ynViewer is IynViewer {
     }
 
     /// @inheritdoc IynViewer
-    function getAllValidators() public view returns (IStakingNodesManager.Validator[] memory) {
-        return stakingNodesManager.getAllValidators();
-    }
-
-    /// @inheritdoc IynViewer
     function getAllStakingNodes() public view returns (IStakingNode[] memory) {
         return stakingNodesManager.getAllNodes();
     }

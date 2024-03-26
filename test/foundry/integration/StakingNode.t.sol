@@ -20,7 +20,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
 
     function setupStakingNode(uint256 depositAmount)
         public
-        returns (IStakingNode, IEigenPod) {
+        returns (IStakingNode, IEigenPod, IStakingNodesManager.ValidatorData[] memory) {
 
         address addr1 = vm.addr(100);
 
@@ -67,7 +67,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
 
         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
 
-        return (stakingNodeInstance, eigenPodInstance);
+        return (stakingNodeInstance, eigenPodInstance, validatorData);
     }
 }
 
@@ -78,7 +78,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
 
         uint depositAmount = 32 ether;
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance, ) = setupStakingNode(depositAmount);
 
         // Collapsed variable declarations into direct usage within assertions and conditions
 
@@ -132,7 +132,7 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
 
     function testWithdrawBeforeRestakingAndClaimDelayedWithdrawals() public {
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance, ) = setupStakingNode(32 ether);
 
        address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
@@ -161,7 +161,7 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
 
    function testWithdrawBeforeRestakingAndClaimDelayedWithdrawalsForALargeAmount() public {
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance, ) = setupStakingNode(32 ether);
 
        address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
@@ -195,7 +195,11 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
 
        uint256 depositAmount = activeValidators * 32 ether;
 
-       (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+       (
+            IStakingNode stakingNodeInstance,
+            IEigenPod eigenPodInstance,
+            IStakingNodesManager.ValidatorData[] memory validatorData
+        ) = setupStakingNode(depositAmount);
 
        address payable eigenPodAddress = payable(address(eigenPodInstance));
         // Validators are configured to send consensus layer rewards directly to the EigenPod address.
@@ -206,15 +210,15 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         uint256 withdrawnValidators = activeValidators - 1;
         uint256 validatorPrincipal = withdrawnValidators * 32 ether;
 
-        uint[] memory withdrawnValidatorIndexes = new uint[](withdrawnValidators);
+        bytes[] memory withdrawnValidatorPubKeys = new bytes[](withdrawnValidators);
         uint256[] memory validatorPrincipalAmounts = new uint256[](withdrawnValidators);
         for (uint i = 0; i < withdrawnValidators; i++) {
-            withdrawnValidatorIndexes[i] = withdrawnValidators - 1 - i; // Populating array with validator indexes in reverse order
+            withdrawnValidatorPubKeys[i] = validatorData[i].publicKey; // Populating array with validator public keys in reverse order
             validatorPrincipalAmounts[i] = 32 ether; // Assigning 32 ether for each validator's principal amount
         }
         
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes, validatorPrincipalAmounts);
+        stakingNodesManager.deregisterValidators(withdrawnValidatorPubKeys, validatorPrincipalAmounts);
 
         // trigger withdraw before restaking succesfully
         vm.prank(actors.STAKING_NODES_ADMIN);
@@ -234,13 +238,11 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
         }
         vm.prank(actors.STAKING_NODES_ADMIN);
         stakingNodeInstance.claimDelayedWithdrawals();
-        uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
-        uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
+        uint256 rewardsAmount =  address(consensusLayerReceiver).balance - balanceBeforeClaim;
 
         assertEq(stakingNodeInstance.getETHBalance(), depositAmount - validatorPrincipal, "StakingNode ETH balance does not match expected value");
 
-        uint256 expectedRewards = rewardsSweeped - validatorPrincipal;
-        assertEq(rewardsAmount, expectedRewards, "Rewards amount does not match expected value");
+        assertEq(rewardsAmount, rewardsSweeped - validatorPrincipal, "Rewards amount does not match expected value");
     }
 }
 
@@ -249,7 +251,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testVerifyWithdrawalCredentialsRevertingWhenPaused() public {
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance, ) = setupStakingNode(32 ether);
 
         MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
 
@@ -381,7 +383,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
         uint256 depositAmount = 32 ether;
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance,) = setupStakingNode(depositAmount);
 
         MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
 
@@ -438,7 +440,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             function testVerifyWithdrawalCredentialsMismatchedOracleBlockNumberAndValidatorIndexLengths() public {
                 uint256 depositAmount = 32 ether;
-                (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+                (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance,) = setupStakingNode(depositAmount);
                 MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
                 address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
                 address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
@@ -484,7 +486,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             function testVerifyWithdrawalCredentialsMismatchedValidatorIndexAndProofsLengths() public {
                 uint256 depositAmount = 32 ether;
-                (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+                (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance,) = setupStakingNode(depositAmount);
                 MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
                 address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
                 address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
@@ -529,7 +531,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             function testVerifyWithdrawalCredentialsMismatchedProofsAndValidatorFieldsLengths() public {
                 uint256 depositAmount = 32 ether;
-                (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+                (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance,) = setupStakingNode(depositAmount);
                 MainnetEigenPodMock mainnetEigenPodMock = new MainnetEigenPodMock(eigenPodManager);
                 address eigenPodBeaconAddress = eigenPodManager.eigenPodBeacon();
                 address beaconOwner = Ownable(eigenPodBeaconAddress).owner();
@@ -574,7 +576,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         contract StakingNodeMiscTests is StakingNodeTestBase {
 
             function testSendingETHToStakingNodeShouldRevert() public {
-                (IStakingNode stakingNodeInstance,) = setupStakingNode(32 ether);
+                (IStakingNode stakingNodeInstance,,) = setupStakingNode(32 ether);
                 uint256 amountToSend = 1 ether;
 
                 // Attempt to send ETH to the StakingNode contract

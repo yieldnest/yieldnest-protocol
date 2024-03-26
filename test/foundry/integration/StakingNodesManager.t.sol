@@ -231,12 +231,11 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         uint totalAssetsControlled = yneth.totalAssets();
         assertEq(totalAssetsControlled, depositAmount, "Total assets controlled does not match expected value");
 
-        StakingNodesManager.Validator[] memory registeredValidators = stakingNodesManager.getAllValidators();
-        assertEq(registeredValidators.length, validatorCount, "Incorrect number of registered validators");
+        assertEq(stakingNodesManager.validatorCount(), validatorCount, "Incorrect number of registered validators");
 
-        for (uint i = 0; i < registeredValidators.length; i++) {
-            assertEq(registeredValidators[i].publicKey, validatorData[i].publicKey, "Validator public key does not match");
-            assertEq(registeredValidators[i].nodeId, validatorData[i].nodeId, "Validator node ID does not match");
+        for (uint i = 0; i < validatorData.length; i++) {
+            StakingNodesManager.Validator memory validator = stakingNodesManager.getValidator(validatorData[i].publicKey);
+            assertEq(uint(validator.status), uint(IStakingNodesManager.ValidatorStatus.Registered), "Validator status is not Registered");
         }
     }
 
@@ -434,17 +433,17 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
         // Remove validators
-        uint[] memory indexesToRemove = new uint[](validatorCount);
+        bytes[] memory pubKeysToRemove = new bytes[](validatorCount);
         uint256[] memory validatorPrincipalAmounts = new uint256[](validatorCount);
         for (uint i = 0; i < validatorCount; i++) {
-            indexesToRemove[i] = validatorCount - i - 1; // Reverse order
+            pubKeysToRemove[i] = validatorData[i].publicKey; // Reverse order using public keys
             validatorPrincipalAmounts[i] = 32 ether; // Assigning 32 ether for each validator's principal amount
         }
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        stakingNodesManager.registerRemovedValidators(indexesToRemove, validatorPrincipalAmounts);
+        stakingNodesManager.deregisterValidators(pubKeysToRemove, validatorPrincipalAmounts);
 
         // Check validators were removed
-        assertEq(stakingNodesManager.validatorsLength(), 0, "Expected validators length to be 0");
+        assertEq(stakingNodesManager.validatorCount(), 0, "Expected validators length to be 0");
     }
 
     function testRemoveSomeValidators() public {
@@ -483,34 +482,24 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
-        // Remove some validators
-        uint[] memory indexesToRemove = new uint[](3);
-        uint256[] memory validatorPrincipalAmounts = new uint256[](3); // Added array for validatorPrincipalAmounts
-        indexesToRemove[0] = 3;
-        indexesToRemove[1] = 1;
-        indexesToRemove[2] = 0;
-        bytes[] memory expectedPublicKeysToRemove = new bytes[](indexesToRemove.length);
-        expectedPublicKeysToRemove[0] = validatorData[indexesToRemove[0]].publicKey;
-        expectedPublicKeysToRemove[1] = validatorData[indexesToRemove[1]].publicKey;
-        expectedPublicKeysToRemove[2] = validatorData[indexesToRemove[2]].publicKey;
-        for (uint i = 0; i < indexesToRemove.length; i++) {
+        bytes[] memory expectedPublicKeysToRemove = new bytes[](3);
+        expectedPublicKeysToRemove[0] = validatorData[0].publicKey;
+        expectedPublicKeysToRemove[1] = validatorData[1].publicKey;
+        expectedPublicKeysToRemove[2] = validatorData[3].publicKey;
+
+        uint256[] memory validatorPrincipalAmounts = new uint256[](expectedPublicKeysToRemove.length);
+        for (uint i = 0; i < expectedPublicKeysToRemove.length; i++) {
             validatorPrincipalAmounts[i] = 32 ether; // Filling in 32 ether for each
         }
 
         vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        stakingNodesManager.registerRemovedValidators(indexesToRemove, validatorPrincipalAmounts);
+        stakingNodesManager.deregisterValidators(expectedPublicKeysToRemove, validatorPrincipalAmounts);
 
         // Check validators were removed
-        assertEq(stakingNodesManager.validatorsLength(), validatorCount - indexesToRemove.length, "Expected validators length to match new count");
-        StakingNodesManager.Validator[] memory remainingValidators = stakingNodesManager.getAllValidators();
+        assertEq(stakingNodesManager.validatorCount(), validatorCount - expectedPublicKeysToRemove.length, "Expected validators length to match new count");
         for (uint i = 0; i < expectedPublicKeysToRemove.length; i++) {
-            for (uint j = 0; j < remainingValidators.length; j++) {
-                assertNotEq(
-                    keccak256(remainingValidators[j].publicKey),
-                    keccak256(expectedPublicKeysToRemove[i]),
-                    "Validator should have been removed"
-                );
-            }
+            StakingNodesManager.Validator memory validator = stakingNodesManager.getValidator(expectedPublicKeysToRemove[i]);
+            assertEq(uint(validator.status), uint(IStakingNodesManager.ValidatorStatus.Deregistered), "Validator status should be Deregistered");
         }
     }
 }
@@ -643,8 +632,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         vm.prank(actors.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(depositRoot, validatorData);
 
-        StakingNodesManager.Validator[] memory registeredValidators = stakingNodesManager.getAllValidators();
-        assertEq(registeredValidators.length, validatorCount, "Incorrect number of registered validators");    
+        assertEq(stakingNodesManager.validatorCount(), validatorCount, "Incorrect number of registered validators");    
     }
 
     function testGenerateWithdrawalCredentials() public {

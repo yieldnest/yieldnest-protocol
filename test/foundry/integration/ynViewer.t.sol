@@ -15,10 +15,6 @@ contract ynViewerTest is IntegrationBaseTest {
         ynViewer = new YnViewer(yneth, stakingNodesManager);
     }
 
-    function testGetAllValidators() public {
-        IStakingNodesManager.Validator[] memory validators = ynViewer.getAllValidators();
-        assertEq(validators.length, 0, "There should be no validators");
-    }
     
     function testgetAllStakingNodes() public {
         IStakingNode[] memory stakingNodes = ynViewer.getAllStakingNodes();

@@ -269,7 +269,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		vm.assume(randomAmount > 1_000 && randomAmount < 100_000_000 ether);
 
 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
-		(IStakingNode stakingNode,) = depositEth_and_createValidator();
+		(IStakingNode stakingNode, IStakingNodesManager.ValidatorData[] memory validatorData) = depositEth_and_createValidator();
 
 		// send concensus rewards to eigen pod
 		uint256 amount = 32 ether + 1 wei;
@@ -306,14 +306,14 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		uint256 withdrawnValidators = 1;
 		{
-			uint[] memory withdrawnValidatorIndexes = new uint[](1);
+			bytes[] memory withdrawnValidatorPubKeys = new bytes[](1);
 			uint256[] memory validatorPrincipalAmounts = new uint256[](1);
 
-			withdrawnValidatorIndexes[0] = 0;
+			withdrawnValidatorPubKeys[0] = validatorData[0].publicKey;
 			validatorPrincipalAmounts[0] = 32 ether;
 
 			vm.prank(actors.VALIDATOR_REMOVER_MANAGER);
-        	stakingNodesManager.registerRemovedValidators(withdrawnValidatorIndexes, validatorPrincipalAmounts);
+        	stakingNodesManager.deregisterValidators(withdrawnValidatorPubKeys, validatorPrincipalAmounts);
 		}
 
 		// Divided the withdrawnValidatorPrincipal by 2 to simulate the rewards distribution
