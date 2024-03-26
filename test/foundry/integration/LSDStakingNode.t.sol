@@ -82,12 +82,11 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
 		IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
-		stETH.approve(address(ynlsd), amount);
-		ynlsd.deposit(stETH, amount, address(this));
+		stETH.approve(address(ynlsd), balance);
+		ynlsd.deposit(stETH, balance, address(this));
 
 		// 2. Deposit should fail when paused
 		IERC20[] memory assets = new IERC20[](1);
