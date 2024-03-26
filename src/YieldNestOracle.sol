@@ -4,7 +4,11 @@ pragma solidity ^0.8.24;
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {AggregatorV3Interface} from "./external/chainlink/AggregatorV3Interface.sol";
 
-contract YieldNestOracle is AccessControlUpgradeable {
+interface IYieldNestOracleEvents {
+    event AssetPriceFeedSet(address indexed asset, address indexed priceFeedAddress, uint256 maxAge);
+}
+
+contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
     struct AssetPriceFeed {
         AggregatorV3Interface priceFeed;
         uint256 maxAge; // in seconds
@@ -78,6 +82,7 @@ contract YieldNestOracle is AccessControlUpgradeable {
 
     function _setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) internal {
         assetPriceFeeds[asset] = AssetPriceFeed(AggregatorV3Interface(priceFeedAddress), maxAge);
+        emit AssetPriceFeedSet(asset, priceFeedAddress, maxAge);
     }
 
     /**
