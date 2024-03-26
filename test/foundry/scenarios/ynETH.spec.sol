@@ -299,12 +299,15 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(claimableDelayedWithdrawalsWarp.length, 1);
 		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
 
+
+		withdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
+
 		// We can now claim the delayedWithdrawal
 		uint256 withdrawnValidatorPrincipal = stakingNode.getETHBalance();
 		vm.prank(address(actors.STAKING_NODES_ADMIN));
 
 		// Divided the withdrawnValidatorPrincipal by 2 to simulate the rewards distribution
-		stakingNode.claimDelayedWithdrawals(1, withdrawnValidatorPrincipal / 2);
+		stakingNode.processWithdrawals(withdrawnValidatorPrincipal / 2, address(stakingNode).balance);
 
 		// Get the rewards receiver addresses from the rewards distributor		
 		IRewardsDistributor rewardsDistributor = IRewardsDistributor(stakingNodesManager.rewardsDistributor());
