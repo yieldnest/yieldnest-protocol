@@ -4,9 +4,18 @@ pragma solidity ^0.8.24;
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IStakingNode,IStakingEvents} from "./interfaces/IStakingNode.sol";
+import {IStakingNode} from "./interfaces/IStakingNode.sol";
 import {IynETH} from "./interfaces/IynETH.sol";
 import {ynBase} from "./ynBase.sol";
+
+
+interface IYnETHEvents {
+    event DepositETHPausedUpdated(bool isPaused);
+    event Deposit(address indexed sender, address indexed receiver, uint256 assets, uint256 shares, uint256 totalDepositedInPool);
+    event RewardsReceived(uint256 value, uint256 totalDepositedInPool);
+    event ETHWithdrawn(uint256 ethAmount, uint256 totalDepositedInPool);
+    event WithdrawnETHProcessed(uint256 ethAmount, uint256 totalDepositedInPool);
+}
 
 /**
  * @title ynETH
@@ -14,7 +23,7 @@ import {ynBase} from "./ynBase.sol";
  /// management of staking nodes, and distribution of rewards. It serves as the entry point for users to deposit ETH
  /// in exchange for ynETH tokens, representing their share of the staked ETH. 
  */
-contract ynETH is IynETH, ynBase, IStakingEvents {
+contract ynETH is IynETH, ynBase, IYnETHEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -108,7 +117,7 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         _mint(receiver, shares);
 
         totalDepositedInPool += msg.value;
-        emit Deposit(msg.sender, receiver, assets, shares);
+        emit Deposit(msg.sender, receiver, assets, shares, totalDepositedInPool);
     }
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
@@ -120,7 +129,6 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
             return ethAmount;
         }
         
-
         // deltaynETH = (ynETHSupply / totalControlled) * ethAmount
         return Math.mulDiv(
             ethAmount,
@@ -174,6 +182,8 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
             revert NotRewardsDistributor();
         }
         totalDepositedInPool += msg.value;
+
+        emit RewardsReceived(msg.value, totalDepositedInPool);
     }
 
     /// @notice Withdraws a specified amount of ETH from the pool to the Staking Nodes Manager.
@@ -189,6 +199,8 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
         totalDepositedInPool -= ethAmount;
         // Transfer the specified amount of ETH to the Staking Nodes Manager.
         payable(address(stakingNodesManager)).transfer(ethAmount);
+
+        emit ETHWithdrawn(ethAmount, totalDepositedInPool);
     }
 
     /// @notice Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
@@ -196,6 +208,8 @@ contract ynETH is IynETH, ynBase, IStakingEvents {
     /// It increases the total deposited in the pool by the amount of ETH sent with the call.
     function processWithdrawnETH() public payable onlyStakingNodesManager {
         totalDepositedInPool += msg.value;
+
+        emit WithdrawnETHProcessed(msg.value, totalDepositedInPool);
     }
 
     /// @notice Updates the pause state of ETH deposits.
