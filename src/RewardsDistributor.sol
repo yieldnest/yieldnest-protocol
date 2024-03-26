@@ -9,7 +9,7 @@ import {IynETH} from "./interfaces/IynETH.sol";
 
 
 interface RewardsDistributorEvents {
-    event FeesCollected(uint256 amount);
+    event RewardsProcessed(uint256 totalRewards, uint256 elRewards, uint256 clRewards, uint256 netRewards, uint256 fees);
     event FeeReceiverSet(address ewReceiver);
     event FeesBasisPointsSet(uint256 feeBasisPoints);
 }
@@ -123,12 +123,13 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
 
         // Send protocol fees (if they exist) to the fee receiver wallet.
         if (fees > 0) {
-            emit FeesCollected(fees);
             (bool success, ) = feesReceiver.call{value: fees}("");
             if (!success) {
                 revert FeeSendFailed();
             }
         }
+
+        emit RewardsProcessed(totalRewards, elRewards, clRewards, netRewards, fees);
     }
 
     //--------------------------------------------------------------------------------------
