@@ -21,6 +21,10 @@ interface IynLSDEvents {
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
+
+    event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
+    event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
+    event NodeInitialized(address nodeAddress, uint64 initializedVersion);
 }
 
 contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
@@ -361,6 +365,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
              // update version to latest
              initializedVersion = node.getInitializedVersion();
+             emit NodeInitialized(address(node), initializedVersion);
          }
 
          // NOTE: for future versions add additional if clauses that initialize the node 
@@ -382,7 +387,9 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             revert BeaconImplementationAlreadyExists();
         }
 
-        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
+        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));    
+        
+        emit RegisteredStakingNodeImplementationContract(address(upgradeableBeacon), _implementationContract);
     }
 
     /**
@@ -407,6 +414,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         for (uint256 i = 0; i < nodes.length; i++) {
             initializeLSDStakingNode(nodes[i]);
         }
+
+        emit UpgradedStakingNodeImplementationContract(address(_implementationContract), nodes.length);
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
