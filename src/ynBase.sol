@@ -4,12 +4,18 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
+
+interface IynBaseEvents {
+    event TransfersUnpaused();
+    event PauseWhitelistUpdated(address indexed account, bool isWhitelisted);
+}
+
 /// @title ynBase
 /// @dev This contract serves as the base for the YieldNest protocol, providing core functionalities such as
 /// ERC20 token mechanics, access control, and transfer pause capabilities.
 /// It integrates with OpenZeppelin's upgradeable contracts for ERC20 and AccessControl functionalities.
 /// The contract includes mechanisms to pause transfers, manage a whitelist for paused transfers, and handle initialization processes.
-contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
+contract ynBase is ERC20Upgradeable, AccessControlUpgradeable, IynBaseEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -89,6 +95,7 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
     function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
         ynBaseStorage storage $ = _getYnBaseStorage();
         $.transfersPaused = false;
+        emit TransfersUnpaused();
     }
     
     /**
@@ -117,7 +124,9 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable {
     function _updatePauseWhitelist(address[] memory whitelistedForTransfers, bool whitelisted) internal {
         ynBaseStorage storage $ = _getYnBaseStorage();
         for (uint256 i = 0; i < whitelistedForTransfers.length; i++) {
-            $.pauseWhiteList[whitelistedForTransfers[i]] = whitelisted;
+            address targetAddress = whitelistedForTransfers[i];
+            $.pauseWhiteList[targetAddress] = whitelisted;
+            emit PauseWhitelistUpdated(targetAddress, whitelisted);
         }
     }
 
