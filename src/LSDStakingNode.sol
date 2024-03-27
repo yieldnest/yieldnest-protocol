@@ -84,20 +84,17 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
             uint256 amount = amounts[i];
-            IStrategy strategy = ynLSD.strategies(assets[i]);
-            if (address(strategy) == address(0)) {
-                revert UnsupportedAsset(asset);
-            }
+            IStrategy strategy = ynLSD.strategies(asset);
 
             uint256 balanceBefore = asset.balanceOf(address(this));
-            ynLSD.retrieveAsset(nodeId, assets[i], amount);
+            ynLSD.retrieveAsset(nodeId, asset, amount);
             uint256 balanceAfter = asset.balanceOf(address(this));
             uint256 retrievedAmount = balanceAfter - balanceBefore;
 
             asset.forceApprove(address(strategyManager), retrievedAmount);
 
             uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, retrievedAmount);
-            emit DepositToEigenlayer(assets[i], strategy, retrievedAmount, eigenShares);
+            emit DepositToEigenlayer(asset, strategy, retrievedAmount, eigenShares);
         }
     }
 
