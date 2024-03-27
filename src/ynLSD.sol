@@ -301,8 +301,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         }
 
         // Add balances contained in each LSDStakingNode, including those managed by strategies.
-        uint256 nodeCount = nodes.length;
-        for (uint256 i; i < nodeCount; i++ ) {
+        for (uint256 i; i < nodes.length; i++ ) {
             
             ILSDStakingNode node = nodes[i];
             for (uint256 j = 0; j < assets.length; j++) {
@@ -435,12 +434,14 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         upgradeableBeacon.upgradeTo(_implementationContract);
 
+        uint256 _numOfNodes = nodes.length;
+
         // Reinitialize all nodes to ensure compatibility with the new implementation.
-        for (uint256 i = 0; i < nodes.length; i++) {
+        for (uint256 i = 0; i < _numOfNodes; i++) {
             initializeLSDStakingNode(nodes[i]);
         }
 
-        emit UpgradedStakingNodeImplementationContract(address(_implementationContract), nodes.length);
+        emit UpgradedStakingNodeImplementationContract(address(_implementationContract), _numOfNodes);
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
