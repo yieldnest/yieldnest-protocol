@@ -15,13 +15,12 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
         newV2Value = reInit.newV2Value;
     }
 
-    function initializeStakingNode(IStakingNode node) override internal {
+    function initializeStakingNode(IStakingNode node, uint256 nodeCount) override internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
-             uint256 nodeId = nodes.length;
              node.initialize(
-                IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
+                IStakingNode.Init(IStakingNodesManager(address(this)), nodeCount)
              );
              initializedVersion = node.getInitializedVersion();
          }
