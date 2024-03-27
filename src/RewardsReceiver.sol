@@ -7,10 +7,15 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 
+interface IRewardsReceiverEvents {
+    event AssetWithdrawn(address indexed asset, address indexed to, uint256 amount);
+    event EthWithdrawn(address indexed to, uint256 amount);
+}
+
 /// @title ReturnsReceiver
 /// @notice Receives protocol level returns and manages who can withdraw the returns. Deployed as the
 /// consensus layer withdrawal wallet and execution layer rewards wallet in the protocol.
-contract RewardsReceiver is Initializable, AccessControlUpgradeable {
+contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsReceiverEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -70,12 +75,15 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable {
         if (!success) {
             revert TransferFailed();
         }
+
+        emit EthWithdrawn(to, amount);
     }
 
     /// @notice Transfers the given amount of an ERC20 asset to an address.
     /// @dev Only called by the withdrawer.
     function transferERC20(IERC20 asset, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
         SafeERC20.safeTransfer(asset, to, amount);
+        emit AssetWithdrawn(address(asset), to, amount);
     }
 
     //--------------------------------------------------------------------------------------
