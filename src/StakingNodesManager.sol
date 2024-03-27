@@ -444,7 +444,6 @@ contract StakingNodesManager is
     }
 
     function isStakingNodesAdmin(address _address) public view returns (bool) {
-        // TODO: define specific admin
         return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
     }
 
