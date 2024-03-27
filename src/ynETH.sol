@@ -110,14 +110,12 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
             revert ZeroETH();
         }
 
-        uint256 assets = msg.value;
-
-        shares = previewDeposit(assets);
+        shares = previewDeposit(msg.value);
 
         _mint(receiver, shares);
 
         totalDepositedInPool += msg.value;
-        emit Deposit(msg.sender, receiver, assets, shares, totalDepositedInPool);
+        emit Deposit(msg.sender, receiver, msg.value, shares, totalDepositedInPool);
     }
 
     /// @notice Converts from ynETH to ETH using the current exchange rate.
