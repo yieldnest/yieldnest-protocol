@@ -398,6 +398,45 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         ynlsd.setMaxNodeCount(maxNodeCount);
         assertEq(ynlsd.maxNodeCount(), maxNodeCount, "Max node count does not match expected value");
     }
+
+    function testPauseDepositsFunctionality() public {
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+
+        uint256 depositAmount = 1 ether;
+
+        // Obtain STETH
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount * 10}("");
+        require(success, "ETH transfer failed");
+        uint256 balance = stETH.balanceOf(address(this));
+        assertEq(compareWithThreshold(balance, depositAmount * 10, 1), true, "Amount not received");
+
+        stETH.approve(address(ynlsd), 32 ether);
+
+        // Arrange
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.updateDepositsPaused(true);
+
+        // Act & Assert
+        bool pauseState = ynlsd.depositsPaused();
+        assertTrue(pauseState, "Deposit ETH should be paused after setting pause state to true");
+
+        // Trying to deposit ETH while pause
+        vm.expectRevert(ynLSD.Paused.selector);
+        ynlsd.deposit(stETH, depositAmount, address(this));
+
+        // Unpause and try depositing again
+        vm.prank(actors.PAUSE_ADMIN);
+        ynlsd.updateDepositsPaused(false);
+        pauseState = ynlsd.depositsPaused();
+
+        assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
+
+        // Deposit should succeed now
+        ynlsd.deposit(stETH, depositAmount, address(this));
+        uint256 ynLSDBalance = ynlsd.balanceOf(address(this));
+        assertGt(ynLSDBalance, 0, "ynLSD balance should be greater than 0 after deposit");
+    }
+
 }
 
 contract ynLSDTransferPauseTest is IntegrationBaseTest {
