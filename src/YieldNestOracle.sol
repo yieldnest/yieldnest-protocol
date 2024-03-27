@@ -51,12 +51,6 @@ contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
             revert ArraysLengthMismatch({assetsLength: init.assets.length, priceFeedAddressesLength: init.priceFeedAddresses.length, maxAgesLength: init.maxAges.length});
         }
         for (uint256 i = 0; i < init.assets.length; i++) {
-            if(init.assets[i] == address(0)) {
-                revert ZeroAddress();
-            }
-            if(init.priceFeedAddresses[i] == address(0)) {
-                revert ZeroAddress();
-            }
             _setAssetPriceFeed(init.assets[i], init.priceFeedAddresses[i], init.maxAges[i]);
         }
     }
@@ -69,6 +63,10 @@ contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
      * @param maxAge The maximum age (in seconds) of the price feed data to be considered valid.
      */
     function setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) public onlyRole(ORACLE_MANAGER_ROLE) {
+        _setAssetPriceFeed(asset, priceFeedAddress, maxAge);
+    }
+
+    function _setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) internal {
         if(priceFeedAddress == address(0) || asset == address(0)) {
             revert ZeroAddress();
         }
@@ -77,10 +75,6 @@ contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
             revert ZeroAge();
         }
 
-        _setAssetPriceFeed(asset, priceFeedAddress, maxAge);
-    }
-
-    function _setAssetPriceFeed(address asset, address priceFeedAddress, uint256 maxAge) internal {
         assetPriceFeeds[asset] = AssetPriceFeed(AggregatorV3Interface(priceFeedAddress), maxAge);
         emit AssetPriceFeedSet(asset, priceFeedAddress, maxAge);
     }
