@@ -43,6 +43,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     error NoBeaconImplementationExists();
     error TooManyStakingNodes(uint256 maxNodeCount);
     error NotLSDStakingNode(address sender, uint256 nodeId);
+    error InsufficientBoostrapAmount(address asset, uint256 amount, uint256 valueInETH);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -104,7 +105,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         address depositBootstrapper;
     }
 
-    function initialize(Init memory init)
+    function initialize(Init calldata init)
         public
         notZeroAddress(address(init.strategyManager))
         notZeroAddress(address(init.oracle))
@@ -139,7 +140,19 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
 
-        _deposit(assets[0], BOOTSTRAP_AMOUNT_UNITS * (10 ** (IERC20Metadata(address(assets[0])).decimals())), init.depositBootstrapper, init.depositBootstrapper);
+        initializeBoostrapDeposit(init);
+    }
+
+    function initializeBoostrapDeposit(Init calldata init) internal {
+        // deposit boostrap amount to avoid share inflation attacks
+        uint256 bootstrapAmount = BOOTSTRAP_AMOUNT_UNITS * (10 ** (IERC20Metadata(address(assets[0])).decimals()));
+        uint256 bootstrapAmountInETH = convertToETH(assets[0], bootstrapAmount);
+
+        if (bootstrapAmountInETH < 1 ether) {
+            revert InsufficientBoostrapAmount(address(assets[0]), bootstrapAmount, bootstrapAmountInETH);
+        }
+
+        _deposit(assets[0], bootstrapAmount, init.depositBootstrapper, init.depositBootstrapper);
     }
 
     //--------------------------------------------------------------------------------------
