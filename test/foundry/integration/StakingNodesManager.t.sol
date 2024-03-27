@@ -537,6 +537,29 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         assertEq(withdrawalCredentials.length, 32, "Withdrawal credentials length does not match expected value");
     }
     
+    function testValidatorRegistrationPaused() public {
+        uint256 depositAmount = 32 ether;
+        (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
+        bytes32 depositRoot = depositContractEth2.get_deposit_root();
+
+        // Pause validator registration
+        vm.prank(actors.PAUSE_ADMIN);
+        stakingNodesManager.setValidatorRegistrationPaused(true);
+
+        // Attempt to register validators while paused
+        vm.prank(actors.VALIDATOR_MANAGER);
+        vm.expectRevert(StakingNodesManager.ValidatorRegistrationPaused.selector);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+
+        // Unpause validator registration
+        vm.prank(actors.PAUSE_ADMIN);
+        stakingNodesManager.setValidatorRegistrationPaused(false);
+
+        // Attempt to register validators after unpausing
+        vm.prank(actors.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        assertEq(stakingNodesManager.getAllValidators().length, validatorData.length, "Validators were not registered after unpausing");
+    }
 }
 
 contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
