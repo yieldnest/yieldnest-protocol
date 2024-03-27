@@ -18,6 +18,9 @@ interface StakingNodeEvents {
      event Delegated(address indexed operator, bytes32 approverSalt);
      event Undelegated(address indexed operator);
      event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
+     event WithdrawalsProcessed(uint256 claimedAmount, uint256 totalValidatorPrincipal, uint256 allocatedETH);
+     event ETHReceived(address sender, uint256 value);
+     event WithdrawnBeforeRestaking(uint256 eigenPodBalance);
 }
 
 /**
@@ -41,7 +44,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error MismatchedOracleBlockNumberAndValidatorIndexLengths(uint256 oracleBlockNumberLength, uint256 validatorIndexLength);
     error MismatchedValidatorIndexAndProofsLengths(uint256 validatorIndexLength, uint256 proofsLength);
     error MismatchedProofsAndValidatorFieldsLengths(uint256 proofsLength, uint256 validatorFieldsLength);
-
+    error UnexpectedETHBalance(uint256 claimedAmount, uint256 expectedETHBalance);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -81,6 +84,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
        if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())) {
             revert ETHDepositorNotDelayedWithdrawalRouter();
        }
+       emit ETHReceived(msg.sender, msg.value);
     }
 
     constructor() {
@@ -127,51 +131,46 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *       validators sweep them to the withdrawal address
      */
     function withdrawBeforeRestaking() external onlyAdmin {
+
+        uint256 eigenPodBalance = address(eigenPod).balance;
+        emit WithdrawnBeforeRestaking(eigenPodBalance);
         eigenPod.withdrawBeforeRestaking();
     }
 
-    /// @notice Retrieves and processes withdrawals that have been queued in the EigenPod, transferring them to the StakingNode.
-    /// @param maxNumWithdrawals the upper limit of queued withdrawals to process in a single transaction.
-    /// @dev Ideally, you should call this with "maxNumWithdrawals" set to the total number of unclaimed withdrawals.
-    ///      However, if the queue becomes too large to handle in one transaction, you can specify a smaller number.
-    function claimDelayedWithdrawals(uint256 maxNumWithdrawals, uint256 withdrawnValidatorPrincipal) public nonReentrant onlyAdmin {
+    /**
+     * @notice Processes withdrawals by verifying the node's balance and transferring ETH to the StakingNodesManager.
+     * @dev This function checks if the node's current balance matches the expected balance and then transfers the ETH to the StakingNodesManager.
+     * @param totalValidatorPrincipal The total principal amount of the validators.
+     * @param expectedETHBalance The expected balance of the node after withdrawals.
+     */
+    function processWithdrawals(
+        uint256 totalValidatorPrincipal,
+        uint256 expectedETHBalance
+    ) public nonReentrant onlyAdmin {
 
-        if (withdrawnValidatorPrincipal > allocatedETH) {
-            revert WithdrawalPrincipalAmountTooHigh(withdrawnValidatorPrincipal, allocatedETH);
+        uint256 claimableAmount = address(this).balance;
+
+        if (totalValidatorPrincipal > allocatedETH) {
+            revert WithdrawalPrincipalAmountTooHigh(totalValidatorPrincipal, allocatedETH);
         }
 
-        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-
-        uint256 totalClaimable = 0;
-        IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableWithdrawals = delayedWithdrawalRouter.getClaimableUserDelayedWithdrawals(address(this));
-        for (uint256 i = 0; i < claimableWithdrawals.length; i++) {
-            totalClaimable += claimableWithdrawals[i].amount;
+        if (totalValidatorPrincipal > claimableAmount) {
+            revert ValidatorPrincipalExceedsTotalClaimable(totalValidatorPrincipal, claimableAmount);
         }
 
-        if (totalClaimable < withdrawnValidatorPrincipal) {
-            revert ValidatorPrincipalExceedsTotalClaimable(withdrawnValidatorPrincipal, totalClaimable);
+        // This check ensures that the actual balance of the contract matches the expected balance after withdrawals.
+        // Ensures that the totalValidatorPrincipal is not out of sync with the address(this).balance 
+        // by the time it reaches the on-chain
+        if (expectedETHBalance != claimableAmount) {
+            revert UnexpectedETHBalance(claimableAmount, expectedETHBalance);
         }
+        // substract validator principal
+        allocatedETH -= totalValidatorPrincipal;
 
-        // only claim if we have active unclaimed withdrawals
-        // the ETH funds are sent to address(this) and trigger the receive() function
-        if (totalClaimable > 0) {
-
-            uint256 balanceBefore = address(this).balance;
-            delayedWithdrawalRouter.claimDelayedWithdrawals(address(this), maxNumWithdrawals);
-            uint256 balanceAfter = address(this).balance;
-
-            uint256 claimedAmount = balanceAfter - balanceBefore;
-
-            if (totalClaimable > claimedAmount) {
-                revert ClaimAmountTooLow(totalClaimable, claimedAmount);
-            }
-            // substract validator principal
-            allocatedETH -= withdrawnValidatorPrincipal;
-            
-            stakingNodesManager.processWithdrawnETH{value: claimedAmount}(nodeId, withdrawnValidatorPrincipal);
-            emit ClaimedDelayedWithdrawal(claimedAmount, claimedAmount, allocatedETH);
-        }
+        stakingNodesManager.processWithdrawnETH{value: claimableAmount}(nodeId, totalValidatorPrincipal);
+        emit WithdrawalsProcessed(claimableAmount, totalValidatorPrincipal, allocatedETH);
     }
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------

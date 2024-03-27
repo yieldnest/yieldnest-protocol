@@ -19,9 +19,13 @@ import {IynETH} from "./interfaces/IynETH.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
-    event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
+    event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot, bytes withdrawalCredentials);
     event MaxNodeCountUpdated(uint256 maxNodeCount);
     event ValidatorRegistrationPausedSet(bool isPaused);
+    event WithdrawnETHProcessed(uint256 nodeId, uint256 value, uint256 withdrawnValidatorPrincipal, uint256 rewards);
+    event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
+    event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
+    event NodeInitialized(address nodeAddress, uint64 initializedVersion);
 }
 
 contract StakingNodesManager is
@@ -91,10 +95,6 @@ contract StakingNodesManager is
     IynETH public ynETH;
     IRewardsDistributor public rewardsDistributor;
 
-    Validator[] public validators;
-
-    bool public validatorRegistrationPaused;
-
     /**
     /**
      * @notice Each node in the StakingNodesManager manages an EigenPod. 
@@ -110,7 +110,10 @@ contract StakingNodesManager is
     IStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
+    Validator[] public validators;
     mapping(bytes pubkey => bool) usedValidators;
+
+    bool public validatorRegistrationPaused;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -285,7 +288,8 @@ contract StakingNodesManager is
             nodeId,
             validator.signature,
             validator.publicKey,
-            depositDataRoot
+            depositDataRoot,
+            withdrawalCredentials
         );
     }
 
@@ -357,8 +361,8 @@ contract StakingNodesManager is
 
             // update to the newly upgraded version.
             initializedVersion = node.getInitializedVersion();
+            emit NodeInitialized(address(node), initializedVersion);
         }
-
          // NOTE: for future versions add additional if clauses that initialize the node 
          // for the next version while keeping the previous initializers
     }
@@ -373,6 +377,8 @@ contract StakingNodesManager is
         }
 
         upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
+
+        emit RegisteredStakingNodeImplementationContract(address(upgradeableBeacon), _implementationContract);
     }
 
     function upgradeStakingNodeImplementation(address _implementationContract)
@@ -388,6 +394,8 @@ contract StakingNodesManager is
         for (uint256 i = 0; i < nodes.length; i++) {
             initializeStakingNode(nodes[i]);
         }
+
+        emit UpgradedStakingNodeImplementationContract(_implementationContract, nodes.length);
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
@@ -413,6 +421,8 @@ contract StakingNodesManager is
         if (!sent) {
             revert TransferFailed();
         }
+
+        emit WithdrawnETHProcessed(nodeId, msg.value, withdrawnValidatorPrincipal, rewards);
 
         ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
     }
