@@ -17,7 +17,6 @@ interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event Undelegated(address indexed operator);
-     event ClaimedDelayedWithdrawal(uint256 claimedAmount, uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
      event WithdrawalsProcessed(uint256 claimedAmount, uint256 totalValidatorPrincipal, uint256 allocatedETH);
      event ETHReceived(address sender, uint256 value);
      event WithdrawnBeforeRestaking(uint256 eigenPodBalance);
