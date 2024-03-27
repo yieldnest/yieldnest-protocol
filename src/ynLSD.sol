@@ -309,14 +309,15 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             }
         }
     }
+
     /**
      * @notice Converts the amount of a given asset to its equivalent value in ETH based on the latest price from the oracle.
      * @dev This function takes into account the decimal places of the asset to ensure accurate conversion.
      * @param asset The ERC20 token to be converted to ETH.
      * @param amount The amount of the asset to be converted.
-     * @return The equivalent amount of the asset in ETH.
+     * @return uint256 equivalent amount of the asset in ETH.
      */
-    function convertToETH(IERC20 asset, uint amount) public view returns (uint256) {
+    function convertToETH(IERC20 asset, uint256 amount) public view returns (uint256) {
         uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
         uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
         return assetDecimals < 18 || assetDecimals > 18
