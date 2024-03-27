@@ -333,7 +333,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     function convertToETH(IERC20 asset, uint256 amount) public view returns (uint256) {
         uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
         uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
-        return assetDecimals < 18 || assetDecimals > 18
+        return assetDecimals != 18
             ? assetPriceInETH * amount / (10 ** assetDecimals)
             : assetPriceInETH * amount / 1e18;
     }
