@@ -214,7 +214,10 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
 
         // Assert that totalAssets reflects the deposit
-        assertEq(totalAssetsAfterDeposit - totalAssetsBeforeDeposit, expectedBalance, "Total assets do not reflect the deposit");
+        assertEq(
+            compareWithThreshold(totalAssetsAfterDeposit - totalAssetsBeforeDeposit,expectedBalance, 1), true, 
+            "Total assets do not reflect the deposit"
+        );
     }
 
     function testPreviewDeposit() public {
