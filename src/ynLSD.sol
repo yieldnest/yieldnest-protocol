@@ -21,6 +21,7 @@ interface IynLSDEvents {
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
+    event DepositsPausedUpdated(bool paused);
 
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
@@ -35,6 +36,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     //--------------------------------------------------------------------------------------
 
     error UnsupportedAsset(IERC20 asset);
+    error Paused();
     error ZeroAmount();
     error ZeroAddress();
     error BeaconImplementationAlreadyExists();
@@ -75,6 +77,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
      */
     ILSDStakingNode[] public nodes;
     uint256 public maxNodeCount;
+
+    bool public depositsPaused;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -157,6 +161,11 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         uint256 amount,
         address receiver
     ) public nonReentrant returns (uint256 shares) {
+
+        if (depositsPaused) {
+            revert Paused();
+        }
+
         return _deposit(asset, amount, receiver, msg.sender);
     }
 
@@ -300,19 +309,28 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             }
         }
     }
+
     /**
      * @notice Converts the amount of a given asset to its equivalent value in ETH based on the latest price from the oracle.
      * @dev This function takes into account the decimal places of the asset to ensure accurate conversion.
      * @param asset The ERC20 token to be converted to ETH.
      * @param amount The amount of the asset to be converted.
-     * @return The equivalent amount of the asset in ETH.
+     * @return uint256 equivalent amount of the asset in ETH.
      */
-    function convertToETH(IERC20 asset, uint amount) public view returns (uint256) {
+    function convertToETH(IERC20 asset, uint256 amount) public view returns (uint256) {
         uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
         uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
         return assetDecimals < 18 || assetDecimals > 18
             ? assetPriceInETH * amount / (10 ** assetDecimals)
             : assetPriceInETH * amount / 1e18;
+    }
+
+    /// @notice Updates the pause state of deposits.
+    /// @dev Can only be called by an account with the PAUSER_ROLE.
+    /// @param isPaused The new pause state to set for deposits.
+    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        depositsPaused = isPaused;
+        emit DepositsPausedUpdated(depositsPaused);
     }
 
     //--------------------------------------------------------------------------------------

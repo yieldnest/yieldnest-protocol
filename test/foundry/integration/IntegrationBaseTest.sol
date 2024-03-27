@@ -210,6 +210,7 @@ contract IntegrationBaseTest is Test, Utils {
             stakingAdmin: actors.STAKING_ADMIN,
             stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
             validatorManager: actors.VALIDATOR_MANAGER,
+            pauser: actors.PAUSE_ADMIN,
             maxNodeCount: 10,
             depositContract: depositContractEth2,
             ynETH: IynETH(address(yneth)),

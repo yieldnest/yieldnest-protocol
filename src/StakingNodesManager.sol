@@ -21,6 +21,7 @@ interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
     event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot);
     event MaxNodeCountUpdated(uint256 maxNodeCount);
+    event ValidatorRegistrationPausedSet(bool isPaused);
 }
 
 contract StakingNodesManager is
@@ -48,6 +49,7 @@ contract StakingNodesManager is
     error DepositorNotYnETH();
     error TransferFailed();
     error NoValidatorsProvided();
+    error ValidatorRegistrationPaused();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -64,6 +66,9 @@ contract StakingNodesManager is
 
     /// @notice Role is able to create staking nodes
     bytes32 public constant STAKING_NODE_CREATOR_ROLE = keccak256("STAKING_NODE_CREATOR_ROLE");
+
+    /// @notice  Role is allowed to set the pause state
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -87,6 +92,8 @@ contract StakingNodesManager is
     IRewardsDistributor public rewardsDistributor;
 
     Validator[] public validators;
+
+    bool public validatorRegistrationPaused;
 
     /**
     /**
@@ -121,6 +128,7 @@ contract StakingNodesManager is
         address stakingNodesAdmin;
         address validatorManager;
         address stakingNodeCreatorRole;
+        address pauser;
 
         // internal
         uint256 maxNodeCount;
@@ -159,12 +167,14 @@ contract StakingNodesManager is
         notZeroAddress(init.stakingAdmin)
         notZeroAddress(init.stakingNodesAdmin)
         notZeroAddress(init.validatorManager)
-        notZeroAddress(init.stakingNodeCreatorRole) {
-       _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        notZeroAddress(init.stakingNodeCreatorRole)
+        notZeroAddress(init.pauser) {
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
         _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
         _grantRole(STAKING_NODE_CREATOR_ROLE, init.stakingNodeCreatorRole);
+        _grantRole(PAUSER_ROLE, init.pauser);
     }
 
     function initializeExternalContracts(Init calldata init)
@@ -198,6 +208,10 @@ contract StakingNodesManager is
         bytes32 _depositRoot,
         ValidatorData[] calldata newValidators
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
+
+        if (validatorRegistrationPaused) {
+            revert ValidatorRegistrationPaused();
+        }
 
         if (newValidators.length == 0) {
             revert NoValidatorsProvided();
@@ -297,6 +311,12 @@ contract StakingNodesManager is
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), _address);
     }
 
+    /// @notice Toggles the pause state for validator registration.
+    /// @param isPaused Boolean indicating the desired pause state for validator registration.
+    function setValidatorRegistrationPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
+        validatorRegistrationPaused = isPaused;
+        emit ValidatorRegistrationPausedSet(isPaused);
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
