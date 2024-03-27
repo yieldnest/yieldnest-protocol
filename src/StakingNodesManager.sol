@@ -227,7 +227,7 @@ contract StakingNodesManager is
             revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
         }
 
-        validateDepositDataAllocation(newValidators);
+        validateNodes(newValidators);
 
         uint256 totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
@@ -246,13 +246,10 @@ contract StakingNodesManager is
     }
 
     /**
-     * @notice Validates the allocation of deposit data across nodes to ensure the distribution does not increase the disparity in balances.
-     * @dev This function checks if the proposed allocation of deposits (represented by `_depositData`) across the nodes would lead to a more
-     * equitable distribution of validator stakes. It calculates the current and new average balances of nodes, and ensures that for each node,
-     * the absolute difference between its balance and the average balance does not increase as a result of the new deposits
-     * @param newValidators An array of `ValidatorData` structures representing the validator stakes to be allocated across the nodes.
+     * @notice Validates the correct number of nodes
+     * @param newValidators An array of `ValidatorData` structures
      */
-    function validateDepositDataAllocation(ValidatorData[] calldata newValidators) public view {
+    function validateNodes(ValidatorData[] calldata newValidators) public view {
 
         for (uint256 i = 0; i < newValidators.length; i++) {
             uint256 nodeId = newValidators[i].nodeId;

@@ -202,7 +202,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		);
 
 		// checks the deposit Validator Data
-        stakingNodesManager.validateDepositDataAllocation(validatorData);
+        stakingNodesManager.validateNodes(validatorData);
 
 		// get a deposit root from the ethereum deposit contract
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
