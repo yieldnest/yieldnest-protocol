@@ -214,28 +214,22 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     /**
-     * @dev Converts an ETH amount to shares based on the current exchange rate and specified rounding method.
-     * If it's the first stake (bootstrap phase), uses a 1:1 exchange rate. Otherwise, calculates shares based on
-     * the formula: deltaynETH = (ynETHSupply / totalControlled) * ethAmount.
-     * This calculation can result in 0 during the bootstrap phase if `totalControlled` and `ynETHSupply` could be
-     * manipulated independently, which should not be possible.
-     * @param ethAmount The amount of ETH to convert to shares.
+     * @notice Converts an LRT amount to shares based on the current exchange rate and specified rounding method.
+     * @param amount The amount of LRT to convert to shares.
      * @param rounding The rounding method to use for the calculation.
-     * @return The number of shares equivalent to the given ETH amount.
+     * @return The number of shares equivalent to the given LRT amount.
      */
-    function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
+    function _convertToShares(uint256 amount, Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Use totalSupply to see if this is the bootstrap call, not totalAssets
         if (totalSupply() == 0) {
-            return ethAmount;
+            return amount;
         }
-
-        // deltaynETH = (ynETHSupply / totalControlled) * ethAmount
         
         // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
         // independently. That should not be possible.
         return Math.mulDiv(
-            ethAmount,
+            amount,
             totalSupply(),
             totalAssets(),
             rounding
