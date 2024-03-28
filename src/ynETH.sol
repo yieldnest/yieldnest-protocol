@@ -194,9 +194,8 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         }
 
         // Deduct the withdrawal amount from the total deposited in the pool.
-        unchecked {
-            totalDepositedInPool -= ethAmount;
-        }
+        totalDepositedInPool -= ethAmount;
+
         // Transfer the specified amount of ETH to the Staking Nodes Manager.
         payable(address(stakingNodesManager)).transfer(ethAmount);
 
