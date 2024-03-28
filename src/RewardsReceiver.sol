@@ -55,7 +55,6 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsRec
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
-        _setRoleAdmin(WITHDRAWER_ROLE, DEFAULT_ADMIN_ROLE);
         _grantRole(WITHDRAWER_ROLE, init.withdrawer);
     }
 
