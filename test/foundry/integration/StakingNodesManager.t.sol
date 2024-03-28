@@ -520,7 +520,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
     function testRegisterValidatorSuccess() public {
         (IStakingNodesManager.ValidatorData[] memory validatorData, uint256 validatorCount) = makeTestValidators(32 ether);
         // Call validateDepositDataAllocation to ensure the deposit data allocation ßis valid
-        stakingNodesManager.validateDepositDataAllocation(validatorData);
+        stakingNodesManager.validateNodes(validatorData);
         
         bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
