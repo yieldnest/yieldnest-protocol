@@ -329,14 +329,17 @@ contract StakingNodesManager is
         onlyRole(STAKING_NODE_CREATOR_ROLE) 
         returns (IStakingNode) {
 
-        if (nodes.length >= maxNodeCount) {
+        uint256 nodeCount = nodes.length;
+
+        if (nodeCount >= maxNodeCount) {
             revert TooManyStakingNodes(maxNodeCount);
         }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         IStakingNode node = IStakingNode(payable(proxy));
 
-        initializeStakingNode(node);
+
+        initializeStakingNode(node, nodeCount);
 
         IEigenPod eigenPod = node.createEigenPod();
 
@@ -347,13 +350,12 @@ contract StakingNodesManager is
         return node;
     }
 
-    function initializeStakingNode(IStakingNode node) virtual internal {
+    function initializeStakingNode(IStakingNode node, uint256 nodeCount) virtual internal {
 
         uint64 initializedVersion = node.getInitializedVersion();
         if (initializedVersion == 0) {
-            uint256 nodeId = nodes.length;
             node.initialize(
-            IStakingNode.Init(IStakingNodesManager(address(this)), nodeId)
+                IStakingNode.Init(IStakingNodesManager(address(this)), nodeCount)
             );
 
             // update to the newly upgraded version.
@@ -387,12 +389,14 @@ contract StakingNodesManager is
         }
         upgradeableBeacon.upgradeTo(_implementationContract);
 
+        uint256 nodeCount = nodes.length;
+
         // reinitialize all nodes
-        for (uint256 i = 0; i < nodes.length; i++) {
-            initializeStakingNode(nodes[i]);
+        for (uint256 i = 0; i < nodeCount; i++) {
+            initializeStakingNode(nodes[i], nodeCount);
         }
 
-        emit UpgradedStakingNodeImplementationContract(_implementationContract, nodes.length);
+        emit UpgradedStakingNodeImplementationContract(_implementationContract, nodeCount);
     }
 
     /// @notice Sets the maximum number of staking nodes allowed
