@@ -39,7 +39,6 @@ contract StakingNodesManager is
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error DepositAllocationUnbalanced(uint256 nodeId, uint256 nodeBalance, uint256 averageBalance, uint256 newNodeBalance, uint256 newAverageBalance);
     error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);

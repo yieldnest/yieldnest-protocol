@@ -30,7 +30,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //--------------------------------------------------------------------------------------
 
     error Paused();
-    error ValueOutOfBounds(uint256 value);
     error ZeroAddress();
     error ZeroETH();
     error NoDirectETHDeposit();
