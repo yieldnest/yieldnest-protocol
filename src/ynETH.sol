@@ -111,12 +111,12 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         }
 
         uint256 assets = msg.value;
-
+        
         shares = previewDeposit(assets);
 
         _mint(receiver, shares);
 
-        totalDepositedInPool += msg.value;
+        totalDepositedInPool += assets;
         emit Deposit(msg.sender, receiver, assets, shares, totalDepositedInPool);
     }
 
@@ -197,6 +197,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
 
         // Deduct the withdrawal amount from the total deposited in the pool.
         totalDepositedInPool -= ethAmount;
+
         // Transfer the specified amount of ETH to the Staking Nodes Manager.
         payable(address(stakingNodesManager)).transfer(ethAmount);
 
