@@ -6,7 +6,6 @@ import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 import {IEigenPodManager} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
 import {IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategy, IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
@@ -36,7 +35,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error NotStakingNodesAdmin();
     error ETHDepositorNotDelayedWithdrawalRouter();
     error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
-    error ValidatorPrincipalExceedsTotalClaimable(uint256 withdrawnValidatorPrincipal, uint256 claimableAmount);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
@@ -147,27 +145,26 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 expectedETHBalance
     ) public nonReentrant onlyAdmin {
 
-        uint256 claimableAmount = address(this).balance;
+        uint256 balance = address(this).balance;
 
-        if (totalValidatorPrincipal > allocatedETH) {
-            revert WithdrawalPrincipalAmountTooHigh(totalValidatorPrincipal, allocatedETH);
+        // check for any race conditions with balances by passing in the expected balance
+        if (balance < expectedETHBalance) {
+            revert UnexpectedETHBalance(balance, expectedETHBalance);
         }
 
-        if (totalValidatorPrincipal > claimableAmount) {
-            revert ValidatorPrincipalExceedsTotalClaimable(totalValidatorPrincipal, claimableAmount);
+        // check the desired balance of validator principal is available here
+        if (balance < totalValidatorPrincipal) {
+            revert WithdrawalPrincipalAmountTooHigh(totalValidatorPrincipal, balance);
         }
 
-        // This check ensures that the actual balance of the contract matches the expected balance after withdrawals.
-        // Ensures that the totalValidatorPrincipal is not out of sync with the address(this).balance 
-        // by the time it reaches the on-chain
-        if (expectedETHBalance != claimableAmount) {
-            revert UnexpectedETHBalance(claimableAmount, expectedETHBalance);
-        }
-        // substract validator principal
+        // substract withdrawn validator principal from the allocated balance
         allocatedETH -= totalValidatorPrincipal;
 
-        stakingNodesManager.processWithdrawnETH{value: claimableAmount}(nodeId, totalValidatorPrincipal);
-        emit WithdrawalsProcessed(claimableAmount, totalValidatorPrincipal, allocatedETH);
+        // push the expectedETHBalance here to the StakingNodesManager
+        // balance - expectedETHBalance will have to be processed separately in another transaction
+        // since its breakdown of rewards vs principal is unknown at runtime
+        stakingNodesManager.processWithdrawnETH{value: expectedETHBalance}(nodeId, totalValidatorPrincipal);
+        emit WithdrawalsProcessed(balance, totalValidatorPrincipal, allocatedETH);
     }
 
 
