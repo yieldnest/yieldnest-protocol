@@ -338,7 +338,44 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 
 	}
+}
 
+contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
+
+	/**
+		Scenario 10: Self-Destruct ETH Transfer Attack
+		Objective: Ensure the system is not vulnerable to a self-destruct attack.
+	 */
+
+	function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
+		
+		address sender = address(this);
+		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator		
+		(IStakingNode stakingNode,) = depositEth_and_createValidator();
+
+		// Amount of ether to send via self-destruct
+		uint256 amountToSend = 1 ether;
+		// Ensure the test contract has enough ether to send
+		vm.deal(sender, amountToSend);
+
+		// Address to send ether to - for example, the stakingNode or another address
+		address payable target = payable(address(stakingNode)); // or any other target address
+
+		// Create and send ether via self-destruct
+		// The SelfDestructSender contract is created with the amountToSend and immediately self-destructs,
+		// sending its balance to the target address.
+		address(new SelfDestructSender{value: amountToSend}(target));
+
+		vm.prank(actors.STAKING_NODES_ADMIN);
+		stakingNode.processWithdrawals(32 ether, address(stakingNode).balance);
+	}
+}
+
+// Add this contract definition outside of your existing contract definitions
+contract SelfDestructSender {
+    constructor(address payable _target) payable {
+        selfdestruct(_target);
+    }
 }
 
 
