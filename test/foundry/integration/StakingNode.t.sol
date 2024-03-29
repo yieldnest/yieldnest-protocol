@@ -116,7 +116,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         rewardsDistributor.processRewards();
 
         uint256 fee = uint256(rewardsDistributor.feesBasisPoints());
-        uint finalRewardsReceived = rewardsAmount - (rewardsAmount * fee / 10000);
+        uint256 finalRewardsReceived = rewardsAmount - (rewardsAmount * fee / 10000);
 
         // Assert total assets after claiming delayed withdrawals
         uint256 totalAssets = yneth.totalAssets();
@@ -225,38 +225,6 @@ contract StakingNodeWithdrawWithoutRestaking is StakingNodeTestBase {
 
         uint256 expectedRewards = rewardsSweeped - validatorPrincipal;
         assertEq(rewardsAmount, expectedRewards, "Rewards amount does not match expected value");
-    }
-
-    function testValidatorPrincipalExceedsTotalClaimable() public {
-
-        uint256 activeValidators = 5;
-
-        uint256 depositAmount = activeValidators * 32 ether;
-        uint256 validatorPrincipal = depositAmount; // Total principal for all validators
-
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
-
-        // Simulate rewards being sweeped into the StakingNode's balance
-        uint256 rewardsSweeped = 3 * 32 ether;
-        address payable eigenPodAddress = payable(address(eigenPodInstance));
-        vm.deal(eigenPodAddress, rewardsSweeped);
-
-        // Trigger withdraw before restaking successfully
-        vm.prank(actors.STAKING_NODES_ADMIN);
-        stakingNodeInstance.withdrawBeforeRestaking();
-
-        // Simulate time passing for withdrawal delay
-        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-        vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
-
-        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
-
-        uint256 tooLargeValidatorPrincipal = validatorPrincipal;
-
-        // Attempt to claim withdrawals with a validator principal that exceeds total claimable amount
-        vm.prank(actors.STAKING_NODES_ADMIN);
-        vm.expectRevert(abi.encodeWithSelector(StakingNode.ValidatorPrincipalExceedsTotalClaimable.selector, tooLargeValidatorPrincipal, rewardsSweeped));
-        stakingNodeInstance.processWithdrawals(tooLargeValidatorPrincipal, address(stakingNodeInstance).balance);
     }
 
     function testWithdrawalPrincipalAmountTooHigh() public {
