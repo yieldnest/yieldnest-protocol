@@ -6,11 +6,10 @@ import "../../../src/interfaces/ILSDStakingNode.sol";
 import "./TestLSDStakingNodeV2.sol";
 
 contract TestYnLSDV2 is ynLSD {
-    function initializeLSDStakingNode(ILSDStakingNode node) override internal {
+    function initializeLSDStakingNode(ILSDStakingNode node, uint256 nodeId) override internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
-             uint256 nodeId = nodes.length;
              node.initialize(
                 ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
              );

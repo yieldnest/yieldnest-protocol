@@ -289,22 +289,26 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         view
         returns (uint256[] memory assetBalances)
     {
-        assetBalances = new uint256[](assets.length);
-        IStrategy[] memory assetStrategies = new IStrategy[](assets.length);
+        uint256 assetsCount = assets.length;
+
+        assetBalances = new uint256[](assetsCount);
+        IStrategy[] memory assetStrategies = new IStrategy[](assetsCount);
         
         // Add balances for funds held directly in ynLSD.
-        for (uint256 i = 0; i < assets.length; i++) {
-            assetStrategies[i] = strategies[assets[i]];
+        for (uint256 i = 0; i < assetsCount; i++) {
+            IERC20 asset = assets[i];
+            assetStrategies[i] = strategies[asset];
 
-            uint256 balanceThis = assets[i].balanceOf(address(this));
+            uint256 balanceThis = asset.balanceOf(address(this));
             assetBalances[i] += balanceThis;
         }
 
         // Add balances contained in each LSDStakingNode, including those managed by strategies.
-        for (uint256 i; i < nodes.length; i++ ) {
+        uint256 nodesCount = nodes.length;
+        for (uint256 i; i < nodesCount; i++ ) {
             
             ILSDStakingNode node = nodes[i];
-            for (uint256 j = 0; j < assets.length; j++) {
+            for (uint256 j = 0; j < assetsCount; j++) {
                 
                 IERC20 asset = assets[j];
                 uint256 balanceNode = asset.balanceOf(address(node));
@@ -355,15 +359,16 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         onlyRole(LSD_STAKING_NODE_CREATOR_ROLE)
         returns (ILSDStakingNode) {
 
-        if (nodes.length >= maxNodeCount) {
+        uint256 nodeId = nodes.length;
+
+        if (nodeId >= maxNodeCount) {
             revert TooManyStakingNodes(maxNodeCount);
         }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
         ILSDStakingNode node = ILSDStakingNode(payable(proxy));
 
-        uint256 nodeId = nodes.length;
-        initializeLSDStakingNode(node);
+        initializeLSDStakingNode(node, nodeId);
 
         nodes.push(node);
 
@@ -377,12 +382,12 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
      * @dev This function checks the current initialized version of the node and performs initialization if it hasn't been done.
      * For future versions, additional conditional blocks should be added to handle version-specific initialization.
      * @param node The ILSDStakingNode instance to be initialized.
+     * @param nodeId The ID of the staking node.
      */
-    function initializeLSDStakingNode(ILSDStakingNode node) virtual internal {
+    function initializeLSDStakingNode(ILSDStakingNode node, uint256 nodeId) virtual internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
-             uint256 nodeId = nodes.length;
              node.initialize(
                ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
              );
@@ -438,7 +443,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         // Reinitialize all nodes to ensure compatibility with the new implementation.
         for (uint256 i = 0; i < nodeCount; i++) {
-            initializeLSDStakingNode(nodes[i]);
+            initializeLSDStakingNode(nodes[i], nodeCount);
         }
 
         emit UpgradedStakingNodeImplementationContract(address(_implementationContract), nodeCount);
