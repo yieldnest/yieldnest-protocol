@@ -148,7 +148,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 balance = address(this).balance;
 
         // check for any race conditions with balances by passing in the expected balance
-        if (balance != expectedETHBalance) {
+        if (balance < expectedETHBalance) {
             revert UnexpectedETHBalance(balance, expectedETHBalance);
         }
 
@@ -160,8 +160,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // substract withdrawn validator principal from the allocated balance
         allocatedETH -= totalValidatorPrincipal;
 
-        // push the entire balance here to the StakingNodesManager
-        stakingNodesManager.processWithdrawnETH{value: balance}(nodeId, totalValidatorPrincipal);
+        // push the expectedETHBalance here to the StakingNodesManager
+        // balance - expectedETHBalance will have to be processed separately in another transaction
+        // since its breakdown of rewards vs principal is unknown at runtime
+        stakingNodesManager.processWithdrawnETH{value: expectedETHBalance}(nodeId, totalValidatorPrincipal);
         emit WithdrawalsProcessed(balance, totalValidatorPrincipal, allocatedETH);
     }
 

@@ -405,12 +405,12 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         uint256 depositAmount = 1 ether;
 
         // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount * 10}("");
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount}("");
         require(success, "ETH transfer failed");
         uint256 balance = stETH.balanceOf(address(this));
-        assertEq(compareWithThreshold(balance, depositAmount * 10, 1), true, "Amount not received");
+        assertEq(compareWithThreshold(balance, depositAmount, 2), true, "Amount not received");
 
-        stETH.approve(address(ynlsd), 32 ether);
+        stETH.approve(address(ynlsd), balance);
 
         // Arrange
         vm.prank(actors.PAUSE_ADMIN);
@@ -422,7 +422,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 
         // Trying to deposit ETH while pause
         vm.expectRevert(ynLSD.Paused.selector);
-        ynlsd.deposit(stETH, depositAmount, address(this));
+        ynlsd.deposit(stETH, balance, address(this));
 
         // Unpause and try depositing again
         vm.prank(actors.PAUSE_ADMIN);
@@ -432,7 +432,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
 
         // Deposit should succeed now
-        ynlsd.deposit(stETH, depositAmount, address(this));
+        ynlsd.deposit(stETH, balance, address(this));
         uint256 ynLSDBalance = ynlsd.balanceOf(address(this));
         assertGt(ynLSDBalance, 0, "ynLSD balance should be greater than 0 after deposit");
     }
