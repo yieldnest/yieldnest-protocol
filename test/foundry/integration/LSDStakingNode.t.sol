@@ -147,4 +147,33 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
         address delegatedAddress = delegationManager.delegatedTo(address(lsdStakingNodeInstance));
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
     }
+
+	function testRecoverDirectDeposits() public {
+		// setup
+		vm.prank(actors.STAKING_NODE_CREATOR);
+		ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
+		IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+		vm.deal(address(this), 1 ether);
+        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: 1 ether}("");
+        require(success, "ETH transfer failed");
+        uint256 balance = stETH.balanceOf(address(this));
+		uint256 ynLSDBalanceBefore = stETH.balanceOf(address(ynlsd));
+
+		// transfer steth to the staking node
+		stETH.approve(address(lsdStakingNodeInstance), balance);
+		stETH.transfer(address(lsdStakingNodeInstance), balance);
+
+		// recover the stuck steth in the staking node
+		vm.prank(actors.LSD_RESTAKING_MANAGER);
+		lsdStakingNodeInstance.recoverAssets(IERC20(chainAddresses.lsd.STETH_ADDRESS));
+		stETH.balanceOf(address(ynlsd));
+		assertEq(
+			compareWithThreshold(
+				stETH.balanceOf(address(ynlsd)) - ynLSDBalanceBefore, 
+				balance, 
+				2
+			),
+			true
+		);
+	}
 }

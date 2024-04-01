@@ -129,6 +129,14 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         emit Undelegated(operator);
     }
 
+    /**
+     * @notice Recovers assets that were deposited directly
+     * @param asset The asset to be recovered
+     */
+    function recoverAssets(IERC20 asset) external onlyLSDRestakingManager {
+        asset.safeTransfer(address(ynLSD), asset.balanceOf(address(this)));
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
