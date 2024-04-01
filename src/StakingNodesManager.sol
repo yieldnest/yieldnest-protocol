@@ -231,8 +231,8 @@ contract StakingNodesManager is
         uint256 totalDepositAmount = newValidators.length * DEFAULT_VALIDATOR_STAKE;
         ynETH.withdrawETH(totalDepositAmount); // Withdraw ETH from depositPool
 
-        uint256 validatorsLength = newValidators.length;
-        for (uint256 i = 0; i < validatorsLength; i++) {
+        uint256 newValidatorCount = newValidators.length;
+        for (uint256 i = 0; i < newValidatorCount; i++) {
 
             ValidatorData calldata validator = newValidators[i];
             if (usedValidators[validator.publicKey]) {
@@ -250,10 +250,12 @@ contract StakingNodesManager is
      */
     function validateNodes(ValidatorData[] calldata newValidators) public view {
 
+        uint256 nodeCount = nodes.length;
+
         for (uint256 i = 0; i < newValidators.length; i++) {
             uint256 nodeId = newValidators[i].nodeId;
 
-            if (nodeId >= nodes.length) {
+            if (nodeId >= nodeCount) {
                 revert InvalidNodeId(nodeId);
             }
         }
