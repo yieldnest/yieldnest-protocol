@@ -255,6 +255,8 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 	}
 }
 
+event LogUint(string message, uint256 value);
+
 contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 	/**
@@ -338,7 +340,121 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 
 	}
+}
 
+contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
+
+	/**
+		Scenario 10: Self-Destruct ETH Transfer Attack
+		Objective: Ensure the system is not vulnerable to a self-destruct attack.
+	 */
+
+	function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
+
+		uint256 previousTotalDeposited = yneth.totalDepositedInPool();
+		uint256 previousTotalShares = yneth.totalSupply();
+
+
+		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator		
+		(IStakingNode stakingNode,) = depositEth_and_createValidator();
+
+		// Amount of ether to send via self-destruct
+		uint256 amountToSend = 1 ether;
+
+		// Ensure the test contract has enough ether to send, user1 comes from Test3
+		vm.deal(user1, amountToSend);
+
+		// Address to send ether to - for example, the stakingNode or another address
+		address payable target = payable(address(stakingNode)); // or any other target address
+
+		// Create and send ether via self-destruct
+		// The SelfDestructSender contract is created with the amountToSend and immediately self-destructs,
+		// sending its balance to the target address.
+		address(new SelfDestructSender{value: amountToSend}(target));
+		
+		log_balances(stakingNode);
+		
+		assertEq(address(yneth).balance, 0, "yneth.balance != 0");
+		assertEq(address(stakingNode).balance, 1 ether, "stakingNode.balance !=  1 ether");
+		assertEq(address(consensusLayerReceiver).balance, 0, "consensusLayerReceiver.balance != 0");
+		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
+
+		vm.startPrank(actors.STAKING_NODES_ADMIN);
+		withdraw_principal(stakingNode);
+		stakingNode.processWithdrawals(32 ether, 33 ether + 1 wei);
+		vm.stopPrank();
+
+		log_balances(stakingNode);
+
+		assertEq(address(yneth).balance, 32 ether, "yneth.balance != 32 ether");
+		assertEq(address(stakingNode).balance, 0, "stakingNode.balance != 0");
+		assertEq(address(consensusLayerReceiver).balance, 1 ether + 1 wei, "consensusLayerReceiver.balance != 0");
+		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
+
+		uint256 userAmount = 32 ether;
+		uint256 userShares = yneth.balanceOf(user1);
+
+		runInvariants(
+			user1, 
+			previousTotalDeposited, 
+			previousTotalShares,
+			userAmount, 
+			userShares
+		);
+
+
+	}
+
+	function withdraw_principal(IStakingNode stakingNode) public {
+
+		// send concensus rewards to eigen pod
+		uint256 amount = 32 ether + 1 wei;
+		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
+		uint256 initialPodBalance = address(eigenPod).balance;
+		vm.deal(address(eigenPod), amount);
+		assertEq(address(eigenPod).balance, initialPodBalance + amount);
+
+		stakingNode.withdrawBeforeRestaking();
+
+		// There should be a delayedWithdraw on the DelayedWithdrawalRouter
+		IDelayedWithdrawalRouter withdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals = withdrawalRouter.getUserDelayedWithdrawals(address(stakingNode));
+		assertEq(delayedWithdrawals.length, 1);
+		assertEq(delayedWithdrawals[0].amount, amount);
+
+		// Because of the delay, the delayedWithdrawal should not be claimable yet
+		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawals = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
+		assertEq(claimableDelayedWithdrawals.length, 0);
+
+		// Move ahead in time to make the delayedWithdrawal claimable
+		vm.roll(block.number + withdrawalRouter.withdrawalDelayBlocks() + 1);
+		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawalsWarp = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
+		assertEq(claimableDelayedWithdrawalsWarp.length, 1);
+		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
+
+		withdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
+	}
+
+	function log_balances (IStakingNode stakingNode) public {
+		emit LogUint("yneth.balance", address(yneth).balance);
+		emit LogUint("stakingNode.balance", address(stakingNode).balance);
+		emit LogUint("consensusReciever.balance", address(consensusLayerReceiver).balance);
+		emit LogUint("executionReciever.balance", address(executionLayerReceiver).balance);
+	}
+
+	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public view {
+		Invariants.totalDepositIntegrity(yneth.totalDepositedInPool(), previousTotalDeposited, userAmount);
+		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, userAmount);
+		Invariants.shareMintIntegrity(yneth.totalSupply(), previousTotalShares, userShares);
+		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
+	}
+}
+
+// Add this contract definition outside of your existing contract definitions
+contract SelfDestructSender {
+    constructor(address payable _target) payable {
+        selfdestruct(_target);
+    }
 }
 
 

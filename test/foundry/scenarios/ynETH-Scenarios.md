@@ -39,70 +39,7 @@ Objective: Test the distribution of staking rewards to a multisig.
 
 Objective: Verify that ynETH correctly accounts for fund balances and withdrawals from EigenLayer.
 
-## Invariant Scenarios
+**Scenario 10:** Self-Destruct Attack
 
-The following invariant scenarios are designed to verify the correct behavior of the ynETH contract in various usage scenarios. These scenarios should never fail, and if they do, it indicates there is an implementation issue somewhere in the protocol.
+Objective: Ensure the system is not vulnerable to a self-destruct attack.
 
-**Total Assets Consistency**
-
-```solidity
-assert(totalDepositedInPool + totalDepositedInValidators() == totalAssets());
-```
-
-**Exchange Rate Integrity**
-
-```solidity
-assert(exchangeAdjustmentRate >= 0 && exchangeAdjustmentRate <= BASIS_POINTS_DENOMINATOR);
-```
-**Share Minting Consistency**
-
-```solidity
-assert(totalSupply() == previousTotalSupply + mintedShares)
-```
-
-**User Shares Integrity**
-
-```solidity
-assert(balanceOf(user) == previousUserSharesBalance + newUserSharesBalance);
-```
-
-**Total Deposited Integrity**
-
-```solidity
-assert(totalDepositedInValidators() == previousTotalDeposited + newDeposit);
-```
-
-**Total Assets Integrity**
-
-```solidity
-assert(totalAssets() == previousTotalAssets + newDeposit);
-```
-
-**Total Balance Integrity**
-
-```solidity
-assert(address(yneth).balance() == previousBalance + newBalance);
-```
-
-**Deposit and Withdrawal Symmetry**
-
-```solidity
-uint256 sharesMinted = depositETH(amount);
-assert(sharesMinted == previewDeposit(amount));
-```
-
-**Rewards Increase Total Assets**
-
-```solidity
-uint256 previousTotalAssets = totalAssets();
-// Simulate receiving rewards
-receiveRewards{value: rewardAmount}();
-assert(totalAssets() == previousTotalAssets + rewardAmount);
-```
-
-**Authorized Access Control**
-
-```solidity
-// For any role-restricted operation
-assert(msg.sender == authorizedRoleAddress);
-```
