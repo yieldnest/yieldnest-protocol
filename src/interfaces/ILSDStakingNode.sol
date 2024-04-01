@@ -30,4 +30,6 @@ interface ILSDStakingNode {
     function delegate(address operator) external;
 
     function undelegate() external;
+
+    function recoverAssets(IERC20 asset) external;
 }
