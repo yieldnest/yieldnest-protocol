@@ -26,7 +26,9 @@ contract DeployYieldNest is BaseScript {
     TransparentUpgradeableProxy public rewardsDistributorProxy;
     TransparentUpgradeableProxy public yieldNestOracleProxy;
     TransparentUpgradeableProxy public ynLSDProxy;
-    
+    TransparentUpgradeableProxy public executionLayerReceiverProxy;
+    TransparentUpgradeableProxy public consensusLayerReceiverProxy;
+
     ynETH public yneth;
     StakingNodesManager public stakingNodesManager;
     RewardsReceiver public executionLayerReceiver;
@@ -51,22 +53,22 @@ contract DeployYieldNest is BaseScript {
     bytes ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     bytes32 ZERO_DEPOSIT_ROOT = bytes32(0);
 
+    ActorAddresses.Actors actors;
+
     function run() external {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // ynETH.sol ROLES
-        ActorAddresses.Actors memory actors = getActors();
+        actors = getActors();
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
 
-
         console.log("Default Signer Address:", _broadcaster);
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
-
 
         feeReceiver = payable(_broadcaster); // Casting the default signer address to payable
 
@@ -78,11 +80,19 @@ contract DeployYieldNest is BaseScript {
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
         depositContract = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
         weth = IWETH(chainAddresses.ethereum.WETH_ADDRESS);
-        // Deploy implementations
+
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
-        executionLayerReceiver = new RewardsReceiver();
-        consensusLayerReceiver = new RewardsReceiver(); // Instantiating consensusLayerReceiver
+
+        RewardsReceiver executionLayerReceiverImplementation = new RewardsReceiver();
+        RewardsReceiver consensusLayerReceiverImplementation = new RewardsReceiver();
+
+        executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiverImplementation), actors.PROXY_ADMIN_OWNER, "");
+        consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiverImplementation), actors.PROXY_ADMIN_OWNER, "");
+
+        executionLayerReceiver = RewardsReceiver(payable(executionLayerReceiverProxy));
+        consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
+
         stakingNodeImplementation = new StakingNode();
         yieldNestOracle = new YieldNestOracle();
         ynlsd = new ynLSD();
@@ -119,22 +129,21 @@ contract DeployYieldNest is BaseScript {
         });
         yneth.initialize(ynethInit);
 
-
-        // Initialize StakingNodesManager with example parameters
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,
             stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
             validatorManager: actors.VALIDATOR_MANAGER,
             stakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
+            pauser: actors.PAUSE_ADMIN,
             maxNodeCount: 10,
-            depositContract: depositContract,
             ynETH: IynETH(address(yneth)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            depositContract: depositContract,
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
             delayedWithdrawalRouter: delayedWithdrawalRouter,
-            strategyManager: strategyManager,
-            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor))
+            strategyManager: strategyManager
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
 
@@ -157,6 +166,10 @@ contract DeployYieldNest is BaseScript {
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
+        // set these roles after deployment
+        stakingNodesManager.grantRole(stakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.ADMIN);
+        stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_ADMIN_ROLE(), actors.STAKING_NODES_ADMIN);
+
         vm.stopBroadcast();
 
         Deployment memory deployment = Deployment({
@@ -169,6 +182,7 @@ contract DeployYieldNest is BaseScript {
         });
         
         saveDeployment(deployment);
+
     }
 }
 

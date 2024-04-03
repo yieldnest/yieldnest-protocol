@@ -92,19 +92,19 @@ abstract contract BaseScript is Script, Utils {
 
     function getActors() public returns (ActorAddresses.Actors memory actors) {
         actors = ActorAddresses.Actors({
-            DEFAULT_SIGNER: address(0), // Placeholder, not used in this context
+            DEFAULT_SIGNER: vm.envAddress("DEFAULT_SIGNER"), // Placeholder, not used in this context
             PROXY_ADMIN_OWNER: vm.envAddress("PROXY_OWNER"),
-            TRANSFER_ENABLED_EOA: address(0), // Placeholder, not used in this context
-            ADMIN: vm.envAddress("YNETH_ADMIN_ADDRESS"),
+            TRANSFER_ENABLED_EOA: vm.envAddress("TRANSFER_ENABLED_EOA"), // Placeholder, not used in this context
+            ADMIN: vm.envAddress("ADMIN"),
             STAKING_ADMIN: vm.envAddress("STAKING_ADMIN_ADDRESS"),
             STAKING_NODES_ADMIN: vm.envAddress("STAKING_NODES_ADMIN_ADDRESS"),
             VALIDATOR_MANAGER: vm.envAddress("VALIDATOR_MANAGER_ADDRESS"),
-            FEE_RECEIVER: address(0), // Placeholder, not used in this context
+            FEE_RECEIVER: vm.envAddress("FEE_RECEIVER"), // Placeholder, not used in this context
             PAUSE_ADMIN: vm.envAddress("PAUSER_ADDRESS"),
             LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
             STAKING_NODE_CREATOR: vm.envAddress("LSD_STAKING_NODE_CREATOR_ADDRESS"),
             ORACLE_MANAGER: vm.envAddress("YIELDNEST_ORACLE_MANAGER_ADDRESS"),
-            DEPOSIT_BOOTSTRAPER: vm.envAddress("DEPOSIT_BOOTSTRAPER_ADDRESS")
+            DEPOSIT_BOOTSTRAPER: vm.envAddress("DEPOSIT_BOOTSTRAPPER_ADDRESS")
         });
     }
 
