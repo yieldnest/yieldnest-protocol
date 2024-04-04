@@ -14,7 +14,8 @@ import "../../src/ynETH.sol";
 import "../../lib/forge-std/src/Script.sol";
 import "../../lib/forge-std/src/StdJson.sol";
 import "./Utils.sol";
-import "../../test/foundry/ActorAddresses.sol";
+
+import {ActorAddresses} from "scripts/forge/Actors.sol";
 
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
@@ -43,6 +44,7 @@ abstract contract BaseScript is Script, Utils {
     function saveDeployment(Deployment memory deployment) public {
         string memory json = "deployment";
 
+        // contract addresses
         vm.serializeAddress(json, "ynETH", address(deployment.ynETH)); // Assuming ynETH should be serialized as a boolean for simplicity
         vm.serializeAddress(json, "stakingNodesManager", address(deployment.stakingNodesManager));
         vm.serializeAddress(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
@@ -50,7 +52,20 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "rewardsDistributor", address(deployment.rewardsDistributor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
 
-        string memory finalJson = vm.serializeString(json, "object", "dummy");
+        // actors
+        vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address((getActors()).PROXY_ADMIN_OWNER));
+        vm.serializeAddress(json, "ADMIN", address((getActors()).ADMIN));
+        vm.serializeAddress(json, "STAKING_ADMIN", address((getActors()).STAKING_ADMIN));
+        vm.serializeAddress(json, "STAKING_NODES_ADMIN", address((getActors()).STAKING_NODES_ADMIN));
+        vm.serializeAddress(json, "VALIDATOR_MANAGER", address((getActors()).VALIDATOR_MANAGER));
+        vm.serializeAddress(json, "FEE_RECEIVER", address((getActors()).FEE_RECEIVER));
+        vm.serializeAddress(json, "PAUSE_ADMIN", address((getActors()).PAUSE_ADMIN));
+        vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address((getActors()).LSD_RESTAKING_MANAGER));
+        vm.serializeAddress(json, "STAKING_NODE_CREATOR", address((getActors()).STAKING_NODE_CREATOR));
+        vm.serializeAddress(json, "ORACLE_MANAGER", address((getActors()).ORACLE_MANAGER));
+        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPER", address((getActors()).DEPOSIT_BOOTSTRAPER));
+
+        string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address((getActors()).DEFAULT_SIGNER));
         vm.writeJson(finalJson, getDeploymentFile());
     }
 
@@ -91,21 +106,7 @@ abstract contract BaseScript is Script, Utils {
     }
 
     function getActors() public returns (ActorAddresses.Actors memory actors) {
-        actors = ActorAddresses.Actors({
-            DEFAULT_SIGNER: vm.envAddress("DEFAULT_SIGNER"), // Placeholder, not used in this context
-            PROXY_ADMIN_OWNER: vm.envAddress("PROXY_OWNER"),
-            TRANSFER_ENABLED_EOA: vm.envAddress("TRANSFER_ENABLED_EOA"), // Placeholder, not used in this context
-            ADMIN: vm.envAddress("ADMIN"),
-            STAKING_ADMIN: vm.envAddress("STAKING_ADMIN_ADDRESS"),
-            STAKING_NODES_ADMIN: vm.envAddress("STAKING_NODES_ADMIN_ADDRESS"),
-            VALIDATOR_MANAGER: vm.envAddress("VALIDATOR_MANAGER_ADDRESS"),
-            FEE_RECEIVER: vm.envAddress("FEE_RECEIVER"), // Placeholder, not used in this context
-            PAUSE_ADMIN: vm.envAddress("PAUSER_ADDRESS"),
-            LSD_RESTAKING_MANAGER: vm.envAddress("LSD_RESTAKING_MANAGER_ADDRESS"),
-            STAKING_NODE_CREATOR: vm.envAddress("LSD_STAKING_NODE_CREATOR_ADDRESS"),
-            ORACLE_MANAGER: vm.envAddress("YIELDNEST_ORACLE_MANAGER_ADDRESS"),
-            DEPOSIT_BOOTSTRAPER: vm.envAddress("DEPOSIT_BOOTSTRAPPER_ADDRESS")
-        });
+        return (new ActorAddresses()).getActors(block.chainid);
     }
 
 }

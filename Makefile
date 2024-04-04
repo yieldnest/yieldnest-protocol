@@ -21,3 +21,8 @@ ci-test 	:;	forge test --rpc-url ${rpc} --summary --detailed --gas-report
 
 # Build and Deploy
 
+deploy-protocol 	:;	forge script scripts/forge/DeployYieldNest.s.sol --rpc-url ${rpc} --broadcast
+
+# Verify
+
+verify-roles 		:;	forge script scripts/forge/Verify.s.sol --rpc-url ${rpc}

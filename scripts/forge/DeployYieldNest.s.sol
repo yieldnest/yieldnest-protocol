@@ -46,13 +46,6 @@ contract DeployYieldNest is BaseScript {
     IDepositContract public depositContract;
     IWETH public weth;
 
-    bytes ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
-    bytes ONE_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001";
-    bytes TWO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002";
-
-    bytes ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes32 ZERO_DEPOSIT_ROOT = bytes32(0);
-
     ActorAddresses.Actors actors;
 
     function run() external {
@@ -130,8 +123,8 @@ contract DeployYieldNest is BaseScript {
         yneth.initialize(ynethInit);
 
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
-            admin: actors.ADMIN,
-            stakingAdmin: actors.STAKING_ADMIN,
+            admin: actors.DEFAULT_SIGNER, // change at end of script
+            stakingAdmin: actors.DEFAULT_SIGNER, // change at end of script
             stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
             validatorManager: actors.VALIDATOR_MANAGER,
             stakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
@@ -168,7 +161,7 @@ contract DeployYieldNest is BaseScript {
 
         // set these roles after deployment
         stakingNodesManager.grantRole(stakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.ADMIN);
-        stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_ADMIN_ROLE(), actors.STAKING_NODES_ADMIN);
+        stakingNodesManager.grantRole(stakingNodesManager.STAKING_ADMIN_ROLE(), actors.STAKING_ADMIN);
 
         vm.stopBroadcast();
 
