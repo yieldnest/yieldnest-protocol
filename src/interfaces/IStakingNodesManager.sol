@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {IDelayedWithdrawalRouter} from "../external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
-import {IDelegationManager} from "../external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IStrategyManager} from "../external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDelayedWithdrawalRouter} from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
 
-import {IEigenPodManager} from "../external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStakingNode} from "./IStakingNode.sol";
+import {IEigenPodManager} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 
 interface IStakingNodesManager {
 

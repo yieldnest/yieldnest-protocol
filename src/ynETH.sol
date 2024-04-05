@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-import {IRewardsDistributor} from "./interfaces/IRewardsDistributor.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
-import {IynETH} from "./interfaces/IynETH.sol";
-import {ynBase} from "./ynBase.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
+import {ynBase} from "src/ynBase.sol";
 
 
 interface IYnETHEvents {

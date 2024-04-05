@@ -6,8 +6,8 @@ import "./interfaces/IStrategy.sol";
 import "./interfaces/IDelegationManager.sol";
 import "./interfaces/ISignatureUtils.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import "forge-std/Test.sol";
 
 contract Staker is Ownable {

@@ -1,6 +1,6 @@
 # Setups
 
-install		:;	npm i && git submodule update --init --recursive
+install		:;	git submodule update --init --recursive
 
 # Linting and Formatting
 
@@ -14,15 +14,15 @@ show		:;	npx http-server ./coverage
 # Utilities
 
 clean		:;	forge clean
-
+ 
 # Testing
 
 ci-test 	:;	forge test --rpc-url ${rpc} --summary --detailed --gas-report
 
 # Build and Deploy
 
-deploy-protocol 	:;	forge script scripts/forge/DeployYieldNest.s.sol --rpc-url ${rpc} --broadcast
+deploy-protocol 	:;	forge script script/DeployYieldNest.s.sol:DeployYieldNest --rpc-url ${rpc} --broadcast --etherscan-api-key ${key} --verify
 
 # Verify
 
-verify-roles 		:;	forge script scripts/forge/Verify.s.sol --rpc-url ${rpc}
+verify-roles 		:;	forge script script/Verify.s.sol --rpc-url ${rpc}

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IERC20} from  "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from  "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IStrategyManager,IStrategy} from "../external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IDelegationManager} from "../external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {ILSDStakingNode} from "./ILSDStakingNode.sol";
-import {ILSDStakingNode} from "./ILSDStakingNode.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 interface IynLSD {
 
