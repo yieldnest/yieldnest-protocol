@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
-import {IEigenPodManager} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
-import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IStrategy, IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {BeaconChainProofs} from "./external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
-import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
+import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon.sol";
+import {IEigenPodManager} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IStrategy, IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {BeaconChainProofs} from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 
 
 interface StakingNodeEvents {

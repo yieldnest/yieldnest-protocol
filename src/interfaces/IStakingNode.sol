@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {BeaconChainProofs} from "../external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
-import {IStakingNodesManager} from "./IStakingNodesManager.sol";
-import {IDelegationManager} from "../external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IStrategyManager,IStrategy} from "../external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IEigenPod} from "../external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {BeaconChainProofs} from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;

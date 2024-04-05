@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {AggregatorV3Interface} from "./external/chainlink/AggregatorV3Interface.sol";
+import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
 
 interface IYieldNestOracleEvents {
     event AssetPriceFeedSet(address indexed asset, address indexed priceFeedAddress, uint256 maxAge);

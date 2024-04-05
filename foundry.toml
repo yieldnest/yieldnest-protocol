@@ -1,8 +1,13 @@
 [profile.default]
 src = 'src'
 out = 'out'
-libs = ['node_modules', 'lib']
+libs = ['lib']
 test = 'test'
-cache_path  = 'cache_forge'
+cache_path  = 'cache'
 
 fs_permissions = [{ access = "read-write", path = "./deployments"}, { access = "read", path = "./"}]
+
+[profile.solc]
+optimizer = true
+optimizer-runs = 200
+

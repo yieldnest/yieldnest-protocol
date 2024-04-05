@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {RewardsReceiver} from "./RewardsReceiver.sol";
-import {IynETH} from "./interfaces/IynETH.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {RewardsReceiver} from "src/RewardsReceiver.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
 
 
 interface RewardsDistributorEvents {

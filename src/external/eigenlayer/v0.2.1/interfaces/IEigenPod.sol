@@ -4,7 +4,7 @@ pragma solidity >=0.5.0;
 import "../BeaconChainProofs.sol";
 import "./IEigenPodManager.sol";
 import "./IBeaconChainOracle.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title The implementation contract used for restaking beacon chain ETH on EigenLayer

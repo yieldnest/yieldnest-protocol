@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {IStrategy} from "./external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
-import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IynLSD} from "./interfaces/IynLSD.sol";
-import {ILSDStakingNode} from "./interfaces/ILSDStakingNode.sol";
-import {YieldNestOracle} from "./YieldNestOracle.sol";
-import {ynBase} from "./ynBase.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {BeaconProxy} from "lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
+import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IynLSD} from "src/interfaces/IynLSD.sol";
+import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {YieldNestOracle} from "src/YieldNestOracle.sol";
+import {ynBase} from "src/ynBase.sol";
 
 
 interface IynLSDEvents {

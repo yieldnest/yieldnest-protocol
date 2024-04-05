@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {BeaconProxy} from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {depositRootGenerator} from "./external/ethereum/DepositRootGenerator.sol";
-import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {IDepositContract} from "./external/ethereum/IDepositContract.sol";
-import {IDelegationManager} from "./external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "./external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
-import {IRewardsDistributor,IRewardsReceiver} from "./interfaces/IRewardsDistributor.sol";
-import {IEigenPodManager,IEigenPod} from "./external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStrategyManager} from "./external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IStakingNode} from "./interfaces/IStakingNode.sol";
-import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
-import {IynETH} from "./interfaces/IynETH.sol";
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import {BeaconProxy} from "lib/openzeppelin-contracts/contracts/proxy/beacon/BeaconProxy.sol";
+import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {depositRootGenerator} from "src/external/ethereum/DepositRootGenerator.sol";
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IRewardsDistributor,IRewardsReceiver} from "src/interfaces/IRewardsDistributor.sol";
+import {IEigenPodManager,IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
 
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
