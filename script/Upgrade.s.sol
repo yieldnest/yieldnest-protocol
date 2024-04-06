@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "script/BaseScript.s.sol";
+import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {BaseScript} from "script/BaseScript.s.sol";
+import {ynETH} from "src/ynETH.sol";
+import {StakingNodesManager} from "src/StakingNodesManager.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract Upgrade is BaseScript {
     function _deployImplementation(string memory contractName) internal returns (address, address) {
@@ -32,7 +38,6 @@ contract Upgrade is BaseScript {
         console.log("Upgrading contract with name:", contractName);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address _broadcaster = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
         if (keccak256(bytes(contractName)) == keccak256("StakingNode")) {
@@ -45,7 +50,6 @@ contract Upgrade is BaseScript {
         (address proxyAddr, address implAddress) = _deployImplementation(contractName);
         vm.stopBroadcast();
         
-        ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddr);
         console.log(string.concat(contractName, " address (proxy):"));
         console.log(proxyAddr);
         console.log("New implementation address:");

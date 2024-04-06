@@ -2,13 +2,22 @@
 pragma solidity ^0.8.24;
 
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IEigenPodManager} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
+import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
+import {IWETH} from "src/external/tokens/IWETH.sol";
+
 import {ynLSD} from "src/ynLSD.sol";
 import {YieldNestOracle} from "src/YieldNestOracle.sol";
 import {LSDStakingNode} from "src/LSDStakingNode.sol";
-import "src/external/tokens/IWETH.sol";
-import "script/ContractAddresses.sol";
-import "script/BaseScript.s.sol";
-
+import {ContractAddresses} from "script/ContractAddresses.sol";
+import {ActorAddresses} from "script/Actors.sol";
+import {BaseScript} from "script/BaseScript.s.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract DeployYnLSD is BaseScript {
     ynLSD public ynlsd;

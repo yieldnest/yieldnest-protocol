@@ -58,29 +58,6 @@ contract ContractAddresses {
             })
         });
 
-        addresses[5] = ChainAddresses({
-            ethereum: EthereumAddresses({
-                WETH_ADDRESS: 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6,
-                DEPOSIT_2_ADDRESS: 0xff50ed3d0ec03aC01D4C79aAd74928BFF48a7b2b
-            }),
-            eigenlayer: EigenlayerAddresses({
-                EIGENPOD_MANAGER_ADDRESS: 0xa286b84C96aF280a49Fe1F40B9627C2A2827df41,
-                DELEGATION_MANAGER_ADDRESS: 0x1b7b8F6b258f95Cf9596EabB9aa18B62940Eb0a8,
-                DELEGATION_PAUSER_ADDRESS: 0x369e6F597e22EaB55fFb173C6d9cD234BD699111,
-                STRATEGY_MANAGER_ADDRESS: 0x779d1b5315df083e3F9E94cB495983500bA8E907,
-                DELAYED_WITHDRAWAL_ROUTER_ADDRESS: 0x89581561f1F98584F88b0d57c2180fb89225388f
-            }),
-            lsd: LSDAddresses({
-                SFRXETH_ADDRESS: 0x0000000000000000000000000000000000000000,
-                RETH_ADDRESS: 0x178E141a0E3b34152f73Ff610437A7bf9B83267A,
-                STETH_ADDRESS: 0x1643E812aE58766192Cf7D2Cf9567dF2C37e9B7F,
-                RETH_FEED_ADDRESS: 0x9c18A124aB957578BE5AE04088159E4AAb22fAc3,
-                STETH_FEED_ADDRESS: 0x9c18A124aB957578BE5AE04088159E4AAb22fAc3,
-                RETH_STRATEGY_ADDRESS: 0x879944A8cB437a5f8061361f82A6d4EED59070b5,
-                STETH_STRATEGY_ADDRESS: 0xB613E78E2068d7489bb66419fB1cfa11275d14da
-            })
-        });
-
         // In absence of Eigenlayer a placeholder address is used for all Eigenlayer addresses
         address placeholderAddress = address(1);
 
@@ -111,5 +88,4 @@ contract ContractAddresses {
     function getChainAddresses(uint256 chainId) external view returns (ChainAddresses memory) {
         return addresses[chainId];
     }
-
 }

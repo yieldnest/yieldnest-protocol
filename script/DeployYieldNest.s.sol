@@ -2,22 +2,28 @@
 pragma solidity ^0.8.24;
 
 
-import "forge-std/Script.sol";
-import "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/StakingNodesManager.sol";
-import "src/RewardsReceiver.sol";
-import "src/RewardsDistributor.sol";
-import "src/ynETH.sol";
-import "src/interfaces/IStakingNode.sol";
-import "src/external/ethereum/IDepositContract.sol";
-import "src/interfaces/IRewardsDistributor.sol";
-import "src/external/tokens/IWETH.sol";
-import "script/ContractAddresses.sol";
-import "script/BaseScript.s.sol";
-import "src/YieldNestOracle.sol";
-import "src/ynLSD.sol";
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IEigenPodManager} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
+import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
+import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IWETH} from "src/external/tokens/IWETH.sol";
 
+import {StakingNodesManager} from "src/StakingNodesManager.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {RewardsReceiver} from "src/RewardsReceiver.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {ynETH} from "src/ynETH.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
+import {BaseScript} from "script/BaseScript.s.sol";
+import {YieldNestOracle} from "src/YieldNestOracle.sol";
+import {ynLSD} from "src/ynLSD.sol";
+import {ActorAddresses} from "script/Actors.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract DeployYieldNest is BaseScript {
 

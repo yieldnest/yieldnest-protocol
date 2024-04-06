@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import "src/StakingNodesManager.sol";
-import "src/StakingNode.sol";
-import "src/RewardsReceiver.sol";
-import "src/ynLSD.sol";
-import "src/YieldNestOracle.sol";
-import "src/LSDStakingNode.sol";
-import "src/RewardsDistributor.sol";
-import "src/external/tokens/WETH.sol";
-import "src/ynETH.sol";
-import "lib/forge-std/src/Script.sol";
-import "lib/forge-std/src/StdJson.sol";
-import "script/Utils.sol";
-
+import {StakingNodesManager} from "src/StakingNodesManager.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {RewardsReceiver} from "src/RewardsReceiver.sol";
+import {ynLSD} from "src/ynLSD.sol";
+import {stdJson} from "lib/forge-std/src/StdJson.sol";
+import {YieldNestOracle} from "src/YieldNestOracle.sol";
+import {LSDStakingNode} from "src/LSDStakingNode.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {ynETH} from "src/ynETH.sol";
+import {Script} from "lib/forge-std/src/Script.sol";
+import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 
 abstract contract BaseScript is Script, Utils {
