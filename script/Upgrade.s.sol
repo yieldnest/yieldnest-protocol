@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "script/BaseScript.s.sol";
+import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {BaseScript} from "script/BaseScript.s.sol";
+import {ynETH} from "src/ynETH.sol";
+import {StakingNodesManager} from "src/StakingNodesManager.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 contract Upgrade is BaseScript {
     function _deployImplementation(string memory contractName) internal returns (address, address) {
