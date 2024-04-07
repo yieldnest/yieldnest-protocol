@@ -80,6 +80,13 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 rewardsDistributor: DEFAULT_ADMIN_ROLE");
 
+        // FEE_RECEIVER
+        require(
+            deployment.rewardsDistributor.feesReceiver() == actors.FEE_RECEIVER, 
+            "rewardsDistributor: FEE_RECEIVER INVALID"
+        );
+        console.log("\u2705 rewardsDistributor: FEE_RECEIVER");
+
         //--------------------------------------------------------------------------------------
         //------------------  stakingNodesManager roles  ---------------------------------------
         //--------------------------------------------------------------------------------------			

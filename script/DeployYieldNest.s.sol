@@ -37,7 +37,6 @@ contract DeployYieldNest is BaseScript {
     StakingNode public stakingNodeImplementation;
     YieldNestOracle public yieldNestOracle;
     ynLSD public ynlsd;
-    address payable feeReceiver;
 
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
@@ -62,8 +61,6 @@ contract DeployYieldNest is BaseScript {
         console.log("Default Signer Address:", _broadcaster);
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
-
-        feeReceiver = payable(_broadcaster); // Casting the default signer address to payable
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
@@ -146,7 +143,7 @@ contract DeployYieldNest is BaseScript {
             admin: actors.ADMIN,
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the initialization
-            feesReceiver: feeReceiver, // Assuming the contract itself will receive the fees
+            feesReceiver: payable(actors.FEE_RECEIVER), // should be the FEE_RECEIVER role
             ynETH: IynETH(address(yneth))
         });
         rewardsDistributor.initialize(rewardsDistributorInit);

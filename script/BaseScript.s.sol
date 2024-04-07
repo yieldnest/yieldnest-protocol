@@ -85,12 +85,22 @@ abstract contract BaseScript is Script, Utils {
 
     function saveynLSDDeployment(ynLSDDeployment memory deployment) public {
         string memory json = "ynLSDDeployment";
-
+        string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address((getActors()).DEFAULT_SIGNER));
+                // actors
+        vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address((getActors()).PROXY_ADMIN_OWNER));
+        vm.serializeAddress(json, "ADMIN", address((getActors()).ADMIN));
+        vm.serializeAddress(json, "STAKING_ADMIN", address((getActors()).STAKING_ADMIN));
+        vm.serializeAddress(json, "STAKING_NODES_ADMIN", address((getActors()).STAKING_NODES_ADMIN));
+        vm.serializeAddress(json, "VALIDATOR_MANAGER", address((getActors()).VALIDATOR_MANAGER));
+        vm.serializeAddress(json, "FEE_RECEIVER", address((getActors()).FEE_RECEIVER));
+        vm.serializeAddress(json, "PAUSE_ADMIN", address((getActors()).PAUSE_ADMIN));
+        vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address((getActors()).LSD_RESTAKING_MANAGER));
+        vm.serializeAddress(json, "STAKING_NODE_CREATOR", address((getActors()).STAKING_NODE_CREATOR));
+        vm.serializeAddress(json, "ORACLE_MANAGER", address((getActors()).ORACLE_MANAGER));
+        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPER", address((getActors()).DEPOSIT_BOOTSTRAPER));
         vm.serializeAddress(json, "ynlsd", address(deployment.ynlsd));
         vm.serializeAddress(json, "lsdStakingNodeImplementation", address(deployment.lsdStakingNodeImplementation));
         vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
-
-        string memory finalJson = vm.serializeString(json, "object", "dummy");
         vm.writeJson(finalJson, getDeploymentFile());
     }
 

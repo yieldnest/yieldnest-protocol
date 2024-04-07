@@ -32,7 +32,6 @@ contract Upgrade is BaseScript {
         console.log("Upgrading contract with name:", contractName);
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address _broadcaster = vm.addr(deployerPrivateKey);
         vm.startBroadcast(deployerPrivateKey);
 
         if (keccak256(bytes(contractName)) == keccak256("StakingNode")) {
@@ -45,7 +44,6 @@ contract Upgrade is BaseScript {
         (address proxyAddr, address implAddress) = _deployImplementation(contractName);
         vm.stopBroadcast();
         
-        ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddr);
         console.log(string.concat(contractName, " address (proxy):"));
         console.log(proxyAddr);
         console.log("New implementation address:");
