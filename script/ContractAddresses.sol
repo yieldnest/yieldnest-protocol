@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+
 contract ContractAddresses {
 
     struct EigenlayerAddresses {
@@ -33,10 +34,19 @@ contract ContractAddresses {
         LSDAddresses lsd;
     }
 
+    struct ChainIds {
+        uint256 mainnet;
+        uint256 holeksy;
+    }
+
     mapping(uint256 => ChainAddresses) public addresses;
+    ChainIds public chainIds = ChainIds({
+        mainnet: 1,
+        holeksy: 17000
+    });
 
     constructor() {
-        addresses[1] = ChainAddresses({
+        addresses[chainIds.mainnet] = ChainAddresses({
             ethereum: EthereumAddresses({
                 WETH_ADDRESS: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,
                 DEPOSIT_2_ADDRESS: 0x00000000219ab540356cBB839Cbe05303d7705Fa
@@ -63,7 +73,7 @@ contract ContractAddresses {
         // In absence of Eigenlayer a placeholder address is used for all Eigenlayer addresses
         address placeholderAddress = address(1);
 
-        addresses[17000] = ChainAddresses({
+        addresses[chainIds.holeksy] = ChainAddresses({
             ethereum: EthereumAddresses({
                 WETH_ADDRESS: placeholderAddress, // Placeholder address, replaced with address(1) for holesky
                 DEPOSIT_2_ADDRESS: 0x4242424242424242424242424242424242424242
