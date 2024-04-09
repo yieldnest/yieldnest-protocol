@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {BeaconChainProofs} from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
+import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;
@@ -38,7 +38,8 @@ interface IStakingNode {
     function createEigenPod() external returns (IEigenPod);
     function delegate(address operator) external;
     function undelegate() external;
-    function withdrawBeforeRestaking() external;
+
+    function withdrawNonBeaconChainETHBalanceWei() external;
     function processWithdrawals(uint256 totalValidatorPrincipal, uint256 expectedETHBalance) external;
 
     function implementation() external view returns (address);
@@ -52,15 +53,17 @@ interface IStakingNode {
 
     /**
      * @notice Verifies the withdrawal credentials and balance of validators.
-     * @param oracleBlockNumber An array of oracle block numbers corresponding to each validator.
-     * @param validatorIndex An array of validator indices.
-     * @param proofs An array of ValidatorFieldsAndBalanceProofs, containing the merkle proofs for validator fields and balances.
+     * @param oracleTimestamp An array of oracle block numbers corresponding to each validator.
+     * @param stateRootProof An array of state root proofs corresponding to each validator.
+     * @param validatorIndices An array of validator indices.
+     * @param validatorFieldsProofs An array of ValidatorFieldsAndBalanceProofs, containing the merkle proofs for validator fields and balances.
      * @param validatorFields An array of arrays, each containing the validator fields to be verified.
      */
     function verifyWithdrawalCredentials(
-        uint64[] calldata oracleBlockNumber,
-        uint40[] calldata validatorIndex,
-        BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] calldata proofs,
+        uint64 oracleTimestamp,
+        BeaconChainProofs.StateRootProof calldata stateRootProof,
+        uint40[] calldata validatorIndices,
+        bytes[] calldata validatorFieldsProofs,
         bytes32[][] calldata validatorFields
     ) external;
 

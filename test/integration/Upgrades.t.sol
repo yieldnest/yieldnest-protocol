@@ -11,7 +11,7 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -177,7 +177,7 @@ contract UpgradesTest is IntegrationBaseTest {
             lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
             pauser: actors.PAUSE_ADMIN,
-            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPER
+            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPPER
         });
 
         return (init, ynlsd);

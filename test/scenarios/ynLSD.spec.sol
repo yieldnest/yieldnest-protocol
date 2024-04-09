@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import { IntegrationBaseTest } from "test/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import { IERC20 } from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+import { TestAssetUtils } from "test/utils/TestAssetUtils.sol";
 
 contract YnLSDScenarioTest1 is IntegrationBaseTest {
 
@@ -37,15 +38,13 @@ contract YnLSDScenarioTest1 is IntegrationBaseTest {
 		uint256 previousTotalAssets = ynlsd.getTotalAssets()[0];
 
 		vm.startPrank(user);
-		vm.deal(user, amount);
-		(bool success,) = asset.call{ value: amount }("");
-		require(success, "ETH transfer failed");
-		IERC20 steth = IERC20(asset);
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+		TestAssetUtils testAssetUtils = new TestAssetUtils();
+		IERC20 stETH = IERC20(asset);
+		uint256 userDeposit = testAssetUtils.get_stETH(address(this), amount);
 
-		uint256 userDeposit = IERC20(asset).balanceOf(user);
-
-		steth.approve(address(ynlsd), userDeposit);
-		ynlsd.deposit(steth, userDeposit, user);
+		stETH.approve(address(ynlsd), userDeposit);
+		ynlsd.deposit(stETH, userDeposit, user);
 
 		uint256 userShares = ynlsd.balanceOf(user);
 

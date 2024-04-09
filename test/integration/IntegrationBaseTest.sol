@@ -3,13 +3,13 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
-import {IEigenPodManager} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
+import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
@@ -18,7 +18,6 @@ import {ynETH} from "src/ynETH.sol";
 import {ynLSD} from "src/ynLSD.sol";
 import {YieldNestOracle} from "src/YieldNestOracle.sol";
 import {LSDStakingNode} from "src/LSDStakingNode.sol";
-
 import {ynViewer} from "src/ynViewer.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
@@ -28,7 +27,7 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
-
+import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 
 contract IntegrationBaseTest is Test, Utils {
 
@@ -231,8 +230,7 @@ contract IntegrationBaseTest is Test, Utils {
         IStrategy[] memory strategies = new IStrategy[](2);
 
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.DEFAULT_SIGNER;
-
+        pauseWhitelist[0] = actors.PAUSE_ADMIN;
 
         // stETH
         assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -271,16 +269,13 @@ contract IntegrationBaseTest is Test, Utils {
             lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
             pauser: actors.PAUSE_ADMIN,
-            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPER
+            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPPER
         });
 
-        vm.deal(actors.DEPOSIT_BOOTSTRAPER, 10000 ether);
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        testAssetUtils.get_stETH(actors.DEPOSIT_BOOTSTRAPPER, 10000 ether);
 
-        vm.prank(actors.DEPOSIT_BOOTSTRAPER);
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: 1000 ether}("");
-        require(success, "ETH transfer failed");
-
-        vm.prank(actors.DEPOSIT_BOOTSTRAPER);
+        vm.prank(actors.DEPOSIT_BOOTSTRAPPER);
         IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynlsd), type(uint256).max);
         ynlsd.initialize(init);
 

@@ -14,7 +14,7 @@ contract ActorAddresses {
         address LSD_RESTAKING_MANAGER;
         address STAKING_NODE_CREATOR;
         address ORACLE_MANAGER;
-        address DEPOSIT_BOOTSTRAPER;
+        address DEPOSIT_BOOTSTRAPPER;
     }
 
     mapping(uint256 => Actors) public actors;
@@ -23,7 +23,7 @@ contract ActorAddresses {
         actors[17000] = Actors({
             // EOA Deployment Addresses
             DEFAULT_SIGNER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
-            DEPOSIT_BOOTSTRAPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+            DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
             // protocol fee receiver
             FEE_RECEIVER: 0xa9295EA69DaF30A8CB81610c23966240BdDA2876,
             // admin multisig roles
@@ -51,7 +51,7 @@ contract ActorAddresses {
             LSD_RESTAKING_MANAGER: 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720,
             STAKING_NODE_CREATOR: 0xBcd4042DE499D14e55001CcbB24a551F3b954096,
             ORACLE_MANAGER: 0x71bE63f3384f5fb98995898A86B02Fb2426c5788,
-            DEPOSIT_BOOTSTRAPER: 0xFABB0ac9d68B0B445fB7357272Ff202C5651694a
+            DEPOSIT_BOOTSTRAPPER: 0xFABB0ac9d68B0B445fB7357272Ff202C5651694a
         });
     }
 

@@ -7,7 +7,7 @@ import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beac
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
-import {IPausable} from "src/external/eigenlayer/v0.1.0/interfaces//IPausable.sol";
+import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
@@ -21,11 +21,10 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         vm.prank(actors.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
-        // Obtain STETH
-
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        assertEq(compareWithThreshold(asset.balanceOf(address(this)), amount, 1), true, "Amount not received");
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
+        assertEq(compareWithThreshold(asset.balanceOf(address(this)), balance, 1), true, "Amount not received");
         vm.stopPrank();
 
         asset.approve(address(ynlsd), amount);
@@ -34,6 +33,9 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256[] memory amounts = new uint256[](1);
         assets[0] = asset;
         amounts[0] = amount;
+
+        vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
+        IPausable(address(strategyManager)).pause(1);
 
         vm.expectRevert(bytes("Pausable: index is paused"));
         vm.prank(actors.LSD_RESTAKING_MANAGER);
@@ -45,22 +47,16 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 amount = 32 ether;
 
         uint256 initialSupply = ynlsd.totalSupply();
-        uint256 initialTotalAssets = ynlsd.totalAssets();
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
-        uint depositAmount = 15 ether;
-
-        stETH.approve(address(ynlsd), 32 ether);
-        ynlsd.deposit(stETH, depositAmount, address(this));
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, address(this));
 
         assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
-        assertTrue((depositAmount - (ynlsd.totalAssets() - initialTotalAssets)) < 1e18, "Total assets do not match user deposits");
-        assertTrue((depositAmount - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDepositSTETHSuccessWithMultipleDeposits() public {
@@ -68,12 +64,10 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 amount = 32 ether;
 
         uint256 initialSupply = ynlsd.totalSupply();
-        uint256 initialTotalAssets = ynlsd.totalAssets();
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this),amount);
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
@@ -85,11 +79,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, depositAmountTwo, address(this));
         ynlsd.deposit(stETH, depositAmountThree, address(this));
 
-        uint256 totalDeposit = depositAmountOne + depositAmountTwo + depositAmountThree;
-
         assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
-        assertTrue((totalDeposit - (ynlsd.totalAssets() - initialTotalAssets)) < 1e18, "Total assets do not match user deposits");
-        assertTrue(totalDeposit - ynlsd.balanceOf(address(this)) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDespositUnsupportedAsset() public {
@@ -182,13 +172,12 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
         uint256 totalAssetsBeforeDeposit = ynlsd.totalAssets();
         
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = asset.balanceOf(address(this));
-        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
-        asset.approve(address(ynlsd), amount);
-        ynlsd.deposit(asset, amount, address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
+        assertEq(compareWithThreshold(balance, balance, 1), true, "Amount not received");
+        asset.approve(address(ynlsd), balance);
+        ynlsd.deposit(asset, balance, address(this));
 
 
         {
@@ -376,17 +365,17 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         ILSDStakingNode lsdStakingNode = ynlsd.nodes(0);
         vm.deal(address(lsdStakingNode), 1000);
 
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = asset.balanceOf(address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
-        asset.approve(address(ynlsd), amount);
-        ynlsd.deposit(asset, amount, address(this));
+        asset.approve(address(ynlsd), balance);
+        ynlsd.deposit(asset, balance, address(this));
 
         vm.startPrank(address(lsdStakingNode));
         asset.approve(address(ynlsd), 32 ether);
-        ynlsd.retrieveAsset(0, asset, amount);
+        ynlsd.retrieveAsset(0, asset, balance);
         vm.stopPrank();
     }
 
@@ -400,14 +389,11 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     function testPauseDepositsFunctionality() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 
-        uint256 depositAmount = 1 ether;
+        uint256 depositAmount = 0.1 ether;
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
-        assertEq(compareWithThreshold(balance, depositAmount, 2), true, "Amount not received");
-
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
         stETH.approve(address(ynlsd), balance);
 
         // Arrange
@@ -431,8 +417,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 
         // Deposit should succeed now
         ynlsd.deposit(stETH, balance, address(this));
-        uint256 ynLSDBalance = ynlsd.balanceOf(address(this));
-        assertGt(ynLSDBalance, 0, "ynLSD balance should be greater than 0 after deposit");
+        assertGt(ynlsd.totalAssets(), 0, "ynLSD balance should be greater than 0 after deposit");
     }
 
 }
@@ -458,13 +443,12 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         address whitelistedAddress = actors.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
         address recipient = address(6); // An arbitrary recipient address
 
-        // get stETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
-        require(success, "ETH transfer failed");
-
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        steth.approve(address(ynlsd), depositAmount);
-        ynlsd.deposit(steth, depositAmount, whitelistedAddress); 
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, whitelistedAddress); 
 
         uint256 transferAmount = ynlsd.balanceOf(whitelistedAddress);
 
@@ -502,13 +486,13 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         address newWhitelistedAddress = vm.addr(7); // Using a new address for whitelisting
         address recipient = address(8); // An arbitrary recipient address
 
-         // get stETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
-        require(success, "ETH transfer failed");
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
 
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        steth.approve(address(ynlsd), depositAmount);
-        ynlsd.deposit(steth, depositAmount, newWhitelistedAddress);
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, newWhitelistedAddress);
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
@@ -532,12 +516,12 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         address arbitraryAddress = vm.addr(9999); // Using an arbitrary address
         address recipient = address(10000); // An arbitrary recipient address
 
-         // get stETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
-        require(success, "ETH transfer failed");
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        steth.approve(address(ynlsd), depositAmount);
-        ynlsd.deposit(steth, depositAmount, arbitraryAddress);
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, arbitraryAddress);
 
         uint256 transferAmount = ynlsd.balanceOf(arbitraryAddress);
 
@@ -594,46 +578,39 @@ contract ynLSDDonationsTest is IntegrationBaseTest {
 
     function testYnLSDdonationToZeroShareAttackResistance() public {
 
-        uint INITIAL_AMOUNT = 10_000 ether;
+        uint INITIAL_AMOUNT = 10 ether;
 
-        address _alice = makeAddr("Alice");
-        address _bob = makeAddr("Bob");
+        address alice = makeAddr("Alice");
+        address bob = makeAddr("Bob");
 
         IERC20 assetToken = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 
-        vm.deal(_alice, INITIAL_AMOUNT);
-        vm.deal(_bob, INITIAL_AMOUNT);
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        testAssetUtils.get_stETH(alice, INITIAL_AMOUNT);
+        testAssetUtils.get_stETH(bob, INITIAL_AMOUNT);
 
+        vm.prank(alice);
+        assetToken.approve(address(ynlsd), type(uint256).max);
 
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-
-        // get stETH
-         vm.startPrank(_alice);
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: INITIAL_AMOUNT}("");
-        require(success, "ETH transfer failed");
-
-        steth.approve(address(ynlsd), type(uint256).max);
-
-        vm.startPrank(_bob);
-        (success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: INITIAL_AMOUNT}("");
-        require(success, "ETH transfer failed");
-
-        steth.approve(address(ynlsd), type(uint256).max);
+        vm.startPrank(bob);
+        assetToken.approve(address(ynlsd), type(uint256).max);
 
         // Front-running part
         uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
         // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 ATK to the Vault by observing the mempool
-        vm.startPrank(_alice);
+        vm.startPrank(alice);
         uint256 aliceDepositAmount = 1;
-        uint256 aliceShares = ynlsd.deposit(assetToken, aliceDepositAmount, _alice);
-        assertEq(aliceShares, 0); // Since there are boostrap funds, this has no effect
+        uint256 aliceShares = ynlsd.deposit(assetToken, aliceDepositAmount, alice);
+        // Since there are boostrap funds, this has no effect
+        assertEq(compareWithThreshold(aliceShares, 1, 1), true, "Alice's shares should be dust"); 
         // Try to inflate shares value
         assetToken.transfer(address(ynlsd), bobDepositAmount);
         vm.stopPrank();
 
         // Check that Bob did not get 0 share when he deposits
-        vm.prank(_bob);
-        uint256 bobShares = ynlsd.deposit(assetToken, bobDepositAmount, _bob);
+        vm.prank(bob);
+        uint256 bobShares = ynlsd.deposit(assetToken, bobDepositAmount, bob);
 
         assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
     }   

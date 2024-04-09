@@ -7,7 +7,9 @@ cache_path  = 'cache'
 
 fs_permissions = [{ access = "read-write", path = "./deployments"}, { access = "read", path = "./"}]
 
-optimizer = true
+optimizer = false
 optimizer-runs = 200
 evm_version = "cancun"
 solc_version = "0.8.24"
+
+ignored_error_codes = [5159,2018,5574,3860]

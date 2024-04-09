@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from  "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IStrategyManager,IStrategy} from "../external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
+import {IStrategyManager,IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";

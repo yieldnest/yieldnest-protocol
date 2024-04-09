@@ -60,7 +60,7 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address((getActors()).LSD_RESTAKING_MANAGER));
         vm.serializeAddress(json, "STAKING_NODE_CREATOR", address((getActors()).STAKING_NODE_CREATOR));
         vm.serializeAddress(json, "ORACLE_MANAGER", address((getActors()).ORACLE_MANAGER));
-        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPER", address((getActors()).DEPOSIT_BOOTSTRAPER));
+        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPPER", address((getActors()).DEPOSIT_BOOTSTRAPPER));
 
         string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address((getActors()).DEFAULT_SIGNER));
         vm.writeJson(finalJson, getDeploymentFile());
@@ -94,7 +94,7 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address((getActors()).LSD_RESTAKING_MANAGER));
         vm.serializeAddress(json, "STAKING_NODE_CREATOR", address((getActors()).STAKING_NODE_CREATOR));
         vm.serializeAddress(json, "ORACLE_MANAGER", address((getActors()).ORACLE_MANAGER));
-        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPER", address((getActors()).DEPOSIT_BOOTSTRAPER));
+        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPPER", address((getActors()).DEPOSIT_BOOTSTRAPPER));
         vm.serializeAddress(json, "ynlsd", address(deployment.ynlsd));
         vm.serializeAddress(json, "lsdStakingNodeImplementation", address(deployment.lsdStakingNodeImplementation));
         vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
