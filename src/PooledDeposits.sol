@@ -3,10 +3,9 @@ import "./interfaces/IynETH.sol";
 contract PooledDeposits {
     mapping(address => uint256) public balances;
     uint256 public depositEndTime;
-    bool public depositsActive = true;
 
     event DepositReceived(address indexed depositor, uint256 amount);
-    event DepositsFinalized(address depositor, uint256 totalAmount, uint256 ynETHAmount);
+    event DepositsFinalized(address indexed depositor, uint256 totalAmount, uint256 ynETHAmount);
 
     IynETH public ynETH;
 

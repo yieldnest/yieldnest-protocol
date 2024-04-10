@@ -121,6 +121,22 @@ contract PooledDepositsTest is IntegrationBaseTest {
         // No revert means success, but nothing to assert as there were no depositors
     }
 
+    function testDirectETHSendForDepositFuzzed(uint256 depositAmount) public {
+        // Only proceed with valid deposit amounts to avoid unnecessary test failures
+        vm.assume(depositAmount > 0 && depositAmount <= 100 ether);
+        
+        // Arrange
+        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
+        vm.deal(address(this), depositAmount);
+
+        // Act
+        (bool success, ) = address(pooledDeposits).call{value: depositAmount}("");
+
+        // Assert
+        assertTrue(success, "ETH send should succeed");
+        assertEq(pooledDeposits.balances(address(this)), depositAmount, "Deposit amount should be recorded in balances");
+    }
+
     receive() external payable {}
 }
 
