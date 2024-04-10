@@ -137,6 +137,28 @@ contract PooledDepositsTest is IntegrationBaseTest {
         assertEq(pooledDeposits.balances(address(this)), depositAmount, "Deposit amount should be recorded in balances");
     }
 
+    function testFinalizeDepositsMultipleTimesForSameUser() public {
+        // Arrange
+        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
+        address[] memory depositors = new address[](1);
+        depositors[0] = address(this);
+        uint256 depositAmount = 1 ether;
+        vm.deal(address(this), depositAmount);
+        pooledDeposits.deposit{value: depositAmount}();
+
+        // Act
+        vm.warp(block.timestamp + 1 days); // Move time forward to allow finalizing deposits
+        pooledDeposits.finalizeDeposits(depositors);
+
+        // Assert first finalize
+        uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        assertTrue(sharesAfterFirstFinalize > 0, "Shares should be allocated after first finalize");
+
+        // Attempt to finalize again
+        vm.expectRevert("Deposits already finalized for user");
+        pooledDeposits.finalizeDeposits(depositors);
+    }
+
     receive() external payable {}
 }
 
