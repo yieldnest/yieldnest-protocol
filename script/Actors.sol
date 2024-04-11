@@ -22,8 +22,8 @@ contract ActorAddresses {
     constructor() {
         actors[17000] = Actors({
             // EOA Deployment Addresses
-            DEFAULT_SIGNER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
-            DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+            DEFAULT_SIGNER: 0xF2895e90043f58508f7CDBC8D115435245caD2c5,
+            DEPOSIT_BOOTSTRAPPER: 0xF2895e90043f58508f7CDBC8D115435245caD2c5,
             // protocol fee receiver
             FEE_RECEIVER: 0xa9295EA69DaF30A8CB81610c23966240BdDA2876,
             // admin multisig roles
