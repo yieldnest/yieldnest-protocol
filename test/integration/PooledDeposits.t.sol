@@ -84,7 +84,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         vm.warp(block.timestamp + 1); // Move time forward to block deposits
 
         // Act & Assert
-        vm.expectRevert("Deposits period has not ended");
+        vm.expectRevert(DepositsPeriodNotEnded.selector);
         pooledDeposits.deposit{value: depositAmount}();
     }
 
@@ -95,7 +95,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         depositors[0] = address(this);
 
         // Act & Assert
-        vm.expectRevert("Deposits period has not ended");
+        vm.expectRevert(DepositsPeriodNotEnded.selector);
         pooledDeposits.finalizeDeposits(depositors);
     }
 
@@ -104,7 +104,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
 
         // Act & Assert
-        vm.expectRevert("Deposit must be greater than 0");
+        vm.expectRevert(DepositMustBeGreaterThanZero.selector);
         pooledDeposits.deposit{value: 0}();
     }
 
@@ -147,16 +147,27 @@ contract PooledDepositsTest is IntegrationBaseTest {
         pooledDeposits.deposit{value: depositAmount}();
 
         // Act
-        vm.warp(block.timestamp + 1 days); // Move time forward to allow finalizing deposits
+        vm.warp(block.timestamp + 1 days + 1); // Move time forward to allow finalizing deposits
         pooledDeposits.finalizeDeposits(depositors);
 
         // Assert first finalize
         uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(address(this));
         assertTrue(sharesAfterFirstFinalize > 0, "Shares should be allocated after first finalize");
 
+        // Check balance after first finalize
+        uint256 balanceAfterFirstFinalize = pooledDeposits.balances(address(this));
+        assertEq(balanceAfterFirstFinalize, 0, "Balance should be 0 after first finalize");
+
         // Attempt to finalize again
-        vm.expectRevert("Deposits already finalized for user");
         pooledDeposits.finalizeDeposits(depositors);
+
+        // Assert second finalize
+        uint256 sharesAfterSecondFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        assertEq(sharesAfterFirstFinalize, sharesAfterSecondFinalize, "Shares should not change after second finalize");
+
+        // Check balance after second finalize
+        uint256 balanceAfterSecondFinalize = pooledDeposits.balances(address(this));
+        assertEq(balanceAfterSecondFinalize, 0, "Balance should remain 0 after second finalize");
     }
 
     receive() external payable {}
