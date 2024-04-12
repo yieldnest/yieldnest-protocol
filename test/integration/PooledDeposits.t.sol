@@ -16,10 +16,11 @@ contract PooledDepositsTest is IntegrationBaseTest {
         return (pooledDeposits, owner);
     }
 
-    function testDeposit() public {
+    function testDepositFuzz(uint256 depositAmount) public {
+        // Fuzz input
+        vm.assume(depositAmount > 0.01 ether && depositAmount <= 100 ether); // Assuming a reasonable range for deposit amounts
         // Arrange
         (PooledDeposits pooledDeposits, ) = createPooledDeposits();
-        uint256 depositAmount = 1 ether;
         address depositor = address(this);
 
         // Act
@@ -30,6 +31,26 @@ contract PooledDepositsTest is IntegrationBaseTest {
 
         // Assert
         assertEq(pooledDeposits.balances(depositor), depositAmount, "Deposit amount should be recorded in the depositor's balance");
+    }
+    function testMultipleSequentialDepositsForSameUserFuzz(uint256 depositAmount1) public {
+        // Fuzz inputs
+        vm.assume(depositAmount1 > 0.01 ether && depositAmount1 <= 100 ether); // Assuming a reasonable range for the first deposit amount
+        uint256 depositAmount2 = depositAmount1 + 100 ether;
+
+        // Arrange
+        (PooledDeposits pooledDeposits, ) = createPooledDeposits();
+        address depositor = address(this);
+        uint256 expectedBalanceAfterFirstDeposit = depositAmount1;
+        uint256 expectedBalanceAfterSecondDeposit = depositAmount1 + depositAmount2;
+
+        // Act and Assert
+        vm.deal(depositor, expectedBalanceAfterSecondDeposit);
+        vm.startPrank(depositor);
+        pooledDeposits.deposit{value: depositAmount1}();
+        assertEq(pooledDeposits.balances(depositor), expectedBalanceAfterFirstDeposit, "Balance after first deposit incorrect");
+        pooledDeposits.deposit{value: depositAmount2}();
+        assertEq(pooledDeposits.balances(depositor), expectedBalanceAfterSecondDeposit, "Balance after second deposit incorrect");
+        vm.stopPrank();
     }
 
     function testFinalizeDeposits() public {
