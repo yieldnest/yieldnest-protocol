@@ -2,6 +2,7 @@ import "forge-std/Test.sol";
 import "../../src/PooledDeposits.sol";
 import "../../src/interfaces/IynETH.sol";
 import "test/integration/IntegrationBaseTest.sol";
+import "forge-std/console.sol";
 
 
 contract PooledDepositsTest is IntegrationBaseTest {
@@ -84,7 +85,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         vm.warp(block.timestamp + 1); // Move time forward to block deposits
 
         // Act & Assert
-        vm.expectRevert(DepositsPeriodNotEnded.selector);
+        vm.expectRevert(PooledDeposits.DepositsPeriodNotEnded.selector);
         pooledDeposits.deposit{value: depositAmount}();
     }
 
@@ -95,7 +96,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         depositors[0] = address(this);
 
         // Act & Assert
-        vm.expectRevert(DepositsPeriodNotEnded.selector);
+        vm.expectRevert(PooledDeposits.DepositsPeriodNotEnded.selector);
         pooledDeposits.finalizeDeposits(depositors);
     }
 
@@ -104,7 +105,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
 
         // Act & Assert
-        vm.expectRevert(DepositMustBeGreaterThanZero.selector);
+        vm.expectRevert(PooledDeposits.DepositMustBeGreaterThanZero.selector);
         pooledDeposits.deposit{value: 0}();
     }
 
@@ -169,7 +170,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         uint256 balanceAfterSecondFinalize = pooledDeposits.balances(address(this));
         assertEq(balanceAfterSecondFinalize, 0, "Balance should remain 0 after second finalize");
     }
-
+    
     receive() external payable {}
 }
 

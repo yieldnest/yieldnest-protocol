@@ -1,9 +1,10 @@
 import "./interfaces/IynETH.sol";
 
-error DepositsPeriodNotEnded();
-error DepositMustBeGreaterThanZero();
-
 contract PooledDeposits {
+
+    error DepositsPeriodNotEnded();
+    error DepositMustBeGreaterThanZero();
+
     mapping(address => uint256) public balances;
     uint256 public depositEndTime;
 
