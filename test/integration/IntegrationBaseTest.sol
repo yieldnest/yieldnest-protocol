@@ -25,7 +25,6 @@ import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {StakingNode} from "src/StakingNode.sol";
-import {StakingNodeV2} from "src/StakingNodeV2.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
@@ -198,12 +197,7 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupStakingNodesManager() public {
-        if (block.chainid == 17000) {
-            // for holesky use the upgraded version
-            stakingNodeImplementation = new StakingNodeV2();
-        } else {
-            stakingNodeImplementation = new StakingNode();
-        }
+        stakingNodeImplementation = new StakingNode();
 
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.admin.ADMIN,
