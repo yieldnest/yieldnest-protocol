@@ -1,32 +1,38 @@
 import "./interfaces/IynETH.sol";
 
-contract PooledDeposits {
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-    error DepositsPeriodNotEnded();
+contract PooledDeposits is Initializable, OwnableUpgradeable {
+
     error DepositMustBeGreaterThanZero();
+    error YnETHIsSet();
+    error YnETHNotSet();
 
     mapping(address => uint256) public balances;
-    uint256 public depositEndTime;
 
     event DepositReceived(address indexed depositor, uint256 amount);
     event DepositsFinalized(address indexed depositor, uint256 totalAmount, uint256 ynETHAmount);
 
     IynETH public ynETH;
 
-    constructor(IynETH _ynETH, uint256 _depositEndTime) {
+    function initialize(address initialOwner) public initializer {
+        __Ownable_init(initialOwner);
+    }
+
+    function setYnETH(IynETH _ynETH) public onlyOwner {
         ynETH = _ynETH;
-        depositEndTime = _depositEndTime;
     }
 
     function deposit() public payable {
-        if (block.timestamp > depositEndTime) revert DepositsPeriodNotEnded();
+        if (address(ynETH) != address(0)) revert YnETHIsSet();
         if (msg.value == 0) revert DepositMustBeGreaterThanZero();
         balances[msg.sender] += msg.value;
         emit DepositReceived(msg.sender, msg.value);
     }
 
-    function finalizeDeposits(address[] calldata depositors) external {
-        if (block.timestamp <= depositEndTime) revert DepositsPeriodNotEnded();
+    function finalizeDeposits(address[] calldata depositors) external onlyOwner {
+        if (address(ynETH) == address(0)) revert YnETHNotSet();
         
         for (uint i = 0; i < depositors.length; i++) {
             address depositor = depositors[i];
