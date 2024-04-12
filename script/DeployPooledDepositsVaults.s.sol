@@ -1,11 +1,10 @@
-
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
-import {PooledDeposits} from "src/PooledDeposits.sol";
+import {PooledDepositsVault} from "src/PooledDepositsVault.sol"; // Renamed from PooledDeposits to PooledDepositsVault
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -18,21 +17,21 @@ contract Upgrade is BaseScript {
         // ynETH.sol ROLES
         ActorAddresses.Actors memory actors = getActors();
 
-        PooledDeposits[] memory pooledDepositsVaults = new PooledDeposits[](5);
+        PooledDepositsVault[] memory pooledDepositsVaults = new PooledDepositsVault[](5); // Renamed from PooledDeposits to PooledDepositsVault
         vm.startBroadcast(deployerPrivateKey);
 
-        PooledDeposits pooledDepositsVaultImplementation = new PooledDeposits();
+        PooledDepositsVault pooledDepositsVaultImplementation = new PooledDepositsVault(); // Renamed from PooledDeposits to PooledDepositsVault
         for (uint i = 0; i < 5; i++) {
-            bytes memory initData = abi.encodeWithSelector(PooledDeposits.initialize.selector, actors.ops.POOLED_DEPOSITS_OWNER);
+            bytes memory initData = abi.encodeWithSelector(PooledDepositsVault.initialize.selector, actors.ops.POOLED_DEPOSITS_OWNER); // Renamed from PooledDeposits to PooledDepositsVault
             TransparentUpgradeableProxy pooledDepositsVaultProxy = new TransparentUpgradeableProxy(address(pooledDepositsVaultImplementation), actors.PROXY_ADMIN_OWNER, initData);
-            PooledDeposits pooledDepositsVault = PooledDeposits(payable(address(pooledDepositsVaultProxy)));
+            PooledDepositsVault pooledDepositsVault = PooledDepositsVault(payable(address(pooledDepositsVaultProxy))); // Renamed from PooledDeposits to PooledDepositsVault
             pooledDepositsVaults[i] = pooledDepositsVault;
         }
         savePooledDepositsDeployment(pooledDepositsVaults);
         vm.stopBroadcast();
     }
 
-    function savePooledDepositsDeployment(PooledDeposits[] memory pooledDepositsVaults) internal {
+    function savePooledDepositsDeployment(PooledDepositsVault[] memory pooledDepositsVaults) internal { // Renamed from PooledDeposits to PooledDepositsVault
         string memory json = "pooledDepositsVaultsDeployment";
         for (uint i = 0; i < pooledDepositsVaults.length; i++) {
             vm.serializeAddress(json, vm.toString(i), address(pooledDepositsVaults[i]));

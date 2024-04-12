@@ -3,7 +3,7 @@ import "./interfaces/IynETH.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract PooledDeposits is Initializable, OwnableUpgradeable {
+contract PooledDepositsVault is Initializable, OwnableUpgradeable {
 
     error DepositMustBeGreaterThanZero();
     error YnETHIsSet();
