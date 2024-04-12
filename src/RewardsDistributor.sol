@@ -49,6 +49,12 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
     uint16 public feesBasisPoints;
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant REWARDS_ADMIN_ROLE = keccak256("REWARDS_ADMIN_ROLE");    
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -59,6 +65,7 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
+        address rewardsAdmin;
         RewardsReceiver executionLayerReceiver;
         RewardsReceiver consensusLayerReceiver;
         address payable feesReceiver;
@@ -76,6 +83,7 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        _grantRole(REWARDS_ADMIN_ROLE, init.rewardsAdmin);
         executionLayerReceiver = init.executionLayerReceiver;
         consensusLayerReceiver = init.consensusLayerReceiver;
         feesReceiver = init.feesReceiver;
@@ -139,7 +147,7 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
     /// @param newReceiver The new fees receiver wallet.
     function setFeesReceiver(address payable newReceiver)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(REWARDS_ADMIN_ROLE)
         notZeroAddress(newReceiver)
     {
         feesReceiver = newReceiver;
@@ -150,7 +158,7 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
     /// @param newFeesBasisPoints The new fees basis points.
     function setFeesBasisPoints(uint16 newFeesBasisPoints)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(REWARDS_ADMIN_ROLE)
     {
         if (newFeesBasisPoints > _BASIS_POINTS_DENOMINATOR) revert InvalidBasisPoints();
         feesBasisPoints = newFeesBasisPoints;

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
-import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
+import {ynETH} from "src/ynETH.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract RolesTest is IntegrationBaseTest {
 
     function testRoleChangeYnETH() public {
         address newOperator = address(0x123);
         bytes32 PAUSER_ROLE = keccak256("PAUSER_ROLE");
-        bytes32 REWARDS_DISTRIBUTOR_ROLE = keccak256("REWARDS_DISTRIBUTOR_ROLE");
 
         assertTrue(stakingNodesManager.hasRole(stakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.ADMIN));
         assertTrue(stakingNodesManager.hasRole(PAUSER_ROLE, actors.PAUSE_ADMIN));
@@ -66,8 +68,69 @@ contract RolesTest is IntegrationBaseTest {
     }
 
     function testRoleChangeRewardsDistributor() public {
-        // TODO: add after fixing roles in RewardsDistributor.sol
+        address newRewardsAdmin = address(0x789);
+        bytes32 REWARDS_ADMIN_ROLE = keccak256("REWARDS_ADMIN_ROLE");
+
+        assertTrue(rewardsDistributor.hasRole(rewardsDistributor.DEFAULT_ADMIN_ROLE(), actors.ADMIN));
+        assertTrue(rewardsDistributor.hasRole(REWARDS_ADMIN_ROLE, actors.REWARDS_ADMIN));
+
+        vm.startPrank(actors.ADMIN);
+        rewardsDistributor.grantRole(REWARDS_ADMIN_ROLE, newRewardsAdmin);
+        rewardsDistributor.revokeRole(REWARDS_ADMIN_ROLE, actors.REWARDS_ADMIN);
+        vm.stopPrank();
+
+        assertTrue(rewardsDistributor.hasRole(REWARDS_ADMIN_ROLE, newRewardsAdmin));
+        assertFalse(rewardsDistributor.hasRole(REWARDS_ADMIN_ROLE, actors.REWARDS_ADMIN));
     }
+
+    function testRewardsDistributorFeeAdminRoles() public {
+        address payable newFeeReceiver = payable(address(0x789));
+        bytes32 REWARDS_ADMIN_ROLE = keccak256("REWARDS_ADMIN_ROLE");
+
+        vm.prank(actors.REWARDS_ADMIN);
+        rewardsDistributor.setFeesReceiver(newFeeReceiver);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), REWARDS_ADMIN_ROLE));
+        rewardsDistributor.setFeesReceiver(newFeeReceiver);
+
+        vm.prank(actors.REWARDS_ADMIN);
+        rewardsDistributor.setFeesBasisPoints(1000);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), REWARDS_ADMIN_ROLE));
+        rewardsDistributor.setFeesBasisPoints(1000);
+    }
+
+    function testConsensusLayerRewardsReceiverRoles() public {
+        address newRewardsDistributor = address(0x789);
+        bytes32 WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+
+        assertTrue(consensusLayerReceiver.hasRole(consensusLayerReceiver.DEFAULT_ADMIN_ROLE(), actors.ADMIN));
+        assertTrue(consensusLayerReceiver.hasRole(WITHDRAWER_ROLE, address(rewardsDistributor)));
+
+        vm.startPrank(actors.ADMIN);
+        consensusLayerReceiver.grantRole(WITHDRAWER_ROLE, newRewardsDistributor);
+        consensusLayerReceiver.revokeRole(WITHDRAWER_ROLE, address(rewardsDistributor));
+        vm.stopPrank();
+
+        assertTrue(consensusLayerReceiver.hasRole(WITHDRAWER_ROLE, newRewardsDistributor));
+        assertFalse(consensusLayerReceiver.hasRole(WITHDRAWER_ROLE, address(rewardsDistributor)));
+    }
+
+    function testExecutionLayerRewardsReceiverRoles() public {
+        address newRewardsDistributor = address(0x789);
+        bytes32 WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
+
+        assertTrue(executionLayerReceiver.hasRole(executionLayerReceiver.DEFAULT_ADMIN_ROLE(), actors.ADMIN));
+        assertTrue(executionLayerReceiver.hasRole(WITHDRAWER_ROLE, address(rewardsDistributor)));
+
+        vm.startPrank(actors.ADMIN);
+        executionLayerReceiver.grantRole(WITHDRAWER_ROLE, newRewardsDistributor);
+        executionLayerReceiver.revokeRole(WITHDRAWER_ROLE, address(rewardsDistributor));
+        vm.stopPrank();
+
+        assertTrue(executionLayerReceiver.hasRole(WITHDRAWER_ROLE, newRewardsDistributor));
+        assertFalse(executionLayerReceiver.hasRole(WITHDRAWER_ROLE, address(rewardsDistributor)));
+    }    
 
     function testRoleChangeYnLSD() public {
         address newStakingAdmin = address(0xABC);
