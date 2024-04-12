@@ -1,14 +1,24 @@
+pragma solidity ^0.8.24;
+
 import "forge-std/Test.sol";
 import "../../src/PooledDeposits.sol";
 import "../../src/interfaces/IynETH.sol";
 import "test/integration/IntegrationBaseTest.sol";
-import "forge-std/console.sol";
-
 
 contract PooledDepositsTest is IntegrationBaseTest {
+
+    function createPooledDeposits() internal returns (PooledDeposits pooledDeposits, address owner) {
+        PooledDeposits implementation = new PooledDeposits();
+        bytes memory initData = abi.encodeWithSelector(PooledDeposits.initialize.selector, address(this));
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(implementation), address(this), initData);
+        pooledDeposits = PooledDeposits(payable(address(proxy)));
+        owner = address(this);
+        return (pooledDeposits, owner);
+    }
+
     function testDeposit() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 2 days);
+        (PooledDeposits pooledDeposits, ) = createPooledDeposits();
         uint256 depositAmount = 1 ether;
         address depositor = address(this);
 
@@ -24,12 +34,16 @@ contract PooledDepositsTest is IntegrationBaseTest {
 
     function testFinalizeDeposits() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 2 days);
+        (PooledDeposits pooledDeposits, address owner) = createPooledDeposits();
         address[] memory depositors = new address[](1);
         depositors[0] = address(this);
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
         pooledDeposits.deposit{value: depositAmount}();
+
+        // Set ynETH before finalizing deposits
+        vm.prank(owner);
+        pooledDeposits.setYnETH(IynETH(address(yneth)));
 
         // Act
         vm.warp(block.timestamp + 3 days); // Move time forward to allow finalizing deposits
@@ -47,7 +61,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         vm.assume(baseDepositAmount > 0.01 ether && baseDepositAmount <= 100 ether); // Assuming a reasonable range for deposit amounts
 
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 2 days);
+        (PooledDeposits pooledDeposits, address owner) = createPooledDeposits();
         address[] memory depositors = new address[](depositorsCount);
         uint256 totalDepositAmount = 0;
         uint256 varyingDepositAmount = baseDepositAmount;
@@ -61,6 +75,10 @@ contract PooledDepositsTest is IntegrationBaseTest {
             totalDepositAmount += varyingDepositAmount;
             varyingDepositAmount += 1 ether; // Increase the deposit amount by 1 ether for each depositor
         }
+
+        // Set ynETH before finalizing deposits
+        vm.prank(owner);
+        pooledDeposits.setYnETH(IynETH(address(yneth)));
 
         // Act
         vm.warp(block.timestamp + 3 days); // Move time forward to allow finalizing deposits
@@ -76,33 +94,35 @@ contract PooledDepositsTest is IntegrationBaseTest {
         }
     }
 
-    function testDepositAfterEndTime() public {
+    function testDepositAfterSettingYnETH() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp);
+        (PooledDeposits pooledDeposits, address owner) = createPooledDeposits();
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
 
-        vm.warp(block.timestamp + 1); // Move time forward to block deposits
+                // Set ynETH before finalizing deposits
+        vm.prank(owner);
+        pooledDeposits.setYnETH(IynETH(address(yneth)));
 
         // Act & Assert
-        vm.expectRevert(PooledDeposits.DepositsPeriodNotEnded.selector);
+        vm.expectRevert(PooledDeposits.YnETHIsSet.selector);
         pooledDeposits.deposit{value: depositAmount}();
     }
 
-    function testFinalizeDepositsBeforeEndTime() public {
+    function testFinalizeDepositsBeforeSettingYnETH() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
+        (PooledDeposits pooledDeposits,) = createPooledDeposits();
         address[] memory depositors = new address[](1);
         depositors[0] = address(this);
 
         // Act & Assert
-        vm.expectRevert(PooledDeposits.DepositsPeriodNotEnded.selector);
+        vm.expectRevert(PooledDeposits.YnETHNotSet.selector);
         pooledDeposits.finalizeDeposits(depositors);
     }
 
     function testDepositZeroAmount() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
+        (PooledDeposits pooledDeposits,) = createPooledDeposits();
 
         // Act & Assert
         vm.expectRevert(PooledDeposits.DepositMustBeGreaterThanZero.selector);
@@ -111,11 +131,13 @@ contract PooledDepositsTest is IntegrationBaseTest {
 
     function testFinalizeDepositsWithNoDepositors() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp);
+        (PooledDeposits pooledDeposits, address owner) = createPooledDeposits();
         address[] memory depositors = new address[](0);
 
-        // Act
-        vm.warp(block.timestamp + 1 days); // Move time forward to allow finalizing deposits
+        // Set ynETH before finalizing deposits
+        vm.prank(owner);
+        pooledDeposits.setYnETH(IynETH(address(yneth)));
+
         pooledDeposits.finalizeDeposits(depositors);
 
         // Assert
@@ -127,7 +149,7 @@ contract PooledDepositsTest is IntegrationBaseTest {
         vm.assume(depositAmount > 0 && depositAmount <= 100 ether);
         
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
+        (PooledDeposits pooledDeposits,) = createPooledDeposits();
         vm.deal(address(this), depositAmount);
 
         // Act
@@ -140,12 +162,16 @@ contract PooledDepositsTest is IntegrationBaseTest {
 
     function testFinalizeDepositsMultipleTimesForSameUser() public {
         // Arrange
-        PooledDeposits pooledDeposits = new PooledDeposits(IynETH(address(yneth)), block.timestamp + 1 days);
+        (PooledDeposits pooledDeposits, address owner) = createPooledDeposits();
         address[] memory depositors = new address[](1);
         depositors[0] = address(this);
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
         pooledDeposits.deposit{value: depositAmount}();
+
+        // Set ynETH before finalizing deposits
+        vm.prank(owner);
+        pooledDeposits.setYnETH(IynETH(address(yneth)));
 
         // Act
         vm.warp(block.timestamp + 1 days + 1); // Move time forward to allow finalizing deposits
