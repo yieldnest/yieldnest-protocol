@@ -31,7 +31,7 @@ contract PooledDeposits is Initializable, OwnableUpgradeable {
         emit DepositReceived(msg.sender, msg.value);
     }
 
-    function finalizeDeposits(address[] calldata depositors) external onlyOwner {
+    function finalizeDeposits(address[] calldata depositors) external {
         if (address(ynETH) == address(0)) revert YnETHNotSet();
         
         for (uint i = 0; i < depositors.length; i++) {
