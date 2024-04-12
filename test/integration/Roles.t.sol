@@ -1,29 +1,12 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
-import {StakingNodesManager} from "src/StakingNodesManager.sol";
-import {ynETH} from "src/ynETH.sol";
-import {ynLSD} from "src/ynLSD.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
-import {MockYnETHERC4626} from "test/mocks/MockYnETHERC4626.sol";
-import {MockERC20} from "test/mocks/MockERC20.sol";
-import {RewardsDistributor} from "src/RewardsDistributor.sol";
-import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
-import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
-import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
 
 contract RolesTest is IntegrationBaseTest {
 
     function testRoleChangeYnETH() public {
         address newOperator = address(0x123);
-        bytes32 ADMIN_ROLE = keccak256("ADMIN_ROLE");
         bytes32 PAUSER_ROLE = keccak256("PAUSER_ROLE");
-        bytes32 STAKING_NODES_MANAGER_ROLE = keccak256("STAKING_NODES_MANAGER_ROLE");
         bytes32 REWARDS_DISTRIBUTOR_ROLE = keccak256("REWARDS_DISTRIBUTOR_ROLE");
 
         assertTrue(stakingNodesManager.hasRole(stakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.ADMIN));
@@ -115,18 +98,18 @@ contract RolesTest is IntegrationBaseTest {
     }
 
     function testRoleChangeYieldNestOracle() public {
-        address newOracleAdmin = address(0xDEF);
+        address newOracleManager = address(0xDEF);
         bytes32 ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
         assertTrue(yieldNestOracle.hasRole(yieldNestOracle.DEFAULT_ADMIN_ROLE(), actors.ADMIN));
         assertTrue(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, actors.ORACLE_MANAGER));
 
         vm.startPrank(actors.ADMIN);
-        yieldNestOracle.grantRole(ORACLE_MANAGER_ROLE, newOracleAdmin);
+        yieldNestOracle.grantRole(ORACLE_MANAGER_ROLE, newOracleManager);
         yieldNestOracle.revokeRole(ORACLE_MANAGER_ROLE, actors.ORACLE_MANAGER);
         vm.stopPrank();
 
-        assertTrue(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, newOracleAdmin));
+        assertTrue(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, newOracleManager));
         assertFalse(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, actors.ORACLE_MANAGER));
     }
 }

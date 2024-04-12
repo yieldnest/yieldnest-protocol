@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
@@ -15,7 +14,7 @@ interface RewardsDistributorEvents {
 }
 
 
-contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsDistributorEvents {
+contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
