@@ -1,5 +1,8 @@
 import "./interfaces/IynETH.sol";
 
+error DepositsPeriodNotEnded();
+error DepositMustBeGreaterThanZero();
+
 contract PooledDeposits {
     mapping(address => uint256) public balances;
     uint256 public depositEndTime;
@@ -15,18 +18,22 @@ contract PooledDeposits {
     }
 
     function deposit() public payable {
-        require(block.timestamp <= depositEndTime, "Deposits period has not ended");
-        require(msg.value > 0, "Deposit must be greater than 0");
+        if (block.timestamp > depositEndTime) revert DepositsPeriodNotEnded();
+        if (msg.value == 0) revert DepositMustBeGreaterThanZero();
         balances[msg.sender] += msg.value;
         emit DepositReceived(msg.sender, msg.value);
     }
 
     function finalizeDeposits(address[] calldata depositors) external {
-        require(block.timestamp > depositEndTime, "Deposits period has not ended");
+        if (block.timestamp <= depositEndTime) revert DepositsPeriodNotEnded();
         
         for (uint i = 0; i < depositors.length; i++) {
             address depositor = depositors[i];
             uint256 depositAmountPerDepositor = balances[depositor];
+            if (depositAmountPerDepositor == 0) {
+                continue;
+            }
+            balances[depositor] = 0;
             uint256 shares = ynETH.depositETH{value: depositAmountPerDepositor}(depositor);
             emit DepositsFinalized(depositor, depositAmountPerDepositor, shares);
         }
