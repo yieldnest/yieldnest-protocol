@@ -190,6 +190,7 @@ contract IntegrationBaseTest is Test, Utils {
 
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: actors.ADMIN,
+            rewardsAdmin: actors.REWARDS_ADMIN,
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver,
             feesReceiver: payable(actors.FEE_RECEIVER),

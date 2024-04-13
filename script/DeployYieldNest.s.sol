@@ -147,6 +147,7 @@ contract DeployYieldNest is BaseScript {
 
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: actors.ADMIN,
+            rewardsAdmin: actors.REWARDS_ADMIN,
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the initialization
             feesReceiver: payable(actors.FEE_RECEIVER), // should be the FEE_RECEIVER role
