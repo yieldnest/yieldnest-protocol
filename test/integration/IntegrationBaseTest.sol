@@ -190,6 +190,7 @@ contract IntegrationBaseTest is Test, Utils {
 
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
             admin: actors.ADMIN,
+            rewardsAdmin: actors.REWARDS_ADMIN,
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver,
             feesReceiver: payable(actors.FEE_RECEIVER),
@@ -222,7 +223,7 @@ contract IntegrationBaseTest is Test, Utils {
         vm.prank(actors.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
     }
-
+    
     function setupYieldNestOracleAndYnLSD() public {
         IERC20[] memory assets = new IERC20[](2);
         address[] memory assetsAddresses = new address[](2);
