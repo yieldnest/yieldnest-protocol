@@ -5,12 +5,16 @@ import { IntegrationBaseTest } from "test/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import { IStakingNodesManager } from "src/interfaces/IStakingNodesManager.sol";
 import { IStakingNode } from "src/interfaces/IStakingNode.sol";
+import { IYnETHEvents } from "src/ynETH.sol";
 import { BeaconChainProofs } from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
 import { IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import { IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
 import { ProofUtils } from "test/utils/ProofUtils.sol";
+
+import "forge-std/console.sol";
+
 
 contract YnETHScenarioTest1 is IntegrationBaseTest {
 
@@ -205,12 +209,9 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		// checks the deposit Validator Data
         stakingNodesManager.validateNodes(validatorData);
 
-		// get a deposit root from the ethereum deposit contract
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
-
 		// Validator Manager Role registers the validators
 		vm.prank(actors.VALIDATOR_MANAGER);
-		stakingNodesManager.registerValidators(depositRoot, validatorData);
+		stakingNodesManager.registerValidators(validatorData);
 
 		assertEq(address(yneth).balance, 0);
 
@@ -260,7 +261,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 	event Log(string message, uint256 value);
 	event LogAddress(string message, address value);
 	
-	function test_ynETH_Scenario_8_Rewards_Distribution(uint256 randomAmount) public {
+	function test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
 		vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
 
 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
@@ -299,8 +300,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		// We can now claim the Rewards from delayedWithdrawal
 		vm.prank(address(actors.STAKING_NODES_ADMIN));
-
-		stakingNode.processWithdrawals(32 ether, address(stakingNode).balance);
+		stakingNode.processNonBeaconChainETHWithdrawals();
         assertEq(address(stakingNode).balance, 0);
 
 		// Get the rewards receiver addresses from the rewards distributor		
@@ -310,11 +310,11 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		uint256 concensusRewards = consensusLayerReceiver.balance;
         uint256 ynethBalance = address(yneth).balance;
 		
-		uint256 concensusRewardsExpected = amount - 32 ether;
+		uint256 concensusRewardsExpected = amount;
 		assertEq(concensusRewards, concensusRewardsExpected, "concensusRewards != concensusRewardsExpected");
 
-        // validator principal should be returned to ynETH
-		assertEq(ynethBalance, 32 ether, "yneth.balance != concensusRewardsExpected");
+        // until processed rewards should be in the consensusLayerReceiver 
+		assertEq(ynethBalance, 0, "yneth.balance != 0");
 	}
 }
 
@@ -324,6 +324,12 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		Scenario 10: Self-Destruct ETH Transfer Attack
 		Objective: Ensure the system is not vulnerable to a self-destruct attack.
 	 */
+
+	function setUp() public override {
+		super.setUp();
+		// Additional setup can be added here if needed
+		vm.recordLogs();
+	}
 
 	function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
 
@@ -335,10 +341,10 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
 
 		// Amount of ether to send via self-destruct
-		uint256 amountToSend = 1 ether;
+		uint256 amountToSendViaSelfDestruct = 1 ether;
 
 		// Ensure the test contract has enough ether to send, user1 comes from Test3
-		vm.deal(user1, amountToSend);
+		vm.deal(user1, amountToSendViaSelfDestruct);
 
 		// Address to send ether to - for example, the stakingNode or another address
 		address payable target = payable(address(stakingNode)); // or any other target address
@@ -346,7 +352,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		// Create and send ether via self-destruct
 		// The SelfDestructSender contract is created with the amountToSend and immediately self-destructs,
 		// sending its balance to the target address.
-		address(new SelfDestructSender{value: amountToSend}(target));
+		address(new SelfDestructSender{value: amountToSendViaSelfDestruct}(target));
 		
 		log_balances(stakingNode);
 		
@@ -356,15 +362,22 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
 
 		vm.startPrank(actors.STAKING_NODES_ADMIN);
-		withdraw_principal(stakingNode);
-		stakingNode.processWithdrawals(32 ether, 33 ether + 1 wei);
+		uint256 rewardsSentToEigenPod = send_eth_rewards_to_eigenpod(stakingNode);
+		stakingNode.processNonBeaconChainETHWithdrawals();
 		vm.stopPrank();
 
 		log_balances(stakingNode);
 
-		assertEq(address(yneth).balance, 32 ether, "yneth.balance != 32 ether");
+		// funds are deposited in the validators
+		assertEq(address(yneth).balance, 0, "yneth.balance != 0");
+
+		// funds have been collected from the StakingNode
 		assertEq(address(stakingNode).balance, 0, "stakingNode.balance != 0");
-		assertEq(address(consensusLayerReceiver).balance, 1 ether + 1 wei, "consensusLayerReceiver.balance != 0");
+		assertEq(
+			address(consensusLayerReceiver).balance,
+			rewardsSentToEigenPod + amountToSendViaSelfDestruct,
+			"consensusLayerReceiver.balance != 1 ether + 1 wei"
+		);
 		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
 
 		uint256 userAmount = 32 ether;
@@ -379,7 +392,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		);
 	}
 
-	function withdraw_principal(IStakingNode stakingNode) public {
+	function send_eth_rewards_to_eigenpod(IStakingNode stakingNode) public returns (uint256) {
 
 		// send concensus rewards to eigen pod
 		uint256 amount = 32 ether + 1 wei;
@@ -412,6 +425,8 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
 
 		withdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
+
+		return amount;
 	}
 
 	function log_balances (IStakingNode stakingNode) public {
@@ -422,10 +437,26 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
         emit LogUint("eigenPod.balance", address(IEigenPod(stakingNode.eigenPod())).balance);
 	}
 
-	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public view {
-		Invariants.totalDepositIntegrity(yneth.totalDepositedInPool(), previousTotalDeposited, userAmount);
+	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public {
+
+		// TODO: implement totalDepositIntegrity - it needs to be event based
+		// since totalDepositedInPool is not an ever increasing acumulator
+		// Vm.Log[] memory logs = vm.getRecordedLogs();
+		// for (uint i = 0; i < logs.length; i++) {
+		// 	Vm.Log memory log = logs[i];
+		// 	if (vm.getRecordedLogs()[i].topics[0] == 
+		// 		keccak256("Deposit(address,address,uint256,uint256,uint256))")) {
+		// 		(uint256 assets,) = abi.decode(vm.getRecordedLogs()[i].data, (uint256, uint256));
+		// 		totalDeposited += assets;
+		// 	}
+		// }
+		// console.log("totalDeposited:", totalDeposited);
+		// Invariants.totalDepositIntegrity(totalDeposited, previousTotalDeposited, userAmount);
+
 		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, userAmount);
+
 		Invariants.shareMintIntegrity(yneth.totalSupply(), previousTotalShares, userShares);
+		
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
 }

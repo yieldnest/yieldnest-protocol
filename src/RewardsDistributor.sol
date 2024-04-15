@@ -14,7 +14,6 @@ interface RewardsDistributorEvents {
     event FeesBasisPointsSet(uint256 feeBasisPoints);
 }
 
-
 contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsDistributorEvents {
 
     //--------------------------------------------------------------------------------------

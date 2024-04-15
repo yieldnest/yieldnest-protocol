@@ -11,6 +11,7 @@ import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {ynETH} from "src/ynETH.sol";
+import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
 
@@ -224,9 +225,8 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
         
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
 
         uint totalAssetsControlled = yneth.totalAssets();
         assertEq(totalAssetsControlled, depositAmount, "Total assets controlled does not match expected value");
@@ -240,36 +240,12 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
         }
     }
 
-    function testRegisterValidatorsWithBadDepositRoot() public {
-        // Attempt to register validators with an incorrect deposit root
-
-        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](1);
-        validatorData[0] = IStakingNodesManager.ValidatorData({
-            publicKey: ZERO_PUBLIC_KEY,
-            signature: ZERO_SIGNATURE,
-            nodeId: 0,
-            depositDataRoot: bytes32(0)
-        });
-
-        bytes32 incorrectDepositRoot = ZERO_DEPOSIT_ROOT;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                StakingNodesManager.DepositRootChanged.selector,
-                incorrectDepositRoot,
-                depositContractEth2.get_deposit_root()
-            )
-        );
-        vm.prank(actors.VALIDATOR_MANAGER);
-        stakingNodesManager.registerValidators(incorrectDepositRoot, validatorData);
-    }
-
     function testRegisterValidatorsWithZeroValidators() public {
         // Attempt to register with an empty array of validators
         IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](0);
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(StakingNodesManager.NoValidatorsProvided.selector);
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
     }
 
     function testRegisterValidatorsWithInvalidNodeId() public {
@@ -282,7 +258,6 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
             depositDataRoot: bytes32(0)
         });
 
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -290,7 +265,7 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
                 999
             )
         );
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
     }
 
     function testRegisterValidatorsWithDuplicatePublicKey() public {
@@ -330,10 +305,9 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
 
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.ValidatorAlreadyUsed.selector, ONE_PUBLIC_KEY) );
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
     }
 
     function testRegisterValidatorsWithInsufficientDeposit() public {
@@ -361,10 +335,9 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
 
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(ynETH.InsufficientBalance.selector));
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
     }
 
     function testRegisterValidatorsWithExceedingMaxNodeCount() public {
@@ -391,10 +364,9 @@ contract StakingNodesManagerRegisterValidators is IntegrationBaseTest {
             depositDataRoot: bytes32(0)
         });
 
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.InvalidNodeId.selector, maxNodeCount));
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
     } 
 }
 
@@ -500,7 +472,6 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         uint256 depositAmount = 33 ether;
         (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
         // try to create a bad deposit root
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[0].nodeId);
 
         bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(
@@ -514,7 +485,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
             depositDataRoot, 
             validatorData[0].depositDataRoot)
         );
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
     }
 
     function testRegisterValidatorSuccess() public {
@@ -522,9 +493,8 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         // Call validateDepositDataAllocation to ensure the deposit data allocation ßis valid
         stakingNodesManager.validateNodes(validatorData);
         
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
         vm.prank(actors.VALIDATOR_MANAGER);
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
 
         StakingNodesManager.Validator[] memory registeredValidators = stakingNodesManager.getAllValidators();
         assertEq(registeredValidators.length, validatorCount, "Incorrect number of registered validators");    
@@ -540,7 +510,6 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
     function testValidatorRegistrationPaused() public {
         uint256 depositAmount = 32 ether;
         (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
 
         // Pause validator registration
         vm.prank(actors.PAUSE_ADMIN);
@@ -549,7 +518,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         // Attempt to register validators while paused
         vm.prank(actors.VALIDATOR_MANAGER);
         vm.expectRevert(StakingNodesManager.ValidatorRegistrationPaused.selector);
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
 
         // Unpause validator registration
         vm.prank(actors.PAUSE_ADMIN);
@@ -557,7 +526,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
 
         // Attempt to register validators after unpausing
         vm.prank(actors.VALIDATOR_MANAGER);
-        stakingNodesManager.registerValidators(depositRoot, validatorData);
+        stakingNodesManager.registerValidators(validatorData);
         assertEq(stakingNodesManager.getAllValidators().length, validatorData.length, "Validators were not registered after unpausing");
     }
 }
@@ -572,10 +541,9 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(addr1);
         vm.prank(actors.STAKING_NODE_CREATOR);
         stakingNodesManager.createStakingNode();
-        uint256 withdrawnValidatorPrincipal = 10 ether;
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.NotStakingNode.selector, actors.STAKING_NODE_CREATOR, 0));
         vm.prank(actors.STAKING_NODE_CREATOR);
-        stakingNodesManager.processWithdrawnETH(0, withdrawnValidatorPrincipal);
+        stakingNodesManager.processRewards(0, RewardsType.ConsensusLayer);
     }
 }
 

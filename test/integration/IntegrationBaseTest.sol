@@ -204,6 +204,7 @@ contract IntegrationBaseTest is Test, Utils {
             admin: actors.ADMIN,
             stakingAdmin: actors.STAKING_ADMIN,
             stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
+            stakingNodesDelegator: actors.STAKING_NODES_DELEGATOR,
             validatorManager: actors.VALIDATOR_MANAGER,
             pauser: actors.PAUSE_ADMIN,
             maxNodeCount: 10,
