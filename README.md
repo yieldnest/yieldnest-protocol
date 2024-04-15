@@ -19,11 +19,11 @@
 | Contract Name | Contract Address |
 |----------------------------|-------------------------------------------|
 | ynETH Proxy | [0xd9029669bc74878bcb5be58c259ed0a277c5c16e](https://holesky.etherscan.io/address/0xd9029669bc74878bcb5be58c259ed0a277c5c16e) |
-| ynETHProxyAdmin | [0x4ed4d42a2001d240e20304f58c626a63a3eb7ff4](https://holesky.etherscan.io/address/0x4ed4d42a2001d240e20304f58c626a63a3eb7ff4) |
+| ynETH ProxyAdmin | [0x4ed4d42a2001d240e20304f58c626a63a3eb7ff4](https://holesky.etherscan.io/address/0x4ed4d42a2001d240e20304f58c626a63a3eb7ff4) |
 | StakingNodesManager Proxy | [0xc2387ebb4ea66627e3543a771e260bd84218d6a1](https://holesky.etherscan.io/address/0xc2387ebb4ea66627e3543a771e260bd84218d6a1) |
 | StakingNodesManager ProxyAdmin | [0xb0165e7584ebf6d76f0dd95e58dea6bdd759f238](https://holesky.etherscan.io/address/0xb0165e7584ebf6d76f0dd95e58dea6bdd759f238) |
-| RewardsDistibutor Proxy | [0x82915eff62af9fcc0d0735b8681959e069e3f2d8](https://holesky.etherscan.io/address/0x82915eff62af9fcc0d0735b8681959e069e3f2d8) |
-| RewardsDistibutor ProxyAdmin | [0xc0300eefe38a393681b6eca7912985a165d37c0e](https://holesky.etherscan.io/address/0xc0300eefe38a393681b6eca7912985a165d37c0e) |
+| RewardsDistributor Proxy | [0x82915eff62af9fcc0d0735b8681959e069e3f2d8](https://holesky.etherscan.io/address/0x82915eff62af9fcc0d0735b8681959e069e3f2d8) |
+| RewardsDistributor ProxyAdmin | [0xc0300eefe38a393681b6eca7912985a165d37c0e](https://holesky.etherscan.io/address/0xc0300eefe38a393681b6eca7912985a165d37c0e) |
 | YieldNestOracle Proxy | [0xe13ea7327507a9f8e3d3ef74635ecb1e375ed98c](https://holesky.etherscan.io/address/0xe13ea7327507a9f8e3d3ef74635ecb1e375ed98c) |
 | YieldNestOracle ProxyAdmin | [0x16b0b532c7512035a812c59b04e65f135ad12142](https://holesky.etherscan.io/address/0x16b0b532c7512035a812c59b04e65f135ad12142) |
 | ExecutionLayerReceiver Proxy | [0xa5e9e1ceb4cc1854d0e186a9b3e67158b84ad072](https://holesky.etherscan.io/address/0xa5e9e1ceb4cc1854d0e186a9b3e67158b84ad072) |
