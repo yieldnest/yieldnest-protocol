@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
@@ -15,7 +14,7 @@ interface RewardsDistributorEvents {
 }
 
 
-contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsDistributorEvents {
+contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -50,6 +49,12 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     uint16 public feesBasisPoints;
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant REWARDS_ADMIN_ROLE = keccak256("REWARDS_ADMIN_ROLE");    
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -60,6 +65,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     /// @notice Configuration for contract initialization.
     struct Init {
         address admin;
+        address rewardsAdmin;
         RewardsReceiver executionLayerReceiver;
         RewardsReceiver consensusLayerReceiver;
         address payable feesReceiver;
@@ -77,6 +83,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        _grantRole(REWARDS_ADMIN_ROLE, init.rewardsAdmin);
         executionLayerReceiver = init.executionLayerReceiver;
         consensusLayerReceiver = init.consensusLayerReceiver;
         feesReceiver = init.feesReceiver;
@@ -140,7 +147,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     /// @param newReceiver The new fees receiver wallet.
     function setFeesReceiver(address payable newReceiver)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(REWARDS_ADMIN_ROLE)
         notZeroAddress(newReceiver)
     {
         feesReceiver = newReceiver;
@@ -151,7 +158,7 @@ contract RewardsDistributor is Initializable, AccessControlUpgradeable, RewardsD
     /// @param newFeesBasisPoints The new fees basis points.
     function setFeesBasisPoints(uint16 newFeesBasisPoints)
         external
-        onlyRole(DEFAULT_ADMIN_ROLE)
+        onlyRole(REWARDS_ADMIN_ROLE)
     {
         if (newFeesBasisPoints > _BASIS_POINTS_DENOMINATOR) revert InvalidBasisPoints();
         feesBasisPoints = newFeesBasisPoints;
