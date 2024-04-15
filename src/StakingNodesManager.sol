@@ -8,11 +8,11 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {depositRootGenerator} from "src/external/ethereum/DepositRootGenerator.sol";
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
-import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
-import {IRewardsDistributor,IRewardsReceiver} from "src/interfaces/IRewardsDistributor.sol";
-import {IEigenPodManager,IEigenPod} from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+import {IRewardsDistributor,IRewardsReceiver, RewardsType} from "src/interfaces/IRewardsDistributor.sol";
+import {IEigenPodManager,IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
@@ -22,7 +22,7 @@ interface StakingNodesManagerEvents {
     event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot, bytes withdrawalCredentials);
     event MaxNodeCountUpdated(uint256 maxNodeCount);
     event ValidatorRegistrationPausedSet(bool isPaused);
-    event WithdrawnETHProcessed(uint256 nodeId, uint256 value, uint256 withdrawnValidatorPrincipal, uint256 rewards);
+    event WithdrawnETHRewardsProcessed(uint256 nodeId, RewardsType rewardsType, uint256 rewards);
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
@@ -53,6 +53,7 @@ contract StakingNodesManager is
     error TransferFailed();
     error NoValidatorsProvided();
     error ValidatorRegistrationPaused();
+    error InvalidRewardsType(RewardsType rewardsType);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -62,7 +63,10 @@ contract StakingNodesManager is
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
 
     /// @notice  Role controls all staking nodes
-    bytes32 public constant STAKING_NODES_ADMIN_ROLE = keccak256("STAKING_NODES_ADMIN_ROLE");
+    bytes32 public constant STAKING_NODES_OPERATOR_ROLE = keccak256("STAKING_NODES_OPERATOR_ROLE");
+
+    /// @notice Role is able to delegate staking operations
+    bytes32 public constant STAKING_NODES_DELEGATOR_ROLE = keccak256("STAKING_NODES_DELEGATOR_ROLE");
 
     /// @notice  Role is able to register validators
     bytes32 public constant VALIDATOR_MANAGER_ROLE = keccak256("VALIDATOR_MANAGER_ROLE");
@@ -127,7 +131,8 @@ contract StakingNodesManager is
         // roles
         address admin;
         address stakingAdmin;
-        address stakingNodesAdmin;
+        address stakingNodesOperator;
+        address stakingNodesDelegator;
         address validatorManager;
         address stakingNodeCreatorRole;
         address pauser;
@@ -167,14 +172,15 @@ contract StakingNodesManager is
         internal
         notZeroAddress(init.admin)
         notZeroAddress(init.stakingAdmin)
-        notZeroAddress(init.stakingNodesAdmin)
+        notZeroAddress(init.stakingNodesOperator)
         notZeroAddress(init.validatorManager)
         notZeroAddress(init.stakingNodeCreatorRole)
         notZeroAddress(init.pauser) {
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
+        _grantRole(STAKING_NODES_DELEGATOR_ROLE, init.stakingNodesDelegator);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
-        _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
+        _grantRole(STAKING_NODES_OPERATOR_ROLE, init.stakingNodesOperator);
         _grantRole(STAKING_NODE_CREATOR_ROLE, init.stakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
     }
@@ -207,7 +213,6 @@ contract StakingNodesManager is
     //--------------------------------------------------------------------------------------
 
     function registerValidators(
-        bytes32 _depositRoot,
         ValidatorData[] calldata newValidators
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
 
@@ -217,13 +222,6 @@ contract StakingNodesManager is
 
         if (newValidators.length == 0) {
             revert NoValidatorsProvided();
-        }
-
-        // check deposit root matches the deposit contract deposit root
-        // to prevent front-running from rogue operators 
-        bytes32 onchainDepositRoot = depositContractEth2.get_deposit_root();
-        if (_depositRoot != onchainDepositRoot) {
-            revert DepositRootChanged({_depositRoot: _depositRoot, onchainDepositRoot: onchainDepositRoot});
         }
 
         validateNodes(newValidators);
@@ -411,22 +409,28 @@ contract StakingNodesManager is
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function processWithdrawnETH(uint256 nodeId, uint256 withdrawnValidatorPrincipal) external payable {
+    function processRewards(uint256 nodeId, RewardsType rewardsType) external payable {
         if (address(nodes[nodeId]) != msg.sender) {
             revert NotStakingNode(msg.sender, nodeId);
         }
 
-        uint256 rewards = msg.value - withdrawnValidatorPrincipal;
+        uint256 rewards = msg.value;
+        IRewardsReceiver receiver;
 
-        IRewardsReceiver consensusLayerReceiver = rewardsDistributor.consensusLayerReceiver();
-        (bool sent, ) = address(consensusLayerReceiver).call{value: rewards}("");
+        if (rewardsType == RewardsType.ConsensusLayer) {
+            receiver = rewardsDistributor.consensusLayerReceiver();
+        } else if (rewardsType == RewardsType.ExecutionLayer) {
+            receiver = rewardsDistributor.executionLayerReceiver();
+        } else {
+            revert InvalidRewardsType(rewardsType);
+        }
+
+        (bool sent, ) = address(receiver).call{value: rewards}("");
         if (!sent) {
             revert TransferFailed();
         }
 
-        emit WithdrawnETHProcessed(nodeId, msg.value, withdrawnValidatorPrincipal, rewards);
-
-        ynETH.processWithdrawnETH{value: withdrawnValidatorPrincipal}();
+        emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, msg.value);
     }
 
     //--------------------------------------------------------------------------------------
@@ -445,8 +449,12 @@ contract StakingNodesManager is
         return nodes.length;
     }
 
-    function isStakingNodesAdmin(address _address) public view returns (bool) {
-        return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
+    function isStakingNodesOperator(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_OPERATOR_ROLE, _address);
+    }
+
+    function isStakingNodesDelegator(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_DELEGATOR_ROLE, _address);
     }
 
     //--------------------------------------------------------------------------------------

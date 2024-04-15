@@ -5,18 +5,18 @@ import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/pr
 import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IynLSD} from "src/interfaces/IynLSD.sol";
-import {IStrategyManager} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategyManager.sol";
-import {IDelegationManager} from "src/external/eigenlayer/v0.1.0/interfaces/IDelegationManager.sol";
-import {IStrategy} from "src/external/eigenlayer/v0.1.0/interfaces/IStrategy.sol";
+import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 
 interface ILSDStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
     event Delegated(address indexed operator, bytes32 approverSalt);
-    event Undelegated(address indexed operator);
+    event Undelegated(bytes32[] withdrawalRoots);
 }
 
 /**
@@ -106,27 +106,27 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
      * @notice Delegates the staking operation to a specified operator.
      * @param operator The address of the operator to whom the staking operation is being delegated.
      */
-    function delegate(address operator) public virtual onlyLSDRestakingManager {
+    function delegate(
+        address operator,
+        ISignatureUtils.SignatureWithExpiry memory signature,
+        bytes32 approverSalt
+    ) public virtual onlyLSDRestakingManager {
 
         IDelegationManager delegationManager = ynLSD.delegationManager();
-        delegationManager.delegateTo(operator);
+        delegationManager.delegateTo(operator, signature, approverSalt);
 
         emit Delegated(operator, 0);
     }
 
     /**
-     * @notice Undelegates the staking operation from the current operator.
-     * @dev Retrieves the current operator by calling `delegatedTo` on the DelegationManager for event logging.
+     * @notice Undelegates the staking operation.
      */
-    function undelegate() public virtual onlyLSDRestakingManager {
-        
-        IDelegationManager delegationManager = ynLSD.delegationManager();
-        address operator = delegationManager.delegatedTo(address(this));
-        
-        IStrategyManager strategyManager = ynLSD.strategyManager();
-        strategyManager.undelegate();
+    function undelegate() public override onlyLSDRestakingManager {
 
-        emit Undelegated(operator);
+        IDelegationManager delegationManager = IDelegationManager(address(ynLSD.delegationManager()));
+        bytes32[] memory withdrawalRoots = delegationManager.undelegate(address(this));
+
+        emit Undelegated(withdrawalRoots);
     }
 
     /**

@@ -21,6 +21,8 @@ ci-test 	:;	forge test --rpc-url ${rpc} --summary --detailed --gas-report
 
 # Build and Deploy
 
+build 	:;	forge build
+
 deploy-protocol 	:;	forge script script/DeployYieldNest.s.sol:DeployYieldNest --rpc-url ${rpc} --broadcast --etherscan-api-key ${key} --verify
 
 # Verify

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IynLSD} from "src/interfaces/IynLSD.sol";
 
 interface ILSDStakingNode {
@@ -18,7 +19,7 @@ interface ILSDStakingNode {
     
    function depositAssetsToEigenlayer(
         IERC20[] memory assets,
-        uint[] memory amounts
+        uint256[] memory amounts
     ) external;
 
     function ynLSD() external view returns (IynLSD);
@@ -27,7 +28,11 @@ interface ILSDStakingNode {
 
     function getInitializedVersion() external view returns (uint64);
 
-    function delegate(address operator) external;
+    function delegate(
+        address operator,
+        ISignatureUtils.SignatureWithExpiry memory signature,
+        bytes32 approverSalt
+    ) external;
 
     function undelegate() external;
 

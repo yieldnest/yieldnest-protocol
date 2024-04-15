@@ -31,7 +31,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testDepositETHWhenPaused() public {
         // Arrange
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.updateDepositsPaused(true);
 
         uint256 depositAmount = 1 ether;
@@ -44,7 +44,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testPauseDepositETH() public {
         // Arrange
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.updateDepositsPaused(true);
 
         // Act & Assert
@@ -54,7 +54,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testUnpauseDepositETH() public {
         // Arrange
-        vm.startPrank(actors.PAUSE_ADMIN);
+        vm.startPrank(actors.admin.PAUSE_ADMIN);
         yneth.updateDepositsPaused(true);
         yneth.updateDepositsPaused(false);
 
@@ -191,7 +191,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     function testRewardsDistributionToYnETHAndFeeReceiver() public {
         // Arrange
         uint256 initialYnETHBalance = address(yneth).balance;
-        uint256 initialFeeReceiverBalance = address(actors.FEE_RECEIVER).balance;
+        uint256 initialFeeReceiverBalance = address(actors.admin.FEE_RECEIVER).balance;
         uint256 rewardAmount = 10 ether;
         uint256 expectedFees = rewardAmount * rewardsDistributor.feesBasisPoints() / 10000;
         uint256 expectedNetRewards = rewardAmount - expectedFees;
@@ -204,7 +204,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         // Assert
         uint256 finalYnETHBalance = address(yneth).balance;
-        uint256 finalFeeReceiverBalance = address(actors.FEE_RECEIVER).balance;
+        uint256 finalFeeReceiverBalance = address(actors.admin.FEE_RECEIVER).balance;
 
         assertEq(finalYnETHBalance, initialYnETHBalance + expectedNetRewards, "Incorrect ynETH balance after rewards distribution");
         assertEq(finalFeeReceiverBalance, initialFeeReceiverBalance + expectedFees, "Incorrect feeReceiver balance after rewards distribution");
@@ -212,7 +212,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testPauseDepositETHFunctionality() public {
         // Arrange
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.updateDepositsPaused(true);
 
         // Act & Assert
@@ -225,7 +225,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(address(this));
 
         // Unpause and try depositing again
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.updateDepositsPaused(false);
         pauseState = yneth.depositsPaused();
 
@@ -253,7 +253,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     function testTransferSucceedsForWhitelistedAddress() public {
         // Arrange
         uint256 depositAmount = 1 ether;
-        address whitelistedAddress = actors.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
+        address whitelistedAddress = actors.eoa.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
         address recipient = address(6); // An arbitrary recipient address
 
 
@@ -264,7 +264,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         address[] memory whitelist = new address[](1);
         whitelist[0] = whitelistedAddress;
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.addToPauseWhitelist(whitelist); // Whitelisting the address
         vm.prank(whitelistedAddress);
         yneth.transfer(recipient, transferAmount);
@@ -281,7 +281,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         addressesToWhitelist[1] = address(2);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.addToPauseWhitelist(addressesToWhitelist);
 
         // Assert
@@ -297,7 +297,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
         vm.deal(newWhitelistedAddress, depositAmount); // Providing the new whitelisted address with some ETH
         vm.prank(newWhitelistedAddress);
@@ -327,7 +327,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 transferAmount = yneth.balanceOf(arbitraryAddress);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         yneth.unpauseTransfers(); // Unpausing transfers for all
         
         vm.prank(arbitraryAddress);

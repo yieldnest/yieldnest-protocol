@@ -3,6 +3,11 @@ pragma solidity ^0.8.24;
 
 import {IRewardsReceiver} from "src/interfaces/IRewardsReceiver.sol";
 
+enum RewardsType {
+    ExecutionLayer,
+    ConsensusLayer
+}
+
 interface IRewardsDistributor {
 
     /// @notice Returns the address of the ynETH token.

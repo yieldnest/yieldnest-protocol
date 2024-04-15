@@ -8,7 +8,7 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 
 	function testSetFeeReceiver() public {
 		address newReceiver = address(0x123);
-		vm.prank(actors.ADMIN);
+		vm.prank(actors.admin.REWARDS_ADMIN);
 		rewardsDistributor.setFeesReceiver(payable(newReceiver));
 		assertEq(rewardsDistributor.feesReceiver(), newReceiver);
 	}
@@ -23,10 +23,10 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		uint256 totalRewards = 5 ether;
 		vm.deal(address(executionLayerReceiver), 2 ether);
 		vm.deal(address(consensusLayerReceiver), 3 ether);
-		vm.prank(actors.ADMIN);
+		vm.prank(actors.admin.ADMIN);
 		uint256 fees = (totalRewards * 100) / rewardsDistributor.feesBasisPoints();
 		rewardsDistributor.processRewards();
-		assertEq(address(actors.FEE_RECEIVER).balance, fees);
+		assertEq(address(actors.admin.FEE_RECEIVER).balance, fees);
 	}
 
 	function testProcessRewardSendFeeFailed() public {
@@ -35,13 +35,13 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		vm.deal(address(consensusLayerReceiver), 3 ether);
 
 		// set invalid fee receiver
-		vm.prank(actors.ADMIN);
+		vm.prank(actors.admin.REWARDS_ADMIN);
 		address nonPayableAddress = address(yieldNestOracle);
 		address payable payableAddress = payable(nonPayableAddress);
 		rewardsDistributor.setFeesReceiver(payableAddress);
 
 		// process rewards
-		vm.startPrank(actors.ADMIN);
+		vm.startPrank(actors.admin.ADMIN);
 		vm.expectRevert(abi.encodeWithSelector(RewardsDistributor.FeeSendFailed.selector));
 		rewardsDistributor.processRewards();
 		vm.stopPrank();
@@ -49,7 +49,7 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 
 	function testSetFeeBasisPoints() public {
 		uint16 newFeeBasisPoints = 500; // 5%
-		vm.prank(actors.ADMIN);
+		vm.prank(actors.admin.REWARDS_ADMIN);
 		rewardsDistributor.setFeesBasisPoints(newFeeBasisPoints);
 		assertEq(rewardsDistributor.feesBasisPoints(), newFeeBasisPoints);
 	}
@@ -57,7 +57,7 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 	function testFailSetFeeBasisPointsExceedsLimit() public {
 		
 		uint16 newFeeBasisPoints = 15000; // 150%, exceeds 100%
-		vm.prank(actors.ADMIN);
+		vm.prank(actors.admin.REWARDS_ADMIN);
 		vm.expectRevert(abi.encodeWithSelector(RewardsDistributor.InvalidBasisPoints.selector, newFeeBasisPoints));
 		rewardsDistributor.setFeesBasisPoints(newFeeBasisPoints);
 	}

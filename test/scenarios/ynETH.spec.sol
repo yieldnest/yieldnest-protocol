@@ -5,11 +5,16 @@ import { IntegrationBaseTest } from "test/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import { IStakingNodesManager } from "src/interfaces/IStakingNodesManager.sol";
 import { IStakingNode } from "src/interfaces/IStakingNode.sol";
-import { BeaconChainProofs } from "src/external/eigenlayer/v0.1.0/BeaconChainProofs.sol";
-import { IEigenPod } from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPod.sol";
-import { IEigenPodManager } from "src/external/eigenlayer/v0.1.0/interfaces/IEigenPodManager.sol";
-import { IDelayedWithdrawalRouter } from "src/external/eigenlayer/v0.1.0/interfaces/IDelayedWithdrawalRouter.sol";
+import { IYnETHEvents } from "src/ynETH.sol";
+import { BeaconChainProofs } from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
+import { IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import { IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
+import { ProofUtils } from "test/utils/ProofUtils.sol";
+
+import "forge-std/console.sol";
+
 
 contract YnETHScenarioTest1 is IntegrationBaseTest {
 
@@ -100,7 +105,7 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 	// pause ynETH and try to deposit fail
 	function test_ynETH_Scenario_2_Pause() public {
 
-		vm.prank(actors.PAUSE_ADMIN);
+		vm.prank(actors.admin.PAUSE_ADMIN);
 	 	yneth.updateDepositsPaused(true);
 
 	 	vm.deal(user1, 1 ether);
@@ -110,7 +115,7 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 
 	function test_ynETH_Scenario_2_Unpause() public {
 
-	 	vm.startPrank(actors.PAUSE_ADMIN);
+	 	vm.startPrank(actors.admin.PAUSE_ADMIN);
 	 	yneth.updateDepositsPaused(true);
 		assertTrue(yneth.depositsPaused());
 		yneth.updateDepositsPaused(false);
@@ -140,11 +145,11 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 		vm.stopPrank();
 
 		// should pass when on the pause whitelist
-		vm.startPrank(actors.DEFAULT_SIGNER);
-		vm.deal(actors.DEFAULT_SIGNER, amount);
-		yneth.depositETH{value: amount}(actors.DEFAULT_SIGNER);
+		vm.startPrank(actors.eoa.DEFAULT_SIGNER);
+		vm.deal(actors.eoa.DEFAULT_SIGNER, amount);
+		yneth.depositETH{value: amount}(actors.eoa.DEFAULT_SIGNER);
 
-		uint256 transferEnabledEOABalance = yneth.balanceOf(actors.DEFAULT_SIGNER);
+		uint256 transferEnabledEOABalance = yneth.balanceOf(actors.eoa.DEFAULT_SIGNER);
 		yneth.transfer(user2, transferEnabledEOABalance);
 		assertEq(yneth.balanceOf(user2), transferEnabledEOABalance);
 	}
@@ -180,7 +185,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		yneth.depositETH{value: depositAmount}(user1);
 
 		// Staking Node Creator Role creates the staking nodes
-		vm.prank(actors.STAKING_NODE_CREATOR);
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		stakingNode = stakingNodesManager.createStakingNode();
 
 		// Create a new Validator Data object
@@ -204,12 +209,9 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		// checks the deposit Validator Data
         stakingNodesManager.validateNodes(validatorData);
 
-		// get a deposit root from the ethereum deposit contract
-        bytes32 depositRoot = depositContractEth2.get_deposit_root();
-
 		// Validator Manager Role registers the validators
-		vm.prank(actors.VALIDATOR_MANAGER);
-		stakingNodesManager.registerValidators(depositRoot, validatorData);
+		vm.prank(actors.ops.VALIDATOR_MANAGER);
+		stakingNodesManager.registerValidators(validatorData);
 
 		assertEq(address(yneth).balance, 0);
 
@@ -217,38 +219,30 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 	}
 
 	function verifyEigenWithdrawCredentials(IStakingNode stakingNode) public {
-		// EigenLayer must not be paused:
-		address pauser = 0x369e6F597e22EaB55fFb173C6d9cD234BD699111;
-		IEigenPodManager eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
-		vm.prank(pauser);
-		eigenPodManager.unpause(0);
+        
+        ProofUtils proofUtils = new ProofUtils();
 
+		uint64 oracleTimestamp = uint64(block.timestamp);
 
-		// 	eigenPod.verifyWithdrawalCredentials
-		//  @param oracleBlockNumber is the Beacon Chain blockNumber whose state root the `proof` will be proven against.
-		uint64[] memory oracleBlockNumbers = new uint64[](1);
-		oracleBlockNumbers[0] = uint32(block.number); 
-		
-		//  @param validatorIndex is the index of the validator being proven, refer to consensus specs 
+		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
+
 		uint40[] memory validatorIndexes = new uint40[](1);
-		validatorIndexes[0] = 1234567; // Validator index
 
-		//  @param proofs is the bytes that prove the ETH validator's balance and withdrawal credentials against a beacon chain state root
-		BeaconChainProofs.ValidatorFieldsAndBalanceProofs[] memory proofs = new BeaconChainProofs.ValidatorFieldsAndBalanceProofs[](1);
-		proofs[0] = BeaconChainProofs.ValidatorFieldsAndBalanceProofs({
-			validatorFieldsProof: new bytes(3), 
-			validatorBalanceProof: new bytes(0), 
-			balanceRoot: bytes32(0) 
-		});
+		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
 
-		//  @param validatorFields are the fields of the "Validator Container", refer to consensus specs
-		//  https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#validator
-		// https://github.com/Layr-Labs/eigenpod-proofs-generation/blob/m1-mainet-frozen/generate_validator_proof.go  
+        bytes[] memory validatorFieldsProofs = proofUtils._getValidatorFieldsProof();
+
 		bytes32[][] memory validatorFields = new bytes32[][](1);
-        validatorFields[0] = new bytes32[](0);		
+        validatorFields[0] = proofUtils.getValidatorFields();
 
-		vm.prank(actors.STAKING_NODES_ADMIN);
-		stakingNode.verifyWithdrawalCredentials(oracleBlockNumbers, validatorIndexes, proofs, validatorFields);
+		vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+		stakingNode.verifyWithdrawalCredentials(
+            oracleTimestamp,
+            stateRootProof,
+            validatorIndexes,
+            validatorFieldsProofs,
+            validatorFields
+        );
 
 		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
 		eigenPod.validatorStatus(0);
@@ -267,25 +261,26 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 	event Log(string message, uint256 value);
 	event LogAddress(string message, address value);
 	
-	function test_ynETH_Scenario_8_Rewards_Distribution(uint256 randomAmount) public {
-		vm.assume(randomAmount > 1_000 && randomAmount < 100_000_000 ether);
+	function test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
+		vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
 
 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
 
 		// send concensus rewards to eigen pod
-		uint256 amount = 32 ether + 1 wei;
-		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
-		uint256 initialPodBalance = address(eigenPod).balance;
-		vm.deal(address(eigenPod), amount);
-		assertEq(address(eigenPod).balance, initialPodBalance + amount);
+		uint256 amount = randomAmount;
+        deal(address(this), randomAmount);
 
-		// To withdraw, create a DelayedWithdrawal on the DelayedWithdrawalRouter
-		vm.prank(actors.STAKING_NODES_ADMIN);
-		stakingNode.withdrawBeforeRestaking();
-		assertEq(address(eigenPod).balance, initialPodBalance);
+        // transfer eth to the eigen pod
+        IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
+        (bool success,) = address(eigenPod).call{value: amount}(bytes(""));
+        require(success, "transfer to eigen pod failed");
+        
+        // trigger withdraw before restaking succesfully
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        stakingNode.withdrawNonBeaconChainETHBalanceWei();
 
-		// There should be a delayedWithdraw on the DelayedWithdrawalRouter
+		// // There should be a delayedWithdraw on the DelayedWithdrawalRouter
 		IDelayedWithdrawalRouter withdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
 		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals = withdrawalRouter.getUserDelayedWithdrawals(address(stakingNode));
 		assertEq(delayedWithdrawals.length, 1);
@@ -301,44 +296,25 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(claimableDelayedWithdrawalsWarp.length, 1);
 		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
 
-
 		withdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
 
-		// We can now claim the delayedWithdrawal
-		uint256 withdrawnValidatorPrincipal = stakingNode.getETHBalance();
-		vm.prank(address(actors.STAKING_NODES_ADMIN));
-
-		// Divided the withdrawnValidatorPrincipal by 2 to simulate the rewards distribution
-		stakingNode.processWithdrawals(withdrawnValidatorPrincipal / 2, address(stakingNode).balance);
+		// We can now claim the Rewards from delayedWithdrawal
+		vm.prank(address(actors.ops.STAKING_NODES_OPERATOR));
+		stakingNode.processNonBeaconChainETHWithdrawals();
+        assertEq(address(stakingNode).balance, 0);
 
 		// Get the rewards receiver addresses from the rewards distributor		
 		IRewardsDistributor rewardsDistributor = IRewardsDistributor(stakingNodesManager.rewardsDistributor());
 		address consensusLayerReceiver = address(rewardsDistributor.consensusLayerReceiver());
-		address executionLayerReceiver = address(rewardsDistributor.executionLayerReceiver());
 
 		uint256 concensusRewards = consensusLayerReceiver.balance;
-
-		// Mock execution rewards coming from a node operator service (eg. figment)
-		vm.deal(executionLayerReceiver, 1 ether);
+        uint256 ynethBalance = address(yneth).balance;
 		
-		uint256 concensusRewardsExpected = withdrawnValidatorPrincipal / 2;
-		assertEq(
-			compareWithThreshold(concensusRewards, concensusRewardsExpected, 1),
-			true, 
-			"concensusRewards != concensusRewardsExpected"
-		);
-		assertEq(
-			compareWithThreshold(address(yneth).balance, withdrawnValidatorPrincipal / 2, 1), 
-			true,
-			"yneth.balance != concensusRewardsExpected"
-		);
+		uint256 concensusRewardsExpected = amount;
+		assertEq(concensusRewards, concensusRewardsExpected, "concensusRewards != concensusRewardsExpected");
 
-		// finally, process rewards from the rewards distributor
-		rewardsDistributor.processRewards();
-
-		// uint256 fees = Math.mulDiv(feesBasisPoints, totalRewards, _BASIS_POINTS_DENOMINATOR);
-
-
+        // until processed rewards should be in the consensusLayerReceiver 
+		assertEq(ynethBalance, 0, "yneth.balance != 0");
 	}
 }
 
@@ -348,6 +324,12 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		Scenario 10: Self-Destruct ETH Transfer Attack
 		Objective: Ensure the system is not vulnerable to a self-destruct attack.
 	 */
+
+	function setUp() public override {
+		super.setUp();
+		// Additional setup can be added here if needed
+		vm.recordLogs();
+	}
 
 	function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
 
@@ -359,10 +341,10 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
 
 		// Amount of ether to send via self-destruct
-		uint256 amountToSend = 1 ether;
+		uint256 amountToSendViaSelfDestruct = 1 ether;
 
 		// Ensure the test contract has enough ether to send, user1 comes from Test3
-		vm.deal(user1, amountToSend);
+		vm.deal(user1, amountToSendViaSelfDestruct);
 
 		// Address to send ether to - for example, the stakingNode or another address
 		address payable target = payable(address(stakingNode)); // or any other target address
@@ -370,7 +352,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		// Create and send ether via self-destruct
 		// The SelfDestructSender contract is created with the amountToSend and immediately self-destructs,
 		// sending its balance to the target address.
-		address(new SelfDestructSender{value: amountToSend}(target));
+		address(new SelfDestructSender{value: amountToSendViaSelfDestruct}(target));
 		
 		log_balances(stakingNode);
 		
@@ -379,16 +361,23 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(address(consensusLayerReceiver).balance, 0, "consensusLayerReceiver.balance != 0");
 		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
 
-		vm.startPrank(actors.STAKING_NODES_ADMIN);
-		withdraw_principal(stakingNode);
-		stakingNode.processWithdrawals(32 ether, 33 ether + 1 wei);
+		vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+		uint256 rewardsSentToEigenPod = send_eth_rewards_to_eigenpod(stakingNode);
+		stakingNode.processNonBeaconChainETHWithdrawals();
 		vm.stopPrank();
 
 		log_balances(stakingNode);
 
-		assertEq(address(yneth).balance, 32 ether, "yneth.balance != 32 ether");
+		// funds are deposited in the validators
+		assertEq(address(yneth).balance, 0, "yneth.balance != 0");
+
+		// funds have been collected from the StakingNode
 		assertEq(address(stakingNode).balance, 0, "stakingNode.balance != 0");
-		assertEq(address(consensusLayerReceiver).balance, 1 ether + 1 wei, "consensusLayerReceiver.balance != 0");
+		assertEq(
+			address(consensusLayerReceiver).balance,
+			rewardsSentToEigenPod + amountToSendViaSelfDestruct,
+			"consensusLayerReceiver.balance != 1 ether + 1 wei"
+		);
 		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
 
 		uint256 userAmount = 32 ether;
@@ -401,20 +390,23 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 			userAmount, 
 			userShares
 		);
-
-
 	}
 
-	function withdraw_principal(IStakingNode stakingNode) public {
+	function send_eth_rewards_to_eigenpod(IStakingNode stakingNode) public returns (uint256) {
 
 		// send concensus rewards to eigen pod
 		uint256 amount = 32 ether + 1 wei;
 		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
 		uint256 initialPodBalance = address(eigenPod).balance;
-		vm.deal(address(eigenPod), amount);
-		assertEq(address(eigenPod).balance, initialPodBalance + amount);
+        
+        vm.deal(actors.ops.STAKING_NODES_OPERATOR, 40 ether);
+        (bool success,) = payable(address(eigenPod)).call{value: amount}("");
+        require(success, "Failed to send rewards to EigenPod");
 
-		stakingNode.withdrawBeforeRestaking();
+		assertEq(address(eigenPod).balance, initialPodBalance + amount, "eigenPod.balance != initialPodBalance + amount");
+
+        // trigger withdraw before restaking succesfully
+        stakingNode.withdrawNonBeaconChainETHBalanceWei();
 
 		// There should be a delayedWithdraw on the DelayedWithdrawalRouter
 		IDelayedWithdrawalRouter withdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
@@ -424,15 +416,17 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		// Because of the delay, the delayedWithdrawal should not be claimable yet
 		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawals = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
-		assertEq(claimableDelayedWithdrawals.length, 0);
+		assertEq(claimableDelayedWithdrawals.length, 0, "claimableDelayedWithdrawals.length != 0");
 
 		// Move ahead in time to make the delayedWithdrawal claimable
 		vm.roll(block.number + withdrawalRouter.withdrawalDelayBlocks() + 1);
 		IDelayedWithdrawalRouter.DelayedWithdrawal[] memory claimableDelayedWithdrawalsWarp = withdrawalRouter.getClaimableUserDelayedWithdrawals(address(stakingNode));
-		assertEq(claimableDelayedWithdrawalsWarp.length, 1);
+		assertEq(claimableDelayedWithdrawalsWarp.length, 1, "claimableDelayedWithdrawalsWarp.length != 1");
 		assertEq(claimableDelayedWithdrawalsWarp[0].amount, amount, "claimableDelayedWithdrawalsWarp[0].amount != 3 ether");
 
 		withdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
+
+		return amount;
 	}
 
 	function log_balances (IStakingNode stakingNode) public {
@@ -440,12 +434,29 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		emit LogUint("stakingNode.balance", address(stakingNode).balance);
 		emit LogUint("consensusReciever.balance", address(consensusLayerReceiver).balance);
 		emit LogUint("executionReciever.balance", address(executionLayerReceiver).balance);
+        emit LogUint("eigenPod.balance", address(IEigenPod(stakingNode.eigenPod())).balance);
 	}
 
-	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public view {
-		Invariants.totalDepositIntegrity(yneth.totalDepositedInPool(), previousTotalDeposited, userAmount);
+	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public {
+
+		// TODO: implement totalDepositIntegrity - it needs to be event based
+		// since totalDepositedInPool is not an ever increasing acumulator
+		// Vm.Log[] memory logs = vm.getRecordedLogs();
+		// for (uint i = 0; i < logs.length; i++) {
+		// 	Vm.Log memory log = logs[i];
+		// 	if (vm.getRecordedLogs()[i].topics[0] == 
+		// 		keccak256("Deposit(address,address,uint256,uint256,uint256))")) {
+		// 		(uint256 assets,) = abi.decode(vm.getRecordedLogs()[i].data, (uint256, uint256));
+		// 		totalDeposited += assets;
+		// 	}
+		// }
+		// console.log("totalDeposited:", totalDeposited);
+		// Invariants.totalDepositIntegrity(totalDeposited, previousTotalDeposited, userAmount);
+
 		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, userAmount);
+
 		Invariants.shareMintIntegrity(yneth.totalSupply(), previousTotalShares, userShares);
+		
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
 }

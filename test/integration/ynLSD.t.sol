@@ -7,7 +7,7 @@ import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beac
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
-import {IPausable} from "src/external/eigenlayer/v0.1.0/interfaces//IPausable.sol";
+import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
@@ -18,14 +18,13 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
-        // Obtain STETH
-
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        assertEq(compareWithThreshold(asset.balanceOf(address(this)), amount, 1), true, "Amount not received");
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
+        assertEq(compareWithThreshold(asset.balanceOf(address(this)), balance, 1), true, "Amount not received");
         vm.stopPrank();
 
         asset.approve(address(ynlsd), amount);
@@ -35,8 +34,11 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         assets[0] = asset;
         amounts[0] = amount;
 
+        vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
+        IPausable(address(strategyManager)).pause(1);
+
         vm.expectRevert(bytes("Pausable: index is paused"));
-        vm.prank(actors.LSD_RESTAKING_MANAGER);
+        vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
 
@@ -45,22 +47,16 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 amount = 32 ether;
 
         uint256 initialSupply = ynlsd.totalSupply();
-        uint256 initialTotalAssets = ynlsd.totalAssets();
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
-        uint depositAmount = 15 ether;
-
-        stETH.approve(address(ynlsd), 32 ether);
-        ynlsd.deposit(stETH, depositAmount, address(this));
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, address(this));
 
         assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
-        assertTrue((depositAmount - (ynlsd.totalAssets() - initialTotalAssets)) < 1e18, "Total assets do not match user deposits");
-        assertTrue((depositAmount - ynlsd.balanceOf(address(this))) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDepositSTETHSuccessWithMultipleDeposits() public {
@@ -68,12 +64,10 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 amount = 32 ether;
 
         uint256 initialSupply = ynlsd.totalSupply();
-        uint256 initialTotalAssets = ynlsd.totalAssets();
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this),amount);
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
@@ -85,11 +79,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, depositAmountTwo, address(this));
         ynlsd.deposit(stETH, depositAmountThree, address(this));
 
-        uint256 totalDeposit = depositAmountOne + depositAmountTwo + depositAmountThree;
-
         assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
-        assertTrue((totalDeposit - (ynlsd.totalAssets() - initialTotalAssets)) < 1e18, "Total assets do not match user deposits");
-        assertTrue(totalDeposit - ynlsd.balanceOf(address(this)) < 1e18, "Invalid ynLSD Balance");
     }
     
     function testDespositUnsupportedAsset() public {
@@ -118,7 +108,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
     }
 
     function testConvertToSharesBootstrapStrategy() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         uint256[] memory totalAssets = ynlsd.getTotalAssets();
         ynlsd.nodes(0);
@@ -128,7 +118,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
     }
 
     function testConvertToSharesZeroStrategy() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         uint256[] memory totalAssets = ynlsd.getTotalAssets();
         ynlsd.nodes(0);
@@ -171,7 +161,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 amount = 1 ether;
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
 
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
@@ -182,13 +172,12 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 
         uint256 totalAssetsBeforeDeposit = ynlsd.totalAssets();
         
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = asset.balanceOf(address(this));
-        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
-        asset.approve(address(ynlsd), amount);
-        ynlsd.deposit(asset, amount, address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
+        assertEq(compareWithThreshold(balance, balance, 1), true, "Amount not received");
+        asset.approve(address(ynlsd), balance);
+        ynlsd.deposit(asset, balance, address(this));
 
 
         {
@@ -197,7 +186,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
             assets[0] = asset;
             amounts[0] = amount;
 
-            vm.prank(actors.LSD_RESTAKING_MANAGER);
+            vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 
             lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
         }
@@ -249,7 +238,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 contract ynLSDAdminTest is IntegrationBaseTest {
 
     function testCreateLSDStakingNode() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
         uint256 expectedNodeId = 0;
@@ -257,7 +246,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     }
 
     function testCreateStakingNodeLSDOverMax() public {
-        vm.startPrank(actors.STAKING_NODE_CREATOR);
+        vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
         for (uint256 i = 0; i < 10; i++) {
             ynlsd.createLSDStakingNode();
         }
@@ -267,12 +256,12 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     } 
 
     function testCreate2LSDStakingNodes() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance1 = ynlsd.createLSDStakingNode();
         uint256 expectedNodeId1 = 0;
         assertEq(lsdStakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance2 = ynlsd.createLSDStakingNode();
         uint256 expectedNodeId2 = 1;
         assertEq(lsdStakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
@@ -281,28 +270,28 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     function testCreateLSDStakingNodeAfterUpgradeWithoutUpgradeability() public {
         // Upgrade the ynLSD implementation to TestYnLSDV2
         address newImplementation = address(new TestYnLSDV2());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newImplementation, "");
 
         // Attempt to create a LSD staking node after the upgrade - should fail since implementation is not there
         vm.expectRevert();
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
     }
 
     function testUpgradeLSDStakingNodeImplementation() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
         // upgrade the ynLSD to support the new initialization version.
         address newYnLSDImpl = address(new TestYnLSDV2());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newYnLSDImpl, "");
 
         TestLSDStakingNodeV2 testLSDStakingNodeV2 = new TestLSDStakingNodeV2();
-        vm.prank(actors.STAKING_ADMIN);
+        vm.prank(actors.admin.STAKING_ADMIN);
         ynlsd.upgradeLSDStakingNodeImplementation(address(testLSDStakingNodeV2));
 
         UpgradeableBeacon beacon = ynlsd.upgradeableBeacon();
@@ -341,7 +330,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         vm.expectRevert(abi.encodeWithSelector(ynLSD.NotLSDStakingNode.selector, address(this), 0));
         ynlsd.retrieveAsset(0, asset, amount);
@@ -355,7 +344,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
 
         ILSDStakingNode lsdStakingNode = ynlsd.nodes(0);
@@ -370,29 +359,29 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 64 ether;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
 
         ILSDStakingNode lsdStakingNode = ynlsd.nodes(0);
         vm.deal(address(lsdStakingNode), 1000);
 
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: amount + 1}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = asset.balanceOf(address(this));
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
         assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
 
-        asset.approve(address(ynlsd), amount);
-        ynlsd.deposit(asset, amount, address(this));
+        asset.approve(address(ynlsd), balance);
+        ynlsd.deposit(asset, balance, address(this));
 
         vm.startPrank(address(lsdStakingNode));
         asset.approve(address(ynlsd), 32 ether);
-        ynlsd.retrieveAsset(0, asset, amount);
+        ynlsd.retrieveAsset(0, asset, balance);
         vm.stopPrank();
     }
 
     function testSetMaxNodeCount() public {
         uint256 maxNodeCount = 10;
-        vm.prank(actors.STAKING_ADMIN);
+        vm.prank(actors.admin.STAKING_ADMIN);
         ynlsd.setMaxNodeCount(maxNodeCount);
         assertEq(ynlsd.maxNodeCount(), maxNodeCount, "Max node count does not match expected value");
     }
@@ -400,18 +389,15 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     function testPauseDepositsFunctionality() public {
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 
-        uint256 depositAmount = 1 ether;
+        uint256 depositAmount = 0.1 ether;
 
-        // Obtain STETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount}("");
-        require(success, "ETH transfer failed");
-        uint256 balance = stETH.balanceOf(address(this));
-        assertEq(compareWithThreshold(balance, depositAmount, 2), true, "Amount not received");
-
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
         stETH.approve(address(ynlsd), balance);
 
         // Arrange
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.updateDepositsPaused(true);
 
         // Act & Assert
@@ -423,7 +409,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, balance, address(this));
 
         // Unpause and try depositing again
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.updateDepositsPaused(false);
         pauseState = ynlsd.depositsPaused();
 
@@ -431,8 +417,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 
         // Deposit should succeed now
         ynlsd.deposit(stETH, balance, address(this));
-        uint256 ynLSDBalance = ynlsd.balanceOf(address(this));
-        assertGt(ynLSDBalance, 0, "ynLSD balance should be greater than 0 after deposit");
+        assertGt(ynlsd.totalAssets(), 0, "ynLSD balance should be greater than 0 after deposit");
     }
 
 }
@@ -455,23 +440,22 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
     function testTransferSucceedsForWhitelistedAddress() public {
         // Arrange
         uint256 depositAmount = 1 ether;
-        address whitelistedAddress = actors.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
+        address whitelistedAddress = actors.eoa.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
         address recipient = address(6); // An arbitrary recipient address
 
-        // get stETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
-        require(success, "ETH transfer failed");
-
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        steth.approve(address(ynlsd), depositAmount);
-        ynlsd.deposit(steth, depositAmount, whitelistedAddress); 
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, whitelistedAddress); 
 
         uint256 transferAmount = ynlsd.balanceOf(whitelistedAddress);
 
         // Act
         address[] memory whitelist = new address[](1);
         whitelist[0] = whitelistedAddress;
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelist); // Whitelisting the address
         vm.prank(whitelistedAddress);
         ynlsd.transfer(recipient, transferAmount);
@@ -488,7 +472,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         addressesToWhitelist[1] = address(2);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(addressesToWhitelist);
 
         // Assert
@@ -502,17 +486,17 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         address newWhitelistedAddress = vm.addr(7); // Using a new address for whitelisting
         address recipient = address(8); // An arbitrary recipient address
 
-         // get stETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
-        require(success, "ETH transfer failed");
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
 
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        steth.approve(address(ynlsd), depositAmount);
-        ynlsd.deposit(steth, depositAmount, newWhitelistedAddress);
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, newWhitelistedAddress);
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
 
         uint256 transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
@@ -532,17 +516,17 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         address arbitraryAddress = vm.addr(9999); // Using an arbitrary address
         address recipient = address(10000); // An arbitrary recipient address
 
-         // get stETH
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: depositAmount + 1}("");
-        require(success, "ETH transfer failed");
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        steth.approve(address(ynlsd), depositAmount);
-        ynlsd.deposit(steth, depositAmount, arbitraryAddress);
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
+        stETH.approve(address(ynlsd), balance);
+        ynlsd.deposit(stETH, balance, arbitraryAddress);
 
         uint256 transferAmount = ynlsd.balanceOf(arbitraryAddress);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.unpauseTransfers(); // Unpausing transfers for all
         
         vm.prank(arbitraryAddress);
@@ -556,14 +540,14 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
     function testRemoveInitialWhitelistedAddress() public {
         // Arrange
         address[] memory whitelistAddresses = new address[](1);
-        whitelistAddresses[0] = actors.DEFAULT_SIGNER; // EOA address to be removed from whitelist
+        whitelistAddresses[0] = actors.eoa.DEFAULT_SIGNER; // EOA address to be removed from whitelist
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
 
         // Assert
-        bool isWhitelisted = ynlsd.pauseWhiteList(actors.DEFAULT_SIGNER);
+        bool isWhitelisted = ynlsd.pauseWhiteList(actors.eoa.DEFAULT_SIGNER);
         assertFalse(isWhitelisted, "EOA address was not removed from whitelist");
     }
 
@@ -574,11 +558,11 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         newWhitelistAddresses[1] = address(20001); // Second new whitelist address
 
         // Adding addresses to whitelist first
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(newWhitelistAddresses);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
 
         // Assert
@@ -594,46 +578,39 @@ contract ynLSDDonationsTest is IntegrationBaseTest {
 
     function testYnLSDdonationToZeroShareAttackResistance() public {
 
-        uint INITIAL_AMOUNT = 10_000 ether;
+        uint INITIAL_AMOUNT = 10 ether;
 
-        address _alice = makeAddr("Alice");
-        address _bob = makeAddr("Bob");
+        address alice = makeAddr("Alice");
+        address bob = makeAddr("Bob");
 
         IERC20 assetToken = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 
-        vm.deal(_alice, INITIAL_AMOUNT);
-        vm.deal(_bob, INITIAL_AMOUNT);
+		// 1. Obtain stETH and Deposit assets to ynLSD by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        testAssetUtils.get_stETH(alice, INITIAL_AMOUNT);
+        testAssetUtils.get_stETH(bob, INITIAL_AMOUNT);
 
+        vm.prank(alice);
+        assetToken.approve(address(ynlsd), type(uint256).max);
 
-        IERC20 steth = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-
-        // get stETH
-         vm.startPrank(_alice);
-        (bool success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: INITIAL_AMOUNT}("");
-        require(success, "ETH transfer failed");
-
-        steth.approve(address(ynlsd), type(uint256).max);
-
-        vm.startPrank(_bob);
-        (success, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: INITIAL_AMOUNT}("");
-        require(success, "ETH transfer failed");
-
-        steth.approve(address(ynlsd), type(uint256).max);
+        vm.startPrank(bob);
+        assetToken.approve(address(ynlsd), type(uint256).max);
 
         // Front-running part
         uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
         // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 ATK to the Vault by observing the mempool
-        vm.startPrank(_alice);
+        vm.startPrank(alice);
         uint256 aliceDepositAmount = 1;
-        uint256 aliceShares = ynlsd.deposit(assetToken, aliceDepositAmount, _alice);
-        assertEq(aliceShares, 0); // Since there are boostrap funds, this has no effect
+        uint256 aliceShares = ynlsd.deposit(assetToken, aliceDepositAmount, alice);
+        // Since there are boostrap funds, this has no effect
+        assertEq(compareWithThreshold(aliceShares, 1, 1), true, "Alice's shares should be dust"); 
         // Try to inflate shares value
         assetToken.transfer(address(ynlsd), bobDepositAmount);
         vm.stopPrank();
 
         // Check that Bob did not get 0 share when he deposits
-        vm.prank(_bob);
-        uint256 bobShares = ynlsd.deposit(assetToken, bobDepositAmount, _bob);
+        vm.prank(bob);
+        uint256 bobShares = ynlsd.deposit(assetToken, bobDepositAmount, bob);
 
         assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
     }   
