@@ -38,7 +38,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         vm.prank(addr1);
         yneth.depositETH{value: depositAmount}(addr1);
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
         uint256 nodeId = 0;
@@ -63,7 +63,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             validatorData[i].depositDataRoot = depositDataRoot;
         }
         
-        vm.prank(actors.VALIDATOR_MANAGER);
+        vm.prank(actors.ops.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(validatorData);
 
         uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
@@ -102,7 +102,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         require(success, "Failed to send rewards to EigenPod");
 
         // trigger withdraw before restaking succesfully
-        vm.startPrank(actors.STAKING_NODES_ADMIN);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
         vm.stopPrank();
 
@@ -113,7 +113,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.processNonBeaconChainETHWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -148,7 +148,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         require(success, "Failed to send rewards to EigenPod");
 
         // trigger withdrawNonBeaconChainETHBalanceWei succesfully
-        vm.startPrank(actors.STAKING_NODES_ADMIN);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
         vm.stopPrank();
 
@@ -159,7 +159,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.processNonBeaconChainETHWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -180,7 +180,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         require(success, "Failed to send rewards to EigenPod");
 
         // trigger withdraw before restaking succesfully
-        vm.startPrank(actors.STAKING_NODES_ADMIN);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
         vm.stopPrank();
 
@@ -191,7 +191,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.processNonBeaconChainETHWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -216,7 +216,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         require(success, "Failed to send rewards to EigenPod");
 
         // trigger withdraw before restaking succesfully
-        vm.startPrank(actors.STAKING_NODES_ADMIN);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
         vm.stopPrank();
 
@@ -227,7 +227,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
 
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.processNonBeaconChainETHWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
@@ -265,7 +265,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         assertEq(shares, depositAmount, "Shares do not match deposit amount");
 
         vm.expectRevert("Pausable: index is paused");
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
             stateRootProof,
@@ -276,7 +276,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     }
 
     function testCreateEigenPodReturnsEigenPodAddressAfterCreated() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
         assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
@@ -284,23 +284,23 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testClaimDelayedWithdrawals() public {
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         vm.expectRevert();
         stakingNodeInstance.processNonBeaconChainETHWithdrawals();
     }
 
     function testDelegateFailWhenNotAdmin() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         vm.expectRevert();
         stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
     }
 
     function testStakingNodeDelegate() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
@@ -318,7 +318,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             }), 
             "ipfs://some-ipfs-hash"
         ); 
-        vm.prank(actors.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(operator, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
         address delegatedOperator = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -326,7 +326,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     }
 
     function testStakingNodeUndelegate() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
@@ -345,7 +345,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             "ipfs://some-ipfs-hash"
         );
         
-        vm.prank(actors.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
         // // Attempt to undelegate with the wrong role
@@ -357,7 +357,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
         // Now actually undelegate with the correct role
-        vm.prank(actors.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.undelegate();
         
         // Verify undelegation
@@ -385,26 +385,26 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             );
         }
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
         // Delegate to operator1
-        vm.prank(actors.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
         // Undelegate
-        vm.prank(actors.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.undelegate();
 
         address undelegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
 
         // Delegate to operator2
-        vm.prank(actors.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -412,7 +412,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     }
 
     function testImplementViewFunction() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         assertEq(stakingNodeInstance.implementation(), address(stakingNodeImplementation));
     }
@@ -449,7 +449,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         // address eigenPodAddress = address(stakingNodeInstance.eigenPod());
         // validatorFields[0][1] = (abi.encodePacked(bytes1(uint8(1)), bytes11(0), eigenPodAddress)).toBytes32(0);
 
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Proof is not for this EigenPod");
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
@@ -481,7 +481,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 		bytes32[][] memory validatorFields = new bytes32[][](1);
         validatorFields[0] = proofUtils.getValidatorFields();
 
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
             stateRootProof,
@@ -518,7 +518,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 		bytes32[][] memory validatorFields = new bytes32[][](1);
         validatorFields[0] = proofUtils.getValidatorFields();
 
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
             stateRootProof,
@@ -552,7 +552,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 		bytes32[][] memory validatorFields = new bytes32[][](1);
         validatorFields[0] = proofUtils.getValidatorFields();
 
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
             stateRootProof,

@@ -63,7 +63,7 @@ contract StakingNodesManager is
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
 
     /// @notice  Role controls all staking nodes
-    bytes32 public constant STAKING_NODES_ADMIN_ROLE = keccak256("STAKING_NODES_ADMIN_ROLE");
+    bytes32 public constant STAKING_NODES_OPERATOR_ROLE = keccak256("STAKING_NODES_OPERATOR_ROLE");
 
     /// @notice Role is able to delegate staking operations
     bytes32 public constant STAKING_NODES_DELEGATOR_ROLE = keccak256("STAKING_NODES_DELEGATOR_ROLE");
@@ -131,7 +131,7 @@ contract StakingNodesManager is
         // roles
         address admin;
         address stakingAdmin;
-        address stakingNodesAdmin;
+        address stakingNodesOperator;
         address stakingNodesDelegator;
         address validatorManager;
         address stakingNodeCreatorRole;
@@ -172,7 +172,7 @@ contract StakingNodesManager is
         internal
         notZeroAddress(init.admin)
         notZeroAddress(init.stakingAdmin)
-        notZeroAddress(init.stakingNodesAdmin)
+        notZeroAddress(init.stakingNodesOperator)
         notZeroAddress(init.validatorManager)
         notZeroAddress(init.stakingNodeCreatorRole)
         notZeroAddress(init.pauser) {
@@ -180,7 +180,7 @@ contract StakingNodesManager is
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(STAKING_NODES_DELEGATOR_ROLE, init.stakingNodesDelegator);
         _grantRole(VALIDATOR_MANAGER_ROLE, init.validatorManager);
-        _grantRole(STAKING_NODES_ADMIN_ROLE, init.stakingNodesAdmin);
+        _grantRole(STAKING_NODES_OPERATOR_ROLE, init.stakingNodesOperator);
         _grantRole(STAKING_NODE_CREATOR_ROLE, init.stakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
     }
@@ -449,8 +449,8 @@ contract StakingNodesManager is
         return nodes.length;
     }
 
-    function isStakingNodesAdmin(address _address) public view returns (bool) {
-        return hasRole(STAKING_NODES_ADMIN_ROLE, _address);
+    function isStakingNodesOperator(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_OPERATOR_ROLE, _address);
     }
 
     function isStakingNodesDelegator(address _address) public view returns (bool) {

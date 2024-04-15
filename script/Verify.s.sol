@@ -37,7 +37,7 @@ contract Verify is BaseScript {
         require(
             deployment.consensusLayerReceiver.hasRole(
                 deployment.consensusLayerReceiver.DEFAULT_ADMIN_ROLE(), 
-                address(actors.ADMIN)
+                address(actors.admin.ADMIN)
             ), 
             "consensusLayerReceiver: DEFAULT_ADMIN_ROLE INVALID"
         );
@@ -61,7 +61,7 @@ contract Verify is BaseScript {
         require(
             deployment.executionLayerReceiver.hasRole(
                 deployment.executionLayerReceiver.DEFAULT_ADMIN_ROLE(), 
-                address(actors.ADMIN)
+                address(actors.admin.ADMIN)
             ), 
             "executionLayerReceiver: DEFAULT_ADMIN_ROLE INVALID"
         );
@@ -74,7 +74,7 @@ contract Verify is BaseScript {
         require(
             deployment.rewardsDistributor.hasRole(
                 deployment.rewardsDistributor.DEFAULT_ADMIN_ROLE(), 
-                address(actors.ADMIN)
+                address(actors.admin.ADMIN)
             ), 
             "rewardsDistributor: DEFAULT_ADMIN_ROLE INVALID"
         );
@@ -82,7 +82,7 @@ contract Verify is BaseScript {
 
         // FEE_RECEIVER
         require(
-            deployment.rewardsDistributor.feesReceiver() == actors.FEE_RECEIVER, 
+            deployment.rewardsDistributor.feesReceiver() == actors.admin.FEE_RECEIVER, 
             "rewardsDistributor: FEE_RECEIVER INVALID"
         );
         console.log("\u2705 rewardsDistributor: FEE_RECEIVER");
@@ -94,7 +94,7 @@ contract Verify is BaseScript {
         require(
             deployment.stakingNodesManager.hasRole(
                 deployment.stakingNodesManager.STAKING_ADMIN_ROLE(), 
-                address(actors.STAKING_ADMIN)
+                address(actors.admin.STAKING_ADMIN)
             ), 
             "stakingNodesManager: STAKING_ADMIN_ROLE INVALID"
         );
@@ -103,10 +103,10 @@ contract Verify is BaseScript {
         // STAKING_NODES_ADMIN_ROLE
         require(
             deployment.stakingNodesManager.hasRole(
-                deployment.stakingNodesManager.STAKING_NODES_ADMIN_ROLE(), 
-                address(actors.STAKING_NODES_ADMIN)
+                deployment.stakingNodesManager.STAKING_NODES_OPERATOR_ROLE(), 
+                address(actors.ops.STAKING_NODES_OPERATOR)
             ), 
-            "stakingNodesManager: STAKING_NODES_ADMIN_ROLE INVALID"
+            "stakingNodesManager: STAKING_NODES_OPERATOR_ROLE INVALID"
         );
         console.log("\u2705 stakingNodesManager: STAKING_NODES_ADMIN_ROLE");
 
@@ -114,7 +114,7 @@ contract Verify is BaseScript {
         require(
             deployment.stakingNodesManager.hasRole(
                 deployment.stakingNodesManager.VALIDATOR_MANAGER_ROLE(), 
-                address(actors.VALIDATOR_MANAGER)
+                address(actors.ops.VALIDATOR_MANAGER)
             ), 
             "stakingNodesManager: VALIDATOR_MANAGER_ROLE INVALID"
         );
@@ -124,7 +124,7 @@ contract Verify is BaseScript {
         require(
             deployment.stakingNodesManager.hasRole(
                 deployment.stakingNodesManager.STAKING_NODE_CREATOR_ROLE(), 
-                address(actors.STAKING_NODE_CREATOR)
+                address(actors.ops.STAKING_NODE_CREATOR)
             ), 
             "stakingNodesManager: STAKING_NODE_CREATOR_ROLE INVALID"
         );
@@ -134,7 +134,7 @@ contract Verify is BaseScript {
         require(
             deployment.stakingNodesManager.hasRole(
                 deployment.stakingNodesManager.PAUSER_ROLE(), 
-                address(actors.PAUSE_ADMIN)
+                address(actors.admin.PAUSE_ADMIN)
             ), 
             "stakingNodesManager: PAUSE_ADMIN INVALID"
         );
@@ -148,7 +148,7 @@ contract Verify is BaseScript {
         require(
             deployment.ynETH.hasRole(
                 deployment.ynETH.DEFAULT_ADMIN_ROLE(), 
-                address(actors.ADMIN)
+                address(actors.admin.ADMIN)
             ), 
             "ynETH: DEFAULT_ADMIN_ROLE INVALID"
         );
@@ -158,7 +158,7 @@ contract Verify is BaseScript {
         require(
             deployment.ynETH.hasRole(
                 deployment.ynETH.PAUSER_ROLE(), 
-                address(actors.PAUSE_ADMIN)
+                address(actors.admin.PAUSE_ADMIN)
             ), 
             "ynETH: PAUSER_ADMIN_ROLE INVALID"
         );

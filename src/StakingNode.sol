@@ -69,7 +69,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /// @dev Allows only a whitelisted address to configure the contract
     modifier onlyAdmin() {
-        if(!stakingNodesManager.isStakingNodesAdmin(msg.sender)) revert NotStakingNodesAdmin();
+        if(!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesAdmin();
         _;
     }
 

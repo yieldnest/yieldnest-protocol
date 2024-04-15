@@ -59,13 +59,13 @@ contract DeployYnLSD is BaseScript {
         // Deploy implementations
         {
             ynLSD ynLSDImplementation = new ynLSD();
-            TransparentUpgradeableProxy ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), actors.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
             ynlsd = ynLSD(address(ynLSDProxy));
         }
 
         {
             YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
-            TransparentUpgradeableProxy yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), actors.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
             yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
         }
 
@@ -88,13 +88,13 @@ contract DeployYnLSD is BaseScript {
                 delegationManager: delegationManager,
                 oracle: yieldNestOracle,
                 maxNodeCount: 10,
-                admin: actors.ADMIN,
-                pauser: actors.PAUSE_ADMIN,
-                stakingAdmin: actors.STAKING_ADMIN,
-                lsdRestakingManager: actors.LSD_RESTAKING_MANAGER, // Assuming no restaking manager is set initially
-                lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR, // Assuming no staking node creator role is set initially
+                admin: actors.admin.ADMIN,
+                pauser: actors.admin.PAUSE_ADMIN,
+                stakingAdmin: actors.admin.STAKING_ADMIN,
+                lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
+                lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
                 pauseWhitelist: lsdPauseWhitelist,
-                depositBootstrapper: actors.DEPOSIT_BOOTSTRAPPER
+                depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
             });
             ynlsd.initialize(ynlsdInit);
         }
@@ -119,8 +119,8 @@ contract DeployYnLSD is BaseScript {
                 assets: assetsAddresses,
                 priceFeedAddresses: priceFeedAddresses,
                 maxAges: maxAgesArray,
-                admin: actors.ORACLE_MANAGER,
-                oracleManager: actors.ORACLE_MANAGER
+                admin: actors.admin.ORACLE_ADMIN,
+                oracleManager: actors.admin.ORACLE_ADMIN
             });
             yieldNestOracle.initialize(yieldNestOracleInit);
         }

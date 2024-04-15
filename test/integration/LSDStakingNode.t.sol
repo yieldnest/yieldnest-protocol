@@ -18,7 +18,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 
 	function setUp() public override {
 		super.setUp();
-		vm.prank(actors.STAKING_NODE_CREATOR);
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		lsdStakingNode = ynlsd.createLSDStakingNode();
 	}
 	
@@ -34,7 +34,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 
 	function testImplementationView() public {
 		address _implementation = lsdStakingNode.implementation();
-		vm.prank(actors.STAKING_NODE_CREATOR);
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		ynlsd.createLSDStakingNode();
 		ILSDStakingNode _lsdStakingNode = ynlsd.nodes(0);
 		assertEq(_implementation, address(_lsdStakingNode.implementation()));
@@ -45,7 +45,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 		assets[0] = IERC20(address(ynlsd));
 		uint256[] memory amounts = new uint256[](1);
 		amounts[0] = 100;
-		vm.prank(actors.LSD_RESTAKING_MANAGER);
+		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 		vm.expectRevert(abi.encodeWithSelector(LSDStakingNode.UnsupportedAsset.selector, assets[0]));
 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 	}
@@ -60,7 +60,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 
 		// 2. Deposit assets to Eigenlayer by LSD ReStaking Manager
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
         vm.startPrank(unpauser);
         pausableStrategyManager.unpause(0);
@@ -70,7 +70,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 		assets[0] = stETH;
 		uint256[] memory amounts = new uint256[](1);
 		amounts[0] = 1 ether;
-		vm.prank(actors.LSD_RESTAKING_MANAGER);
+		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 		(, uint256[] memory deposits) = strategyManager.getDeposits(address(lsdStakingNode));
 		assertGt(deposits[0], 1);
@@ -93,7 +93,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 		assets[0] = stETH;
 		uint256[] memory amounts = new uint256[](1);
 		amounts[0] = balance;
-		vm.prank(actors.LSD_RESTAKING_MANAGER);
+		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 		vm.expectRevert("Pausable: index is paused");
 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 	}
@@ -102,7 +102,7 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 
 contract LSDStakingNodeDelegate is IntegrationBaseTest {
 	function testLSDStakingNodeDelegate() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
         IDelegationManager delegationManager = ynlsd.delegationManager();
 
@@ -123,12 +123,12 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
 				ISignatureUtils.SignatureWithExpiry memory signature;
 				bytes32 approverSalt;
 
-				vm.prank(actors.LSD_RESTAKING_MANAGER);
+				vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
         lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
     }
 
     function testLSDStakingNodeUndelegate() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
         IDelegationManager delegationManager = ynlsd.delegationManager();
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
@@ -147,7 +147,7 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
             "ipfs://some-ipfs-hash"
         );
 				
-				vm.prank(actors.LSD_RESTAKING_MANAGER);
+				vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 				ISignatureUtils.SignatureWithExpiry memory signature;
 				bytes32 approverSalt;
 
@@ -162,7 +162,7 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
         assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
         // Now actually undelegate with the correct role
-        vm.prank(actors.LSD_RESTAKING_MANAGER);
+        vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
         lsdStakingNodeInstance.undelegate();
         
         // Verify undelegation
@@ -172,7 +172,7 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
 
 	function testRecoverDirectDeposits() public {
 		// setup
-		vm.prank(actors.STAKING_NODE_CREATOR);
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
@@ -185,7 +185,7 @@ contract LSDStakingNodeDelegate is IntegrationBaseTest {
 		stETH.transfer(address(lsdStakingNodeInstance), balance);
 
 		// recover the stuck steth in the staking node
-		vm.prank(actors.LSD_RESTAKING_MANAGER);
+		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 		lsdStakingNodeInstance.recoverAssets(IERC20(chainAddresses.lsd.STETH_ADDRESS));
 		stETH.balanceOf(address(ynlsd));
 		assertEq(

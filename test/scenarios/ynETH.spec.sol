@@ -105,7 +105,7 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 	// pause ynETH and try to deposit fail
 	function test_ynETH_Scenario_2_Pause() public {
 
-		vm.prank(actors.PAUSE_ADMIN);
+		vm.prank(actors.admin.PAUSE_ADMIN);
 	 	yneth.updateDepositsPaused(true);
 
 	 	vm.deal(user1, 1 ether);
@@ -115,7 +115,7 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 
 	function test_ynETH_Scenario_2_Unpause() public {
 
-	 	vm.startPrank(actors.PAUSE_ADMIN);
+	 	vm.startPrank(actors.admin.PAUSE_ADMIN);
 	 	yneth.updateDepositsPaused(true);
 		assertTrue(yneth.depositsPaused());
 		yneth.updateDepositsPaused(false);
@@ -145,11 +145,11 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 		vm.stopPrank();
 
 		// should pass when on the pause whitelist
-		vm.startPrank(actors.DEFAULT_SIGNER);
-		vm.deal(actors.DEFAULT_SIGNER, amount);
-		yneth.depositETH{value: amount}(actors.DEFAULT_SIGNER);
+		vm.startPrank(actors.eoa.DEFAULT_SIGNER);
+		vm.deal(actors.eoa.DEFAULT_SIGNER, amount);
+		yneth.depositETH{value: amount}(actors.eoa.DEFAULT_SIGNER);
 
-		uint256 transferEnabledEOABalance = yneth.balanceOf(actors.DEFAULT_SIGNER);
+		uint256 transferEnabledEOABalance = yneth.balanceOf(actors.eoa.DEFAULT_SIGNER);
 		yneth.transfer(user2, transferEnabledEOABalance);
 		assertEq(yneth.balanceOf(user2), transferEnabledEOABalance);
 	}
@@ -185,7 +185,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		yneth.depositETH{value: depositAmount}(user1);
 
 		// Staking Node Creator Role creates the staking nodes
-		vm.prank(actors.STAKING_NODE_CREATOR);
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		stakingNode = stakingNodesManager.createStakingNode();
 
 		// Create a new Validator Data object
@@ -210,7 +210,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
         stakingNodesManager.validateNodes(validatorData);
 
 		// Validator Manager Role registers the validators
-		vm.prank(actors.VALIDATOR_MANAGER);
+		vm.prank(actors.ops.VALIDATOR_MANAGER);
 		stakingNodesManager.registerValidators(validatorData);
 
 		assertEq(address(yneth).balance, 0);
@@ -235,7 +235,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		bytes32[][] memory validatorFields = new bytes32[][](1);
         validatorFields[0] = proofUtils.getValidatorFields();
 
-		vm.prank(actors.STAKING_NODES_ADMIN);
+		vm.prank(actors.ops.STAKING_NODES_OPERATOR);
 		stakingNode.verifyWithdrawalCredentials(
             oracleTimestamp,
             stateRootProof,
@@ -277,7 +277,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
         require(success, "transfer to eigen pod failed");
         
         // trigger withdraw before restaking succesfully
-        vm.prank(actors.STAKING_NODES_ADMIN);
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNode.withdrawNonBeaconChainETHBalanceWei();
 
 		// // There should be a delayedWithdraw on the DelayedWithdrawalRouter
@@ -299,7 +299,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 		withdrawalRouter.claimDelayedWithdrawals(address(stakingNode), type(uint256).max);
 
 		// We can now claim the Rewards from delayedWithdrawal
-		vm.prank(address(actors.STAKING_NODES_ADMIN));
+		vm.prank(address(actors.ops.STAKING_NODES_OPERATOR));
 		stakingNode.processNonBeaconChainETHWithdrawals();
         assertEq(address(stakingNode).balance, 0);
 
@@ -361,7 +361,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		assertEq(address(consensusLayerReceiver).balance, 0, "consensusLayerReceiver.balance != 0");
 		assertEq(address(executionLayerReceiver).balance, 0, "executionLayerReceiver.balance != 0");
 
-		vm.startPrank(actors.STAKING_NODES_ADMIN);
+		vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
 		uint256 rewardsSentToEigenPod = send_eth_rewards_to_eigenpod(stakingNode);
 		stakingNode.processNonBeaconChainETHWithdrawals();
 		vm.stopPrank();
@@ -399,7 +399,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
 		uint256 initialPodBalance = address(eigenPod).balance;
         
-        vm.deal(actors.STAKING_NODES_ADMIN, 40 ether);
+        vm.deal(actors.ops.STAKING_NODES_OPERATOR, 40 ether);
         (bool success,) = payable(address(eigenPod)).call{value: amount}("");
         require(success, "Failed to send rewards to EigenPod");
 

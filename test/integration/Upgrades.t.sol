@@ -21,7 +21,7 @@ contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeYnETH() public {
         address newImplementation = address(new ynETH()); 
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newImplementation, "");
 
         address currentImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneth));
@@ -30,7 +30,7 @@ contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeStakingNodesManager() public {
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
         
         address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
@@ -39,7 +39,7 @@ contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeRewardsDistributor() public {
         address newRewardsDistributorImpl = address(new RewardsDistributor());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(rewardsDistributor))).upgradeAndCall(ITransparentUpgradeableProxy(address(rewardsDistributor)), newRewardsDistributorImpl, "");
         
         address currentRewardsDistributorImpl = getTransparentUpgradeableProxyImplementationAddress(address(rewardsDistributor));
@@ -48,7 +48,7 @@ contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeYnLSD() public {
         address newYnLSDImpl = address(new ynLSD());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd))).upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newYnLSDImpl, "");
         
         address currentYnLSDImpl = getTransparentUpgradeableProxyImplementationAddress(address(ynlsd));
@@ -57,7 +57,7 @@ contract UpgradesTest is IntegrationBaseTest {
 
     function testUpgradeYieldNestOracle() public {
         address newYieldNestOracleImpl = address(new YieldNestOracle());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yieldNestOracle))).upgradeAndCall(ITransparentUpgradeableProxy(address(yieldNestOracle)), newYieldNestOracleImpl, "");
         
         address currentYieldNestOracleImpl = getTransparentUpgradeableProxyImplementationAddress(address(yieldNestOracle));
@@ -70,7 +70,7 @@ contract UpgradesTest is IntegrationBaseTest {
         });
 
         address newStakingNodesManagerV2Impl = address(new TestStakingNodesManagerV2());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(
                 ITransparentUpgradeableProxy(address(stakingNodesManager)),
@@ -105,7 +105,7 @@ contract UpgradesTest is IntegrationBaseTest {
         nETH.mint(address(this), 100000 ether);
 
         address newImplementation = address(new MockYnETHERC4626()); 
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth)))
             .upgradeAndCall(ITransparentUpgradeableProxy(
                 address(yneth)),
@@ -138,11 +138,11 @@ contract UpgradesTest is IntegrationBaseTest {
 
         // Re-deploying ynLSD and creating its proxy again
         ynlsd = new ynLSD();
-        ynlsdProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.PROXY_ADMIN_OWNER, "");
+        ynlsdProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
         ynlsd = ynLSD(payable(ynlsdProxy));
 
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.DEFAULT_SIGNER;
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
 
         IERC20[] memory assets = new IERC20[](2);
         address[] memory assetsAddresses = new address[](2);
@@ -163,7 +163,6 @@ contract UpgradesTest is IntegrationBaseTest {
         strategies[1] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
         priceFeeds[1] = chainAddresses.lsd.STETH_FEED_ADDRESS;
         maxAges[1] = uint256(86400); //one hour
-
         ynLSD.Init memory init = ynLSD.Init({
             assets: assets,
             strategies: strategies,
@@ -171,13 +170,13 @@ contract UpgradesTest is IntegrationBaseTest {
             delegationManager: delegationManager,
             oracle: yieldNestOracle,
             maxNodeCount: 10,
-            admin: actors.ADMIN,
-            stakingAdmin: actors.STAKING_ADMIN,
-            lsdRestakingManager: actors.LSD_RESTAKING_MANAGER,
-            lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
+            admin: actors.admin.ADMIN,
+            stakingAdmin: actors.admin.STAKING_ADMIN,
+            lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
+            lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.PAUSE_ADMIN,
-            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPPER
+            pauser: actors.admin.PAUSE_ADMIN,
+            depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
         });
 
         return (init, ynlsd);

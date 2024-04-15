@@ -30,7 +30,7 @@ interface IStakingNodesManager {
     function delayedWithdrawalRouter() external view returns (IDelayedWithdrawalRouter);
     function getAllValidators() external view returns (Validator[] memory);
     function getAllNodes() external view returns (IStakingNode[] memory);
-    function isStakingNodesAdmin(address) external view returns (bool);
+    function isStakingNodesOperator(address) external view returns (bool);
     function isStakingNodesDelegator(address _address) external view returns (bool);
     function processRewards(uint nodeId, RewardsType rewardsType) external payable;
     function registerValidators(

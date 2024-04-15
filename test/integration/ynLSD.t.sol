@@ -18,7 +18,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 1 ether;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
         
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
@@ -38,7 +38,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         IPausable(address(strategyManager)).pause(1);
 
         vm.expectRevert(bytes("Pausable: index is paused"));
-        vm.prank(actors.LSD_RESTAKING_MANAGER);
+        vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
     }
 
@@ -108,7 +108,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
     }
 
     function testConvertToSharesBootstrapStrategy() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         uint256[] memory totalAssets = ynlsd.getTotalAssets();
         ynlsd.nodes(0);
@@ -118,7 +118,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
     }
 
     function testConvertToSharesZeroStrategy() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         uint256[] memory totalAssets = ynlsd.getTotalAssets();
         ynlsd.nodes(0);
@@ -161,7 +161,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         uint256 amount = 1 ether;
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
 
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
@@ -186,7 +186,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
             assets[0] = asset;
             amounts[0] = amount;
 
-            vm.prank(actors.LSD_RESTAKING_MANAGER);
+            vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
 
             lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
         }
@@ -238,7 +238,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 contract ynLSDAdminTest is IntegrationBaseTest {
 
     function testCreateLSDStakingNode() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
         uint256 expectedNodeId = 0;
@@ -246,7 +246,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     }
 
     function testCreateStakingNodeLSDOverMax() public {
-        vm.startPrank(actors.STAKING_NODE_CREATOR);
+        vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
         for (uint256 i = 0; i < 10; i++) {
             ynlsd.createLSDStakingNode();
         }
@@ -256,12 +256,12 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     } 
 
     function testCreate2LSDStakingNodes() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance1 = ynlsd.createLSDStakingNode();
         uint256 expectedNodeId1 = 0;
         assertEq(lsdStakingNodeInstance1.nodeId(), expectedNodeId1, "Node ID for node 1 does not match expected value");
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance2 = ynlsd.createLSDStakingNode();
         uint256 expectedNodeId2 = 1;
         assertEq(lsdStakingNodeInstance2.nodeId(), expectedNodeId2, "Node ID for node 2 does not match expected value");
@@ -270,28 +270,28 @@ contract ynLSDAdminTest is IntegrationBaseTest {
     function testCreateLSDStakingNodeAfterUpgradeWithoutUpgradeability() public {
         // Upgrade the ynLSD implementation to TestYnLSDV2
         address newImplementation = address(new TestYnLSDV2());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newImplementation, "");
 
         // Attempt to create a LSD staking node after the upgrade - should fail since implementation is not there
         vm.expectRevert();
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
     }
 
     function testUpgradeLSDStakingNodeImplementation() public {
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
 
         // upgrade the ynLSD to support the new initialization version.
         address newYnLSDImpl = address(new TestYnLSDV2());
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newYnLSDImpl, "");
 
         TestLSDStakingNodeV2 testLSDStakingNodeV2 = new TestLSDStakingNodeV2();
-        vm.prank(actors.STAKING_ADMIN);
+        vm.prank(actors.admin.STAKING_ADMIN);
         ynlsd.upgradeLSDStakingNodeImplementation(address(testLSDStakingNodeV2));
 
         UpgradeableBeacon beacon = ynlsd.upgradeableBeacon();
@@ -330,7 +330,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
         vm.expectRevert(abi.encodeWithSelector(ynLSD.NotLSDStakingNode.selector, address(this), 0));
         ynlsd.retrieveAsset(0, asset, amount);
@@ -344,7 +344,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
 
         ILSDStakingNode lsdStakingNode = ynlsd.nodes(0);
@@ -359,7 +359,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         uint256 amount = 64 ether;
 
-        vm.prank(actors.STAKING_NODE_CREATOR);
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ynlsd.createLSDStakingNode();
 
         ILSDStakingNode lsdStakingNode = ynlsd.nodes(0);
@@ -381,7 +381,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 
     function testSetMaxNodeCount() public {
         uint256 maxNodeCount = 10;
-        vm.prank(actors.STAKING_ADMIN);
+        vm.prank(actors.admin.STAKING_ADMIN);
         ynlsd.setMaxNodeCount(maxNodeCount);
         assertEq(ynlsd.maxNodeCount(), maxNodeCount, "Max node count does not match expected value");
     }
@@ -397,7 +397,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         stETH.approve(address(ynlsd), balance);
 
         // Arrange
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.updateDepositsPaused(true);
 
         // Act & Assert
@@ -409,7 +409,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, balance, address(this));
 
         // Unpause and try depositing again
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.updateDepositsPaused(false);
         pauseState = ynlsd.depositsPaused();
 
@@ -440,7 +440,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
     function testTransferSucceedsForWhitelistedAddress() public {
         // Arrange
         uint256 depositAmount = 1 ether;
-        address whitelistedAddress = actors.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
+        address whitelistedAddress = actors.eoa.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
         address recipient = address(6); // An arbitrary recipient address
 
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
@@ -455,7 +455,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         // Act
         address[] memory whitelist = new address[](1);
         whitelist[0] = whitelistedAddress;
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelist); // Whitelisting the address
         vm.prank(whitelistedAddress);
         ynlsd.transfer(recipient, transferAmount);
@@ -472,7 +472,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         addressesToWhitelist[1] = address(2);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(addressesToWhitelist);
 
         // Assert
@@ -496,7 +496,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
 
         uint256 transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
@@ -526,7 +526,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         uint256 transferAmount = ynlsd.balanceOf(arbitraryAddress);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.unpauseTransfers(); // Unpausing transfers for all
         
         vm.prank(arbitraryAddress);
@@ -540,14 +540,14 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
     function testRemoveInitialWhitelistedAddress() public {
         // Arrange
         address[] memory whitelistAddresses = new address[](1);
-        whitelistAddresses[0] = actors.DEFAULT_SIGNER; // EOA address to be removed from whitelist
+        whitelistAddresses[0] = actors.eoa.DEFAULT_SIGNER; // EOA address to be removed from whitelist
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
 
         // Assert
-        bool isWhitelisted = ynlsd.pauseWhiteList(actors.DEFAULT_SIGNER);
+        bool isWhitelisted = ynlsd.pauseWhiteList(actors.eoa.DEFAULT_SIGNER);
         assertFalse(isWhitelisted, "EOA address was not removed from whitelist");
     }
 
@@ -558,11 +558,11 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         newWhitelistAddresses[1] = address(20001); // Second new whitelist address
 
         // Adding addresses to whitelist first
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(newWhitelistAddresses);
 
         // Act
-        vm.prank(actors.PAUSE_ADMIN);
+        vm.prank(actors.admin.PAUSE_ADMIN);
         ynlsd.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
 
         // Assert

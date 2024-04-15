@@ -111,17 +111,16 @@ contract IntegrationBaseTest is Test, Utils {
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
 
-        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributor), actors.PROXY_ADMIN_OWNER, "");
+        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributor), actors.admin.PROXY_ADMIN_OWNER, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
         
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.admin.PROXY_ADMIN_OWNER, "");
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
 
-        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
-        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.PROXY_ADMIN_OWNER, "");
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.PROXY_ADMIN_OWNER, "");
-
-        executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiver), actors.PROXY_ADMIN_OWNER, "");
-        consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiver), actors.PROXY_ADMIN_OWNER, "");
+        executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiver), actors.admin.PROXY_ADMIN_OWNER, "");
+        consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiver), actors.admin.PROXY_ADMIN_OWNER, "");
 
         executionLayerReceiver = RewardsReceiver(payable(executionLayerReceiverProxy));
         consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
@@ -134,12 +133,12 @@ contract IntegrationBaseTest is Test, Utils {
 
         // Re-deploying ynETH and creating its proxy again
         yneth = new ynETH();
-        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.PROXY_ADMIN_OWNER, "");
+        ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");
         yneth = ynETH(payable(ynethProxy));
 
         // Re-deploying StakingNodesManager and creating its proxy again
         stakingNodesManager = new StakingNodesManager();
-        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.PROXY_ADMIN_OWNER, "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
     }
 
@@ -164,11 +163,11 @@ contract IntegrationBaseTest is Test, Utils {
 
     function setupYnETH() public {
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.DEFAULT_SIGNER;
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
         
         ynETH.Init memory ynethInit = ynETH.Init({
-            admin: actors.ADMIN,
-            pauser: actors.PAUSE_ADMIN,
+            admin: actors.admin.ADMIN,
+            pauser: actors.admin.PAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             pauseWhitelist: pauseWhitelist
@@ -180,20 +179,19 @@ contract IntegrationBaseTest is Test, Utils {
     function setupRewardsDistributor() public {
 
         RewardsReceiver.Init memory rewardsReceiverInit = RewardsReceiver.Init({
-            admin: actors.ADMIN,
+            admin: actors.admin.ADMIN,
             withdrawer: address(rewardsDistributor)
         });
-        vm.startPrank(actors.PROXY_ADMIN_OWNER);
+        vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit);
         vm.stopPrank();
-
         RewardsDistributor.Init memory rewardsDistributorInit = RewardsDistributor.Init({
-            admin: actors.ADMIN,
-            rewardsAdmin: actors.REWARDS_ADMIN,
+            admin: actors.admin.ADMIN,
+            rewardsAdmin: actors.admin.REWARDS_ADMIN,
             executionLayerReceiver: executionLayerReceiver,
             consensusLayerReceiver: consensusLayerReceiver,
-            feesReceiver: payable(actors.FEE_RECEIVER),
+            feesReceiver: payable(actors.admin.FEE_RECEIVER),
             ynETH: IynETH(address(yneth))
         });
         rewardsDistributor.initialize(rewardsDistributorInit);
@@ -202,12 +200,12 @@ contract IntegrationBaseTest is Test, Utils {
     function setupStakingNodesManager() public {
         stakingNodeImplementation = new StakingNode();
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
-            admin: actors.ADMIN,
-            stakingAdmin: actors.STAKING_ADMIN,
-            stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
-            stakingNodesDelegator: actors.STAKING_NODES_DELEGATOR,
-            validatorManager: actors.VALIDATOR_MANAGER,
-            pauser: actors.PAUSE_ADMIN,
+            admin: actors.admin.ADMIN,
+            stakingAdmin: actors.admin.STAKING_ADMIN,
+            stakingNodesOperator: actors.ops.STAKING_NODES_OPERATOR,
+            stakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR,
+            validatorManager: actors.ops.VALIDATOR_MANAGER,
+            pauser: actors.admin.PAUSE_ADMIN,
             maxNodeCount: 10,
             depositContract: depositContractEth2,
             ynETH: IynETH(address(yneth)),
@@ -216,11 +214,11 @@ contract IntegrationBaseTest is Test, Utils {
             delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-            stakingNodeCreatorRole:  actors.STAKING_NODE_CREATOR
+            stakingNodeCreatorRole:  actors.ops.STAKING_NODE_CREATOR
         });
-        vm.prank(actors.PROXY_ADMIN_OWNER);
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         stakingNodesManager.initialize(stakingNodesManagerInit);
-        vm.prank(actors.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
+        vm.prank(actors.admin.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
     }
     
@@ -232,7 +230,7 @@ contract IntegrationBaseTest is Test, Utils {
         IStrategy[] memory strategies = new IStrategy[](2);
 
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.PAUSE_ADMIN;
+        pauseWhitelist[0] = actors.admin.PAUSE_ADMIN;
 
         // stETH
         assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -252,11 +250,10 @@ contract IntegrationBaseTest is Test, Utils {
             assets: assetsAddresses,
             priceFeedAddresses: priceFeeds,
             maxAges: maxAges,
-            admin: actors.ADMIN,
-            oracleManager: actors.ORACLE_MANAGER
+            admin: actors.admin.ADMIN,
+            oracleManager: actors.admin.ORACLE_ADMIN
         });
         yieldNestOracle.initialize(oracleInit);
-
         LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
         ynLSD.Init memory init = ynLSD.Init({
             assets: assets,
@@ -265,23 +262,23 @@ contract IntegrationBaseTest is Test, Utils {
             delegationManager: delegationManager,
             oracle: yieldNestOracle,
             maxNodeCount: 10,
-            admin: actors.ADMIN,
-            stakingAdmin: actors.STAKING_ADMIN,
-            lsdRestakingManager: actors.LSD_RESTAKING_MANAGER,
-            lsdStakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
+            admin: actors.admin.ADMIN,
+            stakingAdmin: actors.admin.STAKING_ADMIN,
+            lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
+            lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.PAUSE_ADMIN,
-            depositBootstrapper: actors.DEPOSIT_BOOTSTRAPPER
+            pauser: actors.admin.PAUSE_ADMIN,
+            depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
         });
 
         TestAssetUtils testAssetUtils = new TestAssetUtils();
-        testAssetUtils.get_stETH(actors.DEPOSIT_BOOTSTRAPPER, 10000 ether);
+        testAssetUtils.get_stETH(actors.eoa.DEPOSIT_BOOTSTRAPPER, 10000 ether);
 
-        vm.prank(actors.DEPOSIT_BOOTSTRAPPER);
+        vm.prank(actors.eoa.DEPOSIT_BOOTSTRAPPER);
         IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynlsd), type(uint256).max);
         ynlsd.initialize(init);
 
-        vm.prank(actors.STAKING_ADMIN);
+        vm.prank(actors.admin.STAKING_ADMIN);
         ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }
