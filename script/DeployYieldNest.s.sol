@@ -129,6 +129,7 @@ contract DeployYieldNest is BaseScript {
             admin: actors.DEFAULT_SIGNER, // change at end of script
             stakingAdmin: actors.DEFAULT_SIGNER, // change at end of script
             stakingNodesAdmin: actors.STAKING_NODES_ADMIN,
+            stakingNodesDelegator: actors.STAKING_NODES_DELEGATOR,
             validatorManager: actors.VALIDATOR_MANAGER,
             stakingNodeCreatorRole: actors.STAKING_NODE_CREATOR,
             pauser: actors.PAUSE_ADMIN,
