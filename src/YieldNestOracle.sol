@@ -9,20 +9,39 @@ interface IYieldNestOracleEvents {
 }
 
 contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
-    struct AssetPriceFeed {
-        AggregatorV3Interface priceFeed;
-        uint256 maxAge; // in seconds
-    }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+    
     error PriceFeedTooStale(uint256 age, uint256 maxAge);
     error ZeroAddress();
     error ZeroAge();
     error ArraysLengthMismatch(uint256 assetsLength, uint256 priceFeedAddressesLength, uint256 maxAgesLength);
     error PriceFeedNotSet();
-    error InvalidPriceValue(int256 price);
+    error InvalidPriceValue(int256 price); 
+    
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    struct AssetPriceFeed {
+        AggregatorV3Interface priceFeed;
+        uint256 maxAge; // in seconds
+    }
 
     mapping(address => AssetPriceFeed) public assetPriceFeeds;
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
+    
     struct Init {
         address[] assets;
         address[] priceFeedAddresses;
@@ -30,9 +49,6 @@ contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
         address admin;
         address oracleManager;
     }
-
-    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
-    bytes32 public constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     constructor() {
        _disableInitializers();
@@ -44,7 +60,7 @@ contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
         notZeroAddress(init.oracleManager)
         initializer {
          __AccessControl_init();
-        _grantRole(ADMIN_ROLE, init.admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(ORACLE_MANAGER_ROLE, init.oracleManager);
 
         if (init.assets.length != init.priceFeedAddresses.length || init.assets.length != init.maxAges.length) {
@@ -55,6 +71,9 @@ contract YieldNestOracle is AccessControlUpgradeable, IYieldNestOracleEvents {
         }
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  FUNCTIONS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
 
     /**
      * @notice Sets the price feed for a given asset.
