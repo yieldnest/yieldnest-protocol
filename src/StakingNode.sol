@@ -12,14 +12,18 @@ import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
+
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event Undelegated(address indexed operator);
-     event WithdrawalsProcessed(uint256 claimedAmount, uint256 totalValidatorPrincipal, uint256 allocatedETH);
+     event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
      event ETHReceived(address sender, uint256 value);
      event WithdrawnNonBeaconChainETH(uint256 amount);
+     event AllocatedStakedETH(uint256 currenAllocatedStakedETH, uint256 newAmount);
+     event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
 }
 
 /**
@@ -28,6 +32,7 @@ interface StakingNodeEvents {
  * Each StakingNode owns exactl one EigenPod which acts as a delegation unit, as it can be associated with exactly one operator.
  */
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
+    using BeaconChainProofs for *;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -35,14 +40,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     error NotStakingNodesAdmin();
     error ETHDepositorNotDelayedWithdrawalRouter();
-    error WithdrawalPrincipalAmountTooHigh(uint256 withdrawnValidatorPrincipal, uint256 allocatedETH);
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
+    error NotStakingNodesDelegator();
     error MismatchedOracleBlockNumberAndValidatorIndexLengths(uint256 oracleBlockNumberLength, uint256 validatorIndexLength);
     error MismatchedValidatorIndexAndProofsLengths(uint256 validatorIndexLength, uint256 proofsLength);
     error MismatchedProofsAndValidatorFieldsLengths(uint256 proofsLength, uint256 validatorFieldsLength);
     error UnexpectedETHBalance(uint256 claimedAmount, uint256 expectedETHBalance);
+    error NoBalanceToProcess();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -65,6 +71,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @dev Allows only a whitelisted address to configure the contract
     modifier onlyAdmin() {
         if(!stakingNodesManager.isStakingNodesAdmin(msg.sender)) revert NotStakingNodesAdmin();
+        _;
+    }
+
+    modifier onlyDelegator() {
+        if (!stakingNodesManager.isStakingNodesDelegator(msg.sender)) revert NotStakingNodesDelegator();
         _;
     }
 
@@ -137,55 +148,21 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /**
      * @notice Processes withdrawals by verifying the node's balance and transferring ETH to the StakingNodesManager.
      * @dev This function checks if the node's current balance matches the expected balance and then transfers the ETH to the StakingNodesManager.
-     * @param totalValidatorPrincipal The total principal amount of the validators.
-     * @param expectedETHBalance The expected balance of the node after withdrawals.
      */
-    function processWithdrawals(
-        uint256 totalValidatorPrincipal,
-        uint256 expectedETHBalance
-    ) public nonReentrant onlyAdmin {
+    function processNonBeaconChainETHWithdrawals() public nonReentrant onlyAdmin {
 
         uint256 balance = address(this).balance;
-
-        // check for any race conditions with balances by passing in the expected balance
-        if (balance < expectedETHBalance) {
-            revert UnexpectedETHBalance(balance, expectedETHBalance);
+        if (balance == 0) {
+            revert NoBalanceToProcess();
         }
-
-        // check the desired balance of validator principal is available here
-        if (balance < totalValidatorPrincipal) {
-            revert WithdrawalPrincipalAmountTooHigh(totalValidatorPrincipal, balance);
-        }
-
-        // substract withdrawn validator principal from the allocated balance
-        allocatedETH -= totalValidatorPrincipal;
-
-        // push the expectedETHBalance here to the StakingNodesManager
-        // balance - expectedETHBalance will have to be processed separately in another transaction
-        // since its breakdown of rewards vs principal is unknown at runtime
-        stakingNodesManager.processWithdrawnETH{value: expectedETHBalance}(nodeId, totalValidatorPrincipal);
-        emit WithdrawalsProcessed(balance, totalValidatorPrincipal, allocatedETH);
+        stakingNodesManager.processRewards{value: balance}(nodeId, RewardsType.ConsensusLayer);
+        emit NonBeaconChainETHWithdrawalsProcessed(balance);
     }
 
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
-
-    function delegate(address operator) public override onlyAdmin {
-
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
-
-        // Only supports empty approverSignatureAndExpiry and approverSalt
-        // this applies when no IDelegationManager.OperatorDetails.delegationApprover is specified by operator
-        // TODO: add support for operators that require signatures
-        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry;
-        bytes32 approverSalt;
-
-        delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
-
-        emit Delegated(operator, approverSalt);
-    }    
 
     /// @dev Validates the withdrawal credentials for a withdrawal
     /// This activates the activation of the staked funds within EigenLayer
@@ -201,6 +178,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bytes[] calldata validatorFieldsProofs,
         bytes32[][] calldata validatorFields
     ) external onlyAdmin {
+
         IEigenPod(address(eigenPod)).verifyWithdrawalCredentials(
             oracleTimestamp,
             stateRootProof,
@@ -210,111 +188,37 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         );
 
         for (uint256 i = 0; i < validatorIndices.length; i++) {
-
-            // TODO: check if this is correct
-            uint64 validatorBalanceGwei = BeaconChainProofs.getEffectiveBalanceGwei(validatorFields[i]);
-
-            allocatedETH -= (validatorBalanceGwei * 1e9);
+            uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
+            emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
         }
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  WITHDRAWAL AND UNDELEGATION   --------------------
+    //----------------------------------  DELEGATION   -------------------------------------
     //--------------------------------------------------------------------------------------
 
+    function delegate(
+        address operator,
+        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
+        bytes32 approverSalt
+        ) public override onlyDelegator {
 
-    /*
-    *  Withdrawal Flow:
-    *
-    *  1. queueWithdrawals() - Admin queues withdrawals
-    *  2. undelegate() - Admin undelegates
-    *  3. verifyAndProcessWithdrawals() - Admin verifies and processes withdrawals
-    *  4. completeWithdrawal() - Admin completes withdrawal
-    *
-    */
-
-    function queueWithdrawals(uint256 shares) public onlyAdmin {
-    
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
 
-        IDelegationManager.QueuedWithdrawalParams[] memory queuedWithdrawalParams = new IDelegationManager.QueuedWithdrawalParams[](1);
-        queuedWithdrawalParams[0] = IDelegationManager.QueuedWithdrawalParams({
-            strategies: new IStrategy[](1),
-            shares: new uint256[](1),
-            withdrawer: address(this)
-        });
-        queuedWithdrawalParams[0].strategies[0] = IStrategy(address(beaconChainETHStrategy));
-        queuedWithdrawalParams[0].shares[0] = shares;
-        
-        delegationManager.queueWithdrawals(queuedWithdrawalParams);
+        emit Delegated(operator, approverSalt);
     }
 
-    function undelegate() public override onlyAdmin {
-        
+    function undelegate() public onlyDelegator {
+   
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+
+        address operator = delegationManager.delegatedTo(address(this));
+        emit Undelegated(operator);
+
         delegationManager.undelegate(address(this));
+ 
     }
-
-    function verifyAndProcessWithdrawals(
-        uint64 oracleTimestamp,
-        BeaconChainProofs.StateRootProof calldata stateRootProof,
-        BeaconChainProofs.WithdrawalProof[] calldata withdrawalProofs,
-        bytes[] calldata validatorFieldsProofs,
-        bytes32[][] calldata validatorFields,
-        bytes32[][] calldata withdrawalFields
-    ) external onlyAdmin {
-    
-        IEigenPod(address(eigenPod)).verifyAndProcessWithdrawals(
-            oracleTimestamp,
-            stateRootProof,
-            withdrawalProofs,
-            validatorFieldsProofs,
-            validatorFields,
-            withdrawalFields
-        );
-    }
-
-    function completeWithdrawal(
-        uint256 shares,
-        uint32 startBlock
-    ) external onlyAdmin {
-
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
-
-        uint256[] memory sharesArray = new uint256[](1);
-        sharesArray[0] = shares;
-
-        IStrategy[] memory strategiesArray = new IStrategy[](1);
-        strategiesArray[0] = IStrategy(address(beaconChainETHStrategy));
-
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
-            staker: address(this),
-            delegatedTo: delegationManager.delegatedTo(address(this)),
-            withdrawer: address(this),
-            nonce: 0, // TODO: fix
-            startBlock: startBlock,
-            strategies: strategiesArray,
-            shares:  sharesArray
-        });
-
-        uint256 balanceBefore = address(this).balance;
-
-        IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = IERC20(0x0000000000000000000000000000000000000000);
-
-        // middlewareTimesIndexes is 0, since it's unused
-        // https://github.com/Layr-Labs/eigenlayer-contracts/blob/5fd029069b47bf1632ec49b71533045cf00a45cd/src/contracts/core/DelegationManager.sol#L556
-        delegationManager.completeQueuedWithdrawal(withdrawal, tokens, 0, true);
-
-        uint256 balanceAfter = address(this).balance;
-        uint256 fundsWithdrawn = balanceAfter - balanceBefore;
-
-        // TODO: revise if rewards may be captured in here as well
-        stakingNodesManager.processWithdrawnETH{value: fundsWithdrawn}(nodeId, fundsWithdrawn);
-    }
-
-
-    /// M2 ABOVE
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ETH BALANCE ACCOUNTING  --------------------------
@@ -322,6 +226,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
+        emit AllocatedStakedETH(allocatedETH, amount);
         allocatedETH += amount;
     }
 

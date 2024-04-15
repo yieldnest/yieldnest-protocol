@@ -5,6 +5,7 @@ import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/librarie
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;
@@ -36,11 +37,15 @@ interface IStakingNode {
     function eigenPod() external view returns (IEigenPod);
     function initialize(Init memory init) external;
     function createEigenPod() external returns (IEigenPod);
-    function delegate(address operator) external;
+    function delegate(
+        address operator,
+        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
+        bytes32 approverSalt
+    ) external;
     function undelegate() external;
 
     function withdrawNonBeaconChainETHBalanceWei() external;
-    function processWithdrawals(uint256 totalValidatorPrincipal, uint256 expectedETHBalance) external;
+    function processNonBeaconChainETHWithdrawals() external;
 
     function implementation() external view returns (address);
 
