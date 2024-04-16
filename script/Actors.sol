@@ -22,6 +22,7 @@ contract ActorAddresses {
         address VALIDATOR_MANAGER;
         address LSD_RESTAKING_MANAGER;
         address STAKING_NODE_CREATOR;
+        address POOLED_DEPOSITS_OWNER;
     }
 
     struct Actors {
@@ -52,7 +53,8 @@ contract ActorAddresses {
                 STAKING_NODES_OPERATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 VALIDATOR_MANAGER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 LSD_RESTAKING_MANAGER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                STAKING_NODE_CREATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
+                STAKING_NODE_CREATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
+                POOLED_DEPOSITS_OWNER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
             })
         });
 
