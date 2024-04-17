@@ -1,8 +1,8 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../../src/PooledDepositsVault.sol";
-import "../../src/interfaces/IynETH.sol";
+import {PooledDepositsVault} from "src/PooledDepositsVault.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
 import "test/integration/IntegrationBaseTest.sol";
 
 contract PooledDepositsVaultTest is IntegrationBaseTest {

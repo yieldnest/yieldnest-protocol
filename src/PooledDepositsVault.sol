@@ -1,4 +1,4 @@
-import "./interfaces/IynETH.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
 
 import "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
