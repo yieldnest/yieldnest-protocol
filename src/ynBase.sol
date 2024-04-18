@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/ERC20Upgradeable.sol";
-import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-supgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-supgradeable/access/AccessControlUpgradeable.sol";
 
 
 interface IynBaseEvents {
