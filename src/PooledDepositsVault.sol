@@ -16,6 +16,7 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     error DepositMustBeGreaterThanZero();
     error YnETHIsSet();
     error YnETHNotSet();
+    error AlreadySetAsYnETH();
 
     mapping(address => uint256) public balances;
 
@@ -34,6 +35,7 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     /// @notice Sets the YnETH contract address.
     /// @param _ynETH The address of the YnETH contract.
     function setYnETH(IynETH _ynETH) public onlyOwner {
+        if (address(_ynETH) == address(ynETH)) revert AlreadySetAsYnETH();
         emit YnETHSet(address(ynETH), address(_ynETH));
         ynETH = _ynETH;
     }
