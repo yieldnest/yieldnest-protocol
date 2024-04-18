@@ -25,6 +25,10 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     mapping(address => uint256) public balances;
     IynETH public ynETH;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initializes the contract with the initial owner.
     /// @param initialOwner The address of the initial owner.
     function initialize(address initialOwner) public initializer {
