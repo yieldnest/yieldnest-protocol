@@ -20,7 +20,7 @@ interface StakingNodeEvents {
      event Undelegated(address indexed operator);
      event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
      event ETHReceived(address sender, uint256 value);
-     event WithdrawnNonBeaconChainETH(uint256 amount);
+     event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
      event AllocatedStakedETH(uint256 currenAllocatedStakedETH, uint256 newAmount);
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
 }
@@ -139,9 +139,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *       validators sweep them to the withdrawal address
      */
     function withdrawNonBeaconChainETHBalanceWei() external onlyAdmin {
-        uint256 eigenPodBalance = address(eigenPod).balance;
-        emit WithdrawnNonBeaconChainETH(eigenPodBalance);
-        eigenPod.withdrawNonBeaconChainETHBalanceWei(address(this), eigenPodBalance);
+
+        // withdraw all available balance to withdraw.
+        //Warning: the ETH balance of the EigenPod may be higher in case there's beacon chain ETH there
+        uint256 balanceToWithdraw = eigenPod.nonBeaconChainETHBalanceWei();
+        eigenPod.withdrawNonBeaconChainETHBalanceWei(address(this), balanceToWithdraw);
+        emit WithdrawnNonBeaconChainETH(balanceToWithdraw, address(eigenPod).balance);
     }
 
     /**
