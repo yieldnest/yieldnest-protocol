@@ -2,7 +2,7 @@
 pragma solidity 0.8.24;
 
 import "test/integration/IntegrationBaseTest.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
 
 

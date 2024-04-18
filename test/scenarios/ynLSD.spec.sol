@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import { IntegrationBaseTest } from "test/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
-import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { IERC20 } from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import { TestAssetUtils } from "test/utils/TestAssetUtils.sol";
 
 contract YnLSDScenarioTest1 is IntegrationBaseTest {

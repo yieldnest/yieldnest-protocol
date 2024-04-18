@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-supgradeable/access/AccessControlUpgradeable.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 

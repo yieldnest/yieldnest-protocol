@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 
 contract TestAssetUtils is Test {
