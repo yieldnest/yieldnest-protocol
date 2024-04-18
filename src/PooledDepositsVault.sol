@@ -30,9 +30,9 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Initializes the contract with the initial owner.
-    /// @param initialOwner The address of the initial owner.
-    function initialize(address initialOwner) public initializer {
-        __Ownable_init(initialOwner);
+    /// @param _initialOwner The address of the initial owner.
+    function initialize(address _initialOwner) public initializer {
+        __Ownable_init(_initialOwner);
     }
 
     /// @notice Sets the YnETH contract address.
@@ -53,13 +53,13 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     }
 
     /// @notice Finalizes deposits by converting deposited ETH into ynETH shares for each depositor.
-    /// @param depositors An array of addresses of depositors whose deposits are to be finalized.
-    /// @dev Emits a DepositsFinalized event for each depositor.
-    function finalizeDeposits(address[] calldata depositors) external {
+    /// @param _depositors An array of addresses of depositors whose deposits are to be finalized.
+    /// @dev Emits a DepositFinalized event for each depositor.
+    function finalizeDeposits(address[] calldata _depositors) external {
         if (address(ynETH) == address(0)) revert YnETHNotSet();
         
-        for (uint i = 0; i < depositors.length; i++) {
-            address depositor = depositors[i];
+        for (uint i = 0; i < _depositors.length; i++) {
+            address depositor = _depositors[i];
             uint256 depositAmountPerDepositor = balances[depositor];
             if (depositAmountPerDepositor == 0) {
                 continue;
