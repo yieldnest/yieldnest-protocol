@@ -18,7 +18,7 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     error YnETHNotSet();
     error AlreadySetAsYnETH();
 
-    event DepositReceived(address indexed depositor, uint256 amount);
+    event DepositReceived(address indexed depositor, uint256 amount, uint256 totalAmount);
     event DepositsFinalized(address indexed depositor, uint256 totalAmount, uint256 ynETHAmount);
     event YnETHSet(address indexed previousValue, address indexed newValue);
 
@@ -49,7 +49,7 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
         if (address(ynETH) != address(0)) revert YnETHIsSet();
         if (msg.value == 0) revert DepositMustBeGreaterThanZero();
         balances[msg.sender] += msg.value;
-        emit DepositReceived(msg.sender, msg.value);
+        emit DepositReceived(msg.sender, msg.value, balances[msg.sender]);
     }
 
     /// @notice Finalizes deposits by converting deposited ETH into ynETH shares for each depositor.
