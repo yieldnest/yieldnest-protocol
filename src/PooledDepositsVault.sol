@@ -18,12 +18,11 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     error YnETHNotSet();
     error AlreadySetAsYnETH();
 
-    mapping(address => uint256) public balances;
-
     event DepositReceived(address indexed depositor, uint256 amount);
     event DepositsFinalized(address indexed depositor, uint256 totalAmount, uint256 ynETHAmount);
     event YnETHSet(address previousValue, address newValue);
 
+    mapping(address => uint256) public balances;
     IynETH public ynETH;
 
     /// @notice Initializes the contract with the initial owner.
