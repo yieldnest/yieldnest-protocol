@@ -4,6 +4,8 @@ import "forge-std/Test.sol";
 import {PooledDepositsVault} from "src/PooledDepositsVault.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import "test/integration/IntegrationBaseTest.sol";
+import "src/ynBase.sol";
+
 
 contract PooledDepositsVaultTest is IntegrationBaseTest {
 
@@ -119,22 +121,24 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         // Arrange
         (PooledDepositsVault pooledDepositsVault, address owner) = createPooledDeposits();
         uint256 depositAmount = 1 ether;
-        vm.deal(address(this), depositAmount);
+        address depositor = address(0x123); // Use a test address instead of address(this)
+        vm.deal(depositor, depositAmount);
 
-                // Set ynETH before finalizing deposits
+        // Set ynETH before finalizing deposits
         vm.prank(owner);
         pooledDepositsVault.setYnETH(IynETH(address(yneth)));
 
         // Act & Assert
         vm.expectRevert(PooledDepositsVault.YnETHIsSet.selector);
+        vm.prank(depositor);
         pooledDepositsVault.deposit{value: depositAmount}();
     }
-
+    
     function testFinalizeDepositsBeforeSettingYnETH() public {
         // Arrange
         (PooledDepositsVault pooledDepositsVault,) = createPooledDeposits();
         address[] memory depositors = new address[](1);
-        depositors[0] = address(this);
+        depositors[0] = address(0x123); // Use a test address instead of address(this)
 
         // Act & Assert
         vm.expectRevert(PooledDepositsVault.YnETHNotSet.selector);
@@ -171,23 +175,28 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         
         // Arrange
         (PooledDepositsVault pooledDepositsVault,) = createPooledDeposits();
-        vm.deal(address(this), depositAmount);
+        address depositor = address(0x123);
+        vm.deal(depositor, depositAmount);
+        vm.prank(depositor);
 
         // Act
         (bool success, ) = address(pooledDepositsVault).call{value: depositAmount}("");
 
         // Assert
         assertTrue(success, "ETH send should succeed");
-        assertEq(pooledDepositsVault.balances(address(this)), depositAmount, "Deposit amount should be recorded in balances");
+        assertEq(pooledDepositsVault.balances(depositor), depositAmount, "Deposit amount should be recorded in balances");
     }
 
     function testFinalizeDepositsMultipleTimesForSameUser() public {
         // Arrange
         (PooledDepositsVault pooledDepositsVault, address owner) = createPooledDeposits();
         address[] memory depositors = new address[](1);
-        depositors[0] = address(this);
+        address depositor = address(0x1234);
+        depositors[0] = depositor;
         uint256 depositAmount = 1 ether;
-        vm.deal(address(this), depositAmount);
+
+        vm.deal(depositor, depositAmount + 100 ether);
+        vm.prank(depositor);
         pooledDepositsVault.deposit{value: depositAmount}();
 
         // Set ynETH before finalizing deposits
@@ -199,22 +208,22 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         pooledDepositsVault.finalizeDeposits(depositors);
 
         // Assert first finalize
-        uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(depositor);
         assertTrue(sharesAfterFirstFinalize > 0, "Shares should be allocated after first finalize");
 
         // Check balance after first finalize
-        uint256 balanceAfterFirstFinalize = pooledDepositsVault.balances(address(this));
+        uint256 balanceAfterFirstFinalize = pooledDepositsVault.balances(depositor);
         assertEq(balanceAfterFirstFinalize, 0, "Balance should be 0 after first finalize");
 
         // Attempt to finalize again
         pooledDepositsVault.finalizeDeposits(depositors);
 
         // Assert second finalize
-        uint256 sharesAfterSecondFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        uint256 sharesAfterSecondFinalize = IynETH(address(yneth)).balanceOf(depositor);
         assertEq(sharesAfterFirstFinalize, sharesAfterSecondFinalize, "Shares should not change after second finalize");
 
         // Check balance after second finalize
-        uint256 balanceAfterSecondFinalize = pooledDepositsVault.balances(address(this));
+        uint256 balanceAfterSecondFinalize = pooledDepositsVault.balances(depositor);
         assertEq(balanceAfterSecondFinalize, 0, "Balance should remain 0 after second finalize");
     }
 
@@ -244,17 +253,19 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         uint256 firstDepositAmount = 1 ether;
         uint256 secondDepositAmount = 2 ether;
         address[] memory depositors = new address[](1);
-        depositors[0] = address(this);
-        vm.deal(address(this), firstDepositAmount + secondDepositAmount);
+        address depositor = address(0xBEEF);
+        depositors[0] = depositor;
+        vm.deal(depositor, firstDepositAmount + secondDepositAmount + 100 ether);
 
         // Act 1 - Deposit and finalize
+        vm.prank(depositor);
         pooledDepositsVault.deposit{value: firstDepositAmount}();
         vm.prank(owner);
         pooledDepositsVault.setYnETH(IynETH(address(yneth)));
         pooledDepositsVault.finalizeDeposits(depositors);
 
         // Assert 1
-        uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(depositor);
         assertEq(sharesAfterFirstFinalize, firstDepositAmount, "Shares should equal the deposit amount after first finalize");
 
         // Reset ynETH to 0
@@ -262,14 +273,48 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         pooledDepositsVault.setYnETH(IynETH(address(0)));
 
         // Act 2 - Deposit and finalize after resetting ynETH
+        vm.prank(depositor);
         pooledDepositsVault.deposit{value: secondDepositAmount}();
         vm.prank(owner);
         pooledDepositsVault.setYnETH(IynETH(address(yneth))); // Set ynETH back to a valid address
         pooledDepositsVault.finalizeDeposits(depositors);
 
         // Assert 2
-        uint256 sharesAfterSecondFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        uint256 sharesAfterSecondFinalize = IynETH(address(yneth)).balanceOf(depositor);
         assertEq(sharesAfterSecondFinalize, sharesAfterFirstFinalize + secondDepositAmount, "Shares should exactly match the total deposits after second finalize");
+    }
+
+    function testDepositFinalizeTransferAndUnpauseFlow() public {
+        // Arrange
+        (PooledDepositsVault pooledDepositsVault, address owner) = createPooledDeposits();
+        uint256 depositAmount = 1 ether;
+        address recipient = address(0x123);
+        address depositor = address(0xBEEF);
+        vm.deal(depositor, depositAmount);
+
+        // Act 1 - Deposit and finalize
+        vm.prank(depositor);
+        pooledDepositsVault.deposit{value: depositAmount}();
+        vm.prank(owner);
+        pooledDepositsVault.setYnETH(IynETH(address(yneth)));
+        address[] memory depositors = new address[](1);
+        depositors[0] = depositor;
+        pooledDepositsVault.finalizeDeposits(depositors);
+
+        // Try to transfer ynETH tokens and expect revert due to paused transfers
+        vm.expectRevert(ynBase.TransfersPaused.selector);
+        IynETH(address(yneth)).transfer(recipient, depositAmount);
+
+        // Unpause transfers
+        vm.prank(actors.admin.PAUSE_ADMIN);
+        yneth.unpauseTransfers();
+
+        // Act 2 - Transfer ynETH tokens after unpausing
+        vm.prank(depositor);
+        IynETH(address(yneth)).transfer(recipient, depositAmount);
+
+        // Assert
+        assertEq(IynETH(address(yneth)).balanceOf(recipient), depositAmount, "Recipient should receive the correct amount of ynETH tokens");
     }
     
     receive() external payable {}
