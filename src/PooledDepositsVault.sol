@@ -20,7 +20,7 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
 
     event DepositReceived(address indexed depositor, uint256 amount);
     event DepositsFinalized(address indexed depositor, uint256 totalAmount, uint256 ynETHAmount);
-    event YnETHSet(address previousValue, address newValue);
+    event YnETHSet(address indexed previousValue, address indexed newValue);
 
     mapping(address => uint256) public balances;
     IynETH public ynETH;
