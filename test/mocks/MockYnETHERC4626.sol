@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC20/extensions/ERC4626Upgradeable.sol";
+import "@openzeppelin/contracts-supgradeable/token/ERC20/extensions/ERC4626Upgradeable.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 
 import {IynETH} from "src/interfaces/IynETH.sol";
-import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-supgradeable/access/AccessControlUpgradeable.sol";
 import "forge-std/console.sol";
 
 

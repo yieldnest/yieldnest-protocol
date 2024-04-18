@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {ynETH} from "src/ynETH.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
-import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract RolesTest is IntegrationBaseTest {
 

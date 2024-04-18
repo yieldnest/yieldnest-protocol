@@ -3,8 +3,8 @@ pragma solidity ^0.8.24;
 
 import {IynETH} from "src/interfaces/IynETH.sol";
 
-import "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import "lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-supgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-supgradeable/access/OwnableUpgradeable.sol";
 
 /// @title Pooled Deposits Vault
 /// @notice This contract allows users to deposit ETH into a pooled vault, which can then be converted into ynETH shares.
