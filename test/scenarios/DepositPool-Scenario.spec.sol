@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import { IntegrationBaseTest } from "test/integration/IntegrationBaseTest.sol";
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {PooledDepositsVault} from "src/PooledDepositsVault.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from"forge-std/Test.sol";
@@ -37,7 +38,9 @@ contract PooledDepositsScenarioTest is IntegrationBaseTest {
 
         // Deploy the PooledDepositsVault contract and initialize it
         vault = new PooledDepositsVault();
-        vault.initialize(address(this)); // Assuming the test contract is the owner
+        TransparentUpgradeableProxy vaultProxy = new TransparentUpgradeableProxy(address(vault), address(this), ""); // Assuming the test contract is the owner
+        vault = PooledDepositsVault(payable(address(vaultProxy)));
+        vault.initialize(address(this));
     }
 
     function testAttackBySendingManySmallDeposits() public {
