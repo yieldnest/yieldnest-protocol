@@ -94,14 +94,13 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         assertEq(eigenPodInstance.mostRecentWithdrawalTimestamp(), 0, "Most recent withdrawal block should be greater than 0");
 
         address payable eigenPodAddress = payable(address(eigenPodInstance));
-        // Validators are configured to send consensus layer rewards directly to the EigenPod address.
-        // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
+        // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
         uint256 rewardsSweeped = 1 ether;
         vm.deal(address(this), rewardsSweeped);
         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
         require(success, "Failed to send rewards to EigenPod");
 
-        // trigger withdraw before restaking succesfully
+        // trigger non beacon chain ETH withdrawal
         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
         vm.stopPrank();
@@ -140,8 +139,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
 
        address payable eigenPodAddress = payable(address(eigenPodInstance));
-        // Validators are configured to send consensus layer rewards directly to the EigenPod address.
-        // These rewards are then sweeped into the StakingNode's balance as part of the withdrawal process.
+        // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
         uint256 rewardsSweeped = 1 ether;
         vm.deal(address(this), rewardsSweeped);
         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
@@ -199,7 +197,6 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
     }
 
-
    function testProcessNonBeaconChainETHWithdrawalsWithExistingValidatorPrincipal() public {
 
        uint256 activeValidators = 5;
@@ -219,6 +216,52 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
         vm.stopPrank();
+
+        IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
+        vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
+
+        delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+
+        uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
+        uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
+
+        assertEq(stakingNodeInstance.getETHBalance(), depositAmount, "StakingNode ETH balance does not match expected value");
+        assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
+    }
+
+    function testProcessNonBeaconChainETHWithdrawalsWhenETHArrivesFromBeaconChainAsWell() public {
+
+       uint256 activeValidators = 5;
+
+       uint256 depositAmount = activeValidators * 32 ether;
+
+       (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+
+       address payable eigenPodAddress = payable(address(eigenPodInstance));
+        // Arbitrary rewards sent to the Eigenpod
+        uint256 rewardsSweeped = 100 ether;
+        vm.deal(address(this), rewardsSweeped);
+        (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
+        require(success, "Failed to send rewards to EigenPod");
+
+        uint256 withdrawnValidators = 1;
+        uint256 withdrawnPrincipal = withdrawnValidators * 32 ether;
+
+        // this increases the balance of the EigenPod without triggering
+        // receive or fallback just like beacon chain ETH rewards or withdrawals would
+        vm.deal(eigenPodAddress, eigenPodAddress.balance + withdrawnPrincipal);
+        uint256 expectedBalance = rewardsSweeped + withdrawnPrincipal;
+        assertEq(address(eigenPodInstance).balance, expectedBalance, "EigenPod balance does not match expected value");
+
+        // trigger withdraw before restaking succesfully
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+        stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
+        vm.stopPrank();
+
 
         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
         vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
