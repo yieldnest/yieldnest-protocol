@@ -217,6 +217,60 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         uint256 balanceAfterSecondFinalize = pooledDepositsVault.balances(address(this));
         assertEq(balanceAfterSecondFinalize, 0, "Balance should remain 0 after second finalize");
     }
+
+    function testDepositsReEnabledOnYnETHReset() public {
+        // Arrange
+        (PooledDepositsVault pooledDepositsVault, address owner) = createPooledDeposits();
+        uint256 depositAmount = 1 ether;
+        vm.deal(address(this), depositAmount);
+
+        // Set ynETH to a non-zero address and then reset it to zero
+        vm.prank(owner);
+        pooledDepositsVault.setYnETH(IynETH(address(1))); // Set to a mock address
+        vm.prank(owner);
+        pooledDepositsVault.setYnETH(IynETH(address(0))); // Reset to zero
+
+        // Act
+        (bool success, ) = address(pooledDepositsVault).call{value: depositAmount}("");
+
+        // Assert
+        assertTrue(success, "Deposit should succeed after ynETH is reset");
+        assertEq(pooledDepositsVault.balances(address(this)), depositAmount, "Deposit amount should be recorded in balances after ynETH reset");
+    }
+
+    function testDepositFinalizeResetAndDepositFinalizeFlow() public {
+        // Arrange
+        (PooledDepositsVault pooledDepositsVault, address owner) = createPooledDeposits();
+        uint256 firstDepositAmount = 1 ether;
+        uint256 secondDepositAmount = 2 ether;
+        address[] memory depositors = new address[](1);
+        depositors[0] = address(this);
+        vm.deal(address(this), firstDepositAmount + secondDepositAmount);
+
+        // Act 1 - Deposit and finalize
+        pooledDepositsVault.deposit{value: firstDepositAmount}();
+        vm.prank(owner);
+        pooledDepositsVault.setYnETH(IynETH(address(yneth)));
+        pooledDepositsVault.finalizeDeposits(depositors);
+
+        // Assert 1
+        uint256 sharesAfterFirstFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        assertEq(sharesAfterFirstFinalize, firstDepositAmount, "Shares should equal the deposit amount after first finalize");
+
+        // Reset ynETH to 0
+        vm.prank(owner);
+        pooledDepositsVault.setYnETH(IynETH(address(0)));
+
+        // Act 2 - Deposit and finalize after resetting ynETH
+        pooledDepositsVault.deposit{value: secondDepositAmount}();
+        vm.prank(owner);
+        pooledDepositsVault.setYnETH(IynETH(address(yneth))); // Set ynETH back to a valid address
+        pooledDepositsVault.finalizeDeposits(depositors);
+
+        // Assert 2
+        uint256 sharesAfterSecondFinalize = IynETH(address(yneth)).balanceOf(address(this));
+        assertEq(sharesAfterSecondFinalize, sharesAfterFirstFinalize + secondDepositAmount, "Shares should exactly match the total deposits after second finalize");
+    }
     
     receive() external payable {}
 }
