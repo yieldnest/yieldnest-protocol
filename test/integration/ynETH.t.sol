@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ynBase} from "src/ynBase.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {

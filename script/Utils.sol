@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Vm} from "lib/forge-std/src/Vm.sol";
-import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {ERC1967Utils} from "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Utils.sol";
 
 contract Utils {
     /**
