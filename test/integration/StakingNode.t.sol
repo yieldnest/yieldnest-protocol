@@ -563,6 +563,57 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     }
 }
 
+contract StakingNodeStakedETHAllocationTests is StakingNodeTestBase {
+
+    event AllocatedStakedETH(uint256 previousAmount, uint256 newAmount);
+
+    function testAllocateStakedETH() public {
+        (IStakingNode stakingNodeInstance,) = setupStakingNode(32 ether);
+        uint256 initialETHBalance = stakingNodeInstance.getETHBalance();
+        uint256 amountToAllocate = 10 ether;
+
+        vm.expectEmit(true, true, false, true);
+        emit AllocatedStakedETH(initialETHBalance, amountToAllocate);
+        vm.prank(address(stakingNodesManager));
+        stakingNodeInstance.allocateStakedETH(amountToAllocate);
+
+        uint256 newETHBalance = stakingNodeInstance.getETHBalance();
+        assertEq(newETHBalance, initialETHBalance + amountToAllocate, "ETH balance did not increase by the allocated amount");
+    }
+
+    function testAllocateStakedETHFailsWhenNotStakingNodesManager() public {
+        (IStakingNode stakingNodeInstance,) = setupStakingNode(32 ether);
+        uint256 amountToAllocate = 10 ether;
+
+        vm.expectRevert(StakingNode.NotStakingNodesManager.selector);
+        vm.prank(actors.eoa.DEFAULT_SIGNER);
+        stakingNodeInstance.allocateStakedETH(amountToAllocate);
+    }
+
+    function testGetETHBalanceWithAllocationAndEigenPodDeposit() public {
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        uint256 initialETHBalance = stakingNodeInstance.getETHBalance();
+        uint256 amountToAllocate = 10 ether;
+        uint256 amountToDepositInEigenPod = 5 ether;
+
+        // Allocate ETH to the staking node
+        vm.prank(address(stakingNodesManager));
+        stakingNodeInstance.allocateStakedETH(amountToAllocate);
+
+        // Deposit ETH directly to the EigenPod
+        address payable eigenPodAddress = payable(address(eigenPodInstance));
+        vm.deal(address(this), amountToDepositInEigenPod);
+        (bool success,) = eigenPodAddress.call{value: amountToDepositInEigenPod}("");
+        require(success, "Failed to send ETH to EigenPod");
+
+        uint256 expectedETHBalance = initialETHBalance + amountToAllocate + amountToDepositInEigenPod;
+        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
+
+        assertEq(actualETHBalance, expectedETHBalance, "ETH balance does not match expected value after allocation and EigenPod deposit");
+    }
+}
+
+
 contract StakingNodeMiscTests is StakingNodeTestBase {
 
     function testSendingETHToStakingNodeShouldRevert() public {
