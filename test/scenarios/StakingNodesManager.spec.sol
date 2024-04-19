@@ -5,14 +5,8 @@ pragma solidity ^0.8.24;
 import { IntegrationBaseTest } from "test/integration/IntegrationBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import { IStakingNodesManager } from "src/interfaces/IStakingNodesManager.sol";
-import { IStakingNode } from "src/interfaces/IStakingNode.sol";
-import { IYnETHEvents } from "src/ynETH.sol";
-import { BeaconChainProofs } from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
-import { IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-import { IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
-import { ProofUtils } from "test/utils/ProofUtils.sol";
 import "forge-std/Vm.sol";
 
 contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
@@ -105,7 +99,7 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
 		Vm.Log[] memory logs = vm.getRecordedLogs();
 
 
-		for (uint i = 0; i < logs.length; i++) {
+		for (uint256 i = 0; i < logs.length; i++) {
 			Vm.Log memory log = logs[i];
 			if (log.topics[0] == 
 				keccak256("Deposit(address,address,uint256,uint256,uint256)")) {
