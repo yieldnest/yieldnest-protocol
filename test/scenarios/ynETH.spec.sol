@@ -12,9 +12,7 @@ import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfa
 import { IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
 import { ProofUtils } from "test/utils/ProofUtils.sol";
-
-import "forge-std/console.sol";
-
+import "forge-std/Vm.sol";
 
 contract YnETHScenarioTest1 is IntegrationBaseTest {
 
@@ -438,20 +436,19 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 	}
 
 	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public {
+		
+		uint256 totalDeposited = 0;
+		Vm.Log[] memory logs = vm.getRecordedLogs();
 
-		// TODO: implement totalDepositIntegrity - it needs to be event based
-		// since totalDepositedInPool is not an ever increasing acumulator
-		// Vm.Log[] memory logs = vm.getRecordedLogs();
-		// for (uint i = 0; i < logs.length; i++) {
-		// 	Vm.Log memory log = logs[i];
-		// 	if (vm.getRecordedLogs()[i].topics[0] == 
-		// 		keccak256("Deposit(address,address,uint256,uint256,uint256))")) {
-		// 		(uint256 assets,) = abi.decode(vm.getRecordedLogs()[i].data, (uint256, uint256));
-		// 		totalDeposited += assets;
-		// 	}
-		// }
-		// console.log("totalDeposited:", totalDeposited);
-		// Invariants.totalDepositIntegrity(totalDeposited, previousTotalDeposited, userAmount);
+		for (uint i = 0; i < logs.length; i++) {
+			Vm.Log memory log = logs[i];
+			if (log.topics[0] == 
+				keccak256("Deposit(address,address,uint256,uint256,uint256)")) {
+				(uint256 assets,) = abi.decode(log.data, (uint256, uint256));
+				totalDeposited += assets;
+			}
+		}
+		Invariants.totalDepositIntegrity(totalDeposited, previousTotalDeposited, userAmount);
 
 		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, userAmount);
 
@@ -459,6 +456,10 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
+
+	/*
+
+	*/
 }
 
 // Add this contract definition outside of your existing contract definitions
