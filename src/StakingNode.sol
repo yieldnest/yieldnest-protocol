@@ -235,7 +235,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // the eigenpod will be credited with shares. Those shares represent 1 share = 1 ETH
         // To get the shares call: strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy)
         // This computation will need to be updated to factor in that.
-        return allocatedETH;
+        return allocatedETH + address(eigenPod).balance;
     }
 
     //--------------------------------------------------------------------------------------
