@@ -456,6 +456,10 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
+
+	/*
+
+	*/
 }
 
 // Add this contract definition outside of your existing contract definitions
