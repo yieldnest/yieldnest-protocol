@@ -20,6 +20,10 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
 	function setUp() public override {
 		super.setUp();
 		// Additional setup can be added here if needed
+
+        // setup with a max of 20 nodes
+		vm.prank(actors.admin.STAKING_ADMIN);
+		stakingNodesManager.setMaxNodeCount(20);
 		vm.recordLogs();
 	}
 
@@ -50,14 +54,14 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
         vm.prank(user1);
 		yneth.depositETH{value: user1Amount}(user1);
 
-		runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares);
+		runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares, 0);
 
 		for (uint256 i = 0; i < stakingNodeCount; i++) {
 			vm.prank(actors.ops.STAKING_NODE_CREATOR);
 			stakingNodesManager.createStakingNode();
 		}
 
-        runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares);
+        runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares, 0);
 
         uint256[] memory validatorNodeIds = new uint256[](stakingNodeCount);
         for (uint256 i = 0; i < stakingNodeCount; i++) {
@@ -67,7 +71,7 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
         // setup 1 validator for each stakingNode
 	    setupValidators(validatorNodeIds, user1Amount);
 
-        runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares);
+        runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares, 0);
 
 		// user deposits a second time
 		uint256 user1Amount2 = 100 ether;
@@ -76,10 +80,27 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
         vm.prank(user1);
 		yneth.depositETH{value: user1Amount2}(user1);
 
-        runInvariants(user1, user1Amount, user1Shares, user1Amount2, user1Shares2);
+        runInvariants(user1, user1Amount, user1Shares, user1Amount2, user1Shares2, 0);
+        uint256 rewardsPerNode = 1 ether;
+        uint256 totalRewards = 0;
+        for (uint256 i = 0; i < stakingNodeCount; i++) {
+            address payable eigenPodAddress = payable(address(stakingNodesManager.nodes(i).eigenPod()));
+            // deal does not trigger receive() or fallback() and emulates consensus layer rewards
+            vm.deal(eigenPodAddress, rewardsPerNode);
+            totalRewards += rewardsPerNode;
+        }
+
+        runInvariants(user1, user1Amount, user1Shares, user1Amount2, user1Shares2, totalRewards);
 	}
 
-	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public {
+	function runInvariants(
+	    address user, 
+	    uint256 previousTotalDeposited, 
+	    uint256 previousTotalShares, 
+	    uint256 userAmount, 
+	    uint256 userShares,
+        uint256 consensusLayerRewards
+	) public {
 
 		Vm.Log[] memory logs = vm.getRecordedLogs();
 
@@ -94,7 +115,8 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
 		}
 
 		Invariants.totalDepositIntegrity(totalDeposited, previousTotalDeposited, userAmount);
-		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, userAmount);
+        uint256 totalNewAssets = userAmount + consensusLayerRewards;
+		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, totalNewAssets);
 		Invariants.shareMintIntegrity(yneth.totalSupply(), previousTotalShares, userShares);
     }
 
