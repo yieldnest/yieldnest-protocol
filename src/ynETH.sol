@@ -5,7 +5,9 @@ import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
+
 import {ynBase} from "src/ynBase.sol";
 
 
@@ -36,6 +38,14 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error CallerNotStakingNodeManager(address expected, address provided);
     error NotRewardsDistributor();
     error InsufficientBalance();
+    error TotalBalanceLessThanValidatorBalance(uint256 totalEigenPodBalance, uint256 totalValidatorPrincipal);
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Role is able to update rewards distribution parameters
+    bytes32 public constant REWARDS_UPDATER_ROLE = keccak256("REWARDS_UPDATER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -46,6 +56,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     bool public depositsPaused;
 
     uint256 public totalDepositedInPool;
+    uint256 public totalUnverifiedConsensusLayerRewards;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -55,6 +66,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     struct Init {
         address admin;
         address pauser;
+        address rewardsUpdater;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         address[] pauseWhitelist;
@@ -79,6 +91,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
+        _grantRole(REWARDS_UPDATER_ROLE, init.rewardsUpdater);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
 
@@ -153,6 +166,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         total += totalDepositedInPool;
         // The total ETH sent to the beacon chain.
         total += totalDepositedInValidators();
+        total += totalUnverifiedConsensusLayerRewards;
         return total;
     }
 
@@ -168,6 +182,30 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         }
         return totalDeposited;
     }
+
+    /// @notice Updates the total rewards based on eigenPod balances and the amount of principal contained.
+    function updateTotalUnverifiedConsensusLayerRewards(uint256 totalValidatorPrincipal) external onlyRole(REWARDS_UPDATER_ROLE) {
+        uint256 totalEigenPodBalance = 0;
+        IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
+
+        IEigenPod[] memory eigenPods = new IEigenPod[](nodes.length);
+        for (uint256 i = 0; i < nodes.length; i++) {
+            eigenPods[i] = nodes[i].eigenPod();
+        }
+        for (uint256 i = 0; i < eigenPods.length; i++) {
+            totalEigenPodBalance +=
+                address(eigenPods[i]).balance 
+                - eigenPods[i].nonBeaconChainETHBalanceWei()
+                - eigenPods[i].withdrawableRestakedExecutionLayerGwei();
+        }
+        if(totalEigenPodBalance < totalValidatorPrincipal) {
+            revert TotalBalanceLessThanValidatorBalance(totalEigenPodBalance, totalValidatorPrincipal);
+        }
+        totalUnverifiedConsensusLayerRewards = totalEigenPodBalance - totalValidatorPrincipal;
+        emit TotalCLRewardsUpdated(totalUnverifiedConsensusLayerRewards);
+    }
+
+    event TotalCLRewardsUpdated(uint256 totalRewards);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------

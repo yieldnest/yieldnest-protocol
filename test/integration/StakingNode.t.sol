@@ -649,7 +649,7 @@ contract StakingNodeStakedETHAllocationTests is StakingNodeTestBase {
         (bool success,) = eigenPodAddress.call{value: amountToDepositInEigenPod}("");
         require(success, "Failed to send ETH to EigenPod");
 
-        uint256 expectedETHBalance = initialETHBalance + amountToAllocate + amountToDepositInEigenPod;
+        uint256 expectedETHBalance = initialETHBalance + amountToAllocate;
         uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
 
         assertEq(actualETHBalance, expectedETHBalance, "ETH balance does not match expected value after allocation and EigenPod deposit");

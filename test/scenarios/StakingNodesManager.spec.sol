@@ -84,6 +84,10 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
             totalRewards += rewardsPerNode;
         }
 
+        // 0 unverified capital withdrawn
+        vm.prank(actors.ops.REWARDS_UPDATER);
+        yneth.updateTotalUnverifiedConsensusLayerRewards(0);
+
         runInvariants(user1, user1Amount, user1Shares, user1Amount2, user1Shares2, totalRewards);
 	}
 
