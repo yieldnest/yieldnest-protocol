@@ -31,13 +31,13 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
 
     /// @notice Initializes the contract with the initial owner.
     /// @param _initialOwner The address of the initial owner.
-    function initialize(address _initialOwner) public initializer {
+    function initialize(address _initialOwner) external initializer {
         __Ownable_init(_initialOwner);
     }
 
     /// @notice Sets the YnETH contract address.
     /// @param _ynETH The address of the YnETH contract.
-    function setYnETH(IynETH _ynETH) public onlyOwner {
+    function setYnETH(IynETH _ynETH) external onlyOwner {
         if (address(_ynETH) == address(ynETH)) revert AlreadySetAsYnETH();
         emit YnETHSet(address(ynETH), address(_ynETH));
         ynETH = _ynETH;
