@@ -184,12 +184,12 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     }
 
     /**
-     * @notice Updates the total unverified consensus layer rewards by calculating the difference between the total balance held in eigenPods and the total validator principal.
-     * @dev This function iterates through all staking nodes to aggregate their associated eigenPod balances, subtracts non-beacon chain ETH balances and withdrawable restaked execution layer Gwei, then compares the result against the total validator principal to ensure the total balance is not less. If the total eigenPod balance is sufficient, it updates the `totalUnverifiedConsensusLayerRewards` state variable and emits an event.
-     * @param totalValidatorPrincipal The total amount of principal (in wei) across all validators. This is used to calculate the unverified rewards by subtracting it from the aggregated eigenPod balance.
-     * @custom:modifier onlyRole(REWARDS_UPDATER_ROLE) Restricts the function to be callable only by accounts with the `REWARDS_UPDATER_ROLE` role.
-     * @custom:revert TotalBalanceLessThanValidatorBalance If the total balance calculated from eigenPods is less than the total validator principal, indicating an inconsistency or error in balance calculation.
-     * @custom:event TotalCLRewardsUpdated Emitted when the total unverified consensus layer rewards are successfully updated, providing the updated rewards amount.
+     * @notice Updates the total unverified consensus layer rewards by calculating
+              the difference between the total balance held in eigenPods and the total validator principal.
+     * @dev 
+     * @param totalValidatorPrincipal Trusted input that indicates how much of the unverified ETH balance is validator principal
+     * @custom:revert TotalBalanceLessThanValidatorBalance If the total balance calculated from eigenPods is less than the total validator principal,
+                       indicating an inconsistency or error in balance calculation.
      */
     function updateTotalUnverifiedConsensusLayerRewards(uint256 totalValidatorPrincipal) external onlyRole(REWARDS_UPDATER_ROLE) {
         uint256 totalEigenPodBalance = 0;
