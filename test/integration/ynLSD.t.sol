@@ -25,6 +25,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
         assertEq(compareWithThreshold(asset.balanceOf(address(this)), balance, 1), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(asset.balanceOf(address(this)), balance), true, "Amount not received");
         vm.stopPrank();
 
         asset.approve(address(ynlsd), amount);
@@ -51,7 +52,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareWithThreshold(balance, amount, 3), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
         stETH.approve(address(ynlsd), balance);
         ynlsd.deposit(stETH, balance, address(this));
@@ -68,7 +69,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this),amount);
-        assertEq(compareWithThreshold(balance, amount, 3), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
         uint256 depositAmountOne = 5 ether;
@@ -368,7 +369,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareWithThreshold(balance, amount, 3), true, "Amount not received");
+       assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
         asset.approve(address(ynlsd), balance);
         ynlsd.deposit(asset, balance, address(this));
