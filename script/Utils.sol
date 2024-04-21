@@ -45,4 +45,19 @@ contract Utils {
             return (value2 - value1) <= threshold;
         }
     }
+
+    /**
+     * @dev Compares two uint256 values (representing rebasing token balances) and checks if their difference is within an implicit threshold of 1-2 wei, allowing for a slight decrease only.
+     * @param value1 The first uint256 value, typically the lower or equal value in the context of rebasing tokens.
+     * @param value2 The second uint256 value, typically the higher or equal value in the context of rebasing tokens.
+     * @return bool Returns true if value1 is less than or equal to value2 and the difference between value2 and value1 is 1 or 2 wei.
+     */
+    function compareRebasingTokenBalances(uint256 value1, uint256 value2) public pure returns (bool) {
+        if(value1 > value2) {
+            return false; // value1 should not be greater than value2
+        } else {
+            uint256 difference = value2 - value1;
+            return difference <= 2; // Allow for a 1-2 wei difference only
+        }
+    }
 }
