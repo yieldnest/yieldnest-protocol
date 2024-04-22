@@ -203,7 +203,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
             totalEigenPodBalance +=
                 address(eigenPods[i]).balance 
                 - eigenPods[i].nonBeaconChainETHBalanceWei()
-                - eigenPods[i].withdrawableRestakedExecutionLayerGwei();
+                - eigenPods[i].withdrawableRestakedExecutionLayerGwei() * 1e9;
         }
         if(totalEigenPodBalance < totalValidatorPrincipal) {
             revert TotalBalanceLessThanValidatorBalance(totalEigenPodBalance, totalValidatorPrincipal);
