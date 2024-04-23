@@ -298,7 +298,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		// We can now claim the Rewards from delayedWithdrawal
 		vm.prank(address(actors.ops.STAKING_NODES_OPERATOR));
-		stakingNode.processNonBeaconChainETHWithdrawals();
+		stakingNode.processDelayedWithdrawals();
         assertEq(address(stakingNode).balance, 0);
 
 		// Get the rewards receiver addresses from the rewards distributor		
@@ -361,7 +361,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
 		uint256 rewardsSentToEigenPod = send_eth_rewards_to_eigenpod(stakingNode);
-		stakingNode.processNonBeaconChainETHWithdrawals();
+		stakingNode.processDelayedWithdrawals();
 		vm.stopPrank();
 
 		log_balances(stakingNode);

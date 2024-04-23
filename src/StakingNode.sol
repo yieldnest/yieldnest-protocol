@@ -157,7 +157,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Processes withdrawals by verifying the node's balance and transferring ETH to the StakingNodesManager.
      * @dev This function checks if the node's current balance matches the expected balance and then transfers the ETH to the StakingNodesManager.
      */
-    function processNonBeaconChainETHWithdrawals() public nonReentrant onlyAdmin {
+    function processDelayedWithdrawals() public nonReentrant onlyAdmin {
 
         uint256 balance = address(this).balance;
         if (balance == 0) {

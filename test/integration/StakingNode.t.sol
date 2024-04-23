@@ -113,7 +113,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        stakingNodeInstance.processDelayedWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -158,7 +158,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        stakingNodeInstance.processDelayedWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -190,7 +190,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
 
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        stakingNodeInstance.processDelayedWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -225,7 +225,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        stakingNodeInstance.processDelayedWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -271,7 +271,7 @@ contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        stakingNodeInstance.processDelayedWithdrawals();
         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
 
@@ -332,7 +332,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         vm.expectRevert();
-        stakingNodeInstance.processNonBeaconChainETHWithdrawals();
+        stakingNodeInstance.processDelayedWithdrawals();
     }
 
     function testDelegateFailWhenNotAdmin() public {
