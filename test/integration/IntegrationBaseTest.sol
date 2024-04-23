@@ -168,7 +168,6 @@ contract IntegrationBaseTest is Test, Utils {
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: actors.admin.ADMIN,
             pauser: actors.admin.PAUSE_ADMIN,
-            rewardsUpdater: actors.ops.REWARDS_UPDATER,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             pauseWhitelist: pauseWhitelist

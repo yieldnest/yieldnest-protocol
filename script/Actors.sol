@@ -22,7 +22,6 @@ contract ActorAddresses {
         address VALIDATOR_MANAGER;
         address LSD_RESTAKING_MANAGER;
         address STAKING_NODE_CREATOR;
-        address REWARDS_UPDATER;
     }
 
     struct Actors {
@@ -53,8 +52,7 @@ contract ActorAddresses {
                 STAKING_NODES_OPERATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 VALIDATOR_MANAGER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 LSD_RESTAKING_MANAGER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                STAKING_NODE_CREATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                REWARDS_UPDATER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
+                STAKING_NODE_CREATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
             })
         });
 
@@ -77,8 +75,7 @@ contract ActorAddresses {
                 STAKING_NODES_OPERATOR: 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc,
                 VALIDATOR_MANAGER: 0x976EA74026E726554dB657fA54763abd0C3a0aa9,
                 LSD_RESTAKING_MANAGER: 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720,
-                STAKING_NODE_CREATOR: 0xBcd4042DE499D14e55001CcbB24a551F3b954096,
-                REWARDS_UPDATER: 0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097
+                STAKING_NODE_CREATOR: 0xBcd4042DE499D14e55001CcbB24a551F3b954096
             })
         });
     }

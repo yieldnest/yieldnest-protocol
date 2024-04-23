@@ -41,13 +41,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error TotalBalanceLessThanValidatorBalance(uint256 totalEigenPodBalance, uint256 totalValidatorPrincipal);
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  ROLES  -------------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    /// @notice Role is able to update rewards distribution parameters
-    bytes32 public constant REWARDS_UPDATER_ROLE = keccak256("REWARDS_UPDATER_ROLE");
-
-    //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -66,7 +59,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     struct Init {
         address admin;
         address pauser;
-        address rewardsUpdater;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         address[] pauseWhitelist;
@@ -91,7 +83,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
-        _grantRole(REWARDS_UPDATER_ROLE, init.rewardsUpdater);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
 

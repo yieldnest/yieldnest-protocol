@@ -439,7 +439,6 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
 
         // TODO: verify updates here
 
-        vm.prank(actors.ops.REWARDS_UPDATER);
         uint256 totalAssetsAfterRewards = yneth.totalAssets();
         // Assert
         assertEq(totalAssetsAfterRewards, depositAmount + totalRewards, "Total assets should increase by the reward amount in eigenPods");
