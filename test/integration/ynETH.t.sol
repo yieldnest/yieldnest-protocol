@@ -381,25 +381,6 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         assertEq(totalAssetsAfterSecondDeposit, initialTotalAssets + depositAmount1 + depositAmount2, "Total assets should increase by the sum of both deposit amounts");
     }
 
-    // function testFuzzTotalAssetsWithWithdrawal(uint256 depositAmount, uint256 withdrawAmount) public {
-    //     // Arrange
-    //     vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
-    //     vm.assume(withdrawAmount > 0 ether && withdrawAmount <= depositAmount);
-    //     yneth.depositETH{value: depositAmount}(address(this));
-    //     uint256 totalAssetsAfterDeposit = yneth.totalAssets();
-
-    //     vm.deal(address(stakingNodesManager), 1000000 ether);
-
-    //     // Act
-    //     vm.startPrank(address(stakingNodesManager));
-    //     yneth.withdrawETH(withdrawAmount);
-    //     vm.stopPrank();
-    //     uint256 totalAssetsAfterWithdrawal = yneth.totalAssets();
-
-    //     // Assert
-    //     assertEq(totalAssetsAfterDeposit, totalAssetsAfterWithdrawal + withdrawAmount, "Total assets should decrease by the withdrawal amount");
-    // }
-
     function testFuzzTotalAssetsWithRewards(uint256 depositAmount, uint256 rewardAmount) public {
         // Arrange
         vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
