@@ -183,37 +183,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         return totalDeposited;
     }
 
-    /**
-     * @notice Updates the total unverified consensus layer rewards by calculating
-              the difference between the total balance held in eigenPods and the total validator principal.
-     * @dev 
-     * @param totalValidatorPrincipal Trusted input that indicates how much of the unverified ETH balance is validator principal
-     * @custom:revert TotalBalanceLessThanValidatorBalance If the total balance calculated from eigenPods is less than the total validator principal,
-                       indicating an inconsistency or error in balance calculation.
-     */
-    function updateTotalUnverifiedConsensusLayerRewards(uint256 totalValidatorPrincipal) external onlyRole(REWARDS_UPDATER_ROLE) {
-        uint256 totalEigenPodBalance = 0;
-        IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
-
-        IEigenPod[] memory eigenPods = new IEigenPod[](nodes.length);
-        for (uint256 i = 0; i < nodes.length; i++) {
-            eigenPods[i] = nodes[i].eigenPod();
-        }
-        for (uint256 i = 0; i < eigenPods.length; i++) {
-            totalEigenPodBalance +=
-                address(eigenPods[i]).balance 
-                - eigenPods[i].nonBeaconChainETHBalanceWei()
-                - eigenPods[i].withdrawableRestakedExecutionLayerGwei() * 1e9;
-        }
-        if(totalEigenPodBalance < totalValidatorPrincipal) {
-            revert TotalBalanceLessThanValidatorBalance(totalEigenPodBalance, totalValidatorPrincipal);
-        }
-        totalUnverifiedConsensusLayerRewards = totalEigenPodBalance - totalValidatorPrincipal;
-        emit TotalCLRewardsUpdated(totalUnverifiedConsensusLayerRewards);
-    }
-
-    event TotalCLRewardsUpdated(uint256 totalRewards);
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------
     //--------------------------------------------------------------------------------------
