@@ -84,7 +84,11 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
             totalRewards += rewardsPerNode;
         }
 
-        runInvariants(user1, user1Amount, user1Shares, user1Amount2, user1Shares2, totalRewards);
+		// balances stay the same until rewards are verified
+        runInvariants(user1, user1Amount, user1Shares, user1Amount2, user1Shares2, 0);
+
+
+		// TODO: verify rewards as well
 	}
 
 	function runInvariants(

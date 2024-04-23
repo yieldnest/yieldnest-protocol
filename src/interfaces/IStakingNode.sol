@@ -45,7 +45,7 @@ interface IStakingNode {
     function undelegate() external;
 
     function withdrawNonBeaconChainETHBalanceWei() external;
-    function processNonBeaconChainETHWithdrawals() external;
+    function processDelayedWithdrawals() external;
 
     function implementation() external view returns (address);
 

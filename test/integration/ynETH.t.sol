@@ -4,7 +4,10 @@ pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ynBase} from "src/ynBase.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+
 import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
@@ -357,4 +360,68 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.withdrawETH(1);
         vm.stopPrank();
     } 
+}
+
+
+contract ynETHTotalAssetsTest is IntegrationBaseTest {
+    function testFuzzTotalAssetsWithDifferentDeposits(uint256 depositAmount1, uint256 depositAmount2) public {
+        // Arrange
+        vm.assume(depositAmount1 > 0 ether && depositAmount1 <= 10000 ether);
+        vm.assume(depositAmount2 > 0 ether && depositAmount2 <= 10000 ether);
+        uint256 initialTotalAssets = yneth.totalAssets();
+
+        // Act
+        yneth.depositETH{value: depositAmount1}(address(this));
+        uint256 totalAssetsAfterFirstDeposit = yneth.totalAssets();
+        yneth.depositETH{value: depositAmount2}(address(this));
+        uint256 totalAssetsAfterSecondDeposit = yneth.totalAssets();
+
+        // Assert
+        assertEq(totalAssetsAfterFirstDeposit, initialTotalAssets + depositAmount1, "Total assets should increase by the first deposit amount");
+        assertEq(totalAssetsAfterSecondDeposit, initialTotalAssets + depositAmount1 + depositAmount2, "Total assets should increase by the sum of both deposit amounts");
+    }
+
+    function testFuzzTotalAssetsWithRewards(uint256 depositAmount, uint256 rewardAmount) public {
+        // Arrange
+        vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
+        vm.assume(rewardAmount > 0 ether && rewardAmount <= 10000 ether);
+        yneth.depositETH{value: depositAmount}(address(this));
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+
+        // Act
+        vm.deal(address(rewardsDistributor), rewardAmount);
+        vm.startPrank(address(rewardsDistributor));
+        yneth.receiveRewards{value: rewardAmount}();
+        uint256 totalAssetsAfterRewards = yneth.totalAssets();
+
+        // Assert
+        assertEq(totalAssetsAfterRewards, totalAssetsAfterDeposit + rewardAmount, "Total assets should increase by the reward amount");
+    }
+
+    function skiptestFuzzTotalAssetsWithRewardsInEigenPods(uint256 depositAmount, uint256 rewardAmount, uint256 stakingNodeCount) public {
+        // Arrange
+        vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
+        vm.assume(rewardAmount > 0 ether && rewardAmount <= 5000 ether); // Assuming rewards are less than or equal to half the deposit for this test
+        uint256 maxStakingNodeCount = stakingNodesManager.maxNodeCount();
+        vm.assume(stakingNodeCount > 0 && stakingNodeCount <= maxStakingNodeCount);
+
+        yneth.depositETH{value: depositAmount}(address(this));
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+
+        uint256 totalRewards = 0;
+        for (uint256 i = 0; i < stakingNodeCount; i++) {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            IStakingNode stakingNode = stakingNodesManager.createStakingNode();
+            IEigenPod eigenPod = stakingNode.eigenPod();
+            vm.deal(address(eigenPod), rewardAmount);
+            totalRewards += rewardAmount;
+            rewardAmount += 1 ether;
+        }
+
+        // TODO: verify updates here
+
+        uint256 totalAssetsAfterRewards = yneth.totalAssets();
+        // Assert
+        assertEq(totalAssetsAfterRewards, depositAmount + totalRewards, "Total assets should increase by the reward amount in eigenPods");
+    }
 }

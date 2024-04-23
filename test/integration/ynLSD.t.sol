@@ -13,6 +13,7 @@ import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
 import {ynBase} from "src/ynBase.sol";
 
+
 contract ynLSDAssetTest is IntegrationBaseTest {
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -369,7 +370,7 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
-
+       
         asset.approve(address(ynlsd), balance);
         ynlsd.deposit(asset, balance, address(this));
 
