@@ -218,7 +218,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 
 	function verifyEigenWithdrawCredentials(IStakingNode stakingNode) public {
         
-        ProofUtils proofUtils = new ProofUtils();
+        ProofUtils proofUtils = new ProofUtils("lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json");
 
 		uint64 oracleTimestamp = uint64(block.timestamp);
 

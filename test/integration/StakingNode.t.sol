@@ -6,7 +6,6 @@ import {OwnableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contrac
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
@@ -21,9 +20,18 @@ import {ProofUtils} from "test/utils/ProofUtils.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import { MockEigenLayerBeaconOracle } from "../mocks/MockEigenLayerBeaconOracle.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
+import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
+import {MockEigenPod} from "../mocks/MockEigenPod.sol";
+
+import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
+import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 
 
 contract StakingNodeTestBase is IntegrationBaseTest {
+
+    string DEFAULT_PROOFS_PATH = "lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json";
 
     function setupStakingNode(uint256 depositAmount) public returns (IStakingNode, IEigenPod) {
 
@@ -286,7 +294,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function skiptestVerifyWithdrawalCredentialsRevertingWhenPaused() public {
 
-        ProofUtils proofUtils = new ProofUtils();
+        ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
@@ -462,7 +470,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testVerifyWithdrawalCredentialsWithWrongWithdrawalAddress() public {
 
-        ProofUtils proofUtils = new ProofUtils();
+        ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
@@ -503,9 +511,73 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         ); 
     }
 
+    function testVerifyWithdrawalCredentialsSuccesfully() public {
+
+        ProofUtils proofUtils = new ProofUtils("test/data/mainnet_withdrawal_credential_proof_1285801.json");
+
+        uint256 depositAmount = 32 ether;
+        (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
+
+        uint64 oracleTimestamp = uint64(block.timestamp);
+        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+
+        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+        vm.prank(eigenPodManagerOwner);
+        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+
+        bytes32 latestBlockRoot = proofUtils.getLatestBlockRoot();
+        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+
+        {
+            EigenPod existingEigenPod = EigenPod(payable(address(stakingNodeInstance.eigenPod())));
+
+            MockEigenPod mockEigenPod = new MockEigenPod(
+                IETHPOSDeposit(existingEigenPod.ethPOS()),
+                IDelayedWithdrawalRouter(address(delayedWithdrawalRouter)),
+                IEigenPodManager(address(eigenPodManager)),
+                existingEigenPod.MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR(),
+                existingEigenPod.GENESIS_TIME()
+            );
+
+            address mockEigenPodAddress = address(mockEigenPod);
+            IEigenPodManager eigenPodManagerInstance = IEigenPodManager(eigenPodManager);
+            address eigenPodBeaconAddress = address(eigenPodManagerInstance.eigenPodBeacon());
+            UpgradeableBeacon eigenPodBeacon = UpgradeableBeacon(eigenPodBeaconAddress);
+            address eigenPodBeaconOwner = Ownable(eigenPodBeaconAddress).owner();
+            vm.prank(eigenPodBeaconOwner);
+            eigenPodBeacon.upgradeTo(mockEigenPodAddress);
+        }
+
+
+		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
+
+		uint40[] memory validatorIndexes = new uint40[](1);
+
+		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
+
+        bytes[] memory validatorFieldsProofs = new bytes[](1);
+        validatorFieldsProofs[0] = proofUtils._getValidatorFieldsProof()[0];
+
+		bytes32[][] memory validatorFields = new bytes32[][](1);
+        validatorFields[0] = proofUtils.getValidatorFields();
+
+        // address eigenPodAddress = address(stakingNodeInstance.eigenPod());
+        // validatorFields[0][1] = (abi.encodePacked(bytes1(uint8(1)), bytes11(0), eigenPodAddress)).toBytes32(0);
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Proof is not for this EigenPod");
+        stakingNodeInstance.verifyWithdrawalCredentials(
+            oracleTimestamp,
+            stateRootProof,
+            validatorIndexes,
+            validatorFieldsProofs,
+            validatorFields
+        ); 
+    }
+
     function skiptestVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
 
-        ProofUtils proofUtils = new ProofUtils();
+        ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
@@ -542,7 +614,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function skiptestVerifyWithdrawalCredentialsMismatchedValidatorIndexAndProofsLengths() public {
 
-        ProofUtils proofUtils = new ProofUtils();
+        ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
@@ -577,7 +649,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function skiptestVerifyWithdrawalCredentialsMismatchedProofsAndValidatorFieldsLengths() public {
 
-        ProofUtils proofUtils = new ProofUtils();
+        ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
