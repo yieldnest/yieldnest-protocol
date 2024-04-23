@@ -38,7 +38,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error CallerNotStakingNodeManager(address expected, address provided);
     error NotRewardsDistributor();
     error InsufficientBalance();
-    error TotalBalanceLessThanValidatorBalance(uint256 totalEigenPodBalance, uint256 totalValidatorPrincipal);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -49,7 +48,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     bool public depositsPaused;
 
     uint256 public totalDepositedInPool;
-    uint256 public totalUnverifiedConsensusLayerRewards;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -157,7 +155,6 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         total += totalDepositedInPool;
         // The total ETH sent to the beacon chain.
         total += totalDepositedInValidators();
-        total += totalUnverifiedConsensusLayerRewards;
         return total;
     }
 
