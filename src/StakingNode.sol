@@ -23,6 +23,12 @@ interface StakingNodeEvents {
      event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
      event AllocatedStakedETH(uint256 currenAllocatedStakedETH, uint256 newAmount);
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
+     event WithdrawalProcessed(
+        uint40 indexed validatorIndex,
+        uint256 amount,
+        bytes32 withdrawalCredentials,
+        uint64 oracleTimestamp
+    );
 }
 
 /**
@@ -220,6 +226,39 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         delegationManager.undelegate(address(this));
  
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS  -------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    function verifyAndProcessWithdrawals(
+        uint64 oracleTimestamp,
+        BeaconChainProofs.StateRootProof calldata stateRootProof,
+        BeaconChainProofs.WithdrawalProof[] calldata withdrawalProofs,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields,
+        bytes32[][] calldata withdrawalFields
+    ) external onlyAdmin {
+
+        eigenPod.verifyAndProcessWithdrawals(
+            oracleTimestamp,
+            stateRootProof,
+            withdrawalProofs,
+            validatorFieldsProofs,
+            validatorFields,
+            withdrawalFields
+        );
+
+        for (uint256 i = 0; i < withdrawalProofs.length; i++) {
+            emit WithdrawalProcessed(
+                validatorFields[i].getValidatorIndex(),
+                validatorFields[i].getEffectiveBalanceGwei(), // Assuming the first field in withdrawalFields array is the amount
+                validatorFields[i].getWithdrawalCredentials(),
+                oracleTimestamp
+            );
+        }
     }
 
     //--------------------------------------------------------------------------------------
