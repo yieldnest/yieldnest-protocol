@@ -54,7 +54,6 @@ contract IntegrationBaseTest is Test, Utils {
     StakingNodesManager public stakingNodesManager;
     StakingNode public stakingNodeImplementation;
 
-
     // Assets
     ynETH public yneth;
     ynLSD public ynlsd;
@@ -199,6 +198,7 @@ contract IntegrationBaseTest is Test, Utils {
 
     function setupStakingNodesManager() public {
         stakingNodeImplementation = new StakingNode();
+
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.admin.ADMIN,
             stakingAdmin: actors.admin.STAKING_ADMIN,

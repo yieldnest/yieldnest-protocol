@@ -50,6 +50,17 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
          
     }
 
+    /// @notice Allows depositing ETH into the contract in exchange for shares.
+    /// @dev This function is a stub in the mock contract.
+    /// @param receiver The address to receive the minted shares.
+    /// @return shares The amount of shares minted for the deposited ETH, always returns 0 in this mock.
+    function depositETH(address receiver) external payable override returns (uint256 shares) {
+        // This is a stub function in the mock contract, so it does not perform any actions.
+        // In a real implementation, this function would handle deposit logic.
+        receiver; // This is to silence unused variable warning.
+        return 0;
+    }
+
     function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
 
         if (depositsPaused) {
