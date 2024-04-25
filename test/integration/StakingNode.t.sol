@@ -583,8 +583,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         vm.prank(eigenPodManagerOwner);
         eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
 
-
-
         address eigenPodAddress = getWithdrawalAddress();
 
         console.log("EigenPod Address:", eigenPodAddress);
@@ -618,6 +616,9 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             vm.prank(eigenPodBeaconOwner);
             eigenPodBeacon.upgradeTo(mockEigenPodAddress);
         }
+
+        MockEigenPod mockEigenPodInstance = MockEigenPod(payable(address(stakingNodeInstance.eigenPod())));
+        mockEigenPodInstance.setPodOwner(address(stakingNodeInstance));
 
 
 		// BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
