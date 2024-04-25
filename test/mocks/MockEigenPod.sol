@@ -18,4 +18,11 @@ contract MockEigenPod is EigenPod {
         require(newOwner != address(0), "MockEigenPod: New owner is the zero address");
         podOwner = newOwner;
     }
+
+    function setValidatorInfo(
+        bytes32 validatorPubkeyHash,
+        ValidatorInfo memory validatorInfo
+    ) external {
+        _validatorPubkeyHashToInfo[validatorPubkeyHash] = validatorInfo;
+    }
 }

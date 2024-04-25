@@ -98,7 +98,7 @@ contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
         return getLatestBlockRoot();
     }
 
-    function _setWithdrawalCredentialParams() public returns (ValidatorProofs memory) {
+    function getWithdrawalCredentialParams() public returns (ValidatorProofs memory) {
         ValidatorProofs memory validatorProofs;
         
         validatorProofs.validatorIndices = new uint40[](1);
@@ -111,7 +111,7 @@ contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
         validatorProofs.stateRootProof.proof = getStateRootProof();
         validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
         validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-        // validatorProofs.validatorFieldsProofs[0] = abi.encodePacked(getValidatorFieldsProof());
+        validatorProofs.validatorFieldsProofs[0] = abi.encodePacked(getValidatorFieldsProof());
         validatorProofs.validatorFields[0] = getValidatorFields();
 
         return validatorProofs;
@@ -621,26 +621,20 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         mockEigenPodInstance.setPodOwner(address(stakingNodeInstance));
 
 
-		// BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
-
-		// uint40[] memory validatorIndexes = new uint40[](1);
-
-		// validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
-
-        // bytes[] memory validatorFieldsProofs = new bytes[](1);
-        // validatorFieldsProofs[0] = proofUtils._getValidatorFieldsProof()[0];
-
-		// bytes32[][] memory validatorFields = new bytes32[][](1);
-        // validatorFields[0] = proofUtils.getValidatorFields();
-
-        // address eigenPodAddress = address(stakingNodeInstance.eigenPod());
-        // validatorFields[0][1] = (abi.encodePacked(bytes1(uint8(1)), bytes11(0), eigenPodAddress)).toBytes32(0);
+        ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
+        bytes32 validatorPubkeyHash = BeaconChainProofs.getPubkeyHash(validatorProofs.validatorFields[0]);
+        IEigenPod.ValidatorInfo memory zeroedValidatorInfo = IEigenPod.ValidatorInfo({
+            validatorIndex: 0,
+            restakedBalanceGwei: 0,
+            mostRecentBalanceUpdateTimestamp: 0,
+            status: IEigenPod.VALIDATOR_STATUS.INACTIVE
+        });
+        mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
 
 
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
 
-        ValidatorProofs memory validatorProofs = _setWithdrawalCredentialParams();
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         // vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Proof is not for this EigenPod");
@@ -673,6 +667,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
 		bytes32[][] memory validatorFields = new bytes32[][](1);
         validatorFields[0] = proofUtils.getValidatorFields();
+
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
