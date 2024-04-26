@@ -344,10 +344,12 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     using stdStorage for StdStorage;
     using BytesLib for bytes;
 
+    address newMockStakingNodeImplementation;
+
     function setUp() public override {
         super.setUp();
         // Set the implementation of the StakingNode to be MockStakingNode
-        address newMockStakingNodeImplementation = address(new MockStakingNode());
+        newMockStakingNodeImplementation = address(new MockStakingNode());
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newMockStakingNodeImplementation);
     }
