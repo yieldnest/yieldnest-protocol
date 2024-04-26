@@ -527,7 +527,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     function testImplementViewFunction() public {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-        assertEq(stakingNodeInstance.implementation(), address(stakingNodeImplementation));
+        assertEq(stakingNodeInstance.implementation(), address(newMockStakingNodeImplementation));
     }
 
     function testVerifyWithdrawalCredentialsWithWrongWithdrawalAddress() public {
@@ -656,7 +656,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
         assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
     }
-
+    
     function skiptestVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
 
         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
