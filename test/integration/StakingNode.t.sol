@@ -573,8 +573,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testVerifyWithdrawalCredentialsSuccesfully() public {
 
-        ProofUtils proofUtils = new ProofUtils("/Users/dan/src/yieldnest/yieldnest-protocol/test/data/ValidatorFieldsProof_1293592_8654000.json");
-
         setJSON("/Users/dan/src/yieldnest/yieldnest-protocol/test/data/ValidatorFieldsProof_1293592_8654000.json");
 
         uint256 depositAmount = 32 ether;
@@ -627,7 +625,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
 
         {
-
             MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
             address payable eigenPodManagerPayable = payable(address(eigenPodManager));
             ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
@@ -651,7 +648,11 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             validatorProofs.validatorIndices,
             validatorProofs.withdrawalCredentialProofs,
             validatorProofs.validatorFields
-        ); 
+        );
+        
+        int256 expectedShares = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
+        int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
     }
 
     function skiptestVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
