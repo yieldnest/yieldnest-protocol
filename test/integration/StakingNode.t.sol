@@ -573,16 +573,12 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testVerifyWithdrawalCredentialsSuccesfully() public {
 
-        // ProofUtils proofUtils = new ProofUtils("test/data/mainnet_withdrawal_credential_proof_1285801.json");
-
         ProofUtils proofUtils = new ProofUtils("/Users/dan/src/yieldnest/yieldnest-protocol/test/data/ValidatorFieldsProof_1293592_8654000.json");
 
         setJSON("/Users/dan/src/yieldnest/yieldnest-protocol/test/data/ValidatorFieldsProof_1293592_8654000.json");
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
-
-
 
         uint64 oracleTimestamp = uint64(block.timestamp);
         MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
@@ -593,20 +589,11 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
         address eigenPodAddress = getWithdrawalAddress();
 
-        console.log("EigenPod Address:", eigenPodAddress);
         MockStakingNode(payable(address(stakingNodeInstance)))
             .setEigenPod(IEigenPod(eigenPodAddress));
 
         {
             EigenPod existingEigenPod = EigenPod(payable(address(stakingNodeInstance.eigenPod())));
-
-            console.log("Existing EigenPod Address:", address(existingEigenPod));
-
-            console.log("Existing EigenPod Delayed Withdrawal Router Address:", address(existingEigenPod.delayedWithdrawalRouter()));
-            console.log("Existing EigenPod EigenPod Manager Address:", address(existingEigenPod.eigenPodManager()));
-            console.log("Existing EigenPod Max Restaked Balance Gwei Per Validator:", existingEigenPod.MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR());
-            console.log("Existing EigenPod Genesis Time:", existingEigenPod.GENESIS_TIME());
-            console.log("Existing EigenPod ETHPOS Address:", address(existingEigenPod.ethPOS()));
 
             MockEigenPod mockEigenPod = new MockEigenPod(
                 IETHPOSDeposit(existingEigenPod.ethPOS()),
@@ -640,12 +627,10 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
 
         {
+
             MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
-
             address payable eigenPodManagerPayable = payable(address(eigenPodManager));
-
             ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
-            // address adminAddress = eigenPodManagerProxy.admin();
 
             address proxyAdmin = Utils.getTransparentUpgradeableProxyAdminAddress(eigenPodManagerPayable);
             vm.prank(proxyAdmin);
@@ -660,7 +645,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        // vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Proof is not for this EigenPod");
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
             validatorProofs.stateRootProof,
