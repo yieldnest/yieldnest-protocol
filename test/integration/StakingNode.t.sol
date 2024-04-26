@@ -22,7 +22,9 @@ import { MockEigenLayerBeaconOracle } from "../mocks/MockEigenLayerBeaconOracle.
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
 import {MockEigenPod} from "../mocks/MockEigenPod.sol";
+import { MockEigenPodManager } from "../mocks/MockEigenPodManager.sol";
 import { MockStakingNode } from "../mocks/MockStakingNode.sol";
+import { EigenPodManager } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
 
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 
@@ -30,6 +32,12 @@ import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+import { TransparentUpgradeableProxy } from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {Utils} from "script/Utils.sol";
+
+interface ITransparentUpgradeableProxy {
+    function upgradeTo(address) external payable;
+}
 
 import "forge-std/console.sol";
 
@@ -111,7 +119,7 @@ contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
         validatorProofs.stateRootProof.proof = getStateRootProof();
         validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
         validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-        validatorProofs.validatorFieldsProofs[0] = abi.encodePacked(getValidatorFieldsProof());
+        // validatorProofs.validatorFieldsProofs[0] = getWithdrawalCredentialProof();
         validatorProofs.validatorFields[0] = getValidatorFields();
 
         return validatorProofs;
@@ -631,6 +639,21 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         });
         mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
 
+        {
+            MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
+
+            address payable eigenPodManagerPayable = payable(address(eigenPodManager));
+
+            ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
+            // address adminAddress = eigenPodManagerProxy.admin();
+
+            address proxyAdmin = Utils.getTransparentUpgradeableProxyAdminAddress(eigenPodManagerPayable);
+            vm.prank(proxyAdmin);
+            eigenPodManagerProxy.upgradeTo(address(mockEigenPodManager));
+        }
+
+        MockEigenPodManager mockEigenPodManagerInstance = MockEigenPodManager(address(eigenPodManager));
+        mockEigenPodManagerInstance.setHasPod(address(stakingNodeInstance), stakingNodeInstance.eigenPod());
 
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
@@ -642,7 +665,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             oracleTimestamp,
             validatorProofs.stateRootProof,
             validatorProofs.validatorIndices,
-            validatorProofs.validatorFieldsProofs,
+            validatorProofs.withdrawalCredentialProofs,
             validatorProofs.validatorFields
         ); 
     }
