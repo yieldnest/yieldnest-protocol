@@ -571,7 +571,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         ); 
     }
 
-    function testVerifyWithdrawalCredentialsSuccesfully() public {
+    function testVerifyWithdrawalCredentialsSuccesfully_1ETH() public {
 
         setJSON("/Users/dan/src/yieldnest/yieldnest-protocol/test/data/ValidatorFieldsProof_1293592_8654000.json");
 
