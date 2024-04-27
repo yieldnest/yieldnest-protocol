@@ -90,6 +90,16 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 rewardsDistributor: DEFAULT_ADMIN_ROLE");
 
+        // REWARDS_ADMIN_ROLE
+        require(
+            deployment.rewardsDistributor.hasRole(
+                deployment.rewardsDistributor.REWARDS_ADMIN_ROLE(), 
+                address(actors.admin.REWARDS_ADMIN)
+            ), 
+            "rewardsDistributor: REWARDS_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 rewardsDistributor: REWARDS_ADMIN_ROLE");
+
         // FEE_RECEIVER
         require(
             deployment.rewardsDistributor.feesReceiver() == actors.admin.FEE_RECEIVER, 
@@ -110,7 +120,7 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 stakingNodesManager: STAKING_ADMIN_ROLE");
 
-        // STAKING_NODES_ADMIN_ROLE
+        // STAKING_NODES_OPERATOR_ROLE
         require(
             deployment.stakingNodesManager.hasRole(
                 deployment.stakingNodesManager.STAKING_NODES_OPERATOR_ROLE(), 
@@ -118,7 +128,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: STAKING_NODES_OPERATOR_ROLE INVALID"
         );
-        console.log("\u2705 stakingNodesManager: STAKING_NODES_ADMIN_ROLE");
+        console.log("\u2705 stakingNodesManager: STAKING_NODES_OPERATOR_ROLE");
 
         // VALIDATOR_MANAGER_ROLE
         require(
@@ -139,6 +149,16 @@ contract Verify is BaseScript {
             "stakingNodesManager: STAKING_NODE_CREATOR_ROLE INVALID"
         );
         console.log("\u2705 stakingNodesManager: STAKING_NODE_CREATOR_ROLE");
+
+        // STAKING_NODES_DELEGATOR_ROLE
+        require(
+            deployment.stakingNodesManager.hasRole(
+                deployment.stakingNodesManager.STAKING_NODES_DELEGATOR_ROLE(), 
+                address(actors.admin.STAKING_NODES_DELEGATOR)
+            ), 
+            "stakingNodesManager: STAKING_NODES_DELEGATOR_ROLE INVALID"
+        );
+        console.log("\u2705 stakingNodesManager: STAKING_NODES_DELEGATOR_ROLE");
 
         // PAUSER_ROLE
         require(
@@ -173,20 +193,6 @@ contract Verify is BaseScript {
             "ynETH: PAUSER_ADMIN_ROLE INVALID"
         );
         console.log("\u2705 ynETH: PAUSER_ROLE");
-
-        // STAKING_NODES_MANAGER
-        require(
-            address(deployment.ynETH.stakingNodesManager()) == address(deployment.stakingNodesManager), 
-            "ynETH: stakingNodesManager INVALID"
-        );
-        console.log("\u2705 ynETH: stakingNodesManager");
-
-        // REWARDS_DISTRIBUTOR
-        require(
-            address(deployment.ynETH.rewardsDistributor()) == address(deployment.rewardsDistributor),
-            "ynETH: rewardsDistributor INVALID"
-        );
-        console.log("\u2705 ynETH: rewardsDistributor");
 
     }
 
@@ -291,6 +297,11 @@ contract Verify is BaseScript {
         require(
             address(deployment.stakingNodesManager.strategyManager()) == chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS,
             "StakingNodesManager: strategyManager dependency mismatch"
+        );
+
+        require(
+            address(deployment.stakingNodesManager.upgradeableBeacon().implementation()) == address(deployment.stakingNodeImplementation),
+            "StakingNodesManager: upgradeableBeacon implementation mismatch"
         );
         
         console.log("\u2705 StakingNodesManager dependencies verified");
