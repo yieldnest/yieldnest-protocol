@@ -575,9 +575,10 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         ); 
     }
 
-    function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
 
-        setJSON("test/data/ValidatorFieldsProof_1293592_8746783.json");
+    function verifyWithdrawalCredentialsSuccesfullyForProofFile(string memory path) public {
+
+        setJSON(path);
 
         uint256 depositAmount = 32 ether;
         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
@@ -658,89 +659,15 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
         assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
     }
+    
+
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
+
+        verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8746783.json");
+    }
 
     function testVerifyWithdrawalCredentialsSuccesfully_1ETH() public {
-
-        setJSON("test/data/ValidatorFieldsProof_1293592_8654000.json");
-
-        uint256 depositAmount = 32 ether;
-        (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
-
-        uint64 oracleTimestamp = uint64(block.timestamp);
-        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
-
-        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
-        vm.prank(eigenPodManagerOwner);
-        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
-
-        address eigenPodAddress = getWithdrawalAddress();
-
-        MockStakingNode(payable(address(stakingNodeInstance)))
-            .setEigenPod(IEigenPod(eigenPodAddress));
-
-        {
-            EigenPod existingEigenPod = EigenPod(payable(address(stakingNodeInstance.eigenPod())));
-
-            MockEigenPod mockEigenPod = new MockEigenPod(
-                IETHPOSDeposit(existingEigenPod.ethPOS()),
-                IDelayedWithdrawalRouter(address(delayedWithdrawalRouter)),
-                IEigenPodManager(address(eigenPodManager)),
-                existingEigenPod.MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR(),
-                existingEigenPod.GENESIS_TIME()
-            );
-
-            address mockEigenPodAddress = address(mockEigenPod);
-            IEigenPodManager eigenPodManagerInstance = IEigenPodManager(eigenPodManager);
-            address eigenPodBeaconAddress = address(eigenPodManagerInstance.eigenPodBeacon());
-            UpgradeableBeacon eigenPodBeacon = UpgradeableBeacon(eigenPodBeaconAddress);
-            address eigenPodBeaconOwner = Ownable(eigenPodBeaconAddress).owner();
-            vm.prank(eigenPodBeaconOwner);
-            eigenPodBeacon.upgradeTo(mockEigenPodAddress);
-        }
-
-        MockEigenPod mockEigenPodInstance = MockEigenPod(payable(address(stakingNodeInstance.eigenPod())));
-        mockEigenPodInstance.setPodOwner(address(stakingNodeInstance));
-
-
-        ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
-        bytes32 validatorPubkeyHash = BeaconChainProofs.getPubkeyHash(validatorProofs.validatorFields[0]);
-        IEigenPod.ValidatorInfo memory zeroedValidatorInfo = IEigenPod.ValidatorInfo({
-            validatorIndex: 0,
-            restakedBalanceGwei: 0,
-            mostRecentBalanceUpdateTimestamp: 0,
-            status: IEigenPod.VALIDATOR_STATUS.INACTIVE
-        });
-        mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
-
-        {
-            MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
-            address payable eigenPodManagerPayable = payable(address(eigenPodManager));
-            ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
-
-            address proxyAdmin = Utils.getTransparentUpgradeableProxyAdminAddress(eigenPodManagerPayable);
-            vm.prank(proxyAdmin);
-            eigenPodManagerProxy.upgradeTo(address(mockEigenPodManager));
-        }
-
-        MockEigenPodManager mockEigenPodManagerInstance = MockEigenPodManager(address(eigenPodManager));
-        mockEigenPodManagerInstance.setHasPod(address(stakingNodeInstance), stakingNodeInstance.eigenPod());
-
-        bytes32 latestBlockRoot = _getLatestBlockRoot();
-        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
-
-
-        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.verifyWithdrawalCredentials(
-            oracleTimestamp,
-            validatorProofs.stateRootProof,
-            validatorProofs.validatorIndices,
-            validatorProofs.withdrawalCredentialProofs,
-            validatorProofs.validatorFields
-        );
-        
-        int256 expectedShares = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
-        int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-        assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
+        verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8654000.json");
     }
 
     function skiptestVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
