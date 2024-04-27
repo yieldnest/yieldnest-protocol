@@ -35,7 +35,7 @@ abstract contract BaseScript is Script, Utils {
 
     function getDeploymentFile() internal view returns (string memory) {
         string memory root = vm.projectRoot();
-        return string.concat(root, "/deployments/ynETH-", vm.toString(block.chainid), "-", vm.toString(block.timestamp), ".json");
+        return string.concat(root, "/deployments/ynETH-", vm.toString(block.chainid), ".json");
     }
 
     function saveDeployment(Deployment memory deployment) public {

@@ -8,11 +8,14 @@ import {PooledDepositsVault} from "src/PooledDepositsVault.sol"; // Renamed from
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
-contract Upgrade is BaseScript {
+contract DeployPooledDepositVaults is BaseScript {
 
     function run() public {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        address deployerAddress = vm.addr(deployerPrivateKey);
+        console.log("Deployer Public Address:", deployerAddress);
 
         // ynETH.sol ROLES
         ActorAddresses.Actors memory actors = getActors();
@@ -35,7 +38,7 @@ contract Upgrade is BaseScript {
 
     function getVaultsDeploymentFile() internal view returns (string memory) {
         string memory root = vm.projectRoot();
-        return string.concat(root, "/deployments/PooledDepositsVaults-", vm.toString(block.chainid), "-", ".json");
+        return string.concat(root, "/deployments/PooledDepositsVaults-", vm.toString(block.chainid), ".json");
     }
 
     function savePooledDepositsDeployment(PooledDepositsVault[] memory pooledDepositsVaults) internal { // Renamed from PooledDeposits to PooledDepositsVault

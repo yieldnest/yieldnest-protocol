@@ -62,13 +62,15 @@ contract DeployYieldNest is BaseScript {
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
+
+        ContractAddresses contractAddresses = new ContractAddresses();
+
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("Default Signer Address:", _broadcaster);
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
-        ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
