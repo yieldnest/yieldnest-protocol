@@ -575,7 +575,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         ); 
     }
 
-
     function verifyWithdrawalCredentialsSuccesfullyForProofFile(string memory path) public {
 
         setJSON(path);
@@ -589,13 +588,16 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
         vm.prank(eigenPodManagerOwner);
         eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
-
+        
+        // set existing EigenPod to be the EigenPod of the StakingNode for the 
+        // purpose of testing verifyWithdrawalCredentials
         address eigenPodAddress = getWithdrawalAddress();
 
         MockStakingNode(payable(address(stakingNodeInstance)))
             .setEigenPod(IEigenPod(eigenPodAddress));
 
         {
+            // Upgrade the implementation of EigenPod to be able to alter its owner
             EigenPod existingEigenPod = EigenPod(payable(address(stakingNodeInstance.eigenPod())));
 
             MockEigenPod mockEigenPod = new MockEigenPod(
@@ -630,6 +632,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
 
         {
+            // Upgrade the implementation of EigenPod to be able to alter the owner of the pod being tested
             MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
             address payable eigenPodManagerPayable = payable(address(eigenPodManager));
             ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
@@ -662,7 +665,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
-
         verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8746783.json");
     }
 
