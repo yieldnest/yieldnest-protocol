@@ -35,7 +35,7 @@ abstract contract BaseScript is Script, Utils {
 
     function getDeploymentFile() internal view returns (string memory) {
         string memory root = vm.projectRoot();
-        return string.concat(root, "/deployments/", vm.toString(block.chainid), ".json");
+        return string.concat(root, "/deployments/ynETH-", vm.toString(block.chainid), "-", vm.toString(block.timestamp), ".json");
     }
 
     function saveDeployment(Deployment memory deployment) public {
@@ -101,6 +101,24 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "lsdStakingNodeImplementation", address(deployment.lsdStakingNodeImplementation));
         vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
         vm.writeJson(finalJson, getDeploymentFile());
+    }
+
+    function serializeActors(string memory json) public {
+        ActorAddresses.Actors memory actors = getActors();
+        vm.serializeAddress(json, "DEFAULT_SIGNER", address(actors.eoa.DEFAULT_SIGNER));
+        // actors
+        vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address(actors.admin.PROXY_ADMIN_OWNER));
+        vm.serializeAddress(json, "ADMIN", address(actors.admin.ADMIN));
+        vm.serializeAddress(json, "STAKING_ADMIN", address(actors.admin.STAKING_ADMIN));
+        vm.serializeAddress(json, "STAKING_NODES_OPERATOR", address(actors.ops.STAKING_NODES_OPERATOR)); // Assuming STAKING_NODES_ADMIN is a typo and should be STAKING_NODES_OPERATOR or another existing role in the context provided
+        vm.serializeAddress(json, "VALIDATOR_MANAGER", address(actors.ops.VALIDATOR_MANAGER));
+        vm.serializeAddress(json, "FEE_RECEIVER", address(actors.admin.FEE_RECEIVER));
+        vm.serializeAddress(json, "PAUSE_ADMIN", address(actors.admin.PAUSE_ADMIN));
+        vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address(actors.ops.LSD_RESTAKING_MANAGER));
+        vm.serializeAddress(json, "STAKING_NODE_CREATOR", address(actors.ops.STAKING_NODE_CREATOR));
+        vm.serializeAddress(json, "ORACLE_ADMIN", address(actors.admin.ORACLE_ADMIN));
+        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPPER", address(actors.eoa.DEPOSIT_BOOTSTRAPPER));
+        vm.serializeAddress(json, "POOLED_DEPOSITS_OWNER", address(actors.ops.POOLED_DEPOSITS_OWNER));
     }
 
     function loadynLSDDeployment() public view returns (ynLSDDeployment memory) {
