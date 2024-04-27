@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
+import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -189,26 +192,59 @@ contract Verify is BaseScript {
 
     function verifySystemParameters() internal view {
         // Verify the system parameters
-        console.log("\u2705 ynETH: feesBasisPoints");
         require(
             deployment.rewardsDistributor.feesBasisPoints() == 1000,
             "ynETH: feesBasisPoints INVALID"
         );
+        console.log("\u2705 ynETH: feesBasisPoints - Value:", deployment.rewardsDistributor.feesBasisPoints());
+
+        require(
+            deployment.ynETH.depositsPaused() == false,
+            "ynETH: depositsPaused INVALID"
+        );
+        console.log("\u2705 ynETH: depositsPaused - Value:", deployment.ynETH.depositsPaused());
+
+        require(
+            deployment.stakingNodesManager.maxNodeCount() == 10,
+            "ynETH: maxNodeCount INVALID"
+        );
+        console.log("\u2705 ynETH: maxNodeCount - Value:", deployment.stakingNodesManager.maxNodeCount());
+
+        require(
+            deployment.stakingNodesManager.validatorRegistrationPaused() == false,
+            "ynETH: validatorRegistrationPaused INVALID"
+        );
+        console.log("\u2705 ynETH: validatorRegistrationPaused - Value:", deployment.stakingNodesManager.validatorRegistrationPaused());
+
+        console.log("\u2705 All system parameters verified successfully");
     }
 
-    function verifyContractDependencies() internal view {
+    function verifyContractDependencies() internal {
 
+        verifyYnETHDependencies();
+        verifyStakingNodesManagerDependencies();
+        verifyRewardsDistributorDependencies();
+        verifyAllStakingNodeDependencies();
+
+        console.log("\u2705 All contract dependencies verified successfully");
+    }
+
+    function verifyYnETHDependencies() internal view {
         // Verify ynETH contract dependencies
         require(
             address(deployment.ynETH.rewardsDistributor()) == address(deployment.rewardsDistributor),
-            "ynETH: rewardsDistributor dependency mismatch"
+            "ynETH: RewardsDistributor dependency mismatch"
         );
         require(
             address(deployment.ynETH.stakingNodesManager()) == address(deployment.stakingNodesManager),
-            "ynETH: stakingNodesManager dependency mismatch"
+            "ynETH: StakingNodesManager dependency mismatch"
         );
 
-        // Verify RewardsDistributor contract dependencies
+        console.log("\u2705 ynETH dependencies verified successfully");
+    }
+
+    function verifyRewardsDistributorDependencies() internal view {
+                    // Verify RewardsDistributor contract dependencies
         require(
             address(deployment.rewardsDistributor.ynETH()) == address(deployment.ynETH),
             "RewardsDistributor: ynETH dependency mismatch"
@@ -222,10 +258,20 @@ contract Verify is BaseScript {
             "RewardsDistributor: consensusLayerReceiver dependency mismatch"
         );
 
+        console.log("\u2705 RewardsDistributor dependencies verified");
+    }
+
+    function verifyStakingNodesManagerDependencies() internal view {
         require(
             address(deployment.stakingNodesManager.ynETH()) == address(deployment.ynETH),
             "StakingNodesManager: ynETH dependency mismatch"
         );
+
+        require(
+            address(deployment.stakingNodesManager.rewardsDistributor()) == address(deployment.rewardsDistributor),
+            "StakingNodesManager: rewardsDistributor dependency mismatch"
+        );
+
         require(
             address(deployment.stakingNodesManager.eigenPodManager()) == chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS,
             "StakingNodesManager: eigenPodManager dependency mismatch"
@@ -248,7 +294,22 @@ contract Verify is BaseScript {
         );
         
         console.log("\u2705 StakingNodesManager dependencies verified");
+    }
 
-        console.log("\u2705 All contract dependencies verified successfully");
+    function verifyAllStakingNodeDependencies() internal view {
+        IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();
+        for (uint256 i = 0; i < stakingNodes.length; i++) {
+            IStakingNode stakingNode = stakingNodes[i];
+            require(
+                address(stakingNode.stakingNodesManager()) == address(deployment.stakingNodesManager),
+                "StakingNode: StakingNodesManager dependency mismatch"
+            );
+
+            address storedPod = address(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).ownerToPod(address(stakingNode)));
+            assert(
+                address(stakingNode.eigenPod()) == storedPod
+            );
+            console.log("\u2705 StakingNode dependencies verified for node", i);
+        }
     }
 }
