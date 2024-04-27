@@ -1,6 +1,7 @@
 /// SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
@@ -9,13 +10,19 @@ contract Verify is BaseScript {
 
     Deployment deployment;
     ActorAddresses.Actors actors;
+    ContractAddresses.ChainAddresses chainAddresses;
 
     function run() external {
+
+        ContractAddresses contractAddresses = new ContractAddresses();
+        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         deployment = loadDeployment();
         actors = getActors();
 
         verifyRoles();
+        verifySystemParameters();
+        verifyContractDependencies();
     }
 
     function verifyRoles() internal view {
@@ -180,9 +187,68 @@ contract Verify is BaseScript {
 
     }
 
-    
+    function verifySystemParameters() internal view {
+        // Verify the system parameters
+        console.log("\u2705 ynETH: feesBasisPoints");
+        require(
+            deployment.rewardsDistributor.feesBasisPoints() == 1000,
+            "ynETH: feesBasisPoints INVALID"
+        );
+    }
 
+    function verifyContractDependencies() internal view {
 
+        // Verify ynETH contract dependencies
+        require(
+            address(deployment.ynETH.rewardsDistributor()) == address(deployment.rewardsDistributor),
+            "ynETH: rewardsDistributor dependency mismatch"
+        );
+        require(
+            address(deployment.ynETH.stakingNodesManager()) == address(deployment.stakingNodesManager),
+            "ynETH: stakingNodesManager dependency mismatch"
+        );
 
+        // Verify RewardsDistributor contract dependencies
+        require(
+            address(deployment.rewardsDistributor.ynETH()) == address(deployment.ynETH),
+            "RewardsDistributor: ynETH dependency mismatch"
+        );
+        require(
+            address(deployment.rewardsDistributor.executionLayerReceiver()) == address(deployment.executionLayerReceiver),
+            "RewardsDistributor: executionLayerReceiver dependency mismatch"
+        );
+        require(
+            address(deployment.rewardsDistributor.consensusLayerReceiver()) == address(deployment.consensusLayerReceiver),
+            "RewardsDistributor: consensusLayerReceiver dependency mismatch"
+        );
 
+        require(
+            address(deployment.stakingNodesManager.ynETH()) == address(deployment.ynETH),
+            "StakingNodesManager: ynETH dependency mismatch"
+        );
+        require(
+            address(deployment.stakingNodesManager.eigenPodManager()) == chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS,
+            "StakingNodesManager: eigenPodManager dependency mismatch"
+        );
+        require(
+            address(deployment.stakingNodesManager.depositContractEth2()) == chainAddresses.ethereum.DEPOSIT_2_ADDRESS,
+            "StakingNodesManager: depositContractEth2 dependency mismatch"
+        );
+        require(
+            address(deployment.stakingNodesManager.delegationManager()) == chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS,
+            "StakingNodesManager: delegationManager dependency mismatch"
+        );
+        require(
+            address(deployment.stakingNodesManager.delayedWithdrawalRouter()) == chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS,
+            "StakingNodesManager: delayedWithdrawalRouter dependency mismatch"
+        );
+        require(
+            address(deployment.stakingNodesManager.strategyManager()) == chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS,
+            "StakingNodesManager: strategyManager dependency mismatch"
+        );
+        
+        console.log("\u2705 StakingNodesManager dependencies verified");
+
+        console.log("\u2705 All contract dependencies verified successfully");
+    }
 }
