@@ -25,24 +25,18 @@ import {MockEigenPod} from "../mocks/MockEigenPod.sol";
 import { MockEigenPodManager } from "../mocks/MockEigenPodManager.sol";
 import { MockStakingNode } from "../mocks/MockStakingNode.sol";
 import { EigenPodManager } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
-
-
-import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
-
 import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import { TransparentUpgradeableProxy } from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+
+import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
-import "forge-std/console.sol";
 
 interface ITransparentUpgradeableProxy {
     function upgradeTo(address) external payable;
 }
-
-import "forge-std/console.sol";
-
 
 contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
 
