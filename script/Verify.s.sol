@@ -5,6 +5,8 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {Utils} from "script/Utils.sol";
 
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
@@ -23,9 +25,48 @@ contract Verify is BaseScript {
         deployment = loadDeployment();
         actors = getActors();
 
+        verifyProxyAdminOwners();
         verifyRoles();
         verifySystemParameters();
         verifyContractDependencies();
+    }
+
+    function verifyProxyAdminOwners() internal view {
+
+        require(
+            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynETH))).owner()
+            == actors.admin.PROXY_ADMIN_OWNER,
+            "ynETH: PROXY_ADMIN_OWNER INVALID"
+        );
+        console.log("\u2705 ynETH: PROXY_ADMIN_OWNER verified successfully");
+
+        require(
+            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.rewardsDistributor))).owner()
+            == actors.admin.PROXY_ADMIN_OWNER,
+            "rewardsDistributor: PROXY_ADMIN_OWNER INVALID"
+        );
+        console.log("\u2705 rewardsDistributor: PROXY_ADMIN_OWNER verified successfully");
+
+        require(
+            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.stakingNodesManager))).owner()
+            == actors.admin.PROXY_ADMIN_OWNER,
+            "stakingNodesManager: PROXY_ADMIN_OWNER INVALID"
+        );
+        console.log("\u2705 stakingNodesManager: PROXY_ADMIN_OWNER verified successfully");
+
+        require(
+            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.consensusLayerReceiver))).owner()
+            == actors.admin.PROXY_ADMIN_OWNER,
+            "consensusLayerReceiver: PROXY_ADMIN_OWNER INVALID"
+        );
+        console.log("\u2705 consensusLayerReceiver: PROXY_ADMIN_OWNER verified successfully");
+
+        require(
+            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.executionLayerReceiver))).owner()
+            == actors.admin.PROXY_ADMIN_OWNER,
+            "executionLayerReceiver: PROXY_ADMIN_OWNER INVALID"
+        );
+        console.log("\u2705 executionLayerReceiver: PROXY_ADMIN_OWNER verified successfully");
     }
 
     function verifyRoles() internal view {
