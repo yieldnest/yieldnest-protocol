@@ -8,7 +8,6 @@ import "forge-std/StdJson.sol";
 contract ProofUtils is ProofParsing {
 
     constructor(string memory path) {
-        //setJSON("lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json");
         setJSON((path));
     }
 
