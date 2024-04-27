@@ -132,6 +132,14 @@ abstract contract BaseScript is Script, Utils {
         return deployment;
     }
 
+    function serializeProxyElements(string memory json, string memory name, address proxy) public {
+        address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(proxy);
+        address implementation = getTransparentUpgradeableProxyImplementationAddress(proxy);
+        vm.serializeAddress(json, string.concat("proxy-", name), proxy);
+        vm.serializeAddress(json, string.concat("proxyAdmin-", name), proxyAdmin);
+        vm.serializeAddress(json, string.concat("implementation-", name), implementation);
+    }
+
     function getActors() public returns (ActorAddresses.Actors memory actors) {
         return (new ActorAddresses()).getActors(block.chainid);
     }

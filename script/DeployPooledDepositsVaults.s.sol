@@ -44,7 +44,8 @@ contract Upgrade is BaseScript {
         serializeActors(json);
 
         for (uint i = 0; i < pooledDepositsVaults.length; i++) {
-            vm.serializeAddress(json, string.concat("Deposit-", vm.toString(i)), address(pooledDepositsVaults[i]));
+
+            serializeProxyElements(json, string.concat("Deposit-", vm.toString(i)), address(pooledDepositsVaults[i]));
         }
         string memory finalJson = vm.serializeAddress(json, "ZEND", address(0));
 
