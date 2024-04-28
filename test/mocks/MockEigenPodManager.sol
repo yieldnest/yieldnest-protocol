@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import { IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import { IETHPOSDeposit } from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
 import { IStrategyManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
