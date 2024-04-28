@@ -29,14 +29,14 @@ contract VerifyPooledDepositsVaults is DeployPooledDepositsVaults {
     }
 
     function verifyProxyAdminOwners() public view {
-    for (uint i = 0; i < deployment.vaults.length; i++) {
-        require(
-            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.vaults[i]))).owner()
-            == actors.admin.PROXY_ADMIN_OWNER,
-            "PooledDepositsVault: PROXY_ADMIN_OWNER INVALID"
-        );
-        console.log("Verified proxy admin owner for vault at index", i);
-    }
+        for (uint i = 0; i < deployment.vaults.length; i++) {
+            require(
+                ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.vaults[i]))).owner()
+                == actors.admin.PROXY_ADMIN_OWNER,
+                "PooledDepositsVault: PROXY_ADMIN_OWNER INVALID"
+            );
+            console.log("Verified proxy admin owner for vault at index", i);
+        }
     }
 
 }
