@@ -659,10 +659,16 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
+        if (block.chainid != 1) {
+            return; // Skip test if not on Ethereum Mainnet
+        }
         verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8746783.json");
     }
 
     function testVerifyWithdrawalCredentialsSuccesfully_1ETH() public {
+        if (block.chainid != 1) {
+            return; // Skip test if not on Ethereum Mainnet
+        }
         verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8654000.json");
     }
 
