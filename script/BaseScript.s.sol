@@ -13,6 +13,7 @@ import {ynETH} from "src/ynETH.sol";
 import {Script} from "lib/forge-std/src/Script.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
+import {console} from "lib/forge-std/src/console.sol";
 
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
@@ -65,6 +66,8 @@ abstract contract BaseScript is Script, Utils {
 
         string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address((actors.eoa.DEFAULT_SIGNER)));
         vm.writeJson(finalJson, getDeploymentFile());
+
+        console.log("Deployment JSON file written successfully:", getDeploymentFile());
     }
 
     function loadDeployment() public view returns (Deployment memory) {
