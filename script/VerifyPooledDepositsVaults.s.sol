@@ -26,6 +26,7 @@ contract VerifyPooledDepositsVaults is DeployPooledDepositsVaults {
         actors = getActors();
 
         verifyProxyAdminOwners();
+        verifyVaultOwners();
     }
 
     function verifyProxyAdminOwners() public view {
@@ -35,9 +36,18 @@ contract VerifyPooledDepositsVaults is DeployPooledDepositsVaults {
                 == actors.admin.PROXY_ADMIN_OWNER,
                 "PooledDepositsVault: PROXY_ADMIN_OWNER INVALID"
             );
-            console.log("Verified proxy admin owner for vault at index", i);
+            console.log("\u2705 Verified proxy admin owner for vault at index", i);
         }
     }
 
+    function verifyVaultOwners() public view {
+        for (uint i = 0; i < deployment.vaults.length; i++) {
+            require(
+                deployment.vaults[i].owner() == actors.ops.POOLED_DEPOSITS_OWNER,
+                "PooledDepositsVault: OWNER INVALID"
+            );
+            console.log("\u2705 Verified owner for vault at index", i);
+        }
+    }
 }
 
