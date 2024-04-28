@@ -398,7 +398,7 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         assertEq(totalAssetsAfterRewards, totalAssetsAfterDeposit + rewardAmount, "Total assets should increase by the reward amount");
     }
 
-    function skiptestFuzzTotalAssetsWithRewardsInEigenPods(uint256 depositAmount, uint256 rewardAmount, uint256 stakingNodeCount) public {
+    function testFuzzTotalAssetsWithRewardsInEigenPods(uint256 depositAmount, uint256 rewardAmount, uint256 stakingNodeCount) public {
         // Arrange
         vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
         vm.assume(rewardAmount > 0 ether && rewardAmount <= 5000 ether); // Assuming rewards are less than or equal to half the deposit for this test
@@ -408,6 +408,9 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(address(this));
         uint256 totalAssetsAfterDeposit = yneth.totalAssets();
 
+        assertEq(totalAssetsAfterDeposit, depositAmount, "Total assets should increase by the deposit amount after rewards in eigenPods");
+
+        // deal beacon-chain rewards into eigenpods
         uint256 totalRewards = 0;
         for (uint256 i = 0; i < stakingNodeCount; i++) {
             vm.prank(actors.ops.STAKING_NODE_CREATOR);
@@ -418,10 +421,8 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
             rewardAmount += 1 ether;
         }
 
-        // TODO: verify updates here
-
+        // NOTE: rewards sitting in EigenPods are NOT counted as total TVL
         uint256 totalAssetsAfterRewards = yneth.totalAssets();
-        // Assert
-        assertEq(totalAssetsAfterRewards, depositAmount + totalRewards, "Total assets should increase by the reward amount in eigenPods");
+        assertEq(totalAssetsAfterRewards, depositAmount, "Total assets should increase by the reward amount in eigenPods");
     }
 }
