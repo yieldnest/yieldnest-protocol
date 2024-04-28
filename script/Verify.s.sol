@@ -32,41 +32,40 @@ contract Verify is BaseScript {
     }
 
     function verifyProxyAdminOwners() internal view {
-
+        address ynETHAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynETH))).owner();
         require(
-            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynETH))).owner()
-            == actors.admin.PROXY_ADMIN_OWNER,
-            "ynETH: PROXY_ADMIN_OWNER INVALID"
+            ynETHAdmin == actors.admin.PROXY_ADMIN_OWNER,
+            string.concat("ynETH: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(ynETHAdmin))
         );
-        console.log("\u2705 ynETH: PROXY_ADMIN_OWNER verified successfully");
+        console.log("\u2705 ynETH: PROXY_ADMIN_OWNER - ", vm.toString(ynETHAdmin));
 
+        address rewardsDistributorAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.rewardsDistributor))).owner();
         require(
-            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.rewardsDistributor))).owner()
-            == actors.admin.PROXY_ADMIN_OWNER,
-            "rewardsDistributor: PROXY_ADMIN_OWNER INVALID"
+            rewardsDistributorAdmin == actors.admin.PROXY_ADMIN_OWNER,
+            string.concat("rewardsDistributor: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(rewardsDistributorAdmin))
         );
-        console.log("\u2705 rewardsDistributor: PROXY_ADMIN_OWNER verified successfully");
+        console.log("\u2705 rewardsDistributor: PROXY_ADMIN_OWNER - ", vm.toString(rewardsDistributorAdmin));
 
+        address stakingNodesManagerAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.stakingNodesManager))).owner();
         require(
-            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.stakingNodesManager))).owner()
-            == actors.admin.PROXY_ADMIN_OWNER,
-            "stakingNodesManager: PROXY_ADMIN_OWNER INVALID"
+            stakingNodesManagerAdmin == actors.admin.PROXY_ADMIN_OWNER,
+            string.concat("stakingNodesManager: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(stakingNodesManagerAdmin))
         );
-        console.log("\u2705 stakingNodesManager: PROXY_ADMIN_OWNER verified successfully");
+        console.log("\u2705 stakingNodesManager: PROXY_ADMIN_OWNER - ", vm.toString(stakingNodesManagerAdmin));
 
+        address consensusLayerReceiverAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.consensusLayerReceiver))).owner();
         require(
-            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.consensusLayerReceiver))).owner()
-            == actors.admin.PROXY_ADMIN_OWNER,
-            "consensusLayerReceiver: PROXY_ADMIN_OWNER INVALID"
+            consensusLayerReceiverAdmin == actors.admin.PROXY_ADMIN_OWNER,
+            string.concat("consensusLayerReceiver: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(consensusLayerReceiverAdmin))
         );
-        console.log("\u2705 consensusLayerReceiver: PROXY_ADMIN_OWNER verified successfully");
+        console.log("\u2705 consensusLayerReceiver: PROXY_ADMIN_OWNER - ", vm.toString(consensusLayerReceiverAdmin));
 
+        address executionLayerReceiverAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.executionLayerReceiver))).owner();
         require(
-            ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.executionLayerReceiver))).owner()
-            == actors.admin.PROXY_ADMIN_OWNER,
-            "executionLayerReceiver: PROXY_ADMIN_OWNER INVALID"
+            executionLayerReceiverAdmin == actors.admin.PROXY_ADMIN_OWNER,
+            string.concat("executionLayerReceiver: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(executionLayerReceiverAdmin))
         );
-        console.log("\u2705 executionLayerReceiver: PROXY_ADMIN_OWNER verified successfully");
+        console.log("\u2705 executionLayerReceiver: PROXY_ADMIN_OWNER - ", vm.toString(executionLayerReceiverAdmin));
     }
 
     function verifyRoles() internal view {
@@ -82,7 +81,7 @@ contract Verify is BaseScript {
             ), 
             "consensusLayerReceiver: WITHDRAWER_ROLE INVALID"
         );
-        console.log("\u2705 consensusLayerReceiver: WITHDRAWER_ROLE");
+        console.log("\u2705 consensusLayerReceiver: WITHDRAWER_ROLE - ", vm.toString(address(deployment.rewardsDistributor)));
 
         // DEFAULT_ADMIN_ROLE
         require(
@@ -92,7 +91,7 @@ contract Verify is BaseScript {
             ), 
             "consensusLayerReceiver: DEFAULT_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 consensusLayerReceiver: DEFAULT_ADMIN_ROLE");
+        console.log("\u2705 consensusLayerReceiver: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
 
 
         //--------------------------------------------------------------------------------------
@@ -106,7 +105,7 @@ contract Verify is BaseScript {
             ), 
             "executionLayerReceiver: WITHDRAWER_ROLE INVALID"
         );
-        console.log("\u2705 executionLayerReceiver: WITHDRAWER_ROLE");
+        console.log("\u2705 executionLayerReceiver: WITHDRAWER_ROLE - ", vm.toString(address(deployment.rewardsDistributor)));
 
         // DEFAULT_ADMIN_ROLE
         require(
@@ -116,7 +115,7 @@ contract Verify is BaseScript {
             ), 
             "executionLayerReceiver: DEFAULT_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 executionLayerReceiver: DEFAULT_ADMIN_ROLE");
+        console.log("\u2705 executionLayerReceiver: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
 
         //--------------------------------------------------------------------------------------
         //-------------------  rewardsDistributor roles  ---------------------------------------
@@ -129,7 +128,7 @@ contract Verify is BaseScript {
             ), 
             "rewardsDistributor: DEFAULT_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 rewardsDistributor: DEFAULT_ADMIN_ROLE");
+        console.log("\u2705 rewardsDistributor: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
 
         // REWARDS_ADMIN_ROLE
         require(
@@ -139,14 +138,14 @@ contract Verify is BaseScript {
             ), 
             "rewardsDistributor: REWARDS_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 rewardsDistributor: REWARDS_ADMIN_ROLE");
+        console.log("\u2705 rewardsDistributor: REWARDS_ADMIN_ROLE - ", vm.toString(address(actors.admin.REWARDS_ADMIN)));
 
         // FEE_RECEIVER
         require(
             deployment.rewardsDistributor.feesReceiver() == actors.admin.FEE_RECEIVER, 
             "rewardsDistributor: FEE_RECEIVER INVALID"
         );
-        console.log("\u2705 rewardsDistributor: FEE_RECEIVER");
+        console.log("\u2705 rewardsDistributor: FEE_RECEIVER - ", vm.toString(actors.admin.FEE_RECEIVER));
 
         //--------------------------------------------------------------------------------------
         //------------------  stakingNodesManager roles  ---------------------------------------
@@ -159,7 +158,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: STAKING_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 stakingNodesManager: STAKING_ADMIN_ROLE");
+        console.log("\u2705 stakingNodesManager: STAKING_ADMIN_ROLE - ", vm.toString(address(actors.admin.STAKING_ADMIN)));
 
         // STAKING_NODES_OPERATOR_ROLE
         require(
@@ -169,7 +168,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: STAKING_NODES_OPERATOR_ROLE INVALID"
         );
-        console.log("\u2705 stakingNodesManager: STAKING_NODES_OPERATOR_ROLE");
+        console.log("\u2705 stakingNodesManager: STAKING_NODES_OPERATOR_ROLE - ", vm.toString(address(actors.ops.STAKING_NODES_OPERATOR)));
 
         // VALIDATOR_MANAGER_ROLE
         require(
@@ -179,7 +178,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: VALIDATOR_MANAGER_ROLE INVALID"
         );
-        console.log("\u2705 stakingNodesManager: VALIDATOR_MANAGER_ROLE");
+        console.log("\u2705 stakingNodesManager: VALIDATOR_MANAGER_ROLE - ", vm.toString(address(actors.ops.VALIDATOR_MANAGER)));
 
         // STAKING_NODE_CREATOR_ROLE
         require(
@@ -189,7 +188,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: STAKING_NODE_CREATOR_ROLE INVALID"
         );
-        console.log("\u2705 stakingNodesManager: STAKING_NODE_CREATOR_ROLE");
+        console.log("\u2705 stakingNodesManager: STAKING_NODE_CREATOR_ROLE - ", vm.toString(address(actors.ops.STAKING_NODE_CREATOR)));
 
         // STAKING_NODES_DELEGATOR_ROLE
         require(
@@ -199,7 +198,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: STAKING_NODES_DELEGATOR_ROLE INVALID"
         );
-        console.log("\u2705 stakingNodesManager: STAKING_NODES_DELEGATOR_ROLE");
+        console.log("\u2705 stakingNodesManager: STAKING_NODES_DELEGATOR_ROLE - ", vm.toString(address(actors.admin.STAKING_NODES_DELEGATOR)));
 
         // PAUSER_ROLE
         require(
@@ -209,7 +208,7 @@ contract Verify is BaseScript {
             ), 
             "stakingNodesManager: PAUSE_ADMIN INVALID"
         );
-        console.log("\u2705 stakingNodesManager: PAUSE_ADMIN");
+        console.log("\u2705 stakingNodesManager: PAUSE_ADMIN - ", vm.toString(address(actors.admin.PAUSE_ADMIN)));
 
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
@@ -223,7 +222,7 @@ contract Verify is BaseScript {
             ), 
             "ynETH: DEFAULT_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 ynETH: DEFAULT_ADMIN_ROLE");
+        console.log("\u2705 ynETH: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
 
         // PAUSER_ROLE;
         require(
@@ -233,7 +232,7 @@ contract Verify is BaseScript {
             ), 
             "ynETH: PAUSER_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 ynETH: PAUSER_ROLE");
+        console.log("\u2705 ynETH: PAUSER_ROLE - ", vm.toString(address(actors.admin.PAUSE_ADMIN)));
 
     }
 
