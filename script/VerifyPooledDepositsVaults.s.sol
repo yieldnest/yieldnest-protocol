@@ -31,22 +31,23 @@ contract VerifyPooledDepositsVaults is DeployPooledDepositsVaults {
 
     function verifyProxyAdminOwners() public view {
         for (uint i = 0; i < deployment.vaults.length; i++) {
+            address vaultAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.vaults[i]))).owner();
             require(
-                ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.vaults[i]))).owner()
-                == actors.admin.PROXY_ADMIN_OWNER,
-                "PooledDepositsVault: PROXY_ADMIN_OWNER INVALID"
+                vaultAdmin == actors.admin.PROXY_ADMIN_OWNER,
+                string.concat("PooledDepositsVault: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(vaultAdmin))
             );
-            console.log("\u2705 Verified proxy admin owner for vault at index", i);
+            console.log("\u2705 Verified proxy admin owner for vault at index", i, " - ", vm.toString(vaultAdmin));
         }
     }
 
     function verifyVaultOwners() public view {
         for (uint i = 0; i < deployment.vaults.length; i++) {
+            address vaultOwner = deployment.vaults[i].owner();
             require(
-                deployment.vaults[i].owner() == actors.ops.POOLED_DEPOSITS_OWNER,
-                "PooledDepositsVault: OWNER INVALID"
+                vaultOwner == actors.ops.POOLED_DEPOSITS_OWNER,
+                string.concat("PooledDepositsVault: OWNER INVALID, expected: ", vm.toString(actors.ops.POOLED_DEPOSITS_OWNER), ", got: ", vm.toString(vaultOwner))
             );
-            console.log("\u2705 Verified owner for vault at index", i);
+            console.log("\u2705 Verified owner for vault at index", i, " - ", vm.toString(vaultOwner));
         }
     }
 }
