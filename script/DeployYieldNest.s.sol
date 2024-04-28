@@ -57,11 +57,13 @@ contract DeployYieldNest is BaseScript {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
+        address publicKey = vm.addr(deployerPrivateKey);
+        console.log("Deployer Public Key:", publicKey);
+
         // ynETH.sol ROLES
         actors = getActors();
 
         address _broadcaster = vm.addr(deployerPrivateKey);
-
 
         ContractAddresses contractAddresses = new ContractAddresses();
 

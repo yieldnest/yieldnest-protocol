@@ -18,7 +18,6 @@ import {console} from "lib/forge-std/src/console.sol";
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
     
-
     struct Deployment {
         ynETH ynETH;
         StakingNodesManager stakingNodesManager;
@@ -43,11 +42,11 @@ abstract contract BaseScript is Script, Utils {
         string memory json = "deployment";
 
         // contract addresses
-        vm.serializeAddress(json, "ynETH", address(deployment.ynETH)); // Assuming ynETH should be serialized as a boolean for simplicity
-        vm.serializeAddress(json, "stakingNodesManager", address(deployment.stakingNodesManager));
-        vm.serializeAddress(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
-        vm.serializeAddress(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
-        vm.serializeAddress(json, "rewardsDistributor", address(deployment.rewardsDistributor));
+        serializeProxyElements(json, "ynETH", address(deployment.ynETH)); 
+        serializeProxyElements(json, "stakingNodesManager", address(deployment.stakingNodesManager));
+        serializeProxyElements(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
+        serializeProxyElements(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
+        serializeProxyElements(json, "rewardsDistributor", address(deployment.rewardsDistributor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
 
         ActorAddresses.Actors memory actors = getActors();
@@ -74,11 +73,11 @@ abstract contract BaseScript is Script, Utils {
         string memory deploymentFile = getDeploymentFile();
         string memory jsonContent = vm.readFile(deploymentFile);
         Deployment memory deployment;
-        deployment.ynETH = ynETH(payable(jsonContent.readAddress(".ynETH")));
-        deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".stakingNodesManager")));
-        deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".executionLayerReceiver")));
-        deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".consensusLayerReceiver")));
-        deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".rewardsDistributor")));
+        deployment.ynETH = ynETH(payable(jsonContent.readAddress(".proxy-ynETH")));
+        deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".proxy-stakingNodesManager")));
+        deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".proxy-executionLayerReceiver")));
+        deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".proxy-consensusLayerReceiver")));
+        deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".proxy-rewardsDistributor")));
         deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
 
         return deployment;
