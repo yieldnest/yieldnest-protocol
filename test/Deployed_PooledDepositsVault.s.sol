@@ -7,6 +7,17 @@ import {IynETH} from "src/interfaces/IynETH.sol";
 import "test/integration/IntegrationBaseTest.sol";
 import "src/ynBase.sol";
 import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "script/Utils.sol";
+
+
+
+contract MockUpgradedVault is PooledDepositsVault {
+    function foo() public pure returns (uint256) {
+        return 123;
+    }
+}
 
 
 contract MockYnETH is ERC20 {
@@ -33,7 +44,7 @@ contract MockYnETH is ERC20 {
 }
 
 
-contract Deployed_PooledDepositsVaultTest is Test {
+contract Deployed_PooledDepositsVaultTest is Test, Utils {
 
     PooledDepositsVault public pooledDepositsVault;
 
@@ -125,5 +136,26 @@ contract Deployed_PooledDepositsVaultTest is Test {
         // Assert depositor's balance using yneth
         uint256 ynethBalance = yneth.balanceOf(arbitraryDepositor);
         assertEq(ynethBalance, balance, "ynETH balance should match the depositor's balance after conversion");
+    }
+
+    function testUpgradeVault() public {
+        // Arrange
+        MockUpgradedVault newVaultImplementation = new MockUpgradedVault();
+        address proxyAdminAddress = getTransparentUpgradeableProxyAdminAddress(address(pooledDepositsVault));
+        ProxyAdmin proxyAdmin = ProxyAdmin(proxyAdminAddress);
+
+        // Act
+        vm.prank(0xE1fAc59031520FD1eb901da990Da12Af295e6731); // Assuming the test contract has the rights to upgrade
+        proxyAdmin.upgradeAndCall(ITransparentUpgradeableProxy(address(pooledDepositsVault)), address(newVaultImplementation), "");
+
+        // Assert
+        address newImplementation = getTransparentUpgradeableProxyImplementationAddress(address(pooledDepositsVault));
+        assertEq(newImplementation, address(newVaultImplementation), "Vault should be upgraded to new implementation");
+
+        // Act
+        uint256 result = MockUpgradedVault(payable(address(pooledDepositsVault))).foo();
+        
+        // Assert
+        assertEq(result, 123, "foo should return 123");
     }
 }
