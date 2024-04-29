@@ -31,7 +31,9 @@ contract VerifyPooledDepositsVaults is DeployPooledDepositsVaults {
 
     function verifyProxyAdminOwners() public view {
         for (uint i = 0; i < deployment.vaults.length; i++) {
-            address vaultAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.vaults[i]))).owner();
+            ProxyAdmin proxyAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.vaults[i])));
+            address vaultAdmin = proxyAdmin.owner();
+            console.log("ProxyAdmin for vault at index", i, "is at address", address(proxyAdmin));
             require(
                 vaultAdmin == actors.admin.PROXY_ADMIN_OWNER,
                 string.concat("PooledDepositsVault: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(vaultAdmin))
