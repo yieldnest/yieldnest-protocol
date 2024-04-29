@@ -92,7 +92,7 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
 	}
 
 	function runInvariants(
-	    address user, 
+	    address /* user */, 
 	    uint256 previousTotalDeposited, 
 	    uint256 previousTotalShares, 
 	    uint256 userAmount, 

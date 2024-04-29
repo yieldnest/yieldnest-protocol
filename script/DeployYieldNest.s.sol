@@ -57,10 +57,15 @@ contract DeployYieldNest is BaseScript {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
+        address publicKey = vm.addr(deployerPrivateKey);
+        console.log("Deployer Public Key:", publicKey);
+
         // ynETH.sol ROLES
         actors = getActors();
 
         address _broadcaster = vm.addr(deployerPrivateKey);
+
+        ContractAddresses contractAddresses = new ContractAddresses();
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -68,7 +73,6 @@ contract DeployYieldNest is BaseScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
-        ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);

@@ -11,7 +11,7 @@ contract MockynETH is IynETH {
     // Implement necessary mock functions
     function depositETH(address receiver) external payable override returns (uint256 shares) {}
 
-    function balanceOf(address account) external view override returns (uint256) {
+    function balanceOf(address /* account */) external view override returns (uint256) {
         // Mock balanceOf function
         return 0;
     }
