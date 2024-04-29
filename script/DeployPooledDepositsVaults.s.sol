@@ -26,7 +26,7 @@ contract DeployPooledDepositsVaults is BaseScript {
         // ynETH.sol ROLES
         ActorAddresses.Actors memory actors = getActors();
 
-        uint256 vaultCount = 2;
+        uint256 vaultCount = 1;
 
         PooledDepositsVault[] memory pooledDepositsVaults = new PooledDepositsVault[](vaultCount); // Renamed from PooledDeposits to PooledDepositsVault
         vm.startBroadcast(deployerPrivateKey);
