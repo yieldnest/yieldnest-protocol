@@ -43,14 +43,9 @@ contract MockYnETH is ERC20 {
 
 }
 
-
-contract Deployed_PooledDepositsVaultTest is Test, Utils {
+abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
 
     PooledDepositsVault public pooledDepositsVault;
-
-    function setUp() public {
-        pooledDepositsVault = PooledDepositsVault(payable(0x6CaaD94F29C7Bf1a569219b1ec400A2506fd4780));
-    }
 
     function testDepositFromArbitraryAddress() public {
         // Arrange
@@ -157,5 +152,47 @@ contract Deployed_PooledDepositsVaultTest is Test, Utils {
         
         // Assert
         assertEq(result, 123, "foo should return 123");
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_0 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0xA01F3Ac94EA005626Ce1cFa7C796136E041E02d6));
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_1 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0x2D54dbD928c8602D91aD393289dbF6E37E335C86));
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_2 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0x96565886E75950754870913c346C4fe6471Ac32c));
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_3 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0xbCFDb3E05B7B1A4154F680dcde94C90eF6360a2E));
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_4 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0x1f14DF42E7c6c6701B6D08AB13f63a42411fe790));
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_5 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0x75d85f4e8713EF9E7C0Fb5b8Eb739F6a776cA074));
+    }
+}
+
+contract Deployed_PooledDepositsVaultTest_6 is Deployed_PooledDepositsVaultTest {
+    function setUp() public {
+        pooledDepositsVault = PooledDepositsVault(payable(0x6CaaD94F29C7Bf1a569219b1ec400A2506fd4780));
     }
 }
