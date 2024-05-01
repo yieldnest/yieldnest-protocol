@@ -39,10 +39,8 @@ contract StakingNodesManager is
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error DepositRootChanged(bytes32 _depositRoot, bytes32 onchainDepositRoot);
     error ValidatorAlreadyUsed(bytes publicKey);
     error DepositDataRootMismatch(bytes32 depositDataRoot, bytes32 expectedDepositDataRoot);
-    error DirectETHDepositsNotAllowed();
     error InvalidNodeId(uint256 nodeId);
     error ZeroAddress();
     error NotStakingNode(address caller, uint256 nodeId);

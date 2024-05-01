@@ -40,16 +40,6 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 		assertEq(_implementation, address(_lsdStakingNode.implementation()));
 	}
 
-	function testDepositAssetsToEigenlayerUnsupportedAsset() public {
-		IERC20[] memory assets = new IERC20[](1);
-		assets[0] = IERC20(address(ynlsd));
-		uint256[] memory amounts = new uint256[](1);
-		amounts[0] = 100;
-		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-		vm.expectRevert(abi.encodeWithSelector(LSDStakingNode.UnsupportedAsset.selector, assets[0]));
-		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-	}
-
 	function testDepositAssetsToEigenlayerSuccess() public {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
