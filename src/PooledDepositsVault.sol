@@ -58,7 +58,7 @@ contract PooledDepositsVault is Initializable, OwnableUpgradeable {
     function finalizeDeposits(address[] calldata _depositors) external {
         if (address(ynETH) == address(0)) revert YnETHNotSet();
         
-        for (uint i = 0; i < _depositors.length; i++) {
+        for (uint256 i = 0; i < _depositors.length; i++) {
             address depositor = _depositors[i];
             uint256 depositAmountPerDepositor = balances[depositor];
             if (depositAmountPerDepositor == 0) {
