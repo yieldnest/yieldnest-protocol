@@ -38,6 +38,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error CallerNotStakingNodeManager(address expected, address provided);
     error NotRewardsDistributor();
     error InsufficientBalance();
+    error TransferFailed();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -200,7 +201,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         totalDepositedInPool -= ethAmount;
 
         // Transfer the specified amount of ETH to the Staking Nodes Manager.
-        payable(address(stakingNodesManager)).transfer(ethAmount);
+        (bool success, ) = payable(address(stakingNodesManager)).call{value: ethAmount}("");
+        if (!success) {
+            revert TransferFailed();
+        }
 
         emit ETHWithdrawn(ethAmount, totalDepositedInPool);
     }
