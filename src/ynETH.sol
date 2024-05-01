@@ -192,13 +192,16 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     /// @dev This function can only be called by the Staking Nodes Manager.
     /// @param ethAmount The amount of ETH to withdraw in wei.
     function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
+        uint256 currentTotalDepositedInPool = totalDepositedInPool;
+
         // Check if the pool has enough ETH to fulfill the withdrawal request.
-        if (totalDepositedInPool < ethAmount) {
+        if (currentTotalDepositedInPool < ethAmount) {
             revert InsufficientBalance();
         }
 
         // Deduct the withdrawal amount from the total deposited in the pool.
-        totalDepositedInPool -= ethAmount;
+        uint256 newTotalDepositedInPool = currentTotalDepositedInPool - ethAmount;
+        totalDepositedInPool = newTotalDepositedInPool;
 
         // Transfer the specified amount of ETH to the Staking Nodes Manager.
         (bool success, ) = payable(address(stakingNodesManager)).call{value: ethAmount}("");
@@ -206,7 +209,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
             revert TransferFailed();
         }
 
-        emit ETHWithdrawn(ethAmount, totalDepositedInPool);
+        emit ETHWithdrawn(ethAmount, newTotalDepositedInPool);
     }
 
     /// @notice Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
