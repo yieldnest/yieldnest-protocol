@@ -57,6 +57,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     struct Init {
         address admin;
         address pauser;
+        address unpauser;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         address[] pauseWhitelist;
@@ -73,6 +74,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         external
         notZeroAddress(init.admin)
         notZeroAddress(init.pauser)
+        notZeroAddress(init.unpauser)
         notZeroAddress(address(init.stakingNodesManager))
         notZeroAddress(address(init.rewardsDistributor))
         initializer {
@@ -81,6 +83,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
+        _grantRole(UNPAUSER_ROLE, init.unpauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
 
@@ -220,11 +223,17 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit WithdrawnETHProcessed(msg.value, totalDepositedInPool);
     }
 
-    /// @notice Updates the pause state of ETH deposits.
+    /// @notice Pauses ETH deposits.
     /// @dev Can only be called by an account with the PAUSER_ROLE.
-    /// @param isPaused The new pause state to set for ETH deposits.
-    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        depositsPaused = isPaused;
+    function pauseDeposits() external onlyRole(PAUSER_ROLE) {
+        depositsPaused = true;
+        emit DepositETHPausedUpdated(depositsPaused);
+    }
+
+    /// @notice Unpauses ETH deposits.
+    /// @dev Can only be called by an account with the UNPAUSER_ROLE.
+    function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
+        depositsPaused = false;
         emit DepositETHPausedUpdated(depositsPaused);
     }
     

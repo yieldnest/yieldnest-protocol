@@ -16,7 +16,8 @@ contract MockynETH is IynETH {
         return 0;
     }
     function withdrawETH(uint256 ethAmount) external {}
-    function updateDepositsPaused(bool paused) external {}
+    function pauseDeposits() external {}
+    function unpauseDeposits() external {}
     function transferFrom(address from, address to, uint256 value) external returns (bool) {}
     function transfer(address to, uint256 value) external returns (bool) {}
     function totalSupply() external view returns (uint256) {}

@@ -166,7 +166,8 @@ contract IntegrationBaseTest is Test, Utils {
         
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: actors.admin.ADMIN,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             pauseWhitelist: pauseWhitelist
@@ -205,7 +206,8 @@ contract IntegrationBaseTest is Test, Utils {
             stakingNodesOperator: actors.ops.STAKING_NODES_OPERATOR,
             stakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR,
             validatorManager: actors.ops.VALIDATOR_MANAGER,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             maxNodeCount: 10,
             depositContract: depositContractEth2,
             ynETH: IynETH(address(yneth)),
@@ -230,7 +232,7 @@ contract IntegrationBaseTest is Test, Utils {
         IStrategy[] memory strategies = new IStrategy[](2);
 
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.admin.PAUSE_ADMIN;
+        pauseWhitelist[0] = actors.ops.PAUSE_ADMIN;
 
         // stETH
         assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -263,11 +265,12 @@ contract IntegrationBaseTest is Test, Utils {
             oracle: yieldNestOracle,
             maxNodeCount: 10,
             admin: actors.admin.ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingAdmin: actors.admin.STAKING_ADMIN,
             lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
             lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
             depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
         });
 

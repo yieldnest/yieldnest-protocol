@@ -103,8 +103,8 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 	// pause ynETH and try to deposit fail
 	function test_ynETH_Scenario_2_Pause() public {
 
-		vm.prank(actors.admin.PAUSE_ADMIN);
-	 	yneth.updateDepositsPaused(true);
+		vm.prank(actors.ops.PAUSE_ADMIN);
+	 	yneth.pauseDeposits();
 
 	 	vm.deal(user1, 1 ether);
 	 	vm.expectRevert(bytes4(keccak256(abi.encodePacked("Paused()"))));
@@ -113,10 +113,11 @@ contract YnETHScenarioTest2 is IntegrationBaseTest {
 
 	function test_ynETH_Scenario_2_Unpause() public {
 
-	 	vm.startPrank(actors.admin.PAUSE_ADMIN);
-	 	yneth.updateDepositsPaused(true);
+	 	vm.prank(actors.ops.PAUSE_ADMIN);
+	 	yneth.pauseDeposits();
 		assertTrue(yneth.depositsPaused());
-		yneth.updateDepositsPaused(false);
+	 	vm.prank(actors.admin.UNPAUSE_ADMIN);
+		yneth.unpauseDeposits();
 		assertFalse(yneth.depositsPaused());
 		vm.stopPrank();
 
