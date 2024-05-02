@@ -34,8 +34,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testDepositETHWhenPaused() public {
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
 
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
@@ -47,8 +47,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testPauseDepositETH() public {
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
 
         // Act & Assert
         bool pauseState = yneth.depositsPaused();
@@ -57,9 +57,10 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testUnpauseDepositETH() public {
         // Arrange
-        vm.startPrank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
-        yneth.updateDepositsPaused(false);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        yneth.unpauseDeposits();
 
         // Act & Assert
         bool pauseState = yneth.depositsPaused();
@@ -215,8 +216,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testPauseDepositETHFunctionality() public {
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
 
         // Act & Assert
         bool pauseState = yneth.depositsPaused();
@@ -228,8 +229,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(address(this));
 
         // Unpause and try depositing again
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(false);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        yneth.unpauseDeposits();
         pauseState = yneth.depositsPaused();
 
         assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
@@ -267,7 +268,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         address[] memory whitelist = new address[](1);
         whitelist[0] = whitelistedAddress;
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.addToPauseWhitelist(whitelist); // Whitelisting the address
         vm.prank(whitelistedAddress);
         yneth.transfer(recipient, transferAmount);
@@ -284,7 +285,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         addressesToWhitelist[1] = address(2);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.addToPauseWhitelist(addressesToWhitelist);
 
         // Assert
@@ -300,7 +301,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
         vm.deal(newWhitelistedAddress, depositAmount); // Providing the new whitelisted address with some ETH
         vm.prank(newWhitelistedAddress);
@@ -330,7 +331,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 transferAmount = yneth.balanceOf(arbitraryAddress);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.unpauseTransfers(); // Unpausing transfers for all
         
         vm.prank(arbitraryAddress);

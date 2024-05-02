@@ -175,7 +175,8 @@ contract UpgradesTest is IntegrationBaseTest {
             lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
             lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
         });
 

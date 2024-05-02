@@ -30,6 +30,9 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable, IynBaseEvents {
     /// @notice  Role is allowed to set the pause state
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
+    /// @notice Role allowed to unset the pause state
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  STORAGE  -----------------------------------------
     //--------------------------------------------------------------------------------------
@@ -86,7 +89,7 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable, IynBaseEvents {
     }
     
     /// @dev This is a one-way toggle. Once unpaused, transfers can't be paused again.
-    function unpauseTransfers() external onlyRole(PAUSER_ROLE) {
+    function unpauseTransfers() external onlyRole(UNPAUSER_ROLE) {
         ynBaseStorage storage $ = _getYnBaseStorage();
         $.transfersPaused = false;
         emit TransfersUnpaused();
@@ -94,19 +97,19 @@ contract ynBase is ERC20Upgradeable, AccessControlUpgradeable, IynBaseEvents {
     
     /**
      * @dev Adds addresses to the pause whitelist, allowing them to transfer tokens even when transfers are paused.
-     * Can only be called by an account with the `PAUSER_ROLE`.
+     * Can only be called by an account with the `UNPAUSER_ROLE`.
      * @param whitelistedForTransfers An array of addresses to be added to the whitelist.
      */
-    function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(PAUSER_ROLE) {
+    function addToPauseWhitelist(address[] memory whitelistedForTransfers) external onlyRole(UNPAUSER_ROLE) {
         _updatePauseWhitelist(whitelistedForTransfers, true);
     }
 
     /**
      * @dev Removes addresses from the pause whitelist, preventing them from transferring tokens when transfers are paused.
-     * Can only be called by an account with the `PAUSER_ROLE`.
+     * Can only be called by an account with the `UNPAUSER_ROLE`.
      * @param unlisted An array of addresses to be removed from the whitelist.
      */
-    function removeFromPauseWhitelist(address[] memory unlisted) external onlyRole(PAUSER_ROLE) {
+    function removeFromPauseWhitelist(address[] memory unlisted) external onlyRole(UNPAUSER_ROLE) {
         _updatePauseWhitelist(unlisted, false);
     }
 

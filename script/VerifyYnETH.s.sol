@@ -204,11 +204,11 @@ contract Verify is BaseScript {
         require(
             deployment.stakingNodesManager.hasRole(
                 deployment.stakingNodesManager.PAUSER_ROLE(), 
-                address(actors.admin.PAUSE_ADMIN)
+                address(actors.ops.PAUSE_ADMIN)
             ), 
             "stakingNodesManager: PAUSE_ADMIN INVALID"
         );
-        console.log("\u2705 stakingNodesManager: PAUSE_ADMIN - ", vm.toString(address(actors.admin.PAUSE_ADMIN)));
+        console.log("\u2705 stakingNodesManager: PAUSE_ADMIN - ", vm.toString(address(actors.ops.PAUSE_ADMIN)));
 
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
@@ -228,11 +228,11 @@ contract Verify is BaseScript {
         require(
             deployment.ynETH.hasRole(
                 deployment.ynETH.PAUSER_ROLE(), 
-                address(actors.admin.PAUSE_ADMIN)
+                address(actors.ops.PAUSE_ADMIN)
             ), 
             "ynETH: PAUSER_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 ynETH: PAUSER_ROLE - ", vm.toString(address(actors.admin.PAUSE_ADMIN)));
+        console.log("\u2705 ynETH: PAUSER_ROLE - ", vm.toString(address(actors.ops.PAUSE_ADMIN)));
 
     }
 

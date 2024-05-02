@@ -306,7 +306,7 @@ contract PooledDepositsVaultTest is IntegrationBaseTest {
         IynETH(address(yneth)).transfer(recipient, depositAmount);
 
         // Unpause transfers
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.unpauseTransfers();
 
         // Act 2 - Transfer ynETH tokens after unpausing

@@ -25,6 +25,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
     error Paused();
     error ValueOutOfBounds(uint256 value);
@@ -147,8 +148,17 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         totalDepositedInPool += msg.value;
     }
 
-    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        depositsPaused = isPaused;
+    /// @notice Pauses ETH deposits.
+    /// @dev Can only be called by an account with the PAUSER_ROLE.
+    function pauseDeposits() external onlyRole(PAUSER_ROLE) {
+        depositsPaused = true;
+        emit DepositETHPausedUpdated(depositsPaused);
+    }
+
+    /// @notice Unpauses ETH deposits.
+    /// @dev Can only be called by an account with the UNPAUSER_ROLE.
+    function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
+        depositsPaused = false;
         emit DepositETHPausedUpdated(depositsPaused);
     }
 

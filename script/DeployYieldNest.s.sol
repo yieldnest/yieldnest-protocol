@@ -118,11 +118,12 @@ contract DeployYieldNest is BaseScript {
     
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.admin.PAUSE_ADMIN;
+        pauseWhitelist[0] = actors.ops.PAUSE_ADMIN;
 
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: actors.admin.ADMIN,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             pauseWhitelist: pauseWhitelist
@@ -136,7 +137,8 @@ contract DeployYieldNest is BaseScript {
             stakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR,
             validatorManager: actors.ops.VALIDATOR_MANAGER,
             stakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             maxNodeCount: 10,
             ynETH: IynETH(address(yneth)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
