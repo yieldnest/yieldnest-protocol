@@ -49,10 +49,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error ZeroAddress();
     error NotStakingNodesManager();
     error NotStakingNodesDelegator();
-    error MismatchedOracleBlockNumberAndValidatorIndexLengths(uint256 oracleBlockNumberLength, uint256 validatorIndexLength);
-    error MismatchedValidatorIndexAndProofsLengths(uint256 validatorIndexLength, uint256 proofsLength);
-    error MismatchedProofsAndValidatorFieldsLengths(uint256 proofsLength, uint256 validatorFieldsLength);
-    error UnexpectedETHBalance(uint256 claimedAmount, uint256 expectedETHBalance);
     error NoBalanceToProcess();
 
     //--------------------------------------------------------------------------------------
