@@ -81,7 +81,8 @@ contract IntegrationBaseTest is Test, Utils {
 
         // Setup Protocol
         setupUtils();
-        setupProxies();
+        setupYnETHPoxies();
+        setupYnLSDProxies();
         setupEthereum();
         setupEigenLayer();
         setupRewardsDistributor();
@@ -90,22 +91,17 @@ contract IntegrationBaseTest is Test, Utils {
         setupYieldNestOracleAndYnLSD();
     }
 
-    function setupProxies() public {
-
+    function setupYnETHPoxies() public {
         TransparentUpgradeableProxy ynethProxy;
-        TransparentUpgradeableProxy ynLSDProxy;
         TransparentUpgradeableProxy rewardsDistributorProxy;
         TransparentUpgradeableProxy stakingNodesManagerProxy;
-        TransparentUpgradeableProxy yieldNestOracleProxy;
         TransparentUpgradeableProxy executionLayerReceiverProxy;
         TransparentUpgradeableProxy consensusLayerReceiverProxy;
 
-        // Initializing RewardsDistributor contract and creating its proxy
+                // Initializing RewardsDistributor contract and creating its proxy
         rewardsDistributor = new RewardsDistributor();
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
-        yieldNestOracle = new YieldNestOracle();
-        ynlsd = new ynLSD();
 
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
@@ -115,8 +111,6 @@ contract IntegrationBaseTest is Test, Utils {
         
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.admin.PROXY_ADMIN_OWNER, "");
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
 
         executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiver), actors.admin.PROXY_ADMIN_OWNER, "");
         consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiver), actors.admin.PROXY_ADMIN_OWNER, "");
@@ -127,8 +121,6 @@ contract IntegrationBaseTest is Test, Utils {
         // Wrapping proxies with their respective interfaces
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
-        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Re-deploying ynETH and creating its proxy again
         yneth = new ynETH();
@@ -139,6 +131,20 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager = new StakingNodesManager();
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
+    }
+
+    function setupYnLSDProxies() public {
+        TransparentUpgradeableProxy ynLSDProxy;
+        TransparentUpgradeableProxy yieldNestOracleProxy;
+
+        yieldNestOracle = new YieldNestOracle();
+        ynlsd = new ynLSD();
+
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.admin.PROXY_ADMIN_OWNER, "");
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
+
+        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
+        ynlsd = ynLSD(address(ynLSDProxy));
     }
 
     function setupUtils() public {
