@@ -43,9 +43,11 @@ contract UpgradeYnETH_0_0_2 is BaseScript {
         rewardsReceiver = new RewardsReceiver();
 
         vm.stopBroadcast();
+
+        saveDeployment();
     }
 
-    function saveDeployment(Deployment memory deployment) public override {
+    function saveDeployment() public {
         string memory json = "deployment";
 
         // contract addresses
