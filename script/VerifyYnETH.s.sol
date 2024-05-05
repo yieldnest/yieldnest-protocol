@@ -210,6 +210,17 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 stakingNodesManager: PAUSE_ADMIN - ", vm.toString(address(actors.ops.PAUSE_ADMIN)));
 
+        // UNPAUSER_ROLE
+        require(
+            deployment.stakingNodesManager.hasRole(
+                deployment.stakingNodesManager.UNPAUSER_ROLE(), 
+                address(actors.admin.UNPAUSE_ADMIN)
+            ), 
+            "stakingNodesManager: UNPAUSE_ADMIN INVALID"
+        );
+        console.log("\u2705 stakingNodesManager: UNPAUSE_ADMIN - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
+
+
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
         //--------------------------------------------------------------------------------------
