@@ -60,9 +60,10 @@ contract ActorAddresses {
             })
         });
 
+
         actors[1] = Actors({
             eoa: EOAActors({
-                DEFAULT_SIGNER: 0x67a114e733b52CAC50A168F02b5626f500801C62,
+                DEFAULT_SIGNER: 0xa1E340bd1e3ea09B3981164BBB4AfeDdF0e7bA0D,
                 DEPOSIT_BOOTSTRAPPER: 0x67a114e733b52CAC50A168F02b5626f500801C62
             }),
             admin: AdminActors({
