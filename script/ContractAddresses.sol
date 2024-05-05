@@ -4,6 +4,14 @@ pragma solidity ^0.8.24;
 
 contract ContractAddresses {
 
+    struct YieldNestAddresses {
+        address YNETH_ADDRESS;
+        address STAKING_NODES_MANAGER_ADDRESS;
+        address REWARDS_DISTRIBUTOR_ADDRESS;
+        address EXECUTION_LAYER_RECEIVER_ADDRESS;
+        address CONSENSUS_LAYER_RECEIVER_ADDRESS;  
+    }
+
     struct EigenlayerAddresses {
         address EIGENPOD_MANAGER_ADDRESS;
         address DELEGATION_MANAGER_ADDRESS;
@@ -32,6 +40,7 @@ contract ContractAddresses {
         EthereumAddresses ethereum;
         EigenlayerAddresses eigenlayer;
         LSDAddresses lsd;
+        YieldNestAddresses yn;
     }
 
     struct ChainIds {
@@ -67,6 +76,13 @@ contract ContractAddresses {
                 STETH_FEED_ADDRESS: 0x86392dC19c0b719886221c78AB11eb8Cf5c52812,
                 RETH_STRATEGY_ADDRESS: 0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2,
                 STETH_STRATEGY_ADDRESS: 0x93c4b944D05dfe6df7645A86cd2206016c51564D
+            }),
+            yn: YieldNestAddresses({
+                YNETH_ADDRESS: address(0),
+                STAKING_NODES_MANAGER_ADDRESS: address(0),
+                REWARDS_DISTRIBUTOR_ADDRESS: address(0),
+                EXECUTION_LAYER_RECEIVER_ADDRESS: address(0),
+                CONSENSUS_LAYER_RECEIVER_ADDRESS: address(0)
             })
         });
 
@@ -94,6 +110,13 @@ contract ContractAddresses {
                 STETH_FEED_ADDRESS: 0xC028a945D4Ac8593F84F8dE3784F83143a165F1A, // Self-created aggregator TODO: Update
                 RETH_STRATEGY_ADDRESS: 0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0, // Placeholder address, replaced with address(1) for holesky
                 STETH_STRATEGY_ADDRESS: 0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3 // Placeholder address, replaced with address(1) for holesky
+            }),
+            yn: YieldNestAddresses({
+                YNETH_ADDRESS: 0xd9029669BC74878BCB5BE58c259ed0A277C5c16E,
+                STAKING_NODES_MANAGER_ADDRESS: 0xc2387EBb4Ea66627E3543a771e260Bd84218d6a1,
+                REWARDS_DISTRIBUTOR_ADDRESS: 0x82915efF62af9FCC0d0735b8681959e069E3f2D8,
+                EXECUTION_LAYER_RECEIVER_ADDRESS: 0xA5E9E1ceb4cC1854d0e186a9B3E67158b84AD072,
+                CONSENSUS_LAYER_RECEIVER_ADDRESS: 0x706EED02702fFE9CBefD6A65E63f3C2b59B7eF2d
             })
         });
     }
