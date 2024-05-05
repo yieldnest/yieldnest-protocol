@@ -13,8 +13,6 @@ contract UpgradeYnETH_0_0_2 is BaseScript {
     ynETH public newynETH;
     StakingNodesManager public newStakingNodesManager;
     StakingNode public newStakingNode;
-    RewardsDistributor rewardsDistributor;
-    RewardsReceiver rewardsReceiver;
     ActorAddresses.Actors actors;
 
     function run() external {
@@ -28,8 +26,6 @@ contract UpgradeYnETH_0_0_2 is BaseScript {
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
-        ContractAddresses contractAddresses = new ContractAddresses();
-
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("Default Signer Address:", _broadcaster);
@@ -39,8 +35,6 @@ contract UpgradeYnETH_0_0_2 is BaseScript {
         newynETH = new ynETH();
         newStakingNodesManager = new StakingNodesManager();
         newStakingNode = new StakingNode();
-        rewardsDistributor = new RewardsDistributor();
-        rewardsReceiver = new RewardsReceiver();
 
         vm.stopBroadcast();
 
@@ -53,8 +47,6 @@ contract UpgradeYnETH_0_0_2 is BaseScript {
         // contract addresses
         vm.serializeAddress(json, "ynETHImplementation", address(newynETH)); 
         vm.serializeAddress(json, "stakingNodesManagerImplementation", address(newStakingNodesManager));
-        vm.serializeAddress(json, "rewardsReceiverImplementation", address(rewardsReceiver));
-        vm.serializeAddress(json, "rewardsDistributorImplementation", address(rewardsDistributor));
         string memory finalJson = vm.serializeAddress(json, "stakingNodeImplementation", address(newStakingNode));
 
         vm.writeJson(finalJson, getDeploymentFile());
