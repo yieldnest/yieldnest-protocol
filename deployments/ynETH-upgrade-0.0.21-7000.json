@@ -1,7 +1,0 @@
-{
-  "rewardsDistributorImplementation": "0x9891041EfcBAd699f958B7Bc15758f503ecEA543",
-  "rewardsReceiverImplementation": "0xe7Cd001a7bA980Ec5CC3f1797F0F14C212E54332",
-  "stakingNodeImplementation": "0xc1c55293a30fC669037eDF6Cb0f26a3D05F0625B",
-  "stakingNodesManagerImplementation": "0x2712fC07d93F3eDfbD75AdAfd8769bd3A6503779",
-  "ynETHImplementation": "0x8C5e5e437324Aa3C1f54E5104ed2662f9220C693"
-}
