@@ -78,11 +78,11 @@ contract ContractAddresses {
                 STETH_STRATEGY_ADDRESS: 0x93c4b944D05dfe6df7645A86cd2206016c51564D
             }),
             yn: YieldNestAddresses({
-                YNETH_ADDRESS: address(0),
-                STAKING_NODES_MANAGER_ADDRESS: address(0),
-                REWARDS_DISTRIBUTOR_ADDRESS: address(0),
-                EXECUTION_LAYER_RECEIVER_ADDRESS: address(0),
-                CONSENSUS_LAYER_RECEIVER_ADDRESS: address(0)
+                YNETH_ADDRESS: 0xcebDee3fcB18Ed69B8384bD78C34ee71B0Fff482,
+                STAKING_NODES_MANAGER_ADDRESS: 0x21e86B28B0AfeC2C3f570A924A8ec969FC0eA06D,
+                REWARDS_DISTRIBUTOR_ADDRESS: 0x77b26a2ebB73Ce9bdF5c8c44CB98E98f089D6F99,
+                EXECUTION_LAYER_RECEIVER_ADDRESS: 0xd3E7e46C62B0feA4cd73920c65971B67EA01de56,
+                CONSENSUS_LAYER_RECEIVER_ADDRESS: 0x4975e6c808ddB8fC6A9bC48f6DfD4398BF7B7dC7
             })
         });
 
