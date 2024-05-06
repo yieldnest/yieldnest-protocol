@@ -55,22 +55,22 @@ contract ActorAddresses {
                 DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
             }),
             admin: AdminActors({
-                ADMIN: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                STAKING_ADMIN: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                PROXY_ADMIN_OWNER: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                REWARDS_ADMIN: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                FEE_RECEIVER: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                ORACLE_ADMIN: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                STAKING_NODES_DELEGATOR: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-                UNPAUSE_ADMIN: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913
+                ADMIN: holeskyWallets.YNSecurityCouncil,
+                STAKING_ADMIN: holeskyWallets.YNSecurityCouncil,
+                PROXY_ADMIN_OWNER: holeskyWallets.YNSecurityCouncil,
+                REWARDS_ADMIN: holeskyWallets.YNSecurityCouncil,
+                FEE_RECEIVER: holeskyWallets.YNSecurityCouncil,
+                ORACLE_ADMIN: holeskyWallets.YNSecurityCouncil,
+                STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
+                UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil
             }),
             ops: OpsActors({
-                STAKING_NODES_OPERATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                VALIDATOR_MANAGER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                LSD_RESTAKING_MANAGER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                STAKING_NODE_CREATOR: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                POOLED_DEPOSITS_OWNER: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                PAUSE_ADMIN: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
+                STAKING_NODES_OPERATOR: holeskyWallets.YNDev,
+                VALIDATOR_MANAGER: holeskyWallets.YNDev,
+                LSD_RESTAKING_MANAGER: holeskyWallets.YNDev,
+                STAKING_NODE_CREATOR: holeskyWallets.YNDev,
+                POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
+                PAUSE_ADMIN: holeskyWallets.YNDev
             }),
             wallets: holeskyWallets
         });
