@@ -25,8 +25,11 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		vm.deal(address(consensusLayerReceiver), 3 ether);
 		vm.prank(actors.admin.ADMIN);
 		uint256 fees = (totalRewards * 100) / rewardsDistributor.feesBasisPoints();
+
+		uint256 initialBalance = address(actors.admin.FEE_RECEIVER).balance;
 		rewardsDistributor.processRewards();
-		assertEq(address(actors.admin.FEE_RECEIVER).balance, fees);
+		uint256 finalBalance = address(actors.admin.FEE_RECEIVER).balance;
+		assertEq(finalBalance, initialBalance + fees);
 	}
 
 	function testProcessRewardSendFeeFailed() public {
