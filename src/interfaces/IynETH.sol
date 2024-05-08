@@ -10,6 +10,7 @@ interface IynETH is IERC20 {
     function receiveRewards() external payable;
     function pauseDeposits() external;
     function unpauseDeposits() external;
+    function previewDeposit(uint256 assets) external returns (uint256);
 
     
     /// @notice Allows depositing ETH into the contract in exchange for shares.

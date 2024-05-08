@@ -21,6 +21,7 @@ contract MockynETH is IynETH {
     function transferFrom(address from, address to, uint256 value) external returns (bool) {}
     function transfer(address to, uint256 value) external returns (bool) {}
     function totalSupply() external view returns (uint256) {}
+    function previewDeposit(uint256) external view returns (uint256) {}
     function receiveRewards() external payable {}
     function processWithdrawnETH() external payable {}
     function approve(address spender, uint256 value) external returns (bool) {}

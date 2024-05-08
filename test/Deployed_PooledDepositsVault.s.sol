@@ -10,7 +10,7 @@ import "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "script/Utils.sol";
-
+import "script/ContractAddresses.sol";
 
 
 contract MockUpgradedVault is PooledDepositsVault {
@@ -47,6 +47,16 @@ abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
 
     PooledDepositsVault public pooledDepositsVault;
 
+    ContractAddresses.YieldNestAddresses yn;
+
+    IynETH yneth;
+
+    function setUp() public virtual {
+        ContractAddresses contractAddresses = new ContractAddresses();
+        yn = contractAddresses.getChainAddresses(block.chainid).yn;
+        yneth = IynETH(yn.YNETH_ADDRESS);
+    }
+
     function testDepositFromArbitraryAddress() public {
         // Arrange
         address arbitraryDepositor = address(0x123);
@@ -66,7 +76,6 @@ abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
         // Arrange
         address arbitraryDepositor = address(0x456);
         uint256 depositAmount = 2 ether;
-        MockYnETH yneth = new MockYnETH();
         address ynethAddress = address(yneth);
         // Act
         vm.deal(arbitraryDepositor, depositAmount);
@@ -108,7 +117,6 @@ abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
         // Arrange
         address arbitraryDepositor = address(0x456);
         uint256 depositAmount = 2 ether;
-        MockYnETH yneth = new MockYnETH();
         address ynethAddress = address(yneth);
         // Act
         vm.deal(arbitraryDepositor, depositAmount);
@@ -124,13 +132,15 @@ abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
         assertEq(balance, depositAmount, "Balance should match the deposit amount");
         assertEq(address(pooledDepositsVault.ynETH()), ynethAddress, "ynETH owner should be set correctly");
 
+        uint256 previewAmount = yneth.previewDeposit(depositAmount);
+
         address[] memory depositors = new address[](1);
         depositors[0] = arbitraryDepositor;
         pooledDepositsVault.finalizeDeposits(depositors);
 
         // Assert depositor's balance using yneth
         uint256 ynethBalance = yneth.balanceOf(arbitraryDepositor);
-        assertEq(ynethBalance, balance, "ynETH balance should match the depositor's balance after conversion");
+        assertEq(ynethBalance, previewAmount, "ynETH balance should match the depositor's balance after conversion");
     }
 
     function testUpgradeVault() public {
@@ -156,43 +166,50 @@ abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
 }
 
 contract Deployed_PooledDepositsVaultTest_0 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0xA01F3Ac94EA005626Ce1cFa7C796136E041E02d6));
     }
 }
 
 contract Deployed_PooledDepositsVaultTest_1 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0x2D54dbD928c8602D91aD393289dbF6E37E335C86));
     }
 }
 
 contract Deployed_PooledDepositsVaultTest_2 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0x96565886E75950754870913c346C4fe6471Ac32c));
     }
 }
 
 contract Deployed_PooledDepositsVaultTest_3 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0xbCFDb3E05B7B1A4154F680dcde94C90eF6360a2E));
     }
 }
 
 contract Deployed_PooledDepositsVaultTest_4 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0x1f14DF42E7c6c6701B6D08AB13f63a42411fe790));
     }
 }
 
 contract Deployed_PooledDepositsVaultTest_5 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0x75d85f4e8713EF9E7C0Fb5b8Eb739F6a776cA074));
     }
 }
 
 contract Deployed_PooledDepositsVaultTest_6 is Deployed_PooledDepositsVaultTest {
-    function setUp() public {
+    function setUp() public override {
+        super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0x6CaaD94F29C7Bf1a569219b1ec400A2506fd4780));
     }
 }
