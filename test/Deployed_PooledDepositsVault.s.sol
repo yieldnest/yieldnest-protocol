@@ -163,6 +163,43 @@ abstract contract Deployed_PooledDepositsVaultTest is Test, Utils {
         // Assert
         assertEq(result, 123, "foo should return 123");
     }
+
+
+    function testDepositAndSetYNETHForManyDepositors() public {
+        // Arrange
+        uint256 depositAmount = 2 ether;
+        address ynethAddress = address(yneth);
+        uint NUM_DEPOSITORS = 20;
+        address[] memory depositors = new address[](NUM_DEPOSITORS);
+        
+        // Act
+        for (uint i = 0; i < NUM_DEPOSITORS; i++) {
+            address arbitraryDepositor = address(uint160(uint(keccak256(abi.encodePacked(i)))));
+            depositors[i] = arbitraryDepositor;
+            vm.deal(arbitraryDepositor, depositAmount);
+            vm.prank(arbitraryDepositor);
+            pooledDepositsVault.deposit{value: depositAmount}();
+        }
+
+        // Set YNETH for the vault
+        vm.prank(0xE1fAc59031520FD1eb901da990Da12Af295e6731);
+        pooledDepositsVault.setYnETH(IynETH(ynethAddress));
+        assertEq(address(pooledDepositsVault.ynETH()), ynethAddress, "ynETH owner should be set correctly");
+
+        // Assert
+        for (uint i = 0; i < NUM_DEPOSITORS; i++) {
+            uint256 balance = pooledDepositsVault.balances(depositors[i]);
+            assertEq(balance, depositAmount, "Balance should match the deposit amount");
+        }
+
+        uint256 previewAmount = yneth.previewDeposit(depositAmount);
+        pooledDepositsVault.finalizeDeposits(depositors);
+
+        for (uint i = 0; i < NUM_DEPOSITORS; i++) {   // Assert depositor's balance using yneth
+            uint256 ynethBalance = yneth.balanceOf(depositors[i]);
+            assertEq(ynethBalance, previewAmount, "ynETH balance should match the depositor's balance after conversion");
+        }
+    }
 }
 
 contract Deployed_PooledDepositsVaultTest_0 is Deployed_PooledDepositsVaultTest {
