@@ -245,6 +245,16 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 ynETH: PAUSER_ROLE - ", vm.toString(address(actors.ops.PAUSE_ADMIN)));
 
+        // UNPAUSER_ROLE;
+        require(
+            deployment.ynETH.hasRole(
+                deployment.ynETH.UNPAUSER_ROLE(), 
+                address(actors.admin.UNPAUSE_ADMIN)
+            ), 
+            "ynETH: UNPAUSER_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 ynETH: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
+
     }
 
     function verifySystemParameters() internal view {
