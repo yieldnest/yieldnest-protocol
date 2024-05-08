@@ -220,6 +220,26 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 stakingNodesManager: UNPAUSE_ADMIN - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
+        // Check DEFAULT_SIGNER does not have DEFAULT_ADMIN_ROLE
+        require(
+            !deployment.stakingNodesManager.hasRole(
+                deployment.stakingNodesManager.DEFAULT_ADMIN_ROLE(), 
+                address(actors.eoa.DEFAULT_SIGNER)
+            ), 
+            "stakingNodesManager: DEFAULT_SIGNER SHOULD NOT HAVE DEFAULT_ADMIN_ROLE"
+        );
+        console.log("\u2705 stakingNodesManager: DEFAULT_SIGNER - DEFAULT_ADMIN_ROLE not assigned");
+
+        // Check DEFAULT_SIGNER does not have STAKING_ADMIN
+        require(
+            !deployment.stakingNodesManager.hasRole(
+                deployment.stakingNodesManager.STAKING_ADMIN_ROLE(), 
+                address(actors.eoa.DEFAULT_SIGNER)
+            ), 
+            "stakingNodesManager: DEFAULT_SIGNER SHOULD NOT HAVE STAKING_ADMIN"
+        );
+        console.log("\u2705 stakingNodesManager: DEFAULT_SIGNER - STAKING_ADMIN not assigned");
+
 
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
