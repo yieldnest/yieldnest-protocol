@@ -249,4 +249,30 @@ contract Deployed_PooledDepositsVaultTest_6 is Deployed_PooledDepositsVaultTest 
         super.setUp();
         pooledDepositsVault = PooledDepositsVault(payable(0x6CaaD94F29C7Bf1a569219b1ec400A2506fd4780));
     }
+
+    function testHandleExistingDepositors() public {
+        address[] memory existingDepositors = new address[](2);
+        existingDepositors[0] = 0x72bD536087025156bD72FC1C28D02C198C521233;
+        existingDepositors[1] = 0x7B58d24ed811B1cbA23887855982F283fADe1493;
+
+        uint256[] memory depositAmounts = new uint256[](existingDepositors.length);
+        for (uint i = 0; i < existingDepositors.length; i++) {
+            depositAmounts[i] = pooledDepositsVault.balances(existingDepositors[i]);
+        }
+
+        address ynethAddress = address(yn.YNETH_ADDRESS);
+
+        vm.prank(0xE1fAc59031520FD1eb901da990Da12Af295e6731);
+        pooledDepositsVault.setYnETH(IynETH(ynethAddress));
+
+        // Finalize deposits for all existing depositors
+        pooledDepositsVault.finalizeDeposits(existingDepositors);
+
+        // Assert all balances are correct after finalizing deposits
+        for (uint i = 0; i < existingDepositors.length; i++) {
+            uint256 expectedBalance = yneth.previewDeposit(depositAmounts[i]);
+            uint256 actualBalance = yneth.balanceOf(existingDepositors[i]);
+            assertEq(actualBalance, expectedBalance, "Balance should match the expected balance after finalizing deposits");
+        }
+    }
 }
