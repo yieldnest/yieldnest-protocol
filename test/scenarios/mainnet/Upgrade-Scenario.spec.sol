@@ -64,5 +64,4 @@ contract Upgrade_Scenario is ScenarioBaseTest {
         address currentConsensusLayerReceiverImpl = getTransparentUpgradeableProxyImplementationAddress(address(consensusLayerReceiver));
         assertEq(currentConsensusLayerReceiverImpl, newConsensusLayerReceiverImpl);
     }
-
 }
