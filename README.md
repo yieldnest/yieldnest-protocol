@@ -5,26 +5,25 @@
 ### Implementations
 | Contract Name | Contract Address |
 |----------------------------|-------------------------------------------|
-| ynETH | [0x0F503D3B3929D421B0a1c8b1fbf38E029F8Bf0B3](https://etherscan.io/address/0x0F503D3B3929D421B0a1c8b1fbf38E029F8Bf0B3) |
-| StakingNodesManager | [0x540af49Ac82539802ca410a008e594D7d043D5C8](https://etherscan.io/address/0x540af49Ac82539802ca410a008e594D7d043D5C8) |
-| RewardsReceiver | [0x5DE8C7A537e951f4d09AB3366d635F271c29762c](https://etherscan.io/address/0x5DE8C7A537e951f4d09AB3366d635F271c29762c) |
-| RewardsReceiver | [0xD47b9C9fB1788F6353a543150006D0b7ed0B17bF](https://etherscan.io/address/0xD47b9C9fB1788F6353a543150006D0b7ed0B17bF) |
-| StakingNode | [0x98fC02b02827e98CA318ACB5afe00145A8f4aCe0](https://etherscan.io/address/0x98fC02b02827e98CA318ACB5afe00145A8f4aCe0) |
-| RewardsDistributor | [0xa469CD94e36E04109d64C708bFc961F2F274F2ec](https://etherscan.io/address/0xa469CD94e36E04109d64C708bFc961F2F274F2ec) |
+| ynETH | [0x14DC3d915107DcA9ed39E29E14fbdfe4358a1346](https://etherscan.io/address/0x14DC3d915107DcA9ed39E29E14fbdfe4358a1346) |
+| StakingNodesManager | [0xaBD3A755E4eEF24f862c268D21Fd5235904cc811](https://etherscan.io/address/0xaBD3A755E4eEF24f862c268D21Fd5235904cc811) |
+| RewardsDistributor | [0x306EBed66642867B94b29752be37b8f20fEb5F72](https://etherscan.io/address/0x306EBed66642867B94b29752be37b8f20fEb5F72) |
+| ExecutionLayerReceiver | [0x863Ba8f64b1528De6c8A7239D80D4f2b7CfF159B](https://etherscan.io/address/0x863Ba8f64b1528De6c8A7239D80D4f2b7CfF159B) |
+| ConsensusLayerReceiver | [0xa98e8652DAF2407839b18f4e215D86D88Eb91582](https://etherscan.io/address/0xa98e8652DAF2407839b18f4e215D86D88Eb91582) |
 
 ### Proxies
 | Contract Name | Contract Address |
 |----------------------------|-------------------------------------------|
-| ynETH Proxy | [0xcebDee3fcB18Ed69B8384bD78C34ee71B0Fff482](https://etherscan.io/address/0xcebDee3fcB18Ed69B8384bD78C34ee71B0Fff482) |
-| ynETH ProxyAdmin | [0xf270A77426D38Ec3c610FdE46D91097ba9fEC911](https://etherscan.io/address/0xf270A77426D38Ec3c610FdE46D91097ba9fEC911) |
-| StakingNodesManager Proxy | [0x21e86B28B0AfeC2C3f570A924A8ec969FC0eA06D](https://etherscan.io/address/0x21e86B28B0AfeC2C3f570A924A8ec969FC0eA06D) |
-| StakingNodesManager ProxyAdmin | [0x1B9b4F6F002C196F2D6F65cC150f6e120e0C25E9](https://etherscan.io/address/0x1B9b4F6F002C196F2D6F65cC150f6e120e0C25E9) |
-| RewardsDistributor Proxy | [0x77b26a2ebB73Ce9bdF5c8c44CB98E98f089D6F99](https://etherscan.io/address/0x77b26a2ebB73Ce9bdF5c8c44CB98E98f089D6F99) |
-| RewardsDistributor ProxyAdmin | [0xEE08E481db124c69Abf054cfdC454572F992d45d](https:/etherscan.io/address/0xEE08E481db124c69Abf054cfdC454572F992d45d) |
-| ExecutionLayerReceiver Proxy | [0xd3E7e46C62B0feA4cd73920c65971B67EA01de56](https://etherscan.io/address/0xd3E7e46C62B0feA4cd73920c65971B67EA01de56) |
-| ExecutionLayerReceiver ProxyAdmin | [0x6f090c89562627B28F255237783Df1D97f8CA231](https://etherscan.io/address/0x6f090c89562627B28F255237783Df1D97f8CA231) |
-| ConsensusLayerReceiver Proxy | [0x4975e6c808ddB8fC6A9bC48f6DfD4398BF7B7dC7](https://etherscan.io/address/0x4975e6c808ddB8fC6A9bC48f6DfD4398BF7B7dC7) |
-| ConsensusLayerReceiver ProxyAdmin | [0x063f62046e536aCd3eB3a4c9c4F2d968BDc1199E](https://etherscan.io/address/0x063f62046e536aCd3eB3a4c9c4F2d968BDc1199E) |
+| ynETH Proxy | [0x09db87A538BD693E9d08544577d5cCfAA6373A48](https://etherscan.io/address/0x09db87A538BD693E9d08544577d5cCfAA6373A48) |
+| ynETH ProxyAdmin | [0x12e9DA7e671342E7A5fDD7197348C8019e72C31F](https://etherscan.io/address/0x12e9DA7e671342E7A5fDD7197348C8019e72C31F) |
+| StakingNodesManager Proxy | [0x8C33A1d6d062dB7b51f79702355771d44359cD7d](https://etherscan.io/address/0x8C33A1d6d062dB7b51f79702355771d44359cD7d) |
+| StakingNodesManager ProxyAdmin | [0x091929600D3891861615098fc9eA3a0270966398](https://etherscan.io/address/0x091929600D3891861615098fc9eA3a0270966398) |
+| RewardsDistributor Proxy | [0x40d5FF3E218f54f4982661a0464a298Cf6652351](https://etherscan.io/address/0x40d5FF3E218f54f4982661a0464a298Cf6652351) |
+| RewardsDistributor ProxyAdmin | [0x17ecBFce53B364Fd571D159eA2b766bA3114d85E](https://etherscan.io/address/0x17ecBFce53B364Fd571D159eA2b766bA3114d85E) |
+| ExecutionLayerReceiver Proxy | [0x1D6b2a11FFEa5F9a8Ed85A02581910b3d695C12b](https://etherscan.io/address/0x1D6b2a11FFEa5F9a8Ed85A02581910b3d695C12b) |
+| ExecutionLayerReceiver ProxyAdmin | [0x5a3d6625C6d26E3650675bF2b7041cd7d16A63B2](https://etherscan.io/address/0x5a3d6625C6d26E3650675bF2b7041cd7d16A63B2) |
+| ConsensusLayerReceiver Proxy | [0xE439fe4563F7666FCd7405BEC24aE7B0d226536e](https://etherscan.io/address/0xE439fe4563F7666FCd7405BEC24aE7B0d226536e) |
+| ConsensusLayerReceiver ProxyAdmin | [0xaB5CC95BD4F5C45F637B6D319169Bbbc212CfEE8](https://etherscan.io/address/0xaB5CC95BD4F5C45F637B6D319169Bbbc212CfEE8) |
 
 ## Holesky v0.0.1
 
