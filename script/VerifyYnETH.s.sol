@@ -180,16 +180,6 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 stakingNodesManager: VALIDATOR_MANAGER_ROLE - ", vm.toString(address(actors.ops.VALIDATOR_MANAGER)));
 
-        // Secondary VALIDATOR_MANAGER_ROLE
-        require(
-            deployment.stakingNodesManager.hasRole(
-                deployment.stakingNodesManager.VALIDATOR_MANAGER_ROLE(), 
-                address(actors.ops.VALIDATOR_MANAGER_2)
-            ), 
-            "stakingNodesManager: VALIDATOR_MANAGER_ROLE INVALID"
-        );
-        console.log("\u2705 stakingNodesManager: VALIDATOR_MANAGER_ROLE - ", vm.toString(address(actors.ops.VALIDATOR_MANAGER_2)));
-
         // STAKING_NODE_CREATOR_ROLE
         require(
             deployment.stakingNodesManager.hasRole(
