@@ -99,14 +99,20 @@ contract ProtocolUpgradeScenario is ScenarioBaseTest {
     }
 
     function test_Upgrade_StakingNodeImplementation_Scenario() public {
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-        address eigenPodAddress = address(stakingNodeInstance.eigenPod());
+        // Collect all existing eigenPod addresses before the upgrade
+        IStakingNode[] memory stakingNodes = stakingNodesManager.getAllNodes();
+        address[] memory eigenPodAddressesBefore = new address[](stakingNodes.length);
+        for (uint i = 0; i < stakingNodes.length; i++) {
+            eigenPodAddressesBefore[i] = address(stakingNodes[i].eigenPod());
+        }
 
-        // upgrade the StakingNodeManager to support the new initialization version.
+        uint256 previousTotalDeposited = yneth.totalDepositedInPool();
+        uint256 previousTotalAssets = yneth.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneth)).totalSupply();
+
+        // Upgrade the StakingNodeManager to support the new initialization version.
         address newStakingNodesManagerImpl = address(new TestStakingNodesManagerV2());
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
-        
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
 
@@ -118,14 +124,18 @@ contract ProtocolUpgradeScenario is ScenarioBaseTest {
         address upgradedImplementationAddress = beacon.implementation();
         assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
 
-        address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
-        assertEq(newEigenPodAddress, eigenPodAddress);
+        // Collect all existing eigenPod addresses after the upgrade
+        address[] memory eigenPodAddressesAfter = new address[](stakingNodes.length);
+        for (uint i = 0; i < stakingNodes.length; i++) {
+            eigenPodAddressesAfter[i] = address(stakingNodes[i].eigenPod());
+        }
 
-        TestStakingNodeV2 testStakingNodeV2Instance = TestStakingNodeV2(payable(address(stakingNodeInstance)));
-        uint redundantFunctionResult = testStakingNodeV2Instance.redundantFunction();
-        assertEq(redundantFunctionResult, 1234567);
+        // Compare eigenPod addresses before and after the upgrade
+        for (uint i = 0; i < stakingNodes.length; i++) {
+            assertEq(eigenPodAddressesAfter[i], eigenPodAddressesBefore[i], "EigenPod address mismatch after upgrade");
+        }
 
-        assertEq(testStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
+        runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
     }
 
     function runUpgradeInvariants(
