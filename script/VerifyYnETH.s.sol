@@ -398,8 +398,10 @@ contract Verify is BaseScript {
                 address(stakingNode.stakingNodesManager()) == address(deployment.stakingNodesManager),
                 "StakingNode: StakingNodesManager dependency mismatch"
             );
-
             address storedPod = address(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).ownerToPod(address(stakingNode)));
+
+            console.log("StakingNode address:", address(stakingNode));
+            console.log("EigenPod address:", address(stakingNode.eigenPod()));
             assert(
                 address(stakingNode.eigenPod()) == storedPod
             );
