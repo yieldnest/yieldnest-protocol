@@ -7,6 +7,7 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -14,6 +15,9 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ScenarioBaseTest} from "test/scenarios/ScenarioBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
+import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 
 contract ProtocolUpgradeScenario is ScenarioBaseTest {
 
@@ -92,6 +96,36 @@ contract ProtocolUpgradeScenario is ScenarioBaseTest {
         
         runUpgradeInvariants(address(consensusLayerReceiver), previousConsensusLayerReceiverImpl, newConsensusLayerReceiverImpl);
         runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
+    }
+
+    function test_Upgrade_StakingNodeImplementation_Scenario() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        address eigenPodAddress = address(stakingNodeInstance.eigenPod());
+
+        // upgrade the StakingNodeManager to support the new initialization version.
+        address newStakingNodesManagerImpl = address(new TestStakingNodesManagerV2());
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+        
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
+
+        TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(payable(testStakingNodeV2));
+
+        UpgradeableBeacon beacon = stakingNodesManager.upgradeableBeacon();
+        address upgradedImplementationAddress = beacon.implementation();
+        assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
+
+        address newEigenPodAddress = address(stakingNodeInstance.eigenPod());
+        assertEq(newEigenPodAddress, eigenPodAddress);
+
+        TestStakingNodeV2 testStakingNodeV2Instance = TestStakingNodeV2(payable(address(stakingNodeInstance)));
+        uint redundantFunctionResult = testStakingNodeV2Instance.redundantFunction();
+        assertEq(redundantFunctionResult, 1234567);
+
+        assertEq(testStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
 
     function runUpgradeInvariants(
