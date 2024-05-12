@@ -19,6 +19,8 @@
 | RewardsDistributor | [0x306EBed66642867B94b29752be37b8f20fEb5F72](https://etherscan.io/address/0x306EBed66642867B94b29752be37b8f20fEb5F72) |
 | ExecutionLayerReceiver | [0x863Ba8f64b1528De6c8A7239D80D4f2b7CfF159B](https://etherscan.io/address/0x863Ba8f64b1528De6c8A7239D80D4f2b7CfF159B) |
 | ConsensusLayerReceiver | [0xa98e8652DAF2407839b18f4e215D86D88Eb91582](https://etherscan.io/address/0xa98e8652DAF2407839b18f4e215D86D88Eb91582) |
+| StakingNode | [0xF8A37F34a427611C4c54F82bF43230FA041d237B](https://etherscan.io/address/0xF8A37F34a427611C4c54F82bF43230FA041d237B#code) |
+
 
 
 ### Proxy Admins
