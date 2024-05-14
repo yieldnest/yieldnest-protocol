@@ -7,8 +7,8 @@ import "forge-std/StdJson.sol";
 
 contract ProofUtils is ProofParsing {
 
-    constructor() {
-        setJSON("lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json");
+    constructor(string memory path) {
+        setJSON((path));
     }
 
     function _getStateRootProof() external returns (BeaconChainProofs.StateRootProof memory) {

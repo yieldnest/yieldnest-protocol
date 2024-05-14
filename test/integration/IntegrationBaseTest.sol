@@ -54,7 +54,6 @@ contract IntegrationBaseTest is Test, Utils {
     StakingNodesManager public stakingNodesManager;
     StakingNode public stakingNodeImplementation;
 
-
     // Assets
     ynETH public yneth;
     ynLSD public ynlsd;
@@ -82,7 +81,8 @@ contract IntegrationBaseTest is Test, Utils {
 
         // Setup Protocol
         setupUtils();
-        setupProxies();
+        setupYnETHPoxies();
+        setupYnLSDProxies();
         setupEthereum();
         setupEigenLayer();
         setupRewardsDistributor();
@@ -91,22 +91,17 @@ contract IntegrationBaseTest is Test, Utils {
         setupYieldNestOracleAndYnLSD();
     }
 
-    function setupProxies() public {
-
+    function setupYnETHPoxies() public {
         TransparentUpgradeableProxy ynethProxy;
-        TransparentUpgradeableProxy ynLSDProxy;
         TransparentUpgradeableProxy rewardsDistributorProxy;
         TransparentUpgradeableProxy stakingNodesManagerProxy;
-        TransparentUpgradeableProxy yieldNestOracleProxy;
         TransparentUpgradeableProxy executionLayerReceiverProxy;
         TransparentUpgradeableProxy consensusLayerReceiverProxy;
 
-        // Initializing RewardsDistributor contract and creating its proxy
+                // Initializing RewardsDistributor contract and creating its proxy
         rewardsDistributor = new RewardsDistributor();
         yneth = new ynETH();
         stakingNodesManager = new StakingNodesManager();
-        yieldNestOracle = new YieldNestOracle();
-        ynlsd = new ynLSD();
 
         executionLayerReceiver = new RewardsReceiver();
         consensusLayerReceiver = new RewardsReceiver();
@@ -116,8 +111,6 @@ contract IntegrationBaseTest is Test, Utils {
         
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.admin.PROXY_ADMIN_OWNER, "");
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
 
         executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiver), actors.admin.PROXY_ADMIN_OWNER, "");
         consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiver), actors.admin.PROXY_ADMIN_OWNER, "");
@@ -128,8 +121,6 @@ contract IntegrationBaseTest is Test, Utils {
         // Wrapping proxies with their respective interfaces
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
-        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Re-deploying ynETH and creating its proxy again
         yneth = new ynETH();
@@ -140,6 +131,20 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager = new StakingNodesManager();
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
+    }
+
+    function setupYnLSDProxies() public {
+        TransparentUpgradeableProxy ynLSDProxy;
+        TransparentUpgradeableProxy yieldNestOracleProxy;
+
+        yieldNestOracle = new YieldNestOracle();
+        ynlsd = new ynLSD();
+
+        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.admin.PROXY_ADMIN_OWNER, "");
+        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
+
+        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
+        ynlsd = ynLSD(address(ynLSDProxy));
     }
 
     function setupUtils() public {
@@ -167,7 +172,8 @@ contract IntegrationBaseTest is Test, Utils {
         
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: actors.admin.ADMIN,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             pauseWhitelist: pauseWhitelist
@@ -199,13 +205,15 @@ contract IntegrationBaseTest is Test, Utils {
 
     function setupStakingNodesManager() public {
         stakingNodeImplementation = new StakingNode();
+
         StakingNodesManager.Init memory stakingNodesManagerInit = StakingNodesManager.Init({
             admin: actors.admin.ADMIN,
             stakingAdmin: actors.admin.STAKING_ADMIN,
             stakingNodesOperator: actors.ops.STAKING_NODES_OPERATOR,
             stakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR,
             validatorManager: actors.ops.VALIDATOR_MANAGER,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             maxNodeCount: 10,
             depositContract: depositContractEth2,
             ynETH: IynETH(address(yneth)),
@@ -230,7 +238,7 @@ contract IntegrationBaseTest is Test, Utils {
         IStrategy[] memory strategies = new IStrategy[](2);
 
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.admin.PAUSE_ADMIN;
+        pauseWhitelist[0] = actors.ops.PAUSE_ADMIN;
 
         // stETH
         assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -263,11 +271,12 @@ contract IntegrationBaseTest is Test, Utils {
             oracle: yieldNestOracle,
             maxNodeCount: 10,
             admin: actors.admin.ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingAdmin: actors.admin.STAKING_ADMIN,
             lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
             lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
             pauseWhitelist: pauseWhitelist,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
             depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
         });
 

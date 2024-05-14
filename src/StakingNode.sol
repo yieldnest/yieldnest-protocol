@@ -20,9 +20,15 @@ interface StakingNodeEvents {
      event Undelegated(address indexed operator);
      event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
      event ETHReceived(address sender, uint256 value);
-     event WithdrawnNonBeaconChainETH(uint256 amount);
+     event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
      event AllocatedStakedETH(uint256 currenAllocatedStakedETH, uint256 newAmount);
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
+     event WithdrawalProcessed(
+        uint40 indexed validatorIndex,
+        uint256 amount,
+        bytes32 withdrawalCredentials,
+        uint64 oracleTimestamp
+    );
 }
 
 /**
@@ -43,10 +49,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error ZeroAddress();
     error NotStakingNodesManager();
     error NotStakingNodesDelegator();
-    error MismatchedOracleBlockNumberAndValidatorIndexLengths(uint256 oracleBlockNumberLength, uint256 validatorIndexLength);
-    error MismatchedValidatorIndexAndProofsLengths(uint256 validatorIndexLength, uint256 proofsLength);
-    error MismatchedProofsAndValidatorFieldsLengths(uint256 proofsLength, uint256 validatorFieldsLength);
-    error UnexpectedETHBalance(uint256 claimedAmount, uint256 expectedETHBalance);
     error NoBalanceToProcess();
 
     //--------------------------------------------------------------------------------------
@@ -139,16 +141,19 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *       validators sweep them to the withdrawal address
      */
     function withdrawNonBeaconChainETHBalanceWei() external onlyAdmin {
-        uint256 eigenPodBalance = address(eigenPod).balance;
-        emit WithdrawnNonBeaconChainETH(eigenPodBalance);
-        eigenPod.withdrawNonBeaconChainETHBalanceWei(address(this), eigenPodBalance);
+
+        // withdraw all available balance to withdraw.
+        //Warning: the ETH balance of the EigenPod may be higher in case there's beacon chain ETH there
+        uint256 balanceToWithdraw = eigenPod.nonBeaconChainETHBalanceWei();
+        eigenPod.withdrawNonBeaconChainETHBalanceWei(address(this), balanceToWithdraw);
+        emit WithdrawnNonBeaconChainETH(balanceToWithdraw, address(eigenPod).balance);
     }
 
     /**
      * @notice Processes withdrawals by verifying the node's balance and transferring ETH to the StakingNodesManager.
      * @dev This function checks if the node's current balance matches the expected balance and then transfers the ETH to the StakingNodesManager.
      */
-    function processNonBeaconChainETHWithdrawals() public nonReentrant onlyAdmin {
+    function processDelayedWithdrawals() public nonReentrant onlyAdmin {
 
         uint256 balance = address(this).balance;
         if (balance == 0) {
@@ -217,6 +222,39 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         delegationManager.undelegate(address(this));
  
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS  -------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    function verifyAndProcessWithdrawals(
+        uint64 oracleTimestamp,
+        BeaconChainProofs.StateRootProof calldata stateRootProof,
+        BeaconChainProofs.WithdrawalProof[] calldata withdrawalProofs,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields,
+        bytes32[][] calldata withdrawalFields
+    ) external onlyAdmin {
+
+        eigenPod.verifyAndProcessWithdrawals(
+            oracleTimestamp,
+            stateRootProof,
+            withdrawalProofs,
+            validatorFieldsProofs,
+            validatorFields,
+            withdrawalFields
+        );
+
+        for (uint256 i = 0; i < withdrawalProofs.length; i++) {
+            emit WithdrawalProcessed(
+                validatorFields[i].getValidatorIndex(),
+                validatorFields[i].getEffectiveBalanceGwei(), // Assuming the first field in withdrawalFields array is the amount
+                validatorFields[i].getWithdrawalCredentials(),
+                oracleTimestamp
+            );
+        }
     }
 
     //--------------------------------------------------------------------------------------

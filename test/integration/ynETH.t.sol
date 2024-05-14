@@ -4,7 +4,10 @@ pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ynBase} from "src/ynBase.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+
 import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
@@ -31,8 +34,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testDepositETHWhenPaused() public {
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
 
         uint256 depositAmount = 1 ether;
         vm.deal(address(this), depositAmount);
@@ -44,8 +47,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testPauseDepositETH() public {
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
 
         // Act & Assert
         bool pauseState = yneth.depositsPaused();
@@ -54,9 +57,10 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testUnpauseDepositETH() public {
         // Arrange
-        vm.startPrank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
-        yneth.updateDepositsPaused(false);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        yneth.unpauseDeposits();
 
         // Act & Assert
         bool pauseState = yneth.depositsPaused();
@@ -212,8 +216,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testPauseDepositETHFunctionality() public {
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        yneth.pauseDeposits();
 
         // Act & Assert
         bool pauseState = yneth.depositsPaused();
@@ -225,8 +229,8 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.depositETH{value: depositAmount}(address(this));
 
         // Unpause and try depositing again
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        yneth.updateDepositsPaused(false);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        yneth.unpauseDeposits();
         pauseState = yneth.depositsPaused();
 
         assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
@@ -264,7 +268,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         // Act
         address[] memory whitelist = new address[](1);
         whitelist[0] = whitelistedAddress;
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.addToPauseWhitelist(whitelist); // Whitelisting the address
         vm.prank(whitelistedAddress);
         yneth.transfer(recipient, transferAmount);
@@ -281,7 +285,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         addressesToWhitelist[1] = address(2);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.addToPauseWhitelist(addressesToWhitelist);
 
         // Assert
@@ -297,7 +301,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
         vm.deal(newWhitelistedAddress, depositAmount); // Providing the new whitelisted address with some ETH
         vm.prank(newWhitelistedAddress);
@@ -327,7 +331,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         uint256 transferAmount = yneth.balanceOf(arbitraryAddress);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.unpauseTransfers(); // Unpausing transfers for all
         
         vm.prank(arbitraryAddress);
@@ -357,4 +361,69 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.withdrawETH(1);
         vm.stopPrank();
     } 
+}
+
+
+contract ynETHTotalAssetsTest is IntegrationBaseTest {
+    function testFuzzTotalAssetsWithDifferentDeposits(uint256 depositAmount1, uint256 depositAmount2) public {
+        // Arrange
+        vm.assume(depositAmount1 > 0 ether && depositAmount1 <= 10000 ether);
+        vm.assume(depositAmount2 > 0 ether && depositAmount2 <= 10000 ether);
+        uint256 initialTotalAssets = yneth.totalAssets();
+
+        // Act
+        yneth.depositETH{value: depositAmount1}(address(this));
+        uint256 totalAssetsAfterFirstDeposit = yneth.totalAssets();
+        yneth.depositETH{value: depositAmount2}(address(this));
+        uint256 totalAssetsAfterSecondDeposit = yneth.totalAssets();
+
+        // Assert
+        assertEq(totalAssetsAfterFirstDeposit, initialTotalAssets + depositAmount1, "Total assets should increase by the first deposit amount");
+        assertEq(totalAssetsAfterSecondDeposit, initialTotalAssets + depositAmount1 + depositAmount2, "Total assets should increase by the sum of both deposit amounts");
+    }
+
+    function testFuzzTotalAssetsWithRewards(uint256 depositAmount, uint256 rewardAmount) public {
+        // Arrange
+        vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
+        vm.assume(rewardAmount > 0 ether && rewardAmount <= 10000 ether);
+        yneth.depositETH{value: depositAmount}(address(this));
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+
+        // Act
+        vm.deal(address(rewardsDistributor), rewardAmount);
+        vm.startPrank(address(rewardsDistributor));
+        yneth.receiveRewards{value: rewardAmount}();
+        uint256 totalAssetsAfterRewards = yneth.totalAssets();
+
+        // Assert
+        assertEq(totalAssetsAfterRewards, totalAssetsAfterDeposit + rewardAmount, "Total assets should increase by the reward amount");
+    }
+
+    function skiptestFuzzTotalAssetsWithRewardsInEigenPods(uint256 depositAmount, uint256 rewardAmount, uint256 stakingNodeCount) public {
+        // Arrange
+        vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
+        vm.assume(rewardAmount > 0 ether && rewardAmount <= 5000 ether); // Assuming rewards are less than or equal to half the deposit for this test
+        uint256 maxStakingNodeCount = stakingNodesManager.maxNodeCount();
+        vm.assume(stakingNodeCount > 0 && stakingNodeCount <= maxStakingNodeCount);
+
+        yneth.depositETH{value: depositAmount}(address(this));
+        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
+
+        assertEq(totalAssetsAfterDeposit, depositAmount, "Total assets should increase by the deposit amount after rewards in eigenPods");
+
+        // deal beacon-chain rewards into eigenpods
+        uint256 totalRewards = 0;
+        for (uint256 i = 0; i < stakingNodeCount; i++) {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            IStakingNode stakingNode = stakingNodesManager.createStakingNode();
+            IEigenPod eigenPod = stakingNode.eigenPod();
+            vm.deal(address(eigenPod), rewardAmount);
+            totalRewards += rewardAmount;
+            rewardAmount += 1 ether;
+        }
+
+        // NOTE: rewards sitting in EigenPods are NOT counted as total TVL
+        uint256 totalAssetsAfterRewards = yneth.totalAssets();
+        assertEq(totalAssetsAfterRewards, depositAmount, "Total assets should increase by the reward amount in eigenPods");
+    }
 }

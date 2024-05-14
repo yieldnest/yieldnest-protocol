@@ -12,11 +12,11 @@ contract RolesTest is IntegrationBaseTest {
         bytes32 PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
         assertTrue(stakingNodesManager.hasRole(stakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN));
-        assertTrue(stakingNodesManager.hasRole(PAUSER_ROLE, actors.admin.PAUSE_ADMIN));
+        assertTrue(stakingNodesManager.hasRole(PAUSER_ROLE, actors.ops.PAUSE_ADMIN));
 
         vm.startPrank(actors.admin.ADMIN);
         yneth.grantRole(PAUSER_ROLE, newOperator);
-        yneth.revokeRole(PAUSER_ROLE, actors.admin.PAUSE_ADMIN);
+        yneth.revokeRole(PAUSER_ROLE, actors.ops.PAUSE_ADMIN);
         vm.stopPrank();
 
         assertTrue(yneth.hasRole(PAUSER_ROLE, newOperator));
@@ -35,7 +35,7 @@ contract RolesTest is IntegrationBaseTest {
         assertTrue(stakingNodesManager.hasRole(VALIDATOR_MANAGER_ROLE, actors.ops.VALIDATOR_MANAGER));
         assertTrue(stakingNodesManager.hasRole(STAKING_NODES_OPERATOR_ROLE, actors.ops.STAKING_NODES_OPERATOR));
         assertTrue(stakingNodesManager.hasRole(STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR));
-        assertTrue(stakingNodesManager.hasRole(PAUSER_ROLE, actors.admin.PAUSE_ADMIN));
+        assertTrue(stakingNodesManager.hasRole(PAUSER_ROLE, actors.ops.PAUSE_ADMIN));
 
         vm.startPrank(actors.admin.ADMIN);
         stakingNodesManager.grantRole(STAKING_ADMIN_ROLE, newOperator);
@@ -51,7 +51,7 @@ contract RolesTest is IntegrationBaseTest {
         stakingNodesManager.revokeRole(STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR);
 
         stakingNodesManager.grantRole(PAUSER_ROLE, newOperator);
-        stakingNodesManager.revokeRole(PAUSER_ROLE, actors.admin.PAUSE_ADMIN);
+        stakingNodesManager.revokeRole(PAUSER_ROLE, actors.ops.PAUSE_ADMIN);
         vm.stopPrank();
 
         assertTrue(stakingNodesManager.hasRole(STAKING_ADMIN_ROLE, newOperator));
@@ -64,7 +64,7 @@ contract RolesTest is IntegrationBaseTest {
         assertFalse(stakingNodesManager.hasRole(VALIDATOR_MANAGER_ROLE, actors.ops.VALIDATOR_MANAGER));
         assertFalse(stakingNodesManager.hasRole(STAKING_NODES_OPERATOR_ROLE, actors.ops.STAKING_NODES_OPERATOR));
         assertFalse(stakingNodesManager.hasRole(STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR));
-        assertFalse(stakingNodesManager.hasRole(PAUSER_ROLE, actors.admin.PAUSE_ADMIN));
+        assertFalse(stakingNodesManager.hasRole(PAUSER_ROLE, actors.ops.PAUSE_ADMIN));
     }
 
     function testRoleChangeRewardsDistributor() public {

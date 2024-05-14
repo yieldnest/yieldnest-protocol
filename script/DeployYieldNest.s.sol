@@ -20,8 +20,6 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
-import {ynLSD} from "src/ynLSD.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -30,8 +28,6 @@ contract DeployYieldNest is BaseScript {
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
-    TransparentUpgradeableProxy public yieldNestOracleProxy;
-    TransparentUpgradeableProxy public ynLSDProxy;
     TransparentUpgradeableProxy public executionLayerReceiverProxy;
     TransparentUpgradeableProxy public consensusLayerReceiverProxy;
 
@@ -41,8 +37,6 @@ contract DeployYieldNest is BaseScript {
     RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
-    YieldNestOracle public yieldNestOracle;
-    ynLSD public ynlsd;
 
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
@@ -57,10 +51,15 @@ contract DeployYieldNest is BaseScript {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
+        address publicKey = vm.addr(deployerPrivateKey);
+        console.log("Deployer Public Key:", publicKey);
+
         // ynETH.sol ROLES
         actors = getActors();
 
         address _broadcaster = vm.addr(deployerPrivateKey);
+
+        ContractAddresses contractAddresses = new ContractAddresses();
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -68,7 +67,6 @@ contract DeployYieldNest is BaseScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
-        ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
@@ -90,20 +88,10 @@ contract DeployYieldNest is BaseScript {
         consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
 
         stakingNodeImplementation = new StakingNode();
-        yieldNestOracle = new YieldNestOracle();
-        ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
-
-        YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
-        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
-
-        ynLSD ynLSDImplementation = new ynLSD();
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
-        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");
@@ -114,11 +102,12 @@ contract DeployYieldNest is BaseScript {
     
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.admin.PAUSE_ADMIN;
+        pauseWhitelist[0] = actors.ops.PAUSE_ADMIN;
 
         ynETH.Init memory ynethInit = ynETH.Init({
             admin: actors.admin.ADMIN,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             pauseWhitelist: pauseWhitelist
@@ -132,7 +121,8 @@ contract DeployYieldNest is BaseScript {
             stakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR,
             validatorManager: actors.ops.VALIDATOR_MANAGER,
             stakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
-            pauser: actors.admin.PAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
             maxNodeCount: 10,
             ynETH: IynETH(address(yneth)),
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),

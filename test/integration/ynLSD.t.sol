@@ -13,6 +13,7 @@ import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
 import {ynBase} from "src/ynBase.sol";
 
+
 contract ynLSDAssetTest is IntegrationBaseTest {
     function testDepositSTETHFailingWhenStrategyIsPaused() public {
         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
@@ -24,7 +25,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareWithThreshold(asset.balanceOf(address(this)), balance, 1), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(asset.balanceOf(address(this)), balance), true, "Amount not received");
         vm.stopPrank();
 
         asset.approve(address(ynlsd), amount);
@@ -51,7 +52,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
         stETH.approve(address(ynlsd), balance);
         ynlsd.deposit(stETH, balance, address(this));
@@ -68,7 +69,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this),amount);
-        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
         stETH.approve(address(ynlsd), 32 ether);
         uint256 depositAmountOne = 5 ether;
@@ -175,7 +176,7 @@ contract ynLSDAssetTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareWithThreshold(balance, balance, 1), true, "Amount not received");
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
         asset.approve(address(ynlsd), balance);
         ynlsd.deposit(asset, balance, address(this));
 
@@ -368,8 +369,8 @@ contract ynLSDAdminTest is IntegrationBaseTest {
 		// 1. Obtain stETH and Deposit assets to ynLSD by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareWithThreshold(balance, amount, 1), true, "Amount not received");
-
+       assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
+       
         asset.approve(address(ynlsd), balance);
         ynlsd.deposit(asset, balance, address(this));
 
@@ -397,8 +398,8 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         stETH.approve(address(ynlsd), balance);
 
         // Arrange
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        ynlsd.updateDepositsPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        ynlsd.pauseDeposits();
 
         // Act & Assert
         bool pauseState = ynlsd.depositsPaused();
@@ -409,8 +410,8 @@ contract ynLSDAdminTest is IntegrationBaseTest {
         ynlsd.deposit(stETH, balance, address(this));
 
         // Unpause and try depositing again
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        ynlsd.updateDepositsPaused(false);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynlsd.unpauseDeposits();
         pauseState = ynlsd.depositsPaused();
 
         assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
@@ -455,7 +456,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         // Act
         address[] memory whitelist = new address[](1);
         whitelist[0] = whitelistedAddress;
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelist); // Whitelisting the address
         vm.prank(whitelistedAddress);
         ynlsd.transfer(recipient, transferAmount);
@@ -472,7 +473,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         addressesToWhitelist[1] = address(2);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(addressesToWhitelist);
 
         // Assert
@@ -496,7 +497,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
 
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = newWhitelistedAddress;
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
 
         uint256 transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
@@ -526,7 +527,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         uint256 transferAmount = ynlsd.balanceOf(arbitraryAddress);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.unpauseTransfers(); // Unpausing transfers for all
         
         vm.prank(arbitraryAddress);
@@ -543,7 +544,7 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         whitelistAddresses[0] = actors.eoa.DEFAULT_SIGNER; // EOA address to be removed from whitelist
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
 
         // Assert
@@ -558,11 +559,11 @@ contract ynLSDTransferPauseTest is IntegrationBaseTest {
         newWhitelistAddresses[1] = address(20001); // Second new whitelist address
 
         // Adding addresses to whitelist first
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.addToPauseWhitelist(newWhitelistAddresses);
 
         // Act
-        vm.prank(actors.admin.PAUSE_ADMIN);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynlsd.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
 
         // Assert

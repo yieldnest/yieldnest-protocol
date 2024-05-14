@@ -99,6 +99,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         uint256 maxNodeCount;
         address admin;
         address pauser;
+        address unpauser;
         address stakingAdmin;
         address lsdRestakingManager;
         address lsdStakingNodeCreatorRole;
@@ -124,6 +125,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         _grantRole(LSD_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
         _grantRole(LSD_STAKING_NODE_CREATOR_ROLE, init.lsdStakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
+        _grantRole(UNPAUSER_ROLE, init.unpauser);
 
         for (uint256 i = 0; i < init.assets.length; i++) {
             if (address(init.assets[i]) == address(0) || address(init.strategies[i]) == address(0)) {
@@ -336,13 +338,20 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             : assetPriceInETH * amount / 1e18;
     }
 
-    /// @notice Updates the pause state of deposits.
+    /// @notice Pauses ETH deposits.
     /// @dev Can only be called by an account with the PAUSER_ROLE.
-    /// @param isPaused The new pause state to set for deposits.
-    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        depositsPaused = isPaused;
+    function pauseDeposits() external onlyRole(PAUSER_ROLE) {
+        depositsPaused = true;
         emit DepositsPausedUpdated(depositsPaused);
     }
+
+    /// @notice Unpauses ETH deposits.
+    /// @dev Can only be called by an account with the UNPAUSER_ROLE.
+    function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
+        depositsPaused = false;
+        emit DepositsPausedUpdated(depositsPaused);
+    }
+    
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------

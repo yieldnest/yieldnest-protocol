@@ -25,6 +25,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
 
     uint16 internal constant _BASIS_POINTS_DENOMINATOR = 10_000;
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
     error Paused();
     error ValueOutOfBounds(uint256 value);
@@ -48,6 +49,17 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
          __ERC4626_init(reinit.underlyingAsset);
 
          
+    }
+
+    /// @notice Allows depositing ETH into the contract in exchange for shares.
+    /// @dev This function is a stub in the mock contract.
+    /// @param receiver The address to receive the minted shares.
+    /// @return shares The amount of shares minted for the deposited ETH, always returns 0 in this mock.
+    function depositETH(address receiver) external payable override returns (uint256 shares) {
+        // This is a stub function in the mock contract, so it does not perform any actions.
+        // In a real implementation, this function would handle deposit logic.
+        receiver; // This is to silence unused variable warning.
+        return 0;
     }
 
     function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
@@ -136,8 +148,17 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         totalDepositedInPool += msg.value;
     }
 
-    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        depositsPaused = isPaused;
+    /// @notice Pauses ETH deposits.
+    /// @dev Can only be called by an account with the PAUSER_ROLE.
+    function pauseDeposits() external onlyRole(PAUSER_ROLE) {
+        depositsPaused = true;
+        emit DepositETHPausedUpdated(depositsPaused);
+    }
+
+    /// @notice Unpauses ETH deposits.
+    /// @dev Can only be called by an account with the UNPAUSER_ROLE.
+    function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
+        depositsPaused = false;
         emit DepositETHPausedUpdated(depositsPaused);
     }
 

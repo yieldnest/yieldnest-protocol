@@ -512,8 +512,8 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         (IStakingNodesManager.ValidatorData[] memory validatorData,) = makeTestValidators(depositAmount);
 
         // Pause validator registration
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        stakingNodesManager.setValidatorRegistrationPaused(true);
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        stakingNodesManager.pauseValidatorRegistration();
 
         // Attempt to register validators while paused
         vm.prank(actors.ops.VALIDATOR_MANAGER);
@@ -521,8 +521,8 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
         stakingNodesManager.registerValidators(validatorData);
 
         // Unpause validator registration
-        vm.prank(actors.admin.PAUSE_ADMIN);
-        stakingNodesManager.setValidatorRegistrationPaused(false);
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        stakingNodesManager.unpauseValidatorRegistration();
 
         // Attempt to register validators after unpausing
         vm.prank(actors.ops.VALIDATOR_MANAGER);

@@ -6,6 +6,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
+
 import {ynBase} from "src/ynBase.sol";
 
 
@@ -36,6 +37,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error CallerNotStakingNodeManager(address expected, address provided);
     error NotRewardsDistributor();
     error InsufficientBalance();
+    error TransferFailed();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -55,6 +57,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     struct Init {
         address admin;
         address pauser;
+        address unpauser;
         IStakingNodesManager stakingNodesManager;
         IRewardsDistributor rewardsDistributor;
         address[] pauseWhitelist;
@@ -71,6 +74,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         external
         notZeroAddress(init.admin)
         notZeroAddress(init.pauser)
+        notZeroAddress(init.unpauser)
         notZeroAddress(address(init.stakingNodesManager))
         notZeroAddress(address(init.rewardsDistributor))
         initializer {
@@ -79,6 +83,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
+        _grantRole(UNPAUSER_ROLE, init.unpauser);
         stakingNodesManager = init.stakingNodesManager;
         rewardsDistributor = init.rewardsDistributor;
 
@@ -189,18 +194,24 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     /// @dev This function can only be called by the Staking Nodes Manager.
     /// @param ethAmount The amount of ETH to withdraw in wei.
     function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
+        uint256 currentTotalDepositedInPool = totalDepositedInPool;
+
         // Check if the pool has enough ETH to fulfill the withdrawal request.
-        if (totalDepositedInPool < ethAmount) {
+        if (currentTotalDepositedInPool < ethAmount) {
             revert InsufficientBalance();
         }
 
         // Deduct the withdrawal amount from the total deposited in the pool.
-        totalDepositedInPool -= ethAmount;
+        uint256 newTotalDepositedInPool = currentTotalDepositedInPool - ethAmount;
+        totalDepositedInPool = newTotalDepositedInPool;
 
         // Transfer the specified amount of ETH to the Staking Nodes Manager.
-        payable(address(stakingNodesManager)).transfer(ethAmount);
+        (bool success, ) = payable(address(stakingNodesManager)).call{value: ethAmount}("");
+        if (!success) {
+            revert TransferFailed();
+        }
 
-        emit ETHWithdrawn(ethAmount, totalDepositedInPool);
+        emit ETHWithdrawn(ethAmount, newTotalDepositedInPool);
     }
 
     /// @notice Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
@@ -212,11 +223,17 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit WithdrawnETHProcessed(msg.value, totalDepositedInPool);
     }
 
-    /// @notice Updates the pause state of ETH deposits.
+    /// @notice Pauses ETH deposits.
     /// @dev Can only be called by an account with the PAUSER_ROLE.
-    /// @param isPaused The new pause state to set for ETH deposits.
-    function updateDepositsPaused(bool isPaused) external onlyRole(PAUSER_ROLE) {
-        depositsPaused = isPaused;
+    function pauseDeposits() external onlyRole(PAUSER_ROLE) {
+        depositsPaused = true;
+        emit DepositETHPausedUpdated(depositsPaused);
+    }
+
+    /// @notice Unpauses ETH deposits.
+    /// @dev Can only be called by an account with the UNPAUSER_ROLE.
+    function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
+        depositsPaused = false;
         emit DepositETHPausedUpdated(depositsPaused);
     }
     
