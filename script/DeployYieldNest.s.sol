@@ -20,8 +20,6 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
-import {ynLSD} from "src/ynLSD.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -30,8 +28,6 @@ contract DeployYieldNest is BaseScript {
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
-    TransparentUpgradeableProxy public yieldNestOracleProxy;
-    TransparentUpgradeableProxy public ynLSDProxy;
     TransparentUpgradeableProxy public executionLayerReceiverProxy;
     TransparentUpgradeableProxy public consensusLayerReceiverProxy;
 
@@ -41,8 +37,6 @@ contract DeployYieldNest is BaseScript {
     RewardsReceiver public consensusLayerReceiver; // Added consensusLayerReceiver
     RewardsDistributor public rewardsDistributor;
     StakingNode public stakingNodeImplementation;
-    YieldNestOracle public yieldNestOracle;
-    ynLSD public ynlsd;
 
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
@@ -94,20 +88,10 @@ contract DeployYieldNest is BaseScript {
         consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
 
         stakingNodeImplementation = new StakingNode();
-        yieldNestOracle = new YieldNestOracle();
-        ynlsd = new ynLSD();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
         rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
-
-        YieldNestOracle yieldNestOracleImplementation  = new YieldNestOracle();
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracleImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
-        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
-
-        ynLSD ynLSDImplementation = new ynLSD();
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynLSDImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
-        ynlsd = ynLSD(address(ynLSDProxy));
 
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");

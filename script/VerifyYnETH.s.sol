@@ -220,6 +220,28 @@ contract Verify is BaseScript {
         );
         console.log("\u2705 stakingNodesManager: UNPAUSE_ADMIN - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
+        // Check DEFAULT_SIGNER does not have DEFAULT_ADMIN_ROLE
+        // TODO: reenable
+        // require(
+        //     !deployment.stakingNodesManager.hasRole(
+        //         deployment.stakingNodesManager.DEFAULT_ADMIN_ROLE(), 
+        //         address(actors.eoa.DEFAULT_SIGNER)
+        //     ), 
+        //     "stakingNodesManager: DEFAULT_SIGNER SHOULD NOT HAVE DEFAULT_ADMIN_ROLE"
+        // );
+        // console.log("\u2705 stakingNodesManager: DEFAULT_SIGNER - DEFAULT_ADMIN_ROLE not assigned");
+
+        // Check DEFAULT_SIGNER does not have STAKING_ADMIN
+        // TODO: reenable
+        // require(
+        //     !deployment.stakingNodesManager.hasRole(
+        //         deployment.stakingNodesManager.STAKING_ADMIN_ROLE(), 
+        //         address(actors.eoa.DEFAULT_SIGNER)
+        //     ), 
+        //     "stakingNodesManager: DEFAULT_SIGNER SHOULD NOT HAVE STAKING_ADMIN"
+        // );
+        // console.log("\u2705 stakingNodesManager: DEFAULT_SIGNER - STAKING_ADMIN not assigned");
+
 
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
@@ -244,6 +266,16 @@ contract Verify is BaseScript {
             "ynETH: PAUSER_ADMIN_ROLE INVALID"
         );
         console.log("\u2705 ynETH: PAUSER_ROLE - ", vm.toString(address(actors.ops.PAUSE_ADMIN)));
+
+        // UNPAUSER_ROLE;
+        require(
+            deployment.ynETH.hasRole(
+                deployment.ynETH.UNPAUSER_ROLE(), 
+                address(actors.admin.UNPAUSE_ADMIN)
+            ), 
+            "ynETH: UNPAUSER_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 ynETH: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
     }
 
@@ -366,8 +398,10 @@ contract Verify is BaseScript {
                 address(stakingNode.stakingNodesManager()) == address(deployment.stakingNodesManager),
                 "StakingNode: StakingNodesManager dependency mismatch"
             );
-
             address storedPod = address(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).ownerToPod(address(stakingNode)));
+
+            console.log("StakingNode address:", address(stakingNode));
+            console.log("EigenPod address:", address(stakingNode.eigenPod()));
             assert(
                 address(stakingNode.eigenPod()) == storedPod
             );
