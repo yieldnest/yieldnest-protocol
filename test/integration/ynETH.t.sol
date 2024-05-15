@@ -426,4 +426,5 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         uint256 totalAssetsAfterRewards = yneth.totalAssets();
         assertEq(totalAssetsAfterRewards, depositAmount, "Total assets should increase by the reward amount in eigenPods");
     }
+
 }
