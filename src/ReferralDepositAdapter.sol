@@ -1,6 +1,8 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import { IynETH } from "src/interfaces/IynETH.sol";
 import { Initializable } from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-
 
 contract ReferralDepositAdapter is Initializable {
 
