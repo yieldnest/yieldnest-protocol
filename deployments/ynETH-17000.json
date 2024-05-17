@@ -14,7 +14,7 @@
   "proxy-consensusLayerReceiver": "0x706EED02702fFE9CBefD6A65E63f3C2b59B7eF2d",
   "proxy-executionLayerReceiver": "0xA5E9E1ceb4cC1854d0e186a9B3E67158b84AD072",
   "proxy-rewardsDistributor": "0x82915efF62af9FCC0d0735b8681959e069E3f2D8",
-  "stakingNodeImplementation": "0x31aC316f7E7002fBbe52552612824dFd6a12C663",
+  "stakingNodeImplementation": "0xe01a7328090c95e89Ec689b005392Cf7e5De90d9",
   "proxy-stakingNodesManager": "0xc2387EBb4Ea66627E3543a771e260Bd84218d6a1",
   "proxy-ynETH": "0xd9029669BC74878BCB5BE58c259ed0A277C5c16E"
 }
