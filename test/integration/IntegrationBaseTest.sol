@@ -12,6 +12,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
+import {IReferralDepositAdapter} from "src/interfaces/IReferralDepositAdapter.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {ynETH} from "src/ynETH.sol";
@@ -161,7 +162,13 @@ contract IntegrationBaseTest is Test, Utils {
         referralDepositAdapterImplementation = new ReferralDepositAdapter();
         referralDepositAdapterProxy = new TransparentUpgradeableProxy(address(referralDepositAdapterImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
         referralDepositAdapter = ReferralDepositAdapter(payable(address(referralDepositAdapterProxy)));
-        referralDepositAdapter.initialize(yneth);
+        
+        IReferralDepositAdapter.Init memory initArgs = IReferralDepositAdapter.Init({
+            admin: actors.admin.ADMIN,
+            referralPublisher: actors.ops.REFERAL_PUBLISHER,
+            _ynETH: yneth
+        });
+        referralDepositAdapter.initialize(initArgs);
     }
 
     function setupEthereum() public {
