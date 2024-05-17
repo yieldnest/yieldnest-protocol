@@ -72,7 +72,7 @@ contract ActorAddresses {
                 LSD_RESTAKING_MANAGER: holeskyWallets.YNDev,
                 STAKING_NODE_CREATOR: holeskyWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
-                PAUSE_ADMIN: holeskyWallets.YNDev
+                PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil
             }),
             wallets: holeskyWallets
         });

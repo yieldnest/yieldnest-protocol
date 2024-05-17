@@ -33,12 +33,12 @@ abstract contract BaseScript is Script, Utils {
         YieldNestOracle yieldNestOracle;
     }
 
-    function getDeploymentFile() internal view returns (string memory) {
+    function getDeploymentFile() internal virtual view returns (string memory) {
         string memory root = vm.projectRoot();
         return string.concat(root, "/deployments/ynETH-", vm.toString(block.chainid), ".json");
     }
 
-    function saveDeployment(Deployment memory deployment) public {
+    function saveDeployment(Deployment memory deployment) public virtual {
         string memory json = "deployment";
 
         // contract addresses
