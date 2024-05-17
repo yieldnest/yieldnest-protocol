@@ -78,16 +78,7 @@ contract ReferralDepositAdapter is
 
         emit ReferralDepositProcessed(msg.sender, receiver, msg.value, shares, referrer, block.timestamp, false);
     }
-
-    struct ReferralInfo {
-        address depositor;
-        address referrer;
-        address referee;
-        uint256 amountDeposited;
-        uint256 shares;
-        uint256 timestamp;
-    }
-
+    
     /// @notice Publishes multiple referral information using the existing event.
     /// @param referrals Array of ReferralInfo structs containing referral details.
     function publishReferrals(ReferralInfo[] calldata referrals) external {
@@ -103,10 +94,6 @@ contract ReferralDepositAdapter is
             );
         }
     }
-
-
-
-
 
     receive() external payable {
         revert NoDirectETHDeposit();
