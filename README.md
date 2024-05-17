@@ -49,12 +49,11 @@
 
 | Contract Name | Contract Address |
 |----------------------------|-------------------------------------------|
-| ynETH | [0xfd35fdf7bf29ef93dda281b14d39d2bfc7d3150e](https://holesky.etherscan.io/address/0xfd35fdf7bf29ef93dda281b14d39d2bfc7d3150e) |
-| StakingNodesManager | [0x844217581da1e0cf74bab131bc268838937c638d](https://holesky.etherscan.io/address/0x844217581da1e0cf74bab131bc268838937c638d) |
+| ynETH | [0x0E60A5db38c545ced3d3480B6768811cc603649A](https://holesky.etherscan.io/address/0x0E60A5db38c545ced3d3480B6768811cc603649A) |
+| StakingNodesManager | [0xDDd8f9Ad981444a0C44c611E9438b06FFc2bd354](https://holesky.etherscan.io/address/0xDDd8f9Ad981444a0C44c611E9438b06FFc2bd354) |
 | RewardsReceiver | [0x1fbedf3773418f20b9dfeafcd9d263030eb0e42f](https://holesky.etherscan.io/address/0x1fbedf3773418f20b9dfeafcd9d263030eb0e42f) |
 | RewardsReceiver | [0xe7acc0533c650ad0cc11f57f81c38fa19634b1d7](https://holesky.etherscan.io/address/0xe7acc0533c650ad0cc11f57f81c38fa19634b1d7) |
-| StakingNode | [0x31ac316f7e7002fbbe52552612824dfd6a12c663](https://holesky.etherscan.io/address/0x31ac316f7e7002fbbe52552612824dfd6a12c663) |
-| YieldNestOracle | [0x78e15e2f82ca181e63b8c5789a97001132462a69](https://holesky.etherscan.io/address/0x78e15e2f82ca181e63b8c5789a97001132462a69) |
+| StakingNode | [0xe01a7328090c95e89Ec689b005392Cf7e5De90d9](https://holesky.etherscan.io/address/0xe01a7328090c95e89Ec689b005392Cf7e5De90d9) |
 | RewardsDistributor | [0xb6ec4d9f71e437c672147c576f1c70ba5da8d159](https://holesky.etherscan.io/address/0xb6ec4d9f71e437c672147c576f1c70ba5da8d159) |
 
 ### Proxy Admins
