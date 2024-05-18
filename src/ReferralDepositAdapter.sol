@@ -78,7 +78,6 @@ contract ReferralDepositAdapter is
 
         emit ReferralDepositProcessed(msg.sender, receiver, msg.value, shares, referrer, block.timestamp, false);
     }
-    
     /// @notice Publishes multiple referral information using the existing event.
     /// @param referrals Array of ReferralInfo structs containing referral details.
     function publishReferrals(ReferralInfo[] calldata referrals) external {
