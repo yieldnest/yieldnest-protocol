@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
 import {IDelegationManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -12,6 +14,7 @@ import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 
 
 interface StakingNodeEvents {
@@ -29,6 +32,8 @@ interface StakingNodeEvents {
         bytes32 withdrawalCredentials,
         uint64 oracleTimestamp
     );
+
+    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount);
 }
 
 /**
@@ -255,6 +260,55 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 oracleTimestamp
             );
         }
+    }
+
+    /**
+     * @notice Queues multiple withdrawals for processing.
+     */
+    function queueWithdrawals(uint256 sharesAmount) external onlyAdmin  returns (bytes32[] memory fullWithdrawalRoots) {
+
+        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+
+        IDelegationManager.QueuedWithdrawalParams[] memory params = new IDelegationManager.QueuedWithdrawalParams[](1);
+        IStrategy[] memory strategies = new IStrategy[](1);
+        uint256[] memory shares = new uint256[](1);
+
+        strategies[0] = beaconChainETHStrategy;
+        shares[0] = sharesAmount;
+        params[0] = IDelegationManager.QueuedWithdrawalParams({
+            strategies: strategies,
+            shares: shares,
+            withdrawer: address(this)
+        });
+
+        fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
+    }
+
+
+    function completeQueuedWithdrawals(IDelegationManager.Withdrawal[] memory withdrawals, uint256[] memory middlewareTimesIndexes) external {
+        uint256 totalWithdrawalAmount = 0;
+
+        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
+        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+
+            receiveAsTokens[i] = true;
+            // tokens array must match length of the withdrawals[i].strategies
+            // but does not need actual values in the case of the beaconChainETHStrategy
+            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
+
+            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
+                totalWithdrawalAmount += withdrawals[i].shares[j];
+            }
+        }
+
+        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+
+        // TODO: check ETH is received and handle it from here
+
+        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
     }
 
     //--------------------------------------------------------------------------------------
