@@ -265,7 +265,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /**
      * @notice Queues multiple withdrawals for processing.
      */
-    function queueWithdrawals(uint256 sharesAmount) external onlyAdmin  returns (bytes32[] memory fullWithdrawalRoots) {
+    function queueWithdrawals(
+        uint256 sharesAmount
+    ) external onlyAdmin returns (bytes32[] memory fullWithdrawalRoots) {
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
@@ -284,8 +286,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
     }
 
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes)
+        external onlyAdmin {
 
-    function completeQueuedWithdrawals(IDelegationManager.Withdrawal[] memory withdrawals, uint256[] memory middlewareTimesIndexes) external {
         uint256 totalWithdrawalAmount = 0;
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
