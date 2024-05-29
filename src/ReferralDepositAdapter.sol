@@ -80,7 +80,7 @@ contract ReferralDepositAdapter is
     }
     /// @notice Publishes multiple referral information using the existing event.
     /// @param referrals Array of ReferralInfo structs containing referral details.
-    function publishReferrals(ReferralInfo[] calldata referrals) external {
+    function publishReferrals(ReferralInfo[] calldata referrals) external  onlyRole(REFERRAL_PUBLISHER_ROLE)  {
         for (uint i = 0; i < referrals.length; i++) {
             emit ReferralDepositProcessed(
                 referrals[i].depositor,

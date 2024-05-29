@@ -96,4 +96,31 @@ contract ReferralDepositAdapterTest is IntegrationBaseTest {
         vm.startPrank(actors.ops.REFERAL_PUBLISHER);
         referralDepositAdapter.publishReferrals(referrals);
     }
+
+    function testUnauthorizedPublishReferrals() public {
+        IReferralDepositAdapter.ReferralInfo[] memory referrals = new IReferralDepositAdapter.ReferralInfo[](1);
+        {
+            // Arrange
+            address depositor = vm.addr(1000);
+            address referrer = vm.addr(2000);
+            address referee = vm.addr(3000);
+            uint256 amountDeposited = 1 ether;
+            uint256 shares = 100;
+            uint256 timestamp = block.timestamp;
+            referrals[0] = IReferralDepositAdapter.ReferralInfo({
+                depositor: depositor,
+                referrer: referrer,
+                referee: referee,
+                amountDeposited: amountDeposited,
+                shares: shares,
+                timestamp: timestamp
+            });
+        }
+
+        // Act
+        address unauthorizedUser = vm.addr(4000);
+        vm.prank(unauthorizedUser);
+        vm.expectRevert();
+        referralDepositAdapter.publishReferrals(referrals);
+    }
 }
