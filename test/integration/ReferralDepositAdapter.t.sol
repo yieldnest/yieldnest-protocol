@@ -71,6 +71,17 @@ contract ReferralDepositAdapterTest is IntegrationBaseTest {
         referralDepositAdapter.depositWithReferral{value: depositAmount}(address(0), referrer);
     }
 
+    function testDepositWithReferrerEqualToReceiver() public {
+        address depositor = vm.addr(3000);
+        address receiver = vm.addr(3000);
+        uint256 depositAmount = 1 ether;
+        vm.deal(depositor, depositAmount);
+
+        vm.prank(depositor);
+        vm.expectRevert(ReferralDepositAdapter.SelfReferral.selector);
+        referralDepositAdapter.depositWithReferral{value: depositAmount}(receiver, receiver);
+    }
+
     function testPublishReferrals() public {
  
         IReferralDepositAdapter.ReferralInfo[] memory referrals = new IReferralDepositAdapter.ReferralInfo[](1);

@@ -32,6 +32,7 @@ contract ReferralDepositAdapter is
     error ZeroAddress();
     error ZeroETH();
     error NoDirectETHDeposit();
+    error SelfReferral();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -74,6 +75,10 @@ contract ReferralDepositAdapter is
         if (referrer == address(0)) {
             revert ZeroAddress();
         }
+        if (referrer == receiver) {
+            revert SelfReferral();
+        }
+
         shares = ynETH.depositETH{value: msg.value}(receiver);
 
         emit ReferralDepositProcessed(msg.sender, receiver, msg.value, shares, referrer, block.timestamp, false);
