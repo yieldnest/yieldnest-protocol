@@ -63,7 +63,8 @@ contract ReferralDepositAdapter is
     }
 
     /// @notice Proxies a deposit call to the ynETH with referral information.
-    /// @param receiver The address that will receive the ynETH shares.
+    /// @notice IMPORTANT: The referred or referree is the receiver, NOT msg.sender
+    /// @param receiver The address that will receive the ynETH shares. This is the referee address.
     /// @param referrer The address of the referrer.
     function depositWithReferral(address receiver, address referrer) external payable returns (uint256 shares) {
         if (msg.value == 0) {
