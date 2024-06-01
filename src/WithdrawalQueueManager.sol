@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
@@ -39,8 +40,8 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IERC20 public redeemableAsset;
-    IERC20 public redemptionAsset;
+    IERC20Metadata public redeemableAsset;
+    IERC20Metadata public redemptionAsset;
     IRedemptionAdapter public redemptionAdapter;
 
     uint256 private _tokenIdCounter;
@@ -80,8 +81,8 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
         notZeroAddress(address(init.withdrawalQueueAdmin))
         initializer {
         __ERC721_init(init.name, init.symbol);
-        redeemableAsset = IERC20(init.redeemableAsset);
-        redemptionAsset = IERC20(init.redemptionAsset);
+        redeemableAsset = IERC20Metadata(init.redeemableAsset);
+        redemptionAsset = IERC20Metadata(init.redemptionAsset);
         redemptionAdapter = IRedemptionAdapter(init.redemptionAdapter);
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
@@ -116,7 +117,7 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
-        uint256 redeemAmount = (request.amount * request.redemptionRateAtRequestTime) / 1e18; // Assuming rate is scaled by 1e18
+        uint256 redeemAmount = (request.amount * request.redemptionRateAtRequestTime) / (10 ** redeemableAsset.decimals());
 
         redemptionAdapter.transferRedemptionAsset(msg.sender, redeemAmount);
 
