@@ -33,6 +33,7 @@ interface StakingNodeEvents {
         uint64 oracleTimestamp
     );
 
+    event QueuedWithdrawals(uint256 sharesAmount, bytes32[] fullWithdrawalRoots);
     event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount);
 }
 
@@ -285,6 +286,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         });
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
+
+        emit QueuedWithdrawals(sharesAmount, fullWithdrawalRoots);
     }
 
     function completeQueuedWithdrawals(
