@@ -55,6 +55,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error NotStakingNodesManager();
     error NotStakingNodesDelegator();
     error NoBalanceToProcess();
+    error MismatchInExpectedETHBalanceAfterWithdrawals();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -309,6 +310,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
+        uint256 initialETHBalance = address(this).balance;
         // The Eigenlayer beaconChainETHStrategy  queued withdrawal completion flow follows the following steps:
         // 1. The flow starts in the DelegationManager where queued withdrawals are managed.
         // 2. For beaconChainETHStrategy, the DelegationManager calls _withdrawSharesAsTokens interacts with the EigenPodManager.withdrawSharesAsTokens
@@ -316,6 +318,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 4. the EigenPod decrements withdrawableRestakedExecutionLayerGwei and send the ETH to address(this)
         delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
 
+        uint256 finalETHBalance = address(this).balance;
+        if (finalETHBalance - initialETHBalance != totalWithdrawalAmount) {
+            revert MismatchInExpectedETHBalanceAfterWithdrawals();
+        }
         // TODO: check ETH is received and handle it from here
 
         emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
