@@ -14,7 +14,31 @@ interface IRedemptionAdapter {
     function transferRedemptionAsset(address to, uint256 amount) external;
 }
 
-contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+interface IWithdrawalQueueManagerEvents {
+    event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
+    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
+}
+
+contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    error NotFinalized(uint256 currentTimestamp, uint256 requestTimestamp, uint256 queueDuration);
+    error ZeroAddress();
+    
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant WITHDRAWAL_QUEUE_ADMIN_ROLE = keccak256("WITHDRAWAL_QUEUE_ADMIN_ROLE");
+
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     IERC20 public redeemableAsset;
     IERC20 public redemptionAsset;
     IRedemptionAdapter public redemptionAdapter;
@@ -24,15 +48,20 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
     struct WithdrawalRequest {
         uint256 amount;
         uint256 redemptionRateAtRequestTime;
+        uint256 creationTimestamp;
+        uint256 creationBlock;
     }
 
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
 
-    event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
-    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
+    uint256 secondsToFinalization;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
     constructor() {
-         _disableInitializers();
+       _disableInitializers();
     }
 
     struct InitializationParams {
@@ -41,13 +70,22 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
         address redeemableAsset;
         address redemptionAsset;
         address redemptionAdapter;
+        address admin;
+        address withdrawalQueueAdmin;
     }
 
-    function initialize(InitializationParams memory params) public initializer {
-        __ERC721_init(params.name, params.symbol);
-        redeemableAsset = IERC20(params.redeemableAsset);
-        redemptionAsset = IERC20(params.redemptionAsset);
-        redemptionAdapter = IRedemptionAdapter(params.redemptionAdapter);
+    function initialize(InitializationParams memory init)
+        public
+        notZeroAddress(address(init.admin))
+        notZeroAddress(address(init.withdrawalQueueAdmin))
+        initializer {
+        __ERC721_init(init.name, init.symbol);
+        redeemableAsset = IERC20(init.redeemableAsset);
+        redemptionAsset = IERC20(init.redemptionAsset);
+        redemptionAdapter = IRedemptionAdapter(init.redemptionAdapter);
+
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
     }
 
     function requestWithdrawal(uint256 amount) external nonReentrant {
@@ -58,19 +96,26 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
         uint256 tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
             amount: amount,
-            redemptionRateAtRequestTime: currentRate
+            redemptionRateAtRequestTime: currentRate,
+            creationTimestamp: block.timestamp,
+            creationBlock: block.number
         });
 
         redemptionAdapter.transferRedeemableAsset(address(this), amount);
 
         _mint(msg.sender, tokenId);
+
         emit WithdrawalRequested(tokenId, msg.sender, amount);
     }
 
     function claimWithdrawal(uint256 tokenId) external nonReentrant {
         require(_ownerOf(tokenId) == msg.sender || _getApproved(tokenId) == msg.sender, "WithdrawalQueueManager: caller is not owner nor approved");
 
-        WithdrawalRequest storage request = withdrawalRequests[tokenId];
+        WithdrawalRequest memory request = withdrawalRequests[tokenId];
+        if (block.timestamp < request.creationTimestamp + secondsToFinalization) {
+            revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
+        }
+
         uint256 redeemAmount = (request.amount * request.redemptionRateAtRequestTime) / 1e18; // Assuming rate is scaled by 1e18
 
         redemptionAdapter.transferRedemptionAsset(msg.sender, redeemAmount);
@@ -81,9 +126,25 @@ contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, 
         emit WithdrawalClaimed(tokenId, msg.sender, redeemAmount);
     }
 
+    function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
+        secondsToFinalization = _secondsToFinalization;
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
+    }
 }
 
