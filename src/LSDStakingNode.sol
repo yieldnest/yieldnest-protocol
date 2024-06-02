@@ -95,6 +95,58 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  EIGENLAYER WITHDRAWALS  --------------------------
+    //--------------------------------------------------------------------------------------
+
+    function queueWithdrawals(
+        IERC20[] memory assets,
+        uint256[] memory sharesToWithdraw
+    ) external onlyLSDRestakingManager returns (bytes32[] memory withdrawalRoots) {
+        IDelegationManager.QueuedWithdrawalParams[] memory withdrawals =
+            new IDelegationManager.QueuedWithdrawalParams[](assets.length);
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = ynLSD.strategies(assets[i]);
+
+            uint256[] memory shares = new uint256[](1);
+            shares[0] = sharesToWithdraw[i];
+
+            withdrawals[i] = IDelegationManager.QueuedWithdrawalParams({
+                strategies: strategies,
+                shares: shares,
+                withdrawer: address(this)
+            });
+        }
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+        withdrawalRoots = delegationManager.queueWithdrawals(withdrawals);
+    }
+
+    function completeQueuedWithdrawal(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes,
+        IERC20[][] calldata tokens,
+        uint256 middlewareTimesIndex,
+        uint256 nonce
+    ) external onlyLSDRestakingManager {
+
+        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            receiveAsTokens[i] = true;
+        }
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals,
+            tokens,
+            middlewareTimesIndexes,
+            receiveAsTokens
+        );
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  DELEGATION  --------------------------------------
     //--------------------------------------------------------------------------------------
 
