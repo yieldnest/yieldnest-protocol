@@ -13,7 +13,7 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 
 interface IRedemptionAdapter {
     function getRedemptionRate() external view returns (uint256);
-    function transferRedeemableAsset(address to, uint256 amount) external;
+    function transferRedeemableAsset(address from, address to, uint256 amount) external;
     function transferRedemptionAsset(address to, uint256 amount) external;
 }
 
@@ -30,6 +30,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
 
     error NotFinalized(uint256 currentTimestamp, uint256 requestTimestamp, uint256 queueDuration);
     error ZeroAddress();
+    error WithdrawalAlreadyProcessed();
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -53,6 +54,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         uint256 redemptionRateAtRequestTime;
         uint256 creationTimestamp;
         uint256 creationBlock;
+        bool processed;
     }
 
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
@@ -101,10 +103,11 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             amount: amount,
             redemptionRateAtRequestTime: currentRate,
             creationTimestamp: block.timestamp,
-            creationBlock: block.number
+            creationBlock: block.number,
+            processed: false
         });
 
-        redemptionAdapter.transferRedeemableAsset(address(this), amount);
+        redemptionAdapter.transferRedeemableAsset(msg.sender, address(this), amount);
 
         _mint(msg.sender, tokenId);
 
@@ -114,7 +117,13 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     function claimWithdrawal(uint256 tokenId) external nonReentrant {
         require(_ownerOf(tokenId) == msg.sender || _getApproved(tokenId) == msg.sender, "WithdrawalQueueManager: caller is not owner nor approved");
 
+
         WithdrawalRequest memory request = withdrawalRequests[tokenId];
+
+        if (request.processed) {
+            revert WithdrawalAlreadyProcessed();
+        }
+
         if (block.timestamp < request.creationTimestamp + secondsToFinalization) {
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
@@ -124,7 +133,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         redemptionAdapter.transferRedemptionAsset(msg.sender, redeemAmount);
 
         _burn(tokenId);
-        delete withdrawalRequests[tokenId];
+        withdrawalRequests[tokenId].processed = true;
 
         emit WithdrawalClaimed(tokenId, msg.sender, redeemAmount);
     }
