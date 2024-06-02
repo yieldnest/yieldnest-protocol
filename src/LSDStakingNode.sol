@@ -17,6 +17,7 @@ interface ILSDStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
+    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
 }
 
 /**
@@ -34,6 +35,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
     error ZeroAddress();
     error NotLSDRestakingManager();
+    error UnexpectedWithdrawnBalance(IERC20 asset, uint256 balanceBefore, uint256 balanceAfter, uint256 expectedDelta);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -125,12 +127,10 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         withdrawalRoots = delegationManager.queueWithdrawals(withdrawals);
     }
 
-    function completeQueuedWithdrawal(
+    function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         uint256[] memory middlewareTimesIndexes,
-        IERC20[][] calldata tokens,
-        uint256 middlewareTimesIndex,
-        uint256 nonce
+        IERC20[][] calldata tokens
     ) external onlyLSDRestakingManager {
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
@@ -146,6 +146,8 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
             middlewareTimesIndexes,
             receiveAsTokens
         );
+
+        emit CompletedQueuedWithdrawals(withdrawals);
     }
 
     //--------------------------------------------------------------------------------------
