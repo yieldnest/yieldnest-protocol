@@ -292,8 +292,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes)
-        external onlyAdmin {
+        uint256[] memory middlewareTimesIndexes
+        ) external onlyAdmin {
 
         uint256 totalWithdrawalAmount = 0;
 
