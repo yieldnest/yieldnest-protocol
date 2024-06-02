@@ -6,8 +6,10 @@ import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpg
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+
 
 interface IRedemptionAdapter {
     function getRedemptionRate() external view returns (uint256);
@@ -20,7 +22,7 @@ interface IWithdrawalQueueManagerEvents {
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
 }
 
-contract WithdrawalQueueManager is ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
