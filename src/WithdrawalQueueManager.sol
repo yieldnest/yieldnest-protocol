@@ -38,6 +38,11 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
 
     bytes32 public constant WITHDRAWAL_QUEUE_ADMIN_ROLE = keccak256("WITHDRAWAL_QUEUE_ADMIN_ROLE");
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint256 FEE_PRECISION = 10000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -60,6 +65,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
 
     uint256 secondsToFinalization;
+    uint256 withdrawalFee;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -77,6 +83,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         address redemptionAdapter;
         address admin;
         address withdrawalQueueAdmin;
+        uint256 withdrawalFee;
     }
 
     function initialize(InitializationParams memory init)
@@ -91,16 +98,21 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
-    }
 
+        withdrawalFee = init.withdrawalFee;
+    }
     function requestWithdrawal(uint256 amount) external nonReentrant {
         require(amount > 0, "WithdrawalQueueManager: amount must be greater than 0");
-        require(redeemableAsset.transferFrom(msg.sender, address(this), amount), "WithdrawalQueueManager: Transfer failed");
+        
+        uint256 fee = calculateFee(amount);
+        uint256 amountAfterFee = amount - fee;
+        
+        redeemableAsset.transferFrom(msg.sender, address(this), amountAfterFee);
 
         uint256 currentRate = redemptionAdapter.getRedemptionRate();
         uint256 tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
-            amount: amount,
+            amount: amountAfterFee,
             redemptionRateAtRequestTime: currentRate,
             creationTimestamp: block.timestamp,
             creationBlock: block.number,
@@ -138,9 +150,27 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         emit WithdrawalClaimed(tokenId, msg.sender, redeemAmount);
     }
 
+    
+    /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
+    /// @param amount The amount from which the fee should be calculated.
+    /// @return fee The calculated fee.
+    function calculateFee(uint256 amount) public view returns (uint256) {
+        return (amount * withdrawalFee) / 10000;
+    }
+
     function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
         secondsToFinalization = _secondsToFinalization;
     }
+
+    /// @notice Sets the withdrawal fee percentage.
+    /// @param feePercentage The fee percentage in basis points.
+    function setWithdrawalFee(uint256 feePercentage) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
+        require(feePercentage <= 10000, "WithdrawalQueueManager: Fee percentage cannot exceed 100%");
+        withdrawalFee = feePercentage;
+        emit WithdrawalFeeUpdated(feePercentage);
+    }
+
+    event WithdrawalFeeUpdated(uint256 newFeePercentage);
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
