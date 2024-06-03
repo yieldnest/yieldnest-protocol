@@ -18,6 +18,7 @@ interface ILSDStakingNodeEvents {
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
     event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
+    event QueuedWithdrawals(IERC20[] indexed assets, uint256[] sharesToWithdraw, bytes32[] withdrawalRoots);
 }
 
 /**
@@ -124,6 +125,8 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
         IDelegationManager delegationManager = ynLSD.delegationManager();
         withdrawalRoots = delegationManager.queueWithdrawals(withdrawals);
+
+        emit QueuedWithdrawals(assets, sharesToWithdraw, withdrawalRoots);
     }
 
     function completeQueuedWithdrawals(

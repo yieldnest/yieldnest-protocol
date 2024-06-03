@@ -5,6 +5,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IynLSD} from "src/interfaces/IynLSD.sol";
 
 interface ILSDStakingNode {
 
@@ -25,6 +27,18 @@ interface ILSDStakingNode {
     ) external;
 
     function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);
+
+
+    function queueWithdrawals(
+        IERC20[] memory assets,
+        uint256[] memory sharesToWithdraw
+    ) external returns (bytes32[] memory withdrawalRoots);
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes,
+        IERC20[][] calldata tokens
+    ) external;
     
     function implementation() external view returns (address);
 
