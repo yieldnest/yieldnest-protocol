@@ -1,11 +1,23 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+// --------------------------------------------------------------------------------------
+// $$\     $$\ $$\           $$\       $$\ $$\   $$\                       $$\     
+// \$$\   $$  |\__|          $$ |      $$ |$$$\  $$ |                      $$ |    
+//  \$$\ $$  / $$\  $$$$$$\  $$ | $$$$$$$ |$$$$\ $$ | $$$$$$\   $$$$$$$\ $$$$$$\   
+//   \$$$$  /  $$ |$$  __$$\ $$ |$$  __$$ |$$ $$\$$ |$$  __$$\ $$  _____|\_$$  _|  
+//    \$$  /   $$ |$$$$$$$$ |$$ |$$ /  $$ |$$ \$$$$ |$$$$$$$$ |\$$$$$$\    $$ |    
+//     $$ |    $$ |$$   ____|$$ |$$ |  $$ |$$ |\$$$ |$$   ____| \____$$\   $$ |$$\ 
+//     $$ |    $$ |\$$$$$$$\ $$ |\$$$$$$$ |$$ | \$$ |\$$$$$$$\ $$$$$$$  |  \$$$$  |
+//     \__|    \__| \_______|\__| \_______|\__|  \__| \_______|\_______/    \____/ 
+//--------------------------------------------------------------------------------------
+//----------------------------------  RewardsDistributor  ------------------------------
+//--------------------------------------------------------------------------------------
+
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
-
 
 interface RewardsDistributorEvents {
     event RewardsProcessed(uint256 totalRewards, uint256 elRewards, uint256 clRewards, uint256 netRewards, uint256 fees);
