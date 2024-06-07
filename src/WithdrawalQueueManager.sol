@@ -126,7 +126,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         emit WithdrawalRequested(tokenId, msg.sender, amount);
     }
 
-    function claimWithdrawal(uint256 tokenId) external nonReentrant {
+    function claimWithdrawal(uint256 tokenId) public nonReentrant {
         require(_ownerOf(tokenId) == msg.sender || _getApproved(tokenId) == msg.sender, "WithdrawalQueueManager: caller is not owner nor approved");
 
 
@@ -148,6 +148,16 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         withdrawalRequests[tokenId].processed = true;
 
         emit WithdrawalClaimed(tokenId, msg.sender, redeemAmount);
+    }
+
+    /**
+     * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
+     * @param tokenIds An array of token IDs representing the withdrawal requests to be claimed.
+     */
+    function claimWithdrawals(uint256[] calldata tokenIds) external {
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            claimWithdrawal(tokenIds[i]);
+        }
     }
 
     
