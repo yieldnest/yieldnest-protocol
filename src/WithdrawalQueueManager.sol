@@ -52,15 +52,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     IERC20Metadata public redemptionAsset;
     IRedemptionAdapter public redemptionAdapter;
 
-    uint256 private _tokenIdCounter;
-
-    struct WithdrawalRequest {
-        uint256 amount;
-        uint256 redemptionRateAtRequestTime;
-        uint256 creationTimestamp;
-        uint256 creationBlock;
-        bool processed;
-    }
+    uint256 public _tokenIdCounter;
 
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
 
@@ -75,7 +67,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
        _disableInitializers();
     }
 
-    struct InitializationParams {
+    struct Init {
         string name;
         string symbol;
         address redeemableAsset;
@@ -86,7 +78,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         uint256 withdrawalFee;
     }
 
-    function initialize(InitializationParams memory init)
+    function initialize(Init memory init)
         public
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.withdrawalQueueAdmin))
@@ -160,7 +152,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         }
     }
 
-    
     /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
     /// @param amount The amount from which the fee should be calculated.
     /// @return fee The calculated fee.
