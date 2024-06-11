@@ -6,6 +6,7 @@ interface IWithdrawalQueueManager {
 
     struct WithdrawalRequest {
         uint256 amount;
+        uint256 feeAtRequestTime;
         uint256 redemptionRateAtRequestTime;
         uint256 creationTimestamp;
         uint256 creationBlock;

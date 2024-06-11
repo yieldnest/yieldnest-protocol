@@ -9,7 +9,7 @@ import "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgr
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
-
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
 interface IRedemptionAdapter {
     function getRedemptionRate() external view returns (uint256);
@@ -49,7 +49,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IERC20Metadata public redeemableAsset;
+    IRedeemableAsset public redeemableAsset;
     IERC20Metadata public redemptionAsset;
     IRedemptionAdapter public redemptionAdapter;
 
@@ -59,6 +59,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     uint256 secondsToFinalization;
     uint256 withdrawalFee;
+    address feeReceiver;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -77,15 +78,17 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         address admin;
         address withdrawalQueueAdmin;
         uint256 withdrawalFee;
+        address feeReceiver;
     }
 
     function initialize(Init memory init)
         public
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.withdrawalQueueAdmin))
+        notZeroAddress(address(init.feeReceiver))
         initializer {
         __ERC721_init(init.name, init.symbol);
-        redeemableAsset = IERC20Metadata(init.redeemableAsset);
+        redeemableAsset = IRedeemableAsset(init.redeemableAsset);
         redemptionAsset = IERC20Metadata(init.redemptionAsset);
         redemptionAdapter = IRedemptionAdapter(init.redemptionAdapter);
 
@@ -93,26 +96,24 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
 
         withdrawalFee = init.withdrawalFee;
+        feeReceiver = init.feeReceiver;
     }
+
     function requestWithdrawal(uint256 amount) external nonReentrant {
         require(amount > 0, "WithdrawalQueueManager: amount must be greater than 0");
         
-        uint256 fee = calculateFee(amount);
-        uint256 amountAfterFee = amount - fee;
-        
-        redeemableAsset.transferFrom(msg.sender, address(this), amountAfterFee);
+        redeemableAsset.transferFrom(msg.sender, address(this), amount);
 
         uint256 currentRate = getRedemptionRate();
         uint256 tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
-            amount: amountAfterFee,
+            amount: amount,
+            feeAtRequestTime: withdrawalFee,
             redemptionRateAtRequestTime: currentRate,
             creationTimestamp: block.timestamp,
             creationBlock: block.number,
             processed: false
         });
-
-        transferRedeemableAssets(msg.sender, address(this), amount);
 
         _mint(msg.sender, tokenId);
 
@@ -156,8 +157,8 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
     /// @param amount The amount from which the fee should be calculated.
     /// @return fee The calculated fee.
-    function calculateFee(uint256 amount) public view returns (uint256) {
-        return (amount * withdrawalFee) / 10000;
+    function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public view returns (uint256) {
+        return (amount * requestWithdrawalFee) / 10000;
     }
 
     function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
@@ -182,7 +183,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
 
     function getRedemptionRate() public view virtual returns (uint256);
-    function transferRedeemableAssets(address from, address to, uint256 amount) public virtual;
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public virtual;
 
     //--------------------------------------------------------------------------------------
