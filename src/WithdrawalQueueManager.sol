@@ -22,7 +22,7 @@ interface IWithdrawalQueueManagerEvents {
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
 }
 
-contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -101,7 +101,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         
         redeemableAsset.transferFrom(msg.sender, address(this), amountAfterFee);
 
-        uint256 currentRate = redemptionAdapter.getRedemptionRate();
+        uint256 currentRate = getRedemptionRate();
         uint256 tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
             amount: amountAfterFee,
@@ -111,7 +111,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             processed: false
         });
 
-        redemptionAdapter.transferRedeemableAsset(msg.sender, address(this), amount);
+        transferRedeemableAssets(msg.sender, address(this), amount);
 
         _mint(msg.sender, tokenId);
 
@@ -132,9 +132,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
+
         uint256 redeemAmount = (request.amount * request.redemptionRateAtRequestTime) / (10 ** redeemableAsset.decimals());
 
-        redemptionAdapter.transferRedemptionAsset(msg.sender, redeemAmount);
+        transferRedemptionAssets(msg.sender, request);
 
         _burn(tokenId);
         withdrawalRequests[tokenId].processed = true;
@@ -176,6 +177,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIRTUAL  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    function getRedemptionRate() public view virtual returns (uint256);
+    function transferRedeemableAssets(address from, address to, uint256 amount) public virtual;
+    function transferRedemptionAssets(address to, WithdrawalRequest memory request) public virtual;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
