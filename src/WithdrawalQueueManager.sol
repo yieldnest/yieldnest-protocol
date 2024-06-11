@@ -133,7 +133,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
-
         uint256 redeemAmount = (request.amount * request.redemptionRateAtRequestTime) / (10 ** redeemableAsset.decimals());
 
         transferRedemptionAssets(msg.sender, request);
