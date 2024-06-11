@@ -149,6 +149,30 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function previewRedeem(uint256 shares) external view returns (uint256 assets) {
+       return _convertToAssets(shares, Math.Rounding.Floor);
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
+
+        uint256 supply = totalSupply();
+
+        // 1:1 exchange rate on the first stake.
+        // Use totalSupply to see if this call is made before boostrap call, not totalAssets
+        if (supply == 0) {
+            return shares;
+        }
+        return Math.mulDiv(shares, totalAssets(), supply, rounding);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ASSETS -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     /// @notice Calculates the total assets controlled by the protocol.
     /// @dev This includes both the ETH deposited in the pool awaiting processing and the ETH already sent to validators on the beacon chain.
     /// @return total The total amount of ETH in wei.
