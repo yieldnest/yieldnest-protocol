@@ -16,4 +16,6 @@ interface IynETH is IERC20 {
     /// @param receiver The address to receive the minted shares.
     /// @return shares The amount of shares minted for the deposited ETH.
     function depositETH(address receiver) external payable returns (uint256 shares);
+
+    function previewRedeem(uint256 shares) external view returns (uint256 assets);
 }
