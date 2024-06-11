@@ -20,6 +20,7 @@ interface IRedemptionAdapter {
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
+    event WithdrawalFeeUpdated(uint256 newFeePercentage);
 }
 
 abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
@@ -171,8 +172,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         withdrawalFee = feePercentage;
         emit WithdrawalFeeUpdated(feePercentage);
     }
-
-    event WithdrawalFeeUpdated(uint256 newFeePercentage);
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
