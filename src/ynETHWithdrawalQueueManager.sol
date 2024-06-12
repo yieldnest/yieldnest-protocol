@@ -25,7 +25,7 @@ interface IWithdrawalQueueManagerEvents {
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
 }
 
-abstract contract ynETHWithdrawalQueueManager is WithdrawalQueueManager {
+contract ynETHWithdrawalQueueManager is WithdrawalQueueManager {
 
     function getRedemptionRate() public view override returns (uint256) {
         return IynETH(address(redeemableAsset)).previewRedeem(1e18);
