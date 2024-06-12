@@ -18,13 +18,15 @@ interface IRedemptionAdapter {
     function transferRedemptionAsset(address to, uint256 amount) external;
 }
 
-interface IWithdrawalQueueManagerEvents {
-    event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
-    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
-    event WithdrawalFeeUpdated(uint256 newFeePercentage);
+interface IynETHWithdrawalQueueManagerEvents {
+    event ETHReceived(address indexed sender, uint256 value);
 }
 
-contract ynETHWithdrawalQueueManager is WithdrawalQueueManager {
+contract ynETHWithdrawalQueueManager is WithdrawalQueueManager, IynETHWithdrawalQueueManagerEvents {
+
+    receive() external payable {
+        emit ETHReceived(msg.sender, msg.value);
+    }
 
     function getRedemptionRate() public view override returns (uint256) {
         return IynETH(address(redeemableAsset)).previewRedeem(1e18);
@@ -35,8 +37,10 @@ contract ynETHWithdrawalQueueManager is WithdrawalQueueManager {
 
         uint256 feeAmount = calculateFee(ethAmount, request.feeAtRequestTime);
         uint256 netEthAmount = ethAmount - feeAmount;
-        payable(to).transfer(netEthAmount);
+        (bool success, ) = payable(to).call{value: netEthAmount}("");
+        require(success, "Transfer failed");
         // Assuming there's a treasury or fee collector address where fees are collected
-        payable(feeReceiver).transfer(feeAmount);
+        (bool feeTransferSuccess, ) = payable(feeReceiver).call{value: feeAmount}("");
+        require(feeTransferSuccess, "Fee transfer failed");
     }
 }
