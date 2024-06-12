@@ -36,7 +36,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint256 public FEE_PRECISION = 10000;
+    uint256 public FEE_PRECISION = 1000000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -154,7 +154,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     /// @notice Sets the withdrawal fee percentage.
     /// @param feePercentage The fee percentage in basis points.
     function setWithdrawalFee(uint256 feePercentage) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
-        require(feePercentage <= 10000, "WithdrawalQueueManager: Fee percentage cannot exceed 100%");
+        require(feePercentage <= FEE_PRECISION, "WithdrawalQueueManager: Fee percentage cannot exceed 100%");
         withdrawalFee = feePercentage;
         emit WithdrawalFeeUpdated(feePercentage);
     }
