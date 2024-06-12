@@ -44,7 +44,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //--------------------------------------------------------------------------------------
 
     IRedeemableAsset public redeemableAsset;
-    IERC20Metadata public redemptionAsset;
 
     uint256 public _tokenIdCounter;
 
@@ -66,7 +65,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         string name;
         string symbol;
         address redeemableAsset;
-        address redemptionAsset;
         address admin;
         address withdrawalQueueAdmin;
         uint256 withdrawalFee;
@@ -81,7 +79,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         initializer {
         __ERC721_init(init.name, init.symbol);
         redeemableAsset = IRedeemableAsset(init.redeemableAsset);
-        redemptionAsset = IERC20Metadata(init.redemptionAsset);
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
@@ -113,7 +110,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     function claimWithdrawal(uint256 tokenId) public nonReentrant {
         require(_ownerOf(tokenId) == msg.sender || _getApproved(tokenId) == msg.sender, "WithdrawalQueueManager: caller is not owner nor approved");
-
 
         WithdrawalRequest memory request = withdrawalRequests[tokenId];
 
