@@ -36,7 +36,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint256 FEE_PRECISION = 10000;
+    uint256 public FEE_PRECISION = 10000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -48,9 +48,9 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
 
-    uint256 secondsToFinalization;
-    uint256 withdrawalFee;
-    address feeReceiver;
+    uint256 public secondsToFinalization;
+    uint256 public withdrawalFee;
+    address public feeReceiver;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------

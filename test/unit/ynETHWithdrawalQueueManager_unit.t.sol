@@ -54,6 +54,15 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.requestWithdrawal(amount);
         IWithdrawalQueueManager.WithdrawalRequest memory withdrawalRequest = manager.withdrawalRequest(0);
         assertEq(withdrawalRequest.amount, amount, "Stored amount should match requested amount");
+
+        assertEq(withdrawalRequest.feeAtRequestTime, manager.withdrawalFee(), "Stored fee should match current withdrawal fee");
+        assertEq(withdrawalRequest.redemptionRateAtRequestTime, manager.getRedemptionRate(), "Stored redemption rate should match current redemption rate");
+        assertEq(withdrawalRequest.creationTimestamp, block.timestamp, "Stored creation timestamp should match current block timestamp");
+        assertEq(withdrawalRequest.creationBlock, block.number, "Stored creation block should match current block number");
+        assertEq(withdrawalRequest.processed, false, "Stored processed status should be false");
+
+        uint256 userBalance = manager.balanceOf(user);
+        assertEq(userBalance, 1, "User should have 1 NFT representing the withdrawal request");
     }
 
     // function testClaimWithdrawal() public {
