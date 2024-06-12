@@ -21,8 +21,6 @@ contract TimelockTest is ScenarioBaseTest {
     // ============================================================================================
 
     function setUp() public override {
-        vm.selectFork(vm.createFork(vm.envString("ETHEREUM_RPC_URL")));
-
         ScenarioBaseTest.setUp();
 
         proxyContracts = [
