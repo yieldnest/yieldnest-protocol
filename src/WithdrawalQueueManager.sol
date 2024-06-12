@@ -11,12 +11,6 @@ import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/c
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
-interface IRedemptionAdapter {
-    function getRedemptionRate() external view returns (uint256);
-    function transferRedeemableAsset(address from, address to, uint256 amount) external;
-    function transferRedemptionAsset(address to, uint256 amount) external;
-}
-
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
@@ -51,7 +45,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     IRedeemableAsset public redeemableAsset;
     IERC20Metadata public redemptionAsset;
-    IRedemptionAdapter public redemptionAdapter;
 
     uint256 public _tokenIdCounter;
 
@@ -74,7 +67,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         string symbol;
         address redeemableAsset;
         address redemptionAsset;
-        address redemptionAdapter;
         address admin;
         address withdrawalQueueAdmin;
         uint256 withdrawalFee;
@@ -90,7 +82,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         __ERC721_init(init.name, init.symbol);
         redeemableAsset = IRedeemableAsset(init.redeemableAsset);
         redemptionAsset = IERC20Metadata(init.redemptionAsset);
-        redemptionAdapter = IRedemptionAdapter(init.redemptionAdapter);
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
