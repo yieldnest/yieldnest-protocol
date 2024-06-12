@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -171,6 +170,20 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     function getRedemptionRate() public view virtual returns (uint256);
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public virtual;
+
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIEWS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Returns the details of a withdrawal request.
+     * @param tokenId The token ID of the withdrawal request.
+     * @return request The withdrawal request details.
+     */
+    function withdrawalRequest(uint256 tokenId) public view returns (WithdrawalRequest memory request) {
+        request = withdrawalRequests[tokenId];
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
