@@ -5,13 +5,14 @@ import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "forge-std/console.sol";
+
 
 contract MockRedeemableYnETH is IRedeemableAsset, ERC20Burnable {
 
     uint256 public totalAssets; // ETH denominated
 
     constructor() ERC20("Mock Redeemable Asset", "MRA") {
-        _mint(msg.sender, 1000 * 10 ** uint(decimals())); // Minting some initial supply for testing
     }
 
     function mint(address receiver, uint256 amount) external {
@@ -44,6 +45,7 @@ contract MockRedeemableYnETH is IRedeemableAsset, ERC20Burnable {
         if (supply == 0) {
             return shares;
         }
+
         return Math.mulDiv(shares, totalAssets, supply, rounding);
     }
 
