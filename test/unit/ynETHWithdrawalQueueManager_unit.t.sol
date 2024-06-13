@@ -11,6 +11,7 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import "test/unit/mocks/MockRedeemableYnETH.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
+
 contract ynETHWithdrawalQueueManagerTest is Test {
     ynETHWithdrawalQueueManager manager;
     MockRedeemableYnETH redeemableAsset;
@@ -28,7 +29,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
             redeemableAsset: address(redeemableAsset),
             admin: admin,
             withdrawalQueueAdmin: withdrawalQueueAdmin,
-            withdrawalFee: 100, // 1%
+            withdrawalFee: 10000, // 1%
             feeReceiver: feeReceiver
         });
 
@@ -46,9 +47,11 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         uint256 initialMintAmount = 10000 ether;
         redeemableAsset.mint(user, initialMintAmount);
+
         // rate is 1:1
         redeemableAsset.setTotalAssets(initialMintAmount);
     }
+
     function calculateNetEthAndFee(
         uint256 amount, 
         uint256 redemptionRate, 
@@ -87,6 +90,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.requestWithdrawal(amount);
         uint256 creationBlock = block.number;
         uint256 tokenId = 0;
+        uint256 redemptionRateAtRequestTime = manager.getRedemptionRate();
 
 
         // Fast forward time to pass the finalization period
@@ -104,7 +108,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         assertEq(request.amount, amount, "Withdrawal amount should match the requested amount");
         assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "Withdrawal fee at request time should match the current withdrawal fee");
-        assertEq(request.redemptionRateAtRequestTime, manager.getRedemptionRate(), "Redemption rate at request time should match the current redemption rate");
+        assertEq(request.redemptionRateAtRequestTime, redemptionRateAtRequestTime, "Redemption rate at request time should match the current redemption rate");
         assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "Creation timestamp should match the timestamp when withdrawal was requested");
         assertEq(request.creationBlock, creationBlock, "Creation block should match the block number when withdrawal was requested");
         assertEq(request.processed, true, "Processed status should be true after claiming");
