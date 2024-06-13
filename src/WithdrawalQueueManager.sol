@@ -36,7 +36,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint256 public FEE_PRECISION = 1000000;
+    uint256 constant public FEE_PRECISION = 1000000;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -124,8 +124,9 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
         transferRedemptionAssets(msg.sender, request);
 
-        _burn(tokenId);
         withdrawalRequests[tokenId].processed = true;
+        _burn(tokenId);
+        redeemableAsset.burn(request.amount);
 
         emit WithdrawalClaimed(tokenId, msg.sender, redeemAmount);
     }
@@ -144,7 +145,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     /// @param amount The amount from which the fee should be calculated.
     /// @return fee The calculated fee.
     function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public view returns (uint256) {
-        return (amount * requestWithdrawalFee) / 10000;
+        return (amount * requestWithdrawalFee) / FEE_PRECISION;
     }
 
     function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
