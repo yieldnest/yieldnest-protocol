@@ -123,29 +123,17 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(feeReceiverBalance, expectedFeeAmount, "Fee amount in feeReceiver should match the expected fee amount");
 
     }
+    function testFailClaimWithdrawalNotFinalized() public {
+        uint256 amount = 1 ether;
+        vm.prank(user);
+        redeemableAsset.approve(address(manager), amount);
+        vm.prank(user);
+        manager.requestWithdrawal(amount);
+        uint256 tokenId = 0; // Assuming tokenId starts from 0 after the first request
 
-    // function testFailClaimWithdrawalNotFinalized() public {
-    //     uint256 amount = 1 ether;
-    //     vm.prank(user);
-    //     manager.requestWithdrawal(amount);
-    //     uint256 tokenId = 1;
-
-    //     // Attempt to claim before time is up
-    //     vm.prank(user);
-    //     manager.claimWithdrawal(tokenId);
-    // }
-
-    // function testSetSecondsToFinalization() public {
-    //     uint256 newTime = 1000;
-    //     vm.prank(withdrawalQueueAdmin);
-    //     manager.setSecondsToFinalization(newTime);
-    //     assertEq(manager.secondsToFinalization(), newTime, "Seconds to finalization should be updated");
-    // }
-
-    // function testSetWithdrawalFee() public {
-    //     uint256 newFee = 200; // 2%
-    //     vm.prank(withdrawalQueueAdmin);
-    //     manager.setWithdrawalFee(newFee);
-    //     assertEq(manager.withdrawalFee(), newFee, "Withdrawal fee should be updated");
-    // }
+        // Attempt to claim before time is up
+        vm.prank(user);
+        vm.expectRevert(WithdrawalQueueManager.NotFinalized.selector);
+        manager.claimWithdrawal(tokenId);
+    }
 }
