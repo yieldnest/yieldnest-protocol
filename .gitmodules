@@ -18,3 +18,6 @@
 	path = lib/eigenlayer-contracts
 	url = https://github.com/layr-labs/eigenlayer-contracts
 	commit = 90a0f6aee79b4a38e1b63b32f9627f21b1162fbb
+[submodule "lib/LayerZero-v2"]
+	path = lib/LayerZero-v2
+	url = https://github.com/LayerZero-Labs/LayerZero-v2
