@@ -24,10 +24,6 @@ interface IynLSDEvents {
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
     event DepositsPausedUpdated(bool paused);
-
-    event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
-    event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
-    event NodeInitialized(address nodeAddress, uint64 initializedVersion);
 }
 
 contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
@@ -41,10 +37,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     error Paused();
     error ZeroAmount();
     error ZeroAddress();
-    error BeaconImplementationAlreadyExists();
-    error NoBeaconImplementationExists();
-    error TooManyStakingNodes(uint256 maxNodeCount);
-    error NotLSDStakingNode(address sender, uint256 nodeId);
     error InsufficientBoostrapAmount(address asset, uint256 amount, uint256 valueInETH);
     error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
 
