@@ -59,6 +59,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     struct Init {
+        string name;
+        string symbol;
         IERC20[] assets;
         YieldNestOracle oracle;
         address admin;
@@ -74,7 +76,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
-        __ynBase_init("ynLSD", "ynLSD");
+        __ynBase_init(init.name, init.symbol);
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
