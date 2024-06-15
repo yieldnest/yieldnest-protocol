@@ -3,13 +3,13 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 interface ILSDStakingNode {
 
     /// @notice Configuration for contract initialization.
     struct Init {
-        IynLSD ynLSD;
+        ITokenStakingNodesManager tokenStakingNodesManager;
         uint nodeId;
     }
 
@@ -22,7 +22,7 @@ interface ILSDStakingNode {
         uint256[] memory amounts
     ) external;
 
-    function ynLSD() external view returns (IynLSD);
+    function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);
     
     function implementation() external view returns (address);
 
