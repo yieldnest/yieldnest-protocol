@@ -7,7 +7,7 @@ import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 
 contract TestYnLSDV2 is ynLSD {
-    function initializeLSDStakingNode(ILSDStakingNode node, uint256 nodeId) override internal {
+    function initializeLSDStakingNode(ILSDStakingNode node, uint256 nodeId) internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
