@@ -24,16 +24,18 @@ interface IynETHWithdrawalQueueManagerEvents {
 
 contract ynETHWithdrawalQueueManager is WithdrawalQueueManager, IynETHWithdrawalQueueManagerEvents {
 
+    uint256 public constant YN_ETH_UNIT = 1e18;
+
     receive() external payable {
         emit ETHReceived(msg.sender, msg.value);
     }
 
     function getRedemptionRate() public view override returns (uint256) {
-        return IynETH(address(redeemableAsset)).previewRedeem(1e18);
+        return IynETH(address(redeemableAsset)).previewRedeem(YN_ETH_UNIT);
     }
 
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public override {
-        uint256 ethAmount = (request.amount * request.redemptionRateAtRequestTime) / 1e18;
+        uint256 ethAmount = (request.amount * request.redemptionRateAtRequestTime) / YN_ETH_UNIT;
 
         uint256 feeAmount = calculateFee(ethAmount, request.feeAtRequestTime);
         uint256 netEthAmount = ethAmount - feeAmount;
