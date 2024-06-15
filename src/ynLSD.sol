@@ -29,6 +29,10 @@ interface IynLSDEvents {
 contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     using SafeERC20 for IERC20;
 
+    struct AssetData {
+        uint256 balance;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -37,14 +41,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     error Paused();
     error ZeroAmount();
     error ZeroAddress();
-    error InsufficientBoostrapAmount(address asset, uint256 amount, uint256 valueInETH);
     error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  ROLES  -------------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    uint256 public constant BOOTSTRAP_AMOUNT_UNITS = 10;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -54,6 +51,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
+
+    mapping(address => AssetData) public assetData;
     
     bool public depositsPaused;
 
@@ -72,7 +71,6 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         address pauser;
         address unpauser;
         address[] pauseWhitelist;
-        address depositBootstrapper;
     }
 
     function initialize(Init calldata init)
@@ -99,21 +97,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
-
-        initializeBoostrapDeposit(init);
     }
 
-    function initializeBoostrapDeposit(Init calldata init) internal {
-        // deposit boostrap amount to avoid share inflation attacks
-        uint256 bootstrapAmount = BOOTSTRAP_AMOUNT_UNITS * (10 ** (IERC20Metadata(address(assets[0])).decimals()));
-        uint256 bootstrapAmountInETH = convertToETH(assets[0], bootstrapAmount);
-
-        if (bootstrapAmountInETH < 1 ether) {
-            revert InsufficientBoostrapAmount(address(assets[0]), bootstrapAmount, bootstrapAmountInETH);
-        }
-
-        _deposit(assets[0], bootstrapAmount, init.depositBootstrapper, init.depositBootstrapper);
-    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  DEPOSITS   ---------------------------------------
@@ -169,6 +154,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         // which inspects asset.balanceOf(address(this))
         asset.safeTransferFrom(sender, address(this), amount);
 
+        assetData[address(asset)].balance += amount;        
+
         emit Deposit(sender, receiver, amount, shares);
     }
 
@@ -181,7 +168,10 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     function _convertToShares(uint256 amount, Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Use totalSupply to see if this is the bootstrap call, not totalAssets
-        if (totalSupply() == 0) {
+
+        uint256 currentTotalSupply = totalSupply();
+        uint256 currentTotalAssets = totalAssets();
+        if (currentTotalSupply == 0) {
             return amount;
         }
         
@@ -189,8 +179,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         // independently. That should not be possible.
         return Math.mulDiv(
             amount,
-            totalSupply(),
-            totalAssets(),
+            currentTotalSupply,
+            currentTotalAssets,
             rounding
         );
     }
@@ -256,8 +246,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         // Add balances for funds held directly in ynLSD.
         for (uint256 i = 0; i < assetsCount; i++) {
             IERC20 asset = assets[i];
-            uint256 balanceThis = asset.balanceOf(address(this));
-            assetBalances[i] += balanceThis;
+            AssetData memory _assetData = assetData[address(asset)];
+            assetBalances[i] += _assetData.balance;
         }
 
         uint256[] memory stakedAssetBalances = stakingNodesManager.getStakedAssetsBalances(assets);
