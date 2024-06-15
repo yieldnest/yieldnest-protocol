@@ -15,6 +15,7 @@ import {IynLSD} from "src/interfaces/IynLSD.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "src/YieldNestOracle.sol";
 import {ynBase} from "src/ynBase.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 
 interface IynLSDEvents {
@@ -45,41 +46,23 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     error TooManyStakingNodes(uint256 maxNodeCount);
     error NotLSDStakingNode(address sender, uint256 nodeId);
     error InsufficientBoostrapAmount(address asset, uint256 amount, uint256 valueInETH);
+    error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
-
-    bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
-    bytes32 public constant LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
-    bytes32 public constant LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
 
     uint256 public constant BOOTSTRAP_AMOUNT_UNITS = 10;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
-
-    YieldNestOracle  public oracle;
-    IStrategyManager public strategyManager;
-    IDelegationManager public delegationManager;
-
-    UpgradeableBeacon public upgradeableBeacon;
-
-    /// @notice Mapping of ERC20 tokens to their corresponding EigenLayer strategy contracts.
-    mapping(IERC20 => IStrategy) public strategies;
+    ITokenStakingNodesManager public stakingNodesManager;
+    YieldNestOracle public oracle;
 
     /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
     
-    /**
-     * @notice Array of LSD Staking Node contracts.
-     * @dev These nodes are crucial for the delegation process within the YieldNest protocol. Each node represents a unique staking entity
-     * that can delegate LSD tokens to various operators for yield optimization. 
-     */
-    ILSDStakingNode[] public nodes;
-    uint256 public maxNodeCount;
-
     bool public depositsPaused;
 
     //--------------------------------------------------------------------------------------
@@ -92,53 +75,35 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     struct Init {
         IERC20[] assets;
-        IStrategy[] strategies;
-        IStrategyManager strategyManager;
-        IDelegationManager delegationManager;
         YieldNestOracle oracle;
-        uint256 maxNodeCount;
         address admin;
         address pauser;
         address unpauser;
-        address stakingAdmin;
-        address lsdRestakingManager;
-        address lsdStakingNodeCreatorRole;
         address[] pauseWhitelist;
         address depositBootstrapper;
     }
 
     function initialize(Init calldata init)
         public
-        notZeroAddress(address(init.strategyManager))
         notZeroAddress(address(init.oracle))
         notZeroAddress(address(init.admin))
-        notZeroAddress(address(init.stakingAdmin))
-        notZeroAddress(address(init.lsdRestakingManager))
-        notZeroAddress(init.lsdStakingNodeCreatorRole)
         initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
         __ynBase_init("ynLSD", "ynLSD");
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
-        _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
-        _grantRole(LSD_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
-        _grantRole(LSD_STAKING_NODE_CREATOR_ROLE, init.lsdStakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
         for (uint256 i = 0; i < init.assets.length; i++) {
-            if (address(init.assets[i]) == address(0) || address(init.strategies[i]) == address(0)) {
+            if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
             }
             assets.push(init.assets[i]);
-            strategies[init.assets[i]] = init.strategies[i];
         }
 
-        strategyManager = init.strategyManager;
-        delegationManager = init.delegationManager;
         oracle = init.oracle;
-        maxNodeCount = init.maxNodeCount;
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
@@ -192,8 +157,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         address sender
     ) internal returns (uint256 shares) {
 
-        IStrategy strategy = strategies[asset];
-        if(address(strategy) == address(0x0)){
+        if (!assetIsSupported(asset)) {
             revert UnsupportedAsset(asset);
         }
 
@@ -272,8 +236,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
      * @return shares The equivalent amount of shares for the given amount of the asset
      */
     function convertToShares(IERC20 asset, uint256 amount) public view returns(uint256 shares) {
-        IStrategy strategy = strategies[asset];
-        if(address(strategy) != address(0)){
+
+        if(assetIsSupported(asset)) {
            uint256 assetAmountInETH = convertToETH(asset, amount);
            shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
         } else {
@@ -300,26 +264,18 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         // Add balances for funds held directly in ynLSD.
         for (uint256 i = 0; i < assetsCount; i++) {
             IERC20 asset = assets[i];
-            assetStrategies[i] = strategies[asset];
-
             uint256 balanceThis = asset.balanceOf(address(this));
             assetBalances[i] += balanceThis;
         }
 
-        // Add balances contained in each LSDStakingNode, including those managed by strategies.
-        uint256 nodesCount = nodes.length;
-        for (uint256 i; i < nodesCount; i++ ) {
-            
-            ILSDStakingNode node = nodes[i];
-            for (uint256 j = 0; j < assetsCount; j++) {
-                
-                IERC20 asset = assets[j];
-                uint256 balanceNode = asset.balanceOf(address(node));
-                assetBalances[j] += balanceNode;
+        uint256[] memory stakedAssetBalances = stakingNodesManager.getStakedAssetsBalances(assets);
 
-                uint256 strategyBalance = assetStrategies[j].userUnderlyingView((address(node)));
-                assetBalances[j] += strategyBalance;
-            }
+        if (stakedAssetBalances.length != assetsCount) {
+            revert LengthMismatch(assetsCount, stakedAssetBalances.length);
+        }
+
+        for (uint256 i = 0; i < assetsCount; i++) {
+            assetBalances[i] += stakedAssetBalances[i];
         }
     }
 
@@ -351,145 +307,10 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         depositsPaused = false;
         emit DepositsPausedUpdated(depositsPaused);
     }
-    
 
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  STAKING NODE CREATION  ---------------------------
-    //--------------------------------------------------------------------------------------
-    /**
-     * @notice Creates a new LSD Staking Node using the Upgradeable Beacon pattern.
-     * @dev This function creates a new BeaconProxy instance pointing to the current implementation set in the upgradeableBeacon.
-     * It initializes the staking node, adds it to the nodes array, and emits an event.
-     * Reverts if the maximum number of staking nodes has been reached.
-     * @return ILSDStakingNode The interface of the newly created LSD Staking Node.
-     */
-    function createLSDStakingNode()
-        public
-        notZeroAddress((address(upgradeableBeacon)))
-        onlyRole(LSD_STAKING_NODE_CREATOR_ROLE)
-        returns (ILSDStakingNode) {
-
-        uint256 nodeId = nodes.length;
-
-        if (nodeId >= maxNodeCount) {
-            revert TooManyStakingNodes(maxNodeCount);
-        }
-
-        BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
-        ILSDStakingNode node = ILSDStakingNode(payable(proxy));
-
-        initializeLSDStakingNode(node, nodeId);
-
-        nodes.push(node);
-
-        emit LSDStakingNodeCreated(nodeId, address(node));
-
-        return node;
-    }
-
-    /**
-     * @notice Initializes a newly created LSD Staking Node.
-     * @dev This function checks the current initialized version of the node and performs initialization if it hasn't been done.
-     * For future versions, additional conditional blocks should be added to handle version-specific initialization.
-     * @param node The ILSDStakingNode instance to be initialized.
-     * @param nodeId The ID of the staking node.
-     */
-    function initializeLSDStakingNode(ILSDStakingNode node, uint256 nodeId) virtual internal {
-
-         uint64 initializedVersion = node.getInitializedVersion();
-         if (initializedVersion == 0) {
-             node.initialize(
-               ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
-             );
-
-             // update version to latest
-             initializedVersion = node.getInitializedVersion();
-             emit NodeInitialized(address(node), initializedVersion);
-         }
-
-         // NOTE: for future versions add additional if clauses that initialize the node 
-         // for the next version while keeping the previous initializers
-    }
-
-    /**
-     * @notice Registers a new LSD Staking Node implementation contract.
-     * @dev This function sets a new implementation contract for the LSD Staking Node by creating a new UpgradeableBeacon.
-     * It can only be called once to boostrap the first implementation.
-     * @param _implementationContract The address of the new LSD Staking Node implementation contract.
-     */
-    function registerLSDStakingNodeImplementationContract(address _implementationContract)
-        public
-        onlyRole(STAKING_ADMIN_ROLE)
-        notZeroAddress(_implementationContract) {
-
-        if (address(upgradeableBeacon) != address(0)) {
-            revert BeaconImplementationAlreadyExists();
-        }
-
-        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));    
-        
-        emit RegisteredStakingNodeImplementationContract(address(upgradeableBeacon), _implementationContract);
-    }
-
-    /**
-     * @notice Upgrades the LSD Staking Node implementation to a new version.
-     * @dev This function upgrades the implementation contract of the LSD Staking Nodes by setting a new implementation address in the upgradeable beacon.
-     * It then reinitializes all existing staking nodes to ensure they are compatible with the new implementation.
-     * This function can only be called by an account with the STAKING_ADMIN_ROLE.
-     * @param _implementationContract The address of the new implementation contract.
-     */
-    function upgradeLSDStakingNodeImplementation(address _implementationContract)  
-        public 
-        onlyRole(STAKING_ADMIN_ROLE) 
-        notZeroAddress(_implementationContract) {
-
-        if (address(upgradeableBeacon) == address(0)) {
-            revert NoBeaconImplementationExists();
-        }
-
-        upgradeableBeacon.upgradeTo(_implementationContract);
-
-        uint256 nodeCount = nodes.length;
-
-        // Reinitialize all nodes to ensure compatibility with the new implementation.
-        for (uint256 i = 0; i < nodeCount; i++) {
-            initializeLSDStakingNode(nodes[i], nodeCount);
-        }
-
-        emit UpgradedStakingNodeImplementationContract(address(_implementationContract), nodeCount);
-    }
-
-    /// @notice Sets the maximum number of staking nodes allowed
-    /// @param _maxNodeCount The maximum number of staking nodes
-    function setMaxNodeCount(uint256 _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
-        maxNodeCount = _maxNodeCount;
-        emit MaxNodeCountUpdated(_maxNodeCount);
-    }
-
-    function hasLSDRestakingManagerRole(address account) external view returns (bool) {
-        return hasRole(LSD_RESTAKING_MANAGER_ROLE, account);
-    }
-
-    /**
-     * @notice Retrieves a specified amount of an asset from the staking node.
-     * @dev Transfers the specified `amount` of `asset` to the caller, if the caller is the staking node.
-     * Reverts if the caller is not the staking node or if the asset is not supported.
-     * @param nodeId The ID of the staking node attempting to retrieve the asset.
-     * @param asset The ERC20 token to be retrieved.
-     * @param amount The amount of the asset to be retrieved.
-     */
-    function retrieveAsset(uint256 nodeId, IERC20 asset, uint256 amount) external {
-        if (address(nodes[nodeId]) != msg.sender) {
-            revert NotLSDStakingNode(msg.sender, nodeId);
-        }
-
-        IStrategy strategy = strategies[asset];
-        if (address(strategy) == address(0)) {
-            revert UnsupportedAsset(asset);
-        }
-
-        IERC20(asset).safeTransfer(msg.sender, amount);
-        emit AssetRetrieved(asset, amount, nodeId, msg.sender);
+    function assetIsSupported(IERC20 asset) public returns (bool) {
+        // TODO: FIXME: implement
+        return true;
     }
 
     //--------------------------------------------------------------------------------------
