@@ -287,24 +287,29 @@ contract ynLSD is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
     //--------------------------------------------------------------------------------------
 
     /**
-     * @notice Retrieves a specified amount of an asset from the staking node.
-     * @dev Transfers the specified `amount` of `asset` to the caller, if the caller is the staking node.
-     * Reverts if the caller is not the staking node or if the asset is not supported.
-     * @param asset The ERC20 token to be retrieved.
-     * @param amount The amount of the asset to be retrieved.
+     * @notice Retrieves specified amounts of multiple assets and sends them to designated destinations.
+     * @dev Transfers the specified amounts of assets to the corresponding destinations. This function can only be called by the strategy manager.
+     * Reverts if the caller is not the strategy manager or if any of the assets are not supported.
+     * @param assetsToRetrieve An array of ERC20 tokens to be retrieved.
+     * @param amounts An array of amounts of the assets to be retrieved, corresponding to the `assetsToRetrieve` array.
+     * @param destinations An array of addresses to which the assets are to be sent, corresponding to the `assetsToRetrieve` array.
      */
-    function retrieveAsset(
-        IERC20 asset,
-        uint256 amount,
-        address destination
+    function retrieveAssets(
+        IERC20[] calldata assetsToRetrieve,
+        uint256[] calldata amounts,
+        address[] calldata destinations
     ) public onlyStrategyManager {
+        require(assetsToRetrieve.length == amounts.length && amounts.length == destinations.length, "LengthMismatch");
 
-        if (!assetData[address(asset)].active) {
-            revert UnsupportedAsset(asset);
+        for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
+            IERC20 asset = assetsToRetrieve[i];
+            if (!assetData[address(asset)].active) {
+                revert UnsupportedAsset(asset);
+            }
+
+            IERC20(asset).safeTransfer(destinations[i], amounts[i]);
+            emit AssetRetrieved(assets[i], amounts[i], destinations[i]);
         }
-
-        IERC20(asset).safeTransfer(msg.sender, amount);
-        emit AssetRetrieved(asset, amount, destination);
     }
 
     //--------------------------------------------------------------------------------------
