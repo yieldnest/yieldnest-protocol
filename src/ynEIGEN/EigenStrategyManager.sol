@@ -22,7 +22,6 @@ contract EigenStrategyManager is
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
     error ZeroAddress();
 
     //--------------------------------------------------------------------------------------
@@ -102,7 +101,11 @@ contract EigenStrategyManager is
      * @param assets An array of ERC20 tokens to be staked.
      * @param amounts An array of amounts corresponding to each asset to be staked.
      */
-    function stakeAssetsToNode(uint256 nodeId, IERC20[] calldata assets, uint256[] calldata amounts) external {
+    function stakeAssetsToNode(
+        uint256 nodeId,
+        IERC20[] calldata assets,
+        uint256[] calldata amounts
+    ) external onlyRole(STRATEGY_CONTROLLER_ROLE) {
         require(assets.length == amounts.length, "Assets and amounts length mismatch");
 
         ILSDStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
@@ -113,6 +116,7 @@ contract EigenStrategyManager is
             strategiesForNode[i] = strategies[assets[i]];
         }
 
+        address[] memory destinations = new address[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
             uint256 amount = amounts[i];
@@ -120,9 +124,12 @@ contract EigenStrategyManager is
             require(amount > 0, "Staking amount must be greater than zero");
             require(address(strategies[asset]) != address(0), "No strategy for asset");
 
-            // Transfer assets to node
-            ynEigen.transferFrom(msg.sender, address(node), amount);
+            destinations[i] = address(node);
         }
+
+
+        // Transfer assets to node
+        ynEigen.retrieveAssets(assets, amounts, destinations);
 
         node.depositAssetsToEigenlayer(assets, amounts, strategiesForNode);
     }
