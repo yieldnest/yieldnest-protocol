@@ -199,7 +199,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     function totalAssets() public view returns (uint256) {
         uint256 total = 0;
 
-        uint256[] memory depositedBalances = getTotalAssets();
+        uint256[] memory depositedBalances = getAllAssetBalances();
         for (uint256 i = 0; i < assets.length; i++) {
             uint256 balanceInETH = convertToETH(assets[i], depositedBalances[i]);
             total += balanceInETH;
@@ -229,7 +229,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
      * including those managed by strategies associated with each asset.
      * @return assetBalances An array of the total balances for each asset, indexed in the same order as the `assets` array.
      */
-    function getTotalAssets()
+    function getAllAssetBalances()
         public
         view
         returns (uint256[] memory assetBalances)
