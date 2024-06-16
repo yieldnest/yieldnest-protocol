@@ -6,20 +6,21 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 import {IERC20Metadata} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
-import {ynBase} from "src/ynBase.sol";
-import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 
-interface IynLSDEvents {
+import {ynBase} from "src/ynBase.sol";
+
+interface IynEigenEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
-    event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
+    event AssetRetrieved(IERC20 asset, uint256 amount, address destination);
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
     event DepositsPausedUpdated(bool paused);
 }
 
-contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
+contract ynLSD is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
     using SafeERC20 for IERC20;
 
     struct AssetData {
@@ -36,11 +37,11 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
+    error NotStrategyManager(address msgSender);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
-    ITokenStakingNodesManager public stakingNodesManager;
     IRateProvider public rateProvider;
 
     /// @notice List of supported ERC20 asset contracts.
@@ -49,6 +50,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     mapping(address => AssetData) public assetData;
     
     bool public depositsPaused;
+
+    IEigenStrategyManager eigenStrategyManager;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -194,6 +197,10 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         return convertToShares(asset, amount);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  TOTAL ASSETS   -----------------------------------
+    //--------------------------------------------------------------------------------------
+
     /**
      * @notice This function calculates the total assets of the contract
      * @dev It iterates over all the assets in the contract, gets the latest price for each asset from the oracle, 
@@ -220,8 +227,8 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     function convertToShares(IERC20 asset, uint256 amount) public view returns(uint256 shares) {
 
         if(assetIsSupported(asset)) {
-           uint256 assetAmountInETH = convertToUnitOfAccount(asset, amount);
-           shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
+           uint256 assetAmountInUnitOfAccount = convertToUnitOfAccount(asset, amount);
+           shares = _convertToShares(assetAmountInUnitOfAccount, Math.Rounding.Floor);
         } else {
             revert UnsupportedAsset(asset);
         }
@@ -249,7 +256,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             assetBalances[i] += _assetData.balance;
         }
 
-        uint256[] memory stakedAssetBalances = stakingNodesManager.getStakedAssetsBalances(assets);
+        uint256[] memory stakedAssetBalances = eigenStrategyManager.getStakedAssetsBalances(assets);
 
         if (stakedAssetBalances.length != assetsCount) {
             revert LengthMismatch(assetsCount, stakedAssetBalances.length);
@@ -263,9 +270,9 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     /**
      * @notice Converts the amount of a given asset to its equivalent value in the unit of account of the vault.
      * @dev This function takes into account the decimal places of the asset to ensure accurate conversion.
-     * @param asset The ERC20 token to be converted to ETH.
+     * @param asset The ERC20 token to be converted to the unit of account.
      * @param amount The amount of the asset to be converted.
-     * @return uint256 equivalent amount of the asset in ETH.
+     * @return uint256 equivalent amount of the asset in the unit of account.
      */
     function convertToUnitOfAccount(IERC20 asset, uint256 amount) public view returns (uint256) {
         uint256 assetRate = rateProvider.rate(address(asset));
@@ -274,6 +281,35 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
             ? assetRate * amount / (10 ** assetDecimals)
             : assetRate * amount / 1e18;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ASSET ALLOCATION  --------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Retrieves a specified amount of an asset from the staking node.
+     * @dev Transfers the specified `amount` of `asset` to the caller, if the caller is the staking node.
+     * Reverts if the caller is not the staking node or if the asset is not supported.
+     * @param asset The ERC20 token to be retrieved.
+     * @param amount The amount of the asset to be retrieved.
+     */
+    function retrieveAsset(
+        IERC20 asset,
+        uint256 amount,
+        address destination
+    ) public onlyStrategyManager {
+
+        if (!assetData[address(asset)].active) {
+            revert UnsupportedAsset(asset);
+        }
+
+        IERC20(asset).safeTransfer(msg.sender, amount);
+        emit AssetRetrieved(asset, amount, destination);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  PAUSING  -----------------------------------------
+    //--------------------------------------------------------------------------------------
 
     /// @notice Pauses ETH deposits.
     /// @dev Can only be called by an account with the PAUSER_ROLE.
@@ -302,6 +338,13 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();
+        }
+        _;
+    }
+
+    modifier onlyStrategyManager() {
+        if(msg.sender != address(eigenStrategyManager)) {
+            revert NotStrategyManager(msg.sender);
         }
         _;
     }

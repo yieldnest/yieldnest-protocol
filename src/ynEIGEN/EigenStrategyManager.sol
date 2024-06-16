@@ -8,6 +8,9 @@ import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfa
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
 
 contract EigenStrategyManager is 
         IEigenStrategyManager,
@@ -33,18 +36,19 @@ contract EigenStrategyManager is
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
     /// @notice Controls the strategy actions
-    bytes32 public constant STRATEGY_ADMIN_ROLE = keccak256("STRATEGY_ADMIN_ROLE");
+    bytes32 public constant STRATEGY_CONTROLLER_ROLE = keccak256("STRATEGY_CONTROLLER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
     
+    IynEigen public ynEigen;
+    IStrategyManager public strategyManager;
+    IDelegationManager public delegationManager;
+    ITokenStakingNodesManager public tokenStakingNodesManager;
 
     // Mapping of asset to its corresponding strategy
     mapping(IERC20 => IStrategy) public strategies;
-
-    IStrategyManager public strategyManager;
-    IDelegationManager public delegationManager;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -53,10 +57,11 @@ contract EigenStrategyManager is
     struct Init {
         IERC20[] assets;
         IStrategy[] strategies;
+        IynEigen ynEigen;
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
         address admin;
-        address strategyAdmin;
+        address strategyController;
         address unpauser;
         address pauser;
     }
@@ -66,13 +71,13 @@ contract EigenStrategyManager is
         notZeroAddress(address(init.strategyManager))
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.lsdRestakingManager))
-        notZeroAddress(init.lsdStakingNodeCreatorRole)
         initializer {
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
+        _grantRole(STRATEGY_CONTROLLER_ROLE, init.strategyController);
 
         for (uint256 i = 0; i < init.assets.length; i++) {
             if (address(init.assets[i]) == address(0) || address(init.strategies[i]) == address(0)) {
@@ -81,8 +86,76 @@ contract EigenStrategyManager is
             strategies[init.assets[i]] = init.strategies[i];
         }
 
+        ynEigen = init.ynEigen;
+
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STRATEGY  ----------------------------------------
+    //--------------------------------------------------------------------------------------
+    
+    /**
+     * @notice Stakes specified amounts of assets into a specific node on EigenLayer.
+     * @param nodeId The ID of the node where assets will be staked.
+     * @param assets An array of ERC20 tokens to be staked.
+     * @param amounts An array of amounts corresponding to each asset to be staked.
+     */
+    function stakeAssetsToNode(uint256 nodeId, IERC20[] calldata assets, uint256[] calldata amounts) external {
+        require(assets.length == amounts.length, "Assets and amounts length mismatch");
+
+        ILSDStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
+        require(address(node) != address(0), "Invalid node ID");
+
+        IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
+        for (uint256 i = 0; i < assets.length; i++) {
+            strategiesForNode[i] = strategies[assets[i]];
+        }
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IERC20 asset = assets[i];
+            uint256 amount = amounts[i];
+
+            require(amount > 0, "Staking amount must be greater than zero");
+            require(address(strategies[asset]) != address(0), "No strategy for asset");
+
+            // Transfer assets to node
+            ynEigen.transferFrom(msg.sender, address(node), amount);
+        }
+
+        node.depositAssetsToEigenlayer(assets, amounts, strategiesForNode);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIEWS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Retrieves the total balances of staked assets across all nodes.
+     * @param assets An array of ERC20 tokens for which balances are to be retrieved.
+     * @return stakedBalances An array of total balances for each asset, indexed in the same order as the `assets` array.
+     */
+    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
+
+        // Add balances contained in each LSDStakingNode, including those managed by strategies.
+
+        ILSDStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        uint256 nodesCount = nodes.length;
+        uint256 assetsCount = assets.length;
+        for (uint256 i; i < nodesCount; i++ ) {
+            
+            ILSDStakingNode node = nodes[i];
+            for (uint256 j = 0; j < assetsCount; j++) {
+                
+                IERC20 asset = assets[j];
+                uint256 balanceNode = asset.balanceOf(address(node));
+                stakedBalances[j] += balanceNode;
+
+                uint256 strategyBalance = strategies[asset].userUnderlyingView((address(node)));
+                stakedBalances[j] += strategyBalance;
+            }
+        }
     }
 
     //--------------------------------------------------------------------------------------

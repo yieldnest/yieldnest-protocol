@@ -13,7 +13,6 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {YieldNestOracle} from "src/YieldNestOracle.sol";
 import {ynBase} from "src/ynBase.sol";
@@ -47,7 +46,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     error NoBeaconImplementationExists();
     error TooManyStakingNodes(uint256 maxNodeCount);
     error NotLSDStakingNode(address sender, uint256 nodeId);
-    error InsufficientBoostrapAmount(address asset, uint256 amount, uint256 valueInETH);
     error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
 
     //--------------------------------------------------------------------------------------
@@ -110,7 +108,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         address lsdRestakingManager;
         address lsdStakingNodeCreatorRole;
         address[] pauseWhitelist;
-        address depositBootstrapper;
     }
 
     function initialize(Init calldata init)
@@ -191,7 +188,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
              node.initialize(
-               ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
+               ILSDStakingNode.Init(ITokenStakingNodesManager(address(this)), nodeId)
              );
 
              // update version to latest
@@ -262,59 +259,17 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         return hasRole(TOKEN_RESTAKING_MANAGER_ROLE, account);
     }
 
-    /**
-     * @notice Retrieves a specified amount of an asset from the staking node.
-     * @dev Transfers the specified `amount` of `asset` to the caller, if the caller is the staking node.
-     * Reverts if the caller is not the staking node or if the asset is not supported.
-     * @param nodeId The ID of the staking node attempting to retrieve the asset.
-     * @param asset The ERC20 token to be retrieved.
-     * @param amount The amount of the asset to be retrieved.
-     */
-    function retrieveAsset(uint256 nodeId, IERC20 asset, uint256 amount) external {
-        if (address(nodes[nodeId]) != msg.sender) {
-            revert NotLSDStakingNode(msg.sender, nodeId);
-        }
-
-        IStrategy strategy = strategies[asset];
-        if (address(strategy) == address(0)) {
-            revert UnsupportedAsset(asset);
-        }
-
-        IERC20(asset).safeTransfer(msg.sender, amount);
-        emit AssetRetrieved(asset, amount, nodeId, msg.sender);
-    }
-
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
-    /**
-     * @notice Retrieves the total balances of staked assets across all nodes.
-     * @param assets An array of ERC20 tokens for which balances are to be retrieved.
-     * @return stakedBalances An array of total balances for each asset, indexed in the same order as the `assets` array.
-     */
-    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
-
-        // Add balances contained in each LSDStakingNode, including those managed by strategies.
-        uint256 nodesCount = nodes.length;
-        uint256 assetsCount = assets.length;
-        for (uint256 i; i < nodesCount; i++ ) {
-            
-            ILSDStakingNode node = nodes[i];
-            for (uint256 j = 0; j < assetsCount; j++) {
-                
-                IERC20 asset = assets[j];
-                uint256 balanceNode = asset.balanceOf(address(node));
-                stakedBalances[j] += balanceNode;
-
-                uint256 strategyBalance = strategies[asset].userUnderlyingView((address(node)));
-                stakedBalances[j] += strategyBalance;
-            }
-        }
+    function getAllNodes() public view returns (ILSDStakingNode[] memory) {
+        return nodes;
     }
 
+    function nodesLength() public view returns (uint256) {
+        return nodes.length;
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
