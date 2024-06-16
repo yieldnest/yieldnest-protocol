@@ -20,9 +20,9 @@ interface IynEigen {
 
     function convertToShares(IERC20 asset, uint amount) external view returns(uint shares);
 
-    function retrieveAsset(
-        IERC20 asset,
-        uint256 amount,
-        address destination
+    function retrieveAssets(
+        IERC20[] calldata assetsToRetrieve,
+        uint256[] calldata amounts,
+        address[] calldata destinations
     ) external;
 }
