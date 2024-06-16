@@ -7,10 +7,9 @@ import {IERC20Metadata} from "lib/openzeppelin-contracts/contracts/token/ERC20/e
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IynLSD} from "src/interfaces/IynLSD.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
+import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {ynBase} from "src/ynBase.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
-
 
 interface IynLSDEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
@@ -25,6 +24,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     struct AssetData {
         uint256 balance;
+        bool active;
     }
 
     //--------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
     ITokenStakingNodesManager public stakingNodesManager;
-    YieldNestOracle public oracle;
+    IRateProvider public rateProvider;
 
     /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
@@ -62,7 +62,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         string name;
         string symbol;
         IERC20[] assets;
-        YieldNestOracle oracle;
+        IRateProvider rateProvider;
         address admin;
         address pauser;
         address unpauser;
@@ -71,7 +71,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
     function initialize(Init calldata init)
         public
-        notZeroAddress(address(init.oracle))
+        notZeroAddress(address(init.rateProvider))
         notZeroAddress(address(init.admin))
         initializer {
         __AccessControl_init();
@@ -87,9 +87,13 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
                 revert ZeroAddress();
             }
             assets.push(init.assets[i]);
+            assetData[address(init.assets[i])] = AssetData({
+                balance: 0,
+                active: true
+            });
         }
 
-        oracle = init.oracle;
+        rateProvider = init.rateProvider;
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
@@ -139,7 +143,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
         }
 
         // Convert the value of the asset deposited to ETH
-        uint256 assetAmountInETH = convertToETH(asset, amount);
+        uint256 assetAmountInETH = convertToUnitOfAccount(asset, amount);
         // Calculate how many shares to be minted using the same formula as ynETH
         shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
 
@@ -201,7 +205,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
 
         uint256[] memory depositedBalances = getAllAssetBalances();
         for (uint256 i = 0; i < assets.length; i++) {
-            uint256 balanceInETH = convertToETH(assets[i], depositedBalances[i]);
+            uint256 balanceInETH = convertToUnitOfAccount(assets[i], depositedBalances[i]);
             total += balanceInETH;
         }
         return total;
@@ -216,7 +220,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     function convertToShares(IERC20 asset, uint256 amount) public view returns(uint256 shares) {
 
         if(assetIsSupported(asset)) {
-           uint256 assetAmountInETH = convertToETH(asset, amount);
+           uint256 assetAmountInETH = convertToUnitOfAccount(asset, amount);
            shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
         } else {
             revert UnsupportedAsset(asset);
@@ -257,18 +261,18 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     /**
-     * @notice Converts the amount of a given asset to its equivalent value in ETH based on the latest price from the oracle.
+     * @notice Converts the amount of a given asset to its equivalent value in the unit of account of the vault.
      * @dev This function takes into account the decimal places of the asset to ensure accurate conversion.
      * @param asset The ERC20 token to be converted to ETH.
      * @param amount The amount of the asset to be converted.
      * @return uint256 equivalent amount of the asset in ETH.
      */
-    function convertToETH(IERC20 asset, uint256 amount) public view returns (uint256) {
-        uint256 assetPriceInETH = oracle.getLatestPrice(address(asset));
+    function convertToUnitOfAccount(IERC20 asset, uint256 amount) public view returns (uint256) {
+        uint256 assetRate = rateProvider.rate(address(asset));
         uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
         return assetDecimals != 18
-            ? assetPriceInETH * amount / (10 ** assetDecimals)
-            : assetPriceInETH * amount / 1e18;
+            ? assetRate * amount / (10 ** assetDecimals)
+            : assetRate * amount / 1e18;
     }
 
     /// @notice Pauses ETH deposits.
@@ -286,8 +290,7 @@ contract ynLSD is IynLSD, ynBase, ReentrancyGuardUpgradeable, IynLSDEvents {
     }
 
     function assetIsSupported(IERC20 asset) public returns (bool) {
-        // TODO: FIXME: implement
-        return true;
+        return assetData[address(asset)].active;
     }
 
     //--------------------------------------------------------------------------------------
