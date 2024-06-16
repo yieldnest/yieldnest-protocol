@@ -10,7 +10,6 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
@@ -35,6 +34,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
     error ZeroAddress();
     error NotLSDRestakingManager();
+    error NotStrategyManager();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -72,58 +72,27 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
      */
     function depositAssetsToEigenlayer(
         IERC20[] memory assets,
-        uint256[] memory amounts
+        uint256[] memory amounts,
+        IStrategy[] memory strategies
     )
         external
         nonReentrant
-        onlyLSDRestakingManager
+        onlyStrategyManager
     {
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
             uint256 amount = amounts[i];
-            IStrategy strategy = tokenStakingNodesManager.strategies(asset);
+            IStrategy strategy = strategies[i];
 
-            uint256 balanceBefore = asset.balanceOf(address(this));
-            tokenStakingNodesManager.retrieveAsset(nodeId, asset, amount);
-            uint256 balanceAfter = asset.balanceOf(address(this));
-            uint256 retrievedAmount = balanceAfter - balanceBefore;
+            asset.forceApprove(address(strategyManager), amount);
 
-            asset.forceApprove(address(strategyManager), retrievedAmount);
-
-            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, retrievedAmount);
-            emit DepositToEigenlayer(asset, strategy, retrievedAmount, eigenShares);
+            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
         }
     }
 
-    function depositAssetsToEigenlayer(
-        IERC20[] memory assets,
-        address assetSources,
-        uint256[] memory amounts
-    )
-        external
-        nonReentrant
-        onlyLSDRestakingManager
-    {
-        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
-
-        for (uint256 i = 0; i < assets.length; i++) {
-            IERC20 asset = assets[i];
-            uint256 amount = amounts[i];
-            IStrategy strategy = tokenStakingNodesManager.strategies(asset);
-
-            uint256 balanceBefore = asset.balanceOf(address(this));
-            tokenStakingNodesManager.retrieveAsset(nodeId, asset, amount);
-            uint256 balanceAfter = asset.balanceOf(address(this));
-            uint256 retrievedAmount = balanceAfter - balanceBefore;
-
-            asset.forceApprove(address(strategyManager), retrievedAmount);
-
-            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, retrievedAmount);
-            emit DepositToEigenlayer(asset, strategy, retrievedAmount, eigenShares);
-        }
-    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  DELEGATION  --------------------------------------
@@ -171,6 +140,13 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     modifier onlyLSDRestakingManager() {
         if (!tokenStakingNodesManager.hasLSDRestakingManagerRole(msg.sender)) {
             revert NotLSDRestakingManager();
+        }
+        _;
+    }
+
+    modifier onlyStrategyManager() {
+        if(!tokenStakingNodesManager.hasStrategyManagerRole(msg.sender)) {
+            revert NotStrategyManager();
         }
         _;
     }

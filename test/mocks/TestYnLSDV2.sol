@@ -2,8 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {ynLSD} from "src/ynLSD.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 
 contract TestYnLSDV2 is ynLSD {
@@ -12,7 +13,7 @@ contract TestYnLSDV2 is ynLSD {
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
              node.initialize(
-                ILSDStakingNode.Init(IynLSD(address(this)), nodeId)
+                ILSDStakingNode.Init(ITokenStakingNodesManager(address(this)), nodeId)
              );
              initializedVersion = node.getInitializedVersion();
          }

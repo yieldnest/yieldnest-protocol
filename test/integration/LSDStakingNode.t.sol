@@ -6,7 +6,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol
 import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {IStrategyManager}	from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
@@ -22,10 +22,10 @@ contract skipLSDStakingNodeTest is IntegrationBaseTest {
 		lsdStakingNode = ynlsd.createLSDStakingNode();
 	}
 	
-	function testYnLSDView() public {
-		IynLSD _ynlsd = lsdStakingNode.ynLSD();
-		assertEq(address(_ynlsd), address(ynlsd));
-	}
+	// function testYnLSDView() public {
+	// 	IynLSD _ynlsd = lsdStakingNode.ynLSD();
+	// 	assertEq(address(_ynlsd), address(ynlsd));
+	// }
 
 	function testNodeIdView() public {
 		uint256 _nodeId = lsdStakingNode.nodeId();

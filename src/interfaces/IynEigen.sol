@@ -8,10 +8,10 @@ import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
-interface IynLSD {
+interface IynEigen {
 
     function deposit(
-        IERC20 token,
+        IERC20 asset,
         uint256 amount,
         address receiver
     ) external returns (uint256 shares);
@@ -19,5 +19,10 @@ interface IynLSD {
     function totalAssets() external view returns (uint);
 
     function convertToShares(IERC20 asset, uint amount) external view returns(uint shares);
-    
+
+    function retrieveAsset(
+        IERC20 asset,
+        uint256 amount,
+        address destination
+    ) external;
 }
