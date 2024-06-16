@@ -97,6 +97,34 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         }
     }
 
+    function depositAssetsToEigenlayer(
+        IERC20[] memory assets,
+        address assetSources,
+        uint256[] memory amounts
+    )
+        external
+        nonReentrant
+        onlyLSDRestakingManager
+    {
+        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IERC20 asset = assets[i];
+            uint256 amount = amounts[i];
+            IStrategy strategy = tokenStakingNodesManager.strategies(asset);
+
+            uint256 balanceBefore = asset.balanceOf(address(this));
+            tokenStakingNodesManager.retrieveAsset(nodeId, asset, amount);
+            uint256 balanceAfter = asset.balanceOf(address(this));
+            uint256 retrievedAmount = balanceAfter - balanceBefore;
+
+            asset.forceApprove(address(strategyManager), retrievedAmount);
+
+            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, retrievedAmount);
+            emit DepositToEigenlayer(asset, strategy, retrievedAmount, eigenShares);
+        }
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  DELEGATION  --------------------------------------
     //--------------------------------------------------------------------------------------

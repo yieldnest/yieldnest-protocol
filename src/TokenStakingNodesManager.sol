@@ -64,7 +64,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    YieldNestOracle  public oracle;
     IStrategyManager public strategyManager;
     IDelegationManager public delegationManager;
 
@@ -103,7 +102,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         IStrategy[] strategies;
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
-        YieldNestOracle oracle;
         uint256 maxNodeCount;
         address admin;
         address pauser;
@@ -142,7 +140,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
-        oracle = init.oracle;
         maxNodeCount = init.maxNodeCount;
     }
 
