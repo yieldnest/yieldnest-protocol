@@ -8,19 +8,20 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
 interface ITokenStakingNodesManager {
-    function getStakedAssetsBalances(
-        IERC20[] calldata assets
-     ) external view returns (uint256[] memory stakedBalances);
 
     function createLSDStakingNode() external returns (ILSDStakingNode);
     function registerLSDStakingNodeImplementationContract(address _implementationContract) external;
     function upgradeLSDStakingNodeImplementation(address _implementationContract) external;
     function setMaxNodeCount(uint256 _maxNodeCount) external;
-    function retrieveAsset(uint256 nodeId, IERC20 asset, uint256 amount) external;
     function hasLSDRestakingManagerRole(address account) external view returns (bool);
 
     function delegationManager() external view returns (IDelegationManager);
     function strategyManager() external view returns (IStrategyManager);
     function upgradeableBeacon() external view returns (UpgradeableBeacon);
     function strategies(IERC20 asset) external view returns (IStrategy);
+
+
+    function getAllNodes() external view returns (ILSDStakingNode[] memory);
+    function nodesLength() external view returns (uint256);
+
 }
