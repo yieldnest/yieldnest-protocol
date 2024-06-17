@@ -20,7 +20,7 @@ interface IynEigenEvents {
     event DepositsPausedUpdated(bool paused);
 }
 
-contract ynLSD is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
+contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
     using SafeERC20 for IERC20;
 
     struct AssetData {
@@ -251,7 +251,7 @@ contract ynLSD is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
 
         assetBalances = new uint256[](assetsCount);
         
-        // Add balances for funds held directly in ynLSD.
+        // Add balances for funds held directly in address(this).
         for (uint256 i = 0; i < assetsCount; i++) {
             IERC20 asset = assets[i];
             AssetData memory _assetData = assetData[address(asset)];
