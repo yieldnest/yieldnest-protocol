@@ -137,7 +137,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
             revert WithdrawalAlreadyProcessed();
         }
 
-        if (block.timestamp < request.creationTimestamp + secondsToFinalization) {
+        if (!isFinalized(request)) {
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
@@ -231,7 +231,42 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     /// @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
     /// @return surplus The amount of surplus redemption assets in the unit of account.
     function surplusRedemptionAmount() public view returns (uint256) {
-        return availableRedemptionAmount() - pendingRequestedRedemptionAmount;
+        uint256 availableAmount = availableRedemptionAmount();
+        if (availableAmount > pendingRequestedRedemptionAmount) {
+            return availableAmount - pendingRequestedRedemptionAmount;
+        } 
+        
+        return 0;
+    }
+
+    /// @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
+    /// @return deficit The amount of deficit redemption assets in the unit of account.
+    function deficitRedemptionAmount() public view returns (uint256) {
+        uint256 availableAmount = availableRedemptionAmount();
+        if (pendingRequestedRedemptionAmount > availableAmount) {
+            return pendingRequestedRedemptionAmount - availableAmount;
+        }
+        
+        return 0;
+    }
+
+    /**
+     * @notice Checks if a withdrawal request with a given index is finalized.
+     * @param index The index of the withdrawal request.
+     * @return True if the request is finalized, false otherwise.
+     */
+    function withdrawalRequestIsFinalized(uint256 index) public view returns (bool) {
+        WithdrawalRequest memory request = withdrawalRequests[index];
+        return isFinalized(request);
+    }
+
+    /**
+     * @notice Checks if a withdrawal request is finalized.
+     * @param request The withdrawal request to check.
+     * @return True if the request is finalized, false otherwise.
+     */
+    function isFinalized(WithdrawalRequest memory request) public view returns (bool) {
+        return block.timestamp >= request.creationTimestamp + secondsToFinalization;
     }
 
     /**
