@@ -12,7 +12,7 @@ import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
-    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, uint256 redeemedAmount);
+    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, IWithdrawalQueueManager.WithdrawalRequest request);
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
 }
 
@@ -120,15 +120,13 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
-        uint256 redeemAmount = (request.amount * request.redemptionRateAtRequestTime) / (10 ** redeemableAsset.decimals());
-
         transferRedemptionAssets(msg.sender, request);
 
         withdrawalRequests[tokenId].processed = true;
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
 
-        emit WithdrawalClaimed(tokenId, msg.sender, redeemAmount);
+        emit WithdrawalClaimed(tokenId, msg.sender, request);
     }
 
     /**
@@ -146,6 +144,10 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     /// @return fee The calculated fee.
     function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public view returns (uint256) {
         return (amount * requestWithdrawalFee) / FEE_PRECISION;
+    }
+
+    function calculateRedemptionAmount(uint256 amount, uint256 redemptionRateAtRequestTime) public view returns (uint256) {
+        return amount * redemptionRateAtRequestTime / (10 ** redeemableAsset.decimals());
     }
 
     function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
@@ -171,7 +173,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     function getRedemptionRate() public view virtual returns (uint256);
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public virtual;
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------
