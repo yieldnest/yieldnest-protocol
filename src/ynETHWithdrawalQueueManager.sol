@@ -35,7 +35,8 @@ contract ynETHWithdrawalQueueManager is WithdrawalQueueManager, IynETHWithdrawal
     }
 
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public override {
-        uint256 ethAmount = (request.amount * request.redemptionRateAtRequestTime) / YN_ETH_UNIT;
+
+        uint256 ethAmount =  calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
 
         uint256 feeAmount = calculateFee(ethAmount, request.feeAtRequestTime);
         uint256 netEthAmount = ethAmount - feeAmount;
