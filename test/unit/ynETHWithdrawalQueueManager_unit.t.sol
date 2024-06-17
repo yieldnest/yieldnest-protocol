@@ -74,7 +74,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(withdrawalRequest.amount, amount, "Stored amount should match requested amount");
 
         assertEq(withdrawalRequest.feeAtRequestTime, manager.withdrawalFee(), "Stored fee should match current withdrawal fee");
-        assertEq(withdrawalRequest.redemptionRateAtRequestTime, manager.getRedemptionRate(), "Stored redemption rate should match current redemption rate");
+        assertEq(withdrawalRequest.redemptionRateAtRequestTime, manager.redemptionRate(), "Stored redemption rate should match current redemption rate");
         assertEq(withdrawalRequest.creationTimestamp, block.timestamp, "Stored creation timestamp should match current block timestamp");
         assertEq(withdrawalRequest.creationBlock, block.number, "Stored creation block should match current block number");
         assertEq(withdrawalRequest.processed, false, "Stored processed status should be false");
@@ -90,7 +90,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.requestWithdrawal(amount);
         uint256 creationBlock = block.number;
         uint256 tokenId = 0;
-        uint256 redemptionRateAtRequestTime = manager.getRedemptionRate();
+        uint256 redemptionRateAtRequestTime = manager.redemptionRate();
 
 
         // Fast forward time to pass the finalization period
@@ -101,7 +101,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         require(success, "Ether transfer failed");
 
         vm.prank(user);
-        manager.claimWithdrawal(tokenId);
+        manager.claimWithdrawal(tokenId, user);
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         bool processed = request.processed;
         assertTrue(processed, "Withdrawal should be marked as processed");
@@ -134,6 +134,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         // Attempt to claim before time is up
         vm.prank(user);
         vm.expectRevert(WithdrawalQueueManager.NotFinalized.selector);
-        manager.claimWithdrawal(tokenId);
+        manager.claimWithdrawal(tokenId, user);
     }
 }

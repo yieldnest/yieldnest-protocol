@@ -12,8 +12,9 @@ import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
-    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, IWithdrawalQueueManager.WithdrawalRequest request);
+    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
+    event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
 }
 
 abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
@@ -25,6 +26,9 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     error NotFinalized(uint256 currentTimestamp, uint256 requestTimestamp, uint256 queueDuration);
     error ZeroAddress();
     error WithdrawalAlreadyProcessed();
+    error InsufficientBalance(uint256 currentBalance, uint256 requestedBalance);
+    error TransferFailed(uint256 amount, address destination);
+    error CallerNotOwnerNorApproved(uint256 tokenId, address caller);
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -52,6 +56,9 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     uint256 public withdrawalFee;
     address public feeReceiver;
 
+    /// pending requested redemption amount in redemption unit of account
+    uint256 public pendingRequestedRedemptionAmount;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -73,8 +80,10 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     function initialize(Init memory init)
         public
         notZeroAddress(address(init.admin))
+        notZeroAddress(address(init.redeemableAsset))
         notZeroAddress(address(init.withdrawalQueueAdmin))
         notZeroAddress(address(init.feeReceiver))
+    
         initializer {
         __ERC721_init(init.name, init.symbol);
         redeemableAsset = IRedeemableAsset(init.redeemableAsset);
@@ -86,12 +95,16 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         feeReceiver = init.feeReceiver;
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
+    //--------------------------------------------------------------------------------------
+
     function requestWithdrawal(uint256 amount) external nonReentrant {
         require(amount > 0, "WithdrawalQueueManager: amount must be greater than 0");
         
         redeemableAsset.transferFrom(msg.sender, address(this), amount);
 
-        uint256 currentRate = getRedemptionRate();
+        uint256 currentRate = redemptionRate();
         uint256 tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
             amount: amount,
@@ -102,13 +115,21 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
             processed: false
         });
 
+        pendingRequestedRedemptionAmount += calculateRedemptionAmount(amount, currentRate);
+
         _mint(msg.sender, tokenId);
 
         emit WithdrawalRequested(tokenId, msg.sender, amount);
     }
 
-    function claimWithdrawal(uint256 tokenId) public nonReentrant {
-        require(_ownerOf(tokenId) == msg.sender || _getApproved(tokenId) == msg.sender, "WithdrawalQueueManager: caller is not owner nor approved");
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CLAIMS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
+        if (_ownerOf(tokenId) != msg.sender && _getApproved(tokenId) != msg.sender) {
+            revert CallerNotOwnerNorApproved(tokenId, msg.sender);
+        }
 
         WithdrawalRequest memory request = withdrawalRequests[tokenId];
 
@@ -120,35 +141,30 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
-        transferRedemptionAssets(msg.sender, request);
-
         withdrawalRequests[tokenId].processed = true;
+        pendingRequestedRedemptionAmount -= calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
 
-        emit WithdrawalClaimed(tokenId, msg.sender, request);
+        transferRedemptionAssets(receiver, request);
+
+        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
     }
 
     /**
      * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
      * @param tokenIds An array of token IDs representing the withdrawal requests to be claimed.
      */
-    function claimWithdrawals(uint256[] calldata tokenIds) external {
+    function claimWithdrawals(uint256[] calldata tokenIds, address[] calldata receivers) external {
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            claimWithdrawal(tokenIds[i]);
+            claimWithdrawal(tokenIds[i], receivers[i]);
         }
     }
 
-    /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
-    /// @param amount The amount from which the fee should be calculated.
-    /// @return fee The calculated fee.
-    function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public view returns (uint256) {
-        return (amount * requestWithdrawalFee) / FEE_PRECISION;
-    }
-
-    function calculateRedemptionAmount(uint256 amount, uint256 redemptionRateAtRequestTime) public view returns (uint256) {
-        return amount * redemptionRateAtRequestTime / (10 ** redeemableAsset.decimals());
-    }
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ADMIN  -------------------------------------------
+    //--------------------------------------------------------------------------------------
 
     function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
         secondsToFinalization = _secondsToFinalization;
@@ -162,21 +178,61 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         emit WithdrawalFeeUpdated(feePercentage);
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
-        return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
+    /// @notice Sets the address where withdrawal fees are sent.
+    /// @param _feeReceiver The address that will receive the withdrawal fees.
+    function setFeeReceiver(address _feeReceiver) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
+        require(_feeReceiver != address(0), "WithdrawalQueueManager: Fee receiver cannot be the zero address");
+        emit FeeReceiverUpdated(feeReceiver, _feeReceiver);
+        feeReceiver = _feeReceiver;
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  VIRTUAL  ---------------------------------------
+    //----------------------------------  COMPUTATIONS  ------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function calculateRedemptionAmount(
+        uint256 amount,
+        uint256 redemptionRateAtRequestTime
+    ) public view returns (uint256) {
+        return amount * redemptionRateAtRequestTime / (10 ** redeemableAsset.decimals());
+    }
+
+
+    /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
+    /// @param amount The amount from which the fee should be calculated.
+    /// @return fee The calculated fee.
+    function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public view returns (uint256) {
+        return (amount * requestWithdrawalFee) / FEE_PRECISION;
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIRTUAL  -----------------------------------------
     //--------------------------------------------------------------------------------------
 
 
-    function getRedemptionRate() public view virtual returns (uint256);
+    /// @notice Retrieves the current redemption rate for the asset in the unit of account.
+    /// @return The current redemption rate
+    function redemptionRate() public view virtual returns (uint256);
+
+    /// @notice Transfers redemption assets to a specified address based on a withdrawal request.
+    /// @param to The address to which the assets will be transferred.
+    /// @param request The withdrawal request containing details such as amount and fee.
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public virtual;
+
+    /// @notice Gets the total amount of redemption assets available for withdrawal in the unit of account.
+    /// @return The available amount of redemption assets
+    function availableRedemptionAmount() public view virtual returns (uint256);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
+
+
+    /// @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
+    /// @return surplus The amount of surplus redemption assets in the unit of account.
+    function surplusRedemptionAmount() public view returns (uint256) {
+        return availableRedemptionAmount() - pendingRequestedRedemptionAmount;
+    }
 
     /**
      * @notice Returns the details of a withdrawal request.
@@ -187,6 +243,9 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         request = withdrawalRequests[tokenId];
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
+        return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
+    }
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------

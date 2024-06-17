@@ -30,20 +30,34 @@ contract ynETHWithdrawalQueueManager is WithdrawalQueueManager, IynETHWithdrawal
         emit ETHReceived(msg.sender, msg.value);
     }
 
-    function getRedemptionRate() public view override returns (uint256) {
+    function redemptionRate() public view override returns (uint256) {
         return IynETH(address(redeemableAsset)).previewRedeem(YN_ETH_UNIT);
+    }
+
+    function availableRedemptionAmount() public view override returns (uint256) {
+        return address(this).balance;
     }
 
     function transferRedemptionAssets(address to, WithdrawalRequest memory request) public override {
 
-        uint256 ethAmount =  calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+        uint256 ethAmount = calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
 
         uint256 feeAmount = calculateFee(ethAmount, request.feeAtRequestTime);
         uint256 netEthAmount = ethAmount - feeAmount;
+
+        uint256 currentBalance = address(this).balance;
+        if (currentBalance < ethAmount) {
+            revert InsufficientBalance(currentBalance, ethAmount);
+        }
+
         (bool success, ) = payable(to).call{value: netEthAmount}("");
-        require(success, "Transfer failed");
+        if (!success) {
+            revert TransferFailed(netEthAmount, to);
+        }
         // Assuming there's a treasury or fee collector address where fees are collected
         (bool feeTransferSuccess, ) = payable(feeReceiver).call{value: feeAmount}("");
-        require(feeTransferSuccess, "Fee transfer failed");
+        if (!feeTransferSuccess) {
+            revert TransferFailed(feeAmount, to);
+        }
     }
 }
