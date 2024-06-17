@@ -145,7 +145,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     }
 
     modifier onlyStrategyManager() {
-        if(!tokenStakingNodesManager.hasStrategyManagerRole(msg.sender)) {
+        if(!tokenStakingNodesManager.hasEigenStrategyManagerRole(msg.sender)) {
             revert NotStrategyManager();
         }
         _;

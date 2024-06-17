@@ -14,7 +14,7 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
+import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {ynBase} from "src/ynBase.sol";
 
 interface ITokenStakingNodesManagerEvents {
@@ -45,8 +45,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
     error TooManyStakingNodes(uint256 maxNodeCount);
-    error NotLSDStakingNode(address sender, uint256 nodeId);
-    error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -64,6 +62,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
     IStrategyManager public strategyManager;
     IDelegationManager public delegationManager;
+    IEigenStrategyManager eigenStrategyManager;
 
     UpgradeableBeacon public upgradeableBeacon;
 
@@ -96,10 +95,9 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     }
 
     struct Init {
-        IERC20[] assets;
-        IStrategy[] strategies;
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
+        IEigenStrategyManager eigenStrategyManager;
         uint256 maxNodeCount;
         address admin;
         address pauser;
@@ -128,15 +126,9 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
-        for (uint256 i = 0; i < init.assets.length; i++) {
-            if (address(init.assets[i]) == address(0) || address(init.strategies[i]) == address(0)) {
-                revert ZeroAddress();
-            }
-            strategies[init.assets[i]] = init.strategies[i];
-        }
-
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
+        eigenStrategyManager = init.eigenStrategyManager;
         maxNodeCount = init.maxNodeCount;
     }
 
@@ -269,6 +261,10 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
     function nodesLength() public view returns (uint256) {
         return nodes.length;
+    }
+
+    function hasEigenStrategyManagerRole(address caller) public view returns (bool) {
+        return caller == address(eigenStrategyManager);
     }
 
     //--------------------------------------------------------------------------------------
