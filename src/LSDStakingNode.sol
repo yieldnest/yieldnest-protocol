@@ -10,13 +10,15 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IynLSD} from "src/interfaces/IynLSD.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 interface ILSDStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
+    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
+    event QueuedWithdrawals(IERC20[] indexed assets, uint256[] sharesToWithdraw, bytes32[] withdrawalRoots);
 }
 
 /**
@@ -34,12 +36,15 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
     error ZeroAddress();
     error NotLSDRestakingManager();
+    error NotStrategyManager();
+    error UnexpectedWithdrawnBalance(IERC20 asset, uint256 balanceBefore, uint256 balanceAfter, uint256 expectedDelta);
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IynLSD public ynLSD;
+    ITokenStakingNodesManager public override tokenStakingNodesManager;
     uint256 public nodeId;
 
     //--------------------------------------------------------------------------------------
@@ -52,10 +57,10 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
     function initialize(Init memory init)
         public
-        notZeroAddress(address(init.ynLSD))
+        notZeroAddress(address(init.tokenStakingNodesManager))
         initializer {
         __ReentrancyGuard_init();
-        ynLSD = init.ynLSD;
+        tokenStakingNodesManager = init.tokenStakingNodesManager;
         nodeId = init.nodeId;
     }
 
@@ -64,36 +69,87 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //--------------------------------------------------------------------------------------
 
     /**
-     * @notice Deposits multiple assets into their respective strategies on Eigenlayer by retrieving them from ynLSD.
+     * @notice Deposits multiple assets into their respective strategies on Eigenlayer by retrieving them from tokenStakingNodesManager.
      * @dev Iterates through the provided arrays of assets and amounts, depositing each into its corresponding strategy.
      * @param assets An array of IERC20 tokens to be deposited.
      * @param amounts An array of amounts corresponding to each asset to be deposited.
      */
     function depositAssetsToEigenlayer(
         IERC20[] memory assets,
-        uint256[] memory amounts
+        uint256[] memory amounts,
+        IStrategy[] memory strategies
     )
         external
         nonReentrant
-        onlyLSDRestakingManager
+        onlyStrategyManager
     {
-        IStrategyManager strategyManager = ynLSD.strategyManager();
+        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
             uint256 amount = amounts[i];
-            IStrategy strategy = ynLSD.strategies(asset);
+            IStrategy strategy = strategies[i];
 
-            uint256 balanceBefore = asset.balanceOf(address(this));
-            ynLSD.retrieveAsset(nodeId, asset, amount);
-            uint256 balanceAfter = asset.balanceOf(address(this));
-            uint256 retrievedAmount = balanceAfter - balanceBefore;
+            asset.forceApprove(address(strategyManager), amount);
 
-            asset.forceApprove(address(strategyManager), retrievedAmount);
-
-            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, retrievedAmount);
-            emit DepositToEigenlayer(asset, strategy, retrievedAmount, eigenShares);
+            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
         }
+    }
+
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EIGENLAYER WITHDRAWALS  --------------------------
+    //--------------------------------------------------------------------------------------
+
+    function queueWithdrawals(
+        IERC20[] memory assets,
+        uint256[] memory sharesToWithdraw
+    ) external onlyLSDRestakingManager returns (bytes32[] memory withdrawalRoots) {
+        IDelegationManager.QueuedWithdrawalParams[] memory withdrawals =
+            new IDelegationManager.QueuedWithdrawalParams[](assets.length);
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = ynLSD.strategies(assets[i]);
+
+            uint256[] memory shares = new uint256[](1);
+            shares[0] = sharesToWithdraw[i];
+
+            withdrawals[i] = IDelegationManager.QueuedWithdrawalParams({
+                strategies: strategies,
+                shares: shares,
+                withdrawer: address(this)
+            });
+        }
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+        withdrawalRoots = delegationManager.queueWithdrawals(withdrawals);
+
+        emit QueuedWithdrawals(assets, sharesToWithdraw, withdrawalRoots);
+    }
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes,
+        IERC20[][] calldata tokens
+    ) external onlyLSDRestakingManager {
+
+        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            receiveAsTokens[i] = true;
+        }
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals,
+            tokens,
+            middlewareTimesIndexes,
+            receiveAsTokens
+        );
+
+        emit CompletedQueuedWithdrawals(withdrawals);
     }
 
     //--------------------------------------------------------------------------------------
@@ -110,7 +166,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         bytes32 approverSalt
     ) public virtual onlyLSDRestakingManager {
 
-        IDelegationManager delegationManager = ynLSD.delegationManager();
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
 
         emit Delegated(operator, 0);
@@ -121,7 +177,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
      */
     function undelegate() public override onlyLSDRestakingManager {
 
-        IDelegationManager delegationManager = IDelegationManager(address(ynLSD.delegationManager()));
+        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
         bytes32[] memory withdrawalRoots = delegationManager.undelegate(address(this));
 
         emit Undelegated(withdrawalRoots);
@@ -132,7 +188,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
      * @param asset The asset to be recovered
      */
     function recoverAssets(IERC20 asset) external onlyLSDRestakingManager {
-        asset.safeTransfer(address(ynLSD), asset.balanceOf(address(this)));
+        asset.safeTransfer(address(tokenStakingNodesManager), asset.balanceOf(address(this)));
     }
 
     //--------------------------------------------------------------------------------------
@@ -140,8 +196,15 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //--------------------------------------------------------------------------------------
 
     modifier onlyLSDRestakingManager() {
-        if (!ynLSD.hasLSDRestakingManagerRole(msg.sender)) {
+        if (!tokenStakingNodesManager.hasLSDRestakingManagerRole(msg.sender)) {
             revert NotLSDRestakingManager();
+        }
+        _;
+    }
+
+    modifier onlyStrategyManager() {
+        if(!tokenStakingNodesManager.hasEigenStrategyManagerRole(msg.sender)) {
+            revert NotStrategyManager();
         }
         _;
     }

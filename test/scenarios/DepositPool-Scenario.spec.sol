@@ -25,6 +25,7 @@ contract MockynETH is IynETH {
     function processWithdrawnETH() external payable {}
     function approve(address spender, uint256 value) external returns (bool) {}
     function allowance(address owner, address spender) external view returns (uint256) {}
+    function previewRedeem(uint256 shares) external view returns (uint256 assets) {}
 }
 
 contract PooledDepositsScenarioTest is IntegrationBaseTest {
