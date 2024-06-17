@@ -37,7 +37,9 @@ contract ynLSD is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
     error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
+    error AssetRetrievalLengthMismatch(uint256 assetsCount, uint256 amountsCount, uint256 destinationsCount);
     error NotStrategyManager(address msgSender);
+    error InsufficientAssetBalance(IERC20 asset, uint256 balance, uint256 requestedAmount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -299,14 +301,21 @@ contract ynLSD is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
         uint256[] calldata amounts,
         address[] calldata destinations
     ) public onlyStrategyManager {
-        require(assetsToRetrieve.length == amounts.length && amounts.length == destinations.length, "LengthMismatch");
+        if (assetsToRetrieve.length != amounts.length || amounts.length != destinations.length) {
+            revert AssetRetrievalLengthMismatch(assetsToRetrieve.length, amounts.length, destinations.length);
+        }
 
         for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
             IERC20 asset = assetsToRetrieve[i];
-            if (!assetData[address(asset)].active) {
+            AssetData memory retrievedAssetData = assetData[address(asset)];
+            if (!retrievedAssetData.active) {
                 revert UnsupportedAsset(asset);
             }
+            if (amounts[i] > retrievedAssetData.balance) {
+                revert InsufficientAssetBalance(asset, retrievedAssetData.balance, amounts[i]);
+            }
 
+            assetData[address(asset)].balance -= amounts[i];
             IERC20(asset).safeTransfer(destinations[i], amounts[i]);
             emit AssetRetrieved(assets[i], amounts[i], destinations[i]);
         }
