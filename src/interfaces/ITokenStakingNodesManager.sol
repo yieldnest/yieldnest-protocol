@@ -23,5 +23,6 @@ interface ITokenStakingNodesManager {
 
     function getAllNodes() external view returns (ILSDStakingNode[] memory);
     function nodesLength() external view returns (uint256);
+    function hasEigenStrategyManagerRole(address) external view returns (bool);
 
 }
