@@ -147,6 +147,8 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             revert ZeroAmount();
         }
 
+        asset.safeTransferFrom(sender, address(this), amount);
+
         // Convert the value of the asset deposited to ETH
         uint256 assetAmountInETH = convertToUnitOfAccount(asset, amount);
         // Calculate how many shares to be minted using the same formula as ynETH
@@ -154,10 +156,6 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
         // Mint the calculated shares to the receiver 
         _mint(receiver, shares);
-
-        // Transfer assets in after shares are computed since _convertToShares relies on totalAssets
-        // which inspects asset.balanceOf(address(this))
-        asset.safeTransferFrom(sender, address(this), amount);
 
         assetData[address(asset)].balance += amount;        
 
