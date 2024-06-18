@@ -9,6 +9,7 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
@@ -24,7 +25,7 @@ interface IWithdrawalQueueManagerEvents {
  * 
  */
 
-abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -34,7 +35,6 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     error ZeroAddress();
     error WithdrawalAlreadyProcessed(uint256 tokenId);
     error InsufficientBalance(uint256 currentBalance, uint256 requestedBalance);
-    error TransferFailed(uint256 amount, address destination);
     error CallerNotOwnerNorApproved(uint256 tokenId, address caller);
     error AmountExceedsSurplus(uint256 requestedAmount, uint256 availableSurplus);
     
@@ -59,6 +59,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //--------------------------------------------------------------------------------------
 
     IRedeemableAsset public redeemableAsset;
+    IRedemptionAssetsVault public redemptionAssetsVault;
 
     uint256 public _tokenIdCounter;
 
@@ -82,23 +83,27 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     struct Init {
         string name;
         string symbol;
-        address redeemableAsset;
+        IRedeemableAsset redeemableAsset;
+        IRedemptionAssetsVault redemptionAssetsVault;
         address admin;
         address withdrawalQueueAdmin;
         uint256 withdrawalFee;
         address feeReceiver;
+
     }
 
     function initialize(Init memory init)
         public
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.redeemableAsset))
+        notZeroAddress(address(init.redemptionAssetsVault))
         notZeroAddress(address(init.withdrawalQueueAdmin))
         notZeroAddress(address(init.feeReceiver))
     
         initializer {
         __ERC721_init(init.name, init.symbol);
-        redeemableAsset = IRedeemableAsset(init.redeemableAsset);
+        redeemableAsset = init.redeemableAsset;
+        redemptionAssetsVault = init.redemptionAssetsVault;
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
@@ -116,7 +121,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         
         redeemableAsset.transferFrom(msg.sender, address(this), amount);
 
-        uint256 currentRate = redemptionRate();
+        uint256 currentRate = redemptionAssetsVault.redemptionRate();
         uint256 tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
             amount: amount,
@@ -164,13 +169,16 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
         uint256 netUnitOfAccountAmount = unitOfAccountAmount - feeAmount;
 
-        uint256 currentBalance = availableRedemptionAssets();
+        uint256 currentBalance = redemptionAssetsVault.availableRedemptionAssets(address(this));
         if (currentBalance < unitOfAccountAmount) {
             revert InsufficientBalance(currentBalance, unitOfAccountAmount);
         }
 
-        transferRedemptionAssets(receiver, netUnitOfAccountAmount);
-        transferRedemptionAssets(feeReceiver, feeAmount);
+        redemptionAssetsVault.transferRedemptionAssets(receiver, netUnitOfAccountAmount);
+        
+        if (feeAmount > 0) {
+            redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount);
+        }
 
         emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
     }
@@ -232,30 +240,10 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     //----------------------------------  REDEMPTION ASSETS  -------------------------------
     //--------------------------------------------------------------------------------------
 
-
-    /// @notice Transfers redemption assets to a specified address based on redemption.
-    /// @dev This is only for INTERNAL USE
-    /// @param to The address to which the assets will be transferred.
-    /// @param amount The amount in unit of account
-    function transferRedemptionAssets(address to, uint256 amount) internal virtual;
-
-    /// @notice Withdraws redemption assets from the queue's balance
-    /// @dev This is only for INTERNAL USE
-    /// @param amount The amount in unit of account
-    function withdrawRedemptionAssets(uint256 amount) internal virtual;
-
-    /// @notice Retrieves the current redemption rate for the asset in the unit of account.
-    /// @return The current redemption rate
-    function redemptionRate() public view virtual returns (uint256);
-
-    /// @notice Gets the total amount of redemption assets available for withdrawal in the unit of account.
-    /// @return The available amount of redemption assets
-    function availableRedemptionAssets() public view virtual returns (uint256);
-
     /// @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
     /// @return surplus The amount of surplus redemption assets in the unit of account.
     function surplusRedemptionAssets() public view returns (uint256) {
-        uint256 availableAmount = availableRedemptionAssets();
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets(address(this));
         if (availableAmount > pendingRequestedRedemptionAmount) {
             return availableAmount - pendingRequestedRedemptionAmount;
         } 
@@ -266,7 +254,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     /// @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
     /// @return deficit The amount of deficit redemption assets in the unit of account.
     function deficitRedemptionAssets() public view returns (uint256) {
-        uint256 availableAmount = availableRedemptionAssets();
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets(address(this));
         if (pendingRequestedRedemptionAmount > availableAmount) {
             return pendingRequestedRedemptionAmount - availableAmount;
         }
@@ -280,7 +268,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         if (amount > surplus) {
             revert AmountExceedsSurplus(amount, surplus);
         }
-        withdrawRedemptionAssets(amount);
+        redemptionAssetsVault.withdrawRedemptionAssets(amount);
     }
 
     //--------------------------------------------------------------------------------------
@@ -322,6 +310,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
     }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
