@@ -11,11 +11,18 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
 interface IWithdrawalQueueManagerEvents {
-    event WithdrawalRequested(uint256 indexed tokenId, address requester, uint256 amount);
+    event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
 }
+
+/**
+ * @title Withdrawal Queue Manager for Redeemable Assets
+ * @dev Manages the queue of withdrawal requests for redeemable assets, handling fees, finalization times, and claims.
+ * This contract extends ERC721 to represent each withdrawal request as a unique token.
+ * 
+ */
 
 abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
 
@@ -25,16 +32,21 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     error NotFinalized(uint256 currentTimestamp, uint256 requestTimestamp, uint256 queueDuration);
     error ZeroAddress();
-    error WithdrawalAlreadyProcessed();
+    error WithdrawalAlreadyProcessed(uint256 tokenId);
     error InsufficientBalance(uint256 currentBalance, uint256 requestedBalance);
     error TransferFailed(uint256 amount, address destination);
     error CallerNotOwnerNorApproved(uint256 tokenId, address caller);
+    error AmountExceedsSurplus(uint256 requestedAmount, uint256 availableSurplus);
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /// @dev Role identifier for administrators who can manage the withdrawal queue settings.
     bytes32 public constant WITHDRAWAL_QUEUE_ADMIN_ROLE = keccak256("WITHDRAWAL_QUEUE_ADMIN_ROLE");
+
+    /// @dev Role identifier for accounts authorized to withdraw surplus redemption assets.
+    bytes32 public constant REDEMPTION_ASSET_WITHDRAWER_ROLE = keccak256("REDEMPTION_ASSET_WITHDRAWER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -134,7 +146,7 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         WithdrawalRequest memory request = withdrawalRequests[tokenId];
 
         if (request.processed) {
-            revert WithdrawalAlreadyProcessed();
+            revert WithdrawalAlreadyProcessed(tokenId);
         }
 
         if (!isFinalized(request)) {
@@ -147,7 +159,18 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
 
-        transferRedemptionAssets(receiver, request);
+        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+
+        uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
+        uint256 netUnitOfAccountAmount = unitOfAccountAmount - feeAmount;
+
+        uint256 currentBalance = availableRedemptionAssets();
+        if (currentBalance < unitOfAccountAmount) {
+            revert InsufficientBalance(currentBalance, unitOfAccountAmount);
+        }
+
+        transferRedemptionAssets(receiver, netUnitOfAccountAmount);
+        transferRedemptionAssets(feeReceiver, feeAmount);
 
         emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
     }
@@ -206,32 +229,33 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  VIRTUAL  -----------------------------------------
+    //----------------------------------  REDEMPTION ASSETS  -------------------------------
     //--------------------------------------------------------------------------------------
 
+
+    /// @notice Transfers redemption assets to a specified address based on redemption.
+    /// @dev This is only for INTERNAL USE
+    /// @param to The address to which the assets will be transferred.
+    /// @param amount The amount in unit of account
+    function transferRedemptionAssets(address to, uint256 amount) internal virtual;
+
+    /// @notice Withdraws redemption assets from the queue's balance
+    /// @dev This is only for INTERNAL USE
+    /// @param amount The amount in unit of account
+    function withdrawRedemptionAssets(uint256 amount) internal virtual;
 
     /// @notice Retrieves the current redemption rate for the asset in the unit of account.
     /// @return The current redemption rate
     function redemptionRate() public view virtual returns (uint256);
 
-    /// @notice Transfers redemption assets to a specified address based on a withdrawal request.
-    /// @param to The address to which the assets will be transferred.
-    /// @param request The withdrawal request containing details such as amount and fee.
-    function transferRedemptionAssets(address to, WithdrawalRequest memory request) public virtual;
-
     /// @notice Gets the total amount of redemption assets available for withdrawal in the unit of account.
     /// @return The available amount of redemption assets
-    function availableRedemptionAmount() public view virtual returns (uint256);
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  VIEWS  -------------------------------------------
-    //--------------------------------------------------------------------------------------
-
+    function availableRedemptionAssets() public view virtual returns (uint256);
 
     /// @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
     /// @return surplus The amount of surplus redemption assets in the unit of account.
-    function surplusRedemptionAmount() public view returns (uint256) {
-        uint256 availableAmount = availableRedemptionAmount();
+    function surplusRedemptionAssets() public view returns (uint256) {
+        uint256 availableAmount = availableRedemptionAssets();
         if (availableAmount > pendingRequestedRedemptionAmount) {
             return availableAmount - pendingRequestedRedemptionAmount;
         } 
@@ -241,14 +265,27 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
 
     /// @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
     /// @return deficit The amount of deficit redemption assets in the unit of account.
-    function deficitRedemptionAmount() public view returns (uint256) {
-        uint256 availableAmount = availableRedemptionAmount();
+    function deficitRedemptionAssets() public view returns (uint256) {
+        uint256 availableAmount = availableRedemptionAssets();
         if (pendingRequestedRedemptionAmount > availableAmount) {
             return pendingRequestedRedemptionAmount - availableAmount;
         }
         
         return 0;
     }
+
+    /// @notice Withdraws surplus redemption assets to a specified address.
+    function withdrawSurplusRedemptionAssets(uint256 amount) external onlyRole(REDEMPTION_ASSET_WITHDRAWER_ROLE) {
+        uint256 surplus = surplusRedemptionAssets();
+        if (amount > surplus) {
+            revert AmountExceedsSurplus(amount, surplus);
+        }
+        withdrawRedemptionAssets(amount);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  FINALITY  ----------------------------------------
+    //--------------------------------------------------------------------------------------
 
     /**
      * @notice Checks if a withdrawal request with a given index is finalized.
@@ -268,6 +305,10 @@ abstract contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgra
     function isFinalized(WithdrawalRequest memory request) public view returns (bool) {
         return block.timestamp >= request.creationTimestamp + secondsToFinalization;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIEWS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
 
     /**
      * @notice Returns the details of a withdrawal request.
