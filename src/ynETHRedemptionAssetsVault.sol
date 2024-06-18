@@ -16,6 +16,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
 
     error TransferFailed(uint256 amount, address destination);
     error ZeroAddress();
+    error InsufficientAssetBalance(address asset, uint256 requestedAmount, uint256 balance);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -66,6 +67,12 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     }
 
     function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) {
+
+        uint256 balance = availableRedemptionAssets(msg.sender);
+        if (balance < amount) {
+            revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
+        }
+
         (bool success, ) = payable(to).call{value: amount}("");
         if (!success) {
             revert TransferFailed(amount, to);

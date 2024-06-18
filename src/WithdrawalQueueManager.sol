@@ -37,6 +37,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     error InsufficientBalance(uint256 currentBalance, uint256 requestedBalance);
     error CallerNotOwnerNorApproved(uint256 tokenId, address caller);
     error AmountExceedsSurplus(uint256 requestedAmount, uint256 availableSurplus);
+    error AmountMustBeGreaterThanZero();
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -117,7 +118,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //--------------------------------------------------------------------------------------
 
     function requestWithdrawal(uint256 amount) external nonReentrant {
-        require(amount > 0, "WithdrawalQueueManager: amount must be greater than 0");
+        if (amount <= 0) {
+            revert AmountMustBeGreaterThanZero();
+        }
         
         redeemableAsset.transferFrom(msg.sender, address(this), amount);
 
