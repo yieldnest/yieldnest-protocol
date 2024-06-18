@@ -9,6 +9,7 @@ import "./ScenarioBaseTest.sol";
 contract TimelockTest is ScenarioBaseTest {
 
     event Upgraded(address indexed implementation);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     uint256 public constant DELAY = 3 days;
 
@@ -92,6 +93,60 @@ contract TimelockTest is ScenarioBaseTest {
         );
 
         vm.stopPrank();
+    }
+
+    // @note: change the owner of the contract from the timelock to the default signer
+    function testSwapTimelockOwnership() public {
+        _updateProxyAdminOwnersToTimelock();
+
+        // operation data
+        address _newOwner = actors.eoa.DEFAULT_SIGNER;
+        address _target = getTransparentUpgradeableProxyAdminAddress(address(yneth)); // proxy admin
+        assertEq(Ownable(_target).owner(), address(timelock), "testSwapTimelockOwnership: E0"); // check current owner
+
+        uint256 _value = 0;
+        bytes memory _data = abi.encodeWithSignature(
+            "transferOwnership(address)",
+            _newOwner, // new owner
+            "" // no data
+        );
+        bytes32 _predecessor = bytes32(0);
+        bytes32 _salt = bytes32(0);
+        uint256 _delay = 3 days;
+
+        vm.startPrank(actors.eoa.DEFAULT_SIGNER);
+
+        // schedule
+        timelock.schedule(
+            _target,
+            _value,
+            _data,
+            _predecessor,
+            _salt,
+            _delay
+        );
+
+        // skip delay duration
+        skip(DELAY);
+
+        vm.expectEmit(address(_target));
+        emit OwnershipTransferred(
+            address(timelock), // oldOwner
+            _newOwner // newOwner
+        );
+
+        // execute
+        timelock.execute(
+            _target,
+            _value,
+            _data,
+            _predecessor,
+            _salt
+        );
+
+        vm.stopPrank();
+
+        assertEq(Ownable(_target).owner(), _newOwner, "testSwapTimelockOwnership: E1");
     }
 
     // ============================================================================================
