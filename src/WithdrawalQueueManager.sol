@@ -38,6 +38,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     error CallerNotOwnerNorApproved(uint256 tokenId, address caller);
     error AmountExceedsSurplus(uint256 requestedAmount, uint256 availableSurplus);
     error AmountMustBeGreaterThanZero();
+    error FeePercentageExceedsLimit();
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -207,15 +208,19 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     /// @notice Sets the withdrawal fee percentage.
     /// @param feePercentage The fee percentage in basis points.
     function setWithdrawalFee(uint256 feePercentage) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
-        require(feePercentage <= FEE_PRECISION, "WithdrawalQueueManager: Fee percentage cannot exceed 100%");
+        if (feePercentage > FEE_PRECISION) {
+            revert FeePercentageExceedsLimit();
+        }
         withdrawalFee = feePercentage;
         emit WithdrawalFeeUpdated(feePercentage);
     }
 
     /// @notice Sets the address where withdrawal fees are sent.
     /// @param _feeReceiver The address that will receive the withdrawal fees.
-    function setFeeReceiver(address _feeReceiver) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
-        require(_feeReceiver != address(0), "WithdrawalQueueManager: Fee receiver cannot be the zero address");
+    function setFeeReceiver(
+        address _feeReceiver
+        ) external notZeroAddress(_feeReceiver) onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
+
         emit FeeReceiverUpdated(feeReceiver, _feeReceiver);
         feeReceiver = _feeReceiver;
     }
