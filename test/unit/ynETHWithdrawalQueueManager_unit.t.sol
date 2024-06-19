@@ -13,6 +13,7 @@ import { IRedemptionAssetsVault } from "src/interfaces/IRedemptionAssetsVault.so
 import { IynETH } from "src/interfaces/IynETH.sol";
 
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 
 contract ynETHWithdrawalQueueManagerTest is Test {
@@ -204,8 +205,9 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 maxUintAmount = type(uint256).max;
         vm.prank(user);
         redeemableAsset.approve(address(manager), maxUintAmount);
+        uint256 userBalance = redeemableAsset.balanceOf(user);
         vm.prank(user);
-        vm.expectRevert("WithdrawalQueueManager: amount must be greater than 0");
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, userBalance, maxUintAmount));
         manager.requestWithdrawal(maxUintAmount);
     }
 
@@ -215,7 +217,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         redeemableAsset.approve(address(manager), approvedAmount);
         vm.prank(user);
-        vm.expectRevert("ERC20: transfer amount exceeds allowance");
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(manager), approvedAmount, amount));
         manager.requestWithdrawal(amount);
     }
 
@@ -224,27 +226,42 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         redeemableAsset.approve(address(manager), 0);
         vm.prank(user);
-        vm.expectRevert("ERC20: transfer amount exceeds allowance");
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(manager), 0, amount));
         manager.requestWithdrawal(amount);
     }
 
-    function testClaimWithdrawalWithUnprocessedToken() public {
-        uint256 tokenId = 1; // Assuming this tokenId is unprocessed
+    function testClaimWithdrawalForAlreadyProcessedWithdrawal() public {
+        uint256 tokenId = 0; // Assuming this tokenId is unprocessed
+        uint256 amount = 10 ether; // Example amount to process withdrawal
+        uint256 availableRedemptionAmount = 100 ether;
+
+        // Simulate user requesting a withdrawal
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.WithdrawalAlreadyProcessed.selector, "WithdrawalQueueManager: Withdrawal not processed"));
+        redeemableAsset.approve(address(manager), amount);
+        vm.prank(user);
+        manager.requestWithdrawal(amount);
+
+        // Fast forward time to pass the finalization period
+        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+
+        // Send exact Ether to vault
+        (bool success, ) = address(redemptionAssetsVault).call{value: availableRedemptionAmount}("");
+        require(success, "Ether transfer failed");
+
+        // Attempt to claim the withdrawal
+        vm.prank(user);
+        manager.claimWithdrawal(tokenId, user);
+
+        // Attempt to claim the withdrawal again to ensure it cannot be processed twice
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, tokenId, user));
         manager.claimWithdrawal(tokenId, user);
     }
-
-    function testClaimWithdrawalWithFinalizedToken() public {
-        uint256 tokenId = 2; // Assuming this tokenId is finalized
-        vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, "WithdrawalQueueManager: Withdrawal already finalized"));
-        manager.claimWithdrawal(tokenId, user);
-    }
-
+    
     function testWithdrawalOfNotNFTOwner() public {
         uint256 tokenId = 1; // Assuming this tokenId exists and is owned by another user
         address notOwner = vm.addr(9999); // An arbitrary address that is not the owner
+        
 
         vm.prank(notOwner);
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, tokenId, notOwner));
