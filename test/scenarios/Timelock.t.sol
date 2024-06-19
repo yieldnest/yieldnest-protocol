@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
+import {DeployTimelock} from "script/DeployTimelock.s.sol";
+
 import "./ScenarioBaseTest.sol";
 
-contract TimelockTest is ScenarioBaseTest {
+contract TimelockTest is ScenarioBaseTest, DeployTimelock {
 
     event Upgraded(address indexed implementation);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -14,8 +16,6 @@ contract TimelockTest is ScenarioBaseTest {
     uint256 public constant DELAY = 3 days;
 
     address[] public proxyContracts;
-
-    TimelockController public timelock;
 
     // ============================================================================================
     // Setup
@@ -32,16 +32,7 @@ contract TimelockTest is ScenarioBaseTest {
             address(consensusLayerReceiver)
         ];
 
-        address[] memory _proposers = new address[](1);
-        _proposers[0] = actors.eoa.DEFAULT_SIGNER;
-        address[] memory _executors = new address[](1);
-        _executors[0] = actors.eoa.DEFAULT_SIGNER;
-        timelock = new TimelockController(
-            DELAY,
-            _proposers,
-            _executors,
-            address(0) // no admin
-        );
+        DeployTimelock.run();
     }
 
     // ============================================================================================
@@ -65,7 +56,7 @@ contract TimelockTest is ScenarioBaseTest {
         bytes32 _salt = bytes32(0);
         uint256 _delay = 3 days;
 
-        vm.startPrank(actors.eoa.DEFAULT_SIGNER);
+        vm.startPrank(actors.admin.ADMIN);
 
         // schedule
         timelock.schedule(
@@ -114,7 +105,7 @@ contract TimelockTest is ScenarioBaseTest {
         bytes32 _salt = bytes32(0);
         uint256 _delay = 3 days;
 
-        vm.startPrank(actors.eoa.DEFAULT_SIGNER);
+        vm.startPrank(actors.admin.ADMIN);
 
         // schedule
         timelock.schedule(
