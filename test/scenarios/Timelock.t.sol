@@ -32,6 +32,7 @@ contract TimelockTest is ScenarioBaseTest, DeployTimelock {
             address(consensusLayerReceiver)
         ];
 
+        (, privateKey) = makeAddrAndKey("deployer");
         DeployTimelock.run();
     }
 
