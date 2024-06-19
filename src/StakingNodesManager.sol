@@ -123,7 +123,7 @@ contract StakingNodesManager is
 
     bool public validatorRegistrationPaused;
 
-    address public withdrawalQueue;
+    address public withdrawalAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -159,7 +159,7 @@ contract StakingNodesManager is
     }
 
     struct Init2 {
-        address withdrawalQueue;
+        address withdrawalAssetsVault;
         address withdrawalManager;
     }
     
@@ -219,13 +219,13 @@ contract StakingNodesManager is
 
     function initialize2(Init2 calldata init)
         external
-        notZeroAddress(address(init.withdrawalQueue))
+        notZeroAddress(address(init.withdrawalAssetsVault))
         notZeroAddress(init.withdrawalManager)
         reinitializer(2)
         onlyRole(DEFAULT_ADMIN_ROLE) {
         
         // TODO: review role access here for what can execute this
-        withdrawalQueue = init.withdrawalQueue;
+        withdrawalAssetsVault = init.withdrawalAssetsVault;
         _grantRole(WITHDRAWAL_MANAGER_ROLE, init.withdrawalManager);
     }
 
@@ -487,7 +487,7 @@ contract StakingNodesManager is
         }
 
         if (amountToQueue > 0) {
-            (bool success, ) = address(withdrawalQueue).call{value: amountToQueue}("");
+            (bool success, ) = address(withdrawalAssetsVault).call{value: amountToQueue}("");
             if (!success) {
                 revert TransferFailed();
             }
