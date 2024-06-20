@@ -22,7 +22,6 @@ interface IynEigen {
 
     function retrieveAssets(
         IERC20[] calldata assetsToRetrieve,
-        uint256[] calldata amounts,
-        address[] calldata destinations
+        uint256[] calldata amounts
     ) external;
 }

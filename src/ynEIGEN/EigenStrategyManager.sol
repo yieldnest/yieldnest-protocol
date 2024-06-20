@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -15,7 +16,8 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 contract EigenStrategyManager is 
         IEigenStrategyManager,
         Initializable,
-        AccessControlUpgradeable
+        AccessControlUpgradeable,
+        ReentrancyGuardUpgradeable
     {
 
     //--------------------------------------------------------------------------------------
@@ -36,6 +38,13 @@ contract EigenStrategyManager is
 
     /// @notice Controls the strategy actions
     bytes32 public constant STRATEGY_CONTROLLER_ROLE = keccak256("STRATEGY_CONTROLLER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    IwstETH public constant wstETH = IERC20(0x7f39C581F595B53c5cC47F706BDE9B7F4AEADe64);
+    IERC4626 public constant woETH = IERC20(0xdcee70654261af21c44c093c300ed3bb97b78192);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -105,7 +114,7 @@ contract EigenStrategyManager is
         uint256 nodeId,
         IERC20[] calldata assets,
         uint256[] calldata amounts
-    ) external onlyRole(STRATEGY_CONTROLLER_ROLE) {
+    ) external onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
         require(assets.length == amounts.length, "Assets and amounts length mismatch");
 
         ILSDStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
@@ -113,25 +122,46 @@ contract EigenStrategyManager is
 
         IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
+            require(amounts[i] > 0, "Staking amount must be greater than zero");
+            IStrategy strategy = address(strategies[asset]);
+            require(address(strategy) != address(0), "No strategy for asset");
             strategiesForNode[i] = strategies[assets[i]];
         }
+        // Transfer assets to node
+        ynEigen.retrieveAssets(assets, amounts);
 
-        address[] memory destinations = new address[](assets.length);
+        IERC20[] memory depositAssets = new IERC20[](assets.length);
+        uint256[] memory depositAmounts = new uint256[](amounts.length);
+
         for (uint256 i = 0; i < assets.length; i++) {
-            IERC20 asset = assets[i];
-            uint256 amount = amounts[i];
+            (IERC20 depositAsset, uint256 depositAmount) = toEigenLayerDeposit(assets[i], amounts[i]);
+            depositAssets[i] = depositAsset;
+            depositAmounts[i] = depositAmount;
 
-            require(amount > 0, "Staking amount must be greater than zero");
-            require(address(strategies[asset]) != address(0), "No strategy for asset");
-
-            destinations[i] = address(node);
+            // Transfer each asset to the node
+            depositAsset.transfer(address(node), depositAmount);
         }
 
+        node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
+    }
 
-        // Transfer assets to node
-        ynEigen.retrieveAssets(assets, amounts, destinations);
-
-        node.depositAssetsToEigenlayer(assets, amounts, strategiesForNode);
+    function toEigenLayerDeposit(
+        IERC20 asset,
+        uint256 amount
+    ) internal returns (IERC20 depositAsset, uint256 depositAmount) {
+        if (address(asset) == address(wstETH)) {
+            // Adjust for wstETH
+            depositAsset = IERC20(wstETH.stETH());
+            depositAmount = wstETH.unwrap(amount); 
+        } else if (address(asset) == address(woETH)) {
+            // Adjust for woeth
+            depositAsset = woETH.asset(); 
+            depositAmount = woETH.redeem(amount); 
+        } else {
+            // No adjustment needed
+            depositAsset = asset;
+            depositAmount = amount;
+        }   
     }
 
     //--------------------------------------------------------------------------------------
@@ -159,10 +189,26 @@ contract EigenStrategyManager is
                 uint256 balanceNode = asset.balanceOf(address(node));
                 stakedBalances[j] += balanceNode;
 
-                uint256 strategyBalance = strategies[asset].userUnderlyingView((address(node)));
+                uint256 strategyBalance = toUserAssetAmount(
+                    asset,
+                    strategies[asset].userUnderlyingView((address(node)))
+                );
                 stakedBalances[j] += strategyBalance;
             }
         }
+    }
+
+    function toUserAssetAmount(IERC20 asset, uint256 userUnderlyingView) public view returns (uint256) {
+        uint256 underlyingAmount;
+        if (address(asset) == address(wstETH)) {
+            // Adjust for wstETH using view method, converting stETH to wstETH
+            return wstETH.getWstETHByStETH(userUnderlyingView);
+        }
+        if (address(asset) == address(woETH)) {
+            // Adjust for woETH using view method, converting oETH to woETH
+            return woETH.previewDeposit(userUnderlyingView);
+        } 
+        return userUnderlyingView;
     }
 
     //--------------------------------------------------------------------------------------

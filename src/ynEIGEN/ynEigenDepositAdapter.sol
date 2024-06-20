@@ -12,18 +12,18 @@ import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/pr
 contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
     IynEigen public ynEigen;
     IWstETH public wstETH;
-    IERC4626 public woeth;
+    IERC4626 public woETH;
     struct Init {
         address ynEigen;
         address wstETH;
-        address woeth;
+        address woETH;
         address admin;
     }
 
     function initialize(Init memory init) public initializer {
         ynEigen = IynEigen(init.ynEigen);
         wstETH = IWstETH(init.wstETH);
-        woeth = IERC4626(init.woeth);
+        woETH = IERC4626(init.woETH);
         _setupRole(DEFAULT_ADMIN_ROLE, init.admin);
     }
 
@@ -37,11 +37,11 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
     }
 
     function depositOETH(uint256 amount, address receiver) external {
-        IERC20 oeth = IERC20(woeth.asset());
+        IERC20 oeth = IERC20(woETH.asset());
         oeth.transferFrom(msg.sender, address(this), amount);
-        oeth.approve(address(woeth), amount);
-        uint256 woethShares = woeth.deposit(amount, address(this));
-        woeth.approve(address(ynEigen), woethShares);
-        ynEigen.deposit(address(oeth), woethShares, receiver);
+        oeth.approve(address(woETH), amount);
+        uint256 woETHShares = woETH.deposit(amount, address(this));
+        woETH.approve(address(ynEigen), wwoETHShares);
+        ynEigen.deposit(address(oeth), woETHShares, receiver);
     }
 }
