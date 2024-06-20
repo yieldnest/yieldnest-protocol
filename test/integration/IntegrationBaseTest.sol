@@ -15,8 +15,6 @@ import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {ynETH} from "src/ynETH.sol";
-import {ynLSD} from "src/ynLSD.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
 import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {ynViewer} from "src/ynViewer.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
@@ -56,10 +54,8 @@ contract IntegrationBaseTest is Test, Utils {
 
     // Assets
     ynETH public yneth;
-    ynLSD public ynlsd;
+    ynLSD public ynLSD;
 
-    // Oracles
-    YieldNestOracle public yieldNestOracle;
 
     // Eigen
     IEigenPodManager public eigenPodManager;
