@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 interface CoinbaseToken {
     function exchangeRate() external view returns (uint256);
@@ -44,10 +45,10 @@ contract LSDRateProvider is Initializable {
     address constant LIDO_ASSET = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0; // wstETH
     address constant STADER_ASSET = 0xA35b1B31Ce002FBF2058D22F30f95D405200A15b; // ETHx
     address constant SWELL_ASSET = 0xf951E335afb289353dc249e82926178EaC7DEd78; // swETH
+    address constant WOETH_ASSET = 0xDcEe70654261AF21C44c093C300eD3Bb97b78192;
 
     address constant LIDO_UDERLYING = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH
     address constant STADER_ORACLE = 0xF64bAe65f6f2a5277571143A24FaaFDFC0C2a737;
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -63,6 +64,9 @@ contract LSDRateProvider is Initializable {
         }
         if (_asset == FRAX_ASSET) {
             return IERC20(FRAX_ASSET).balanceOf(address(this)) * UNIT / IERC20(FRAX_ASSET).totalSupply();
+        }
+        if (_asset == WOETH_ASSET) {
+            return IERC4626(WOETH_ASSET).previewRedeem(UNIT);
         }
         if (_asset == COINBASE_ASSET) {
             return CoinbaseToken(COINBASE_ASSET).exchangeRate();
