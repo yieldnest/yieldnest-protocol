@@ -60,6 +60,7 @@ contract ScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
+        applyNextReleaseUpgrades();
     }
     function assignContracts() internal {
         uint256 chainId = block.chainid;
@@ -88,5 +89,14 @@ contract ScenarioBaseTest is Test, Utils {
         rewardsDistributor = RewardsDistributor(payable(chainAddresses.yn.REWARDS_DISTRIBUTOR_ADDRESS));
         executionLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.EXECUTION_LAYER_RECEIVER_ADDRESS));
         consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
+    }
+
+    function applyNextReleaseUpgrades() internal {
+
+        stakingNodeImplementation = new StakingNode();
+        
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
+
     }
 }
