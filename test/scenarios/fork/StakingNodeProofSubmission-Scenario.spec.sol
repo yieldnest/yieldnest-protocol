@@ -89,7 +89,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 1692941
         // 0xb7ea207e2cad7076c176af040a79ce3c9779e02f94e62548fb9856c8e1c9720398f88fd59e89e7cfe0518d43f299ea13
         uint256 nodeId = 0;
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1902072.json");
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
     }
 
 
@@ -121,6 +121,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
 
 
+        int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
@@ -130,8 +132,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             validatorProofs.validatorFields
         );
         
-        int256 expectedShares = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
-        int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-        assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
+        int256 expectedSharesIncrease = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
+        int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
     }
 }
