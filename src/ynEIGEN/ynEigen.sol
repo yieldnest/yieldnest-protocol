@@ -292,16 +292,16 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
      * Reverts if the caller is not the strategy manager or if any of the assets are not supported.
      * @param assetsToRetrieve An array of ERC20 tokens to be retrieved.
      * @param amounts An array of amounts of the assets to be retrieved, corresponding to the `assetsToRetrieve` array.
-     * @param destinations An array of addresses to which the assets are to be sent, corresponding to the `assetsToRetrieve` array.
      */
     function retrieveAssets(
         IERC20[] calldata assetsToRetrieve,
-        uint256[] calldata amounts,
-        address[] calldata destinations
+        uint256[] calldata amounts
     ) public onlyStrategyManager {
-        if (assetsToRetrieve.length != amounts.length || amounts.length != destinations.length) {
-            revert AssetRetrievalLengthMismatch(assetsToRetrieve.length, amounts.length, destinations.length);
+        if (assetsToRetrieve.length != amounts.length) {
+            revert AssetRetrievalLengthMismatch(assetsToRetrieve.length, amounts.length);
         }
+
+        address strategyManagerAddress = address(eigenStrategyManager);
 
         for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
             IERC20 asset = assetsToRetrieve[i];
@@ -309,13 +309,14 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             if (!retrievedAssetData.active) {
                 revert UnsupportedAsset(asset);
             }
+
             if (amounts[i] > retrievedAssetData.balance) {
                 revert InsufficientAssetBalance(asset, retrievedAssetData.balance, amounts[i]);
             }
 
             assetData[address(asset)].balance -= amounts[i];
-            IERC20(asset).safeTransfer(destinations[i], amounts[i]);
-            emit AssetRetrieved(assets[i], amounts[i], destinations[i]);
+            IERC20(asset).safeTransfer(strategyManagerAddress, amounts[i]);
+            emit AssetRetrieved(assets[i], amounts[i], strategyManagerAddress);
         }
     }
 
