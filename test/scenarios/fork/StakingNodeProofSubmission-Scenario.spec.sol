@@ -106,7 +106,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 
             return
                 BeaconChainProofs.WithdrawalProof(
-                    abi.encodePacked(getWithdrawalProofCapella()),
+                    abi.encodePacked(getWithdrawalProofDeneb()),
                     abi.encodePacked(getSlotProof()),
                     abi.encodePacked(getExecutionPayloadProof()),
                     abi.encodePacked(getTimestampProofCapella()),
