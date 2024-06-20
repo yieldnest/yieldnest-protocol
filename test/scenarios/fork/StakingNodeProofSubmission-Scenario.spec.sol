@@ -60,12 +60,13 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         validatorProofs.validatorFields = new bytes32[][](1);
 
 
+        bytes memory validatorFieldsProof = abi.encodePacked(getValidatorProof());
         // Set beacon state root, validatorIndex
         validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
         validatorProofs.stateRootProof.proof = getStateRootProof();
         validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
         validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-        // validatorProofs.validatorFieldsProofs[0] = getWithdrawalCredentialProof();
+        validatorProofs.validatorFieldsProofs[0] = validatorFieldsProof;
         validatorProofs.validatorFields[0] = getValidatorFields();
 
         return validatorProofs;
@@ -177,7 +178,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         */
 
        // Validator proven:
-        // 1692941
+        // 1692434 
         // 0xa876a689610dfa8cda994afffc47fbff35b4fed1d417487ba098b3733241147639fef98e722ed54cb74676c4a8ebfcad
         uint256 nodeId = 2;
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1915130.json");
