@@ -109,7 +109,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
                     abi.encodePacked(getWithdrawalProofDeneb()),
                     abi.encodePacked(getSlotProof()),
                     abi.encodePacked(getExecutionPayloadProof()),
-                    abi.encodePacked(getTimestampProofCapella()),
+                    abi.encodePacked(getTimestampProofDeneb()),
                     abi.encodePacked(getHistoricalSummaryProof()),
                     uint64(getBlockRootIndex()),
                     uint64(getHistoricalSummaryIndex()),
