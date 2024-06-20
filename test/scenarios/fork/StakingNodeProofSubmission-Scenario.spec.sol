@@ -178,7 +178,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
        // Validator proven:
         // 1692941
         // 0xa876a689610dfa8cda994afffc47fbff35b4fed1d417487ba098b3733241147639fef98e722ed54cb74676c4a8ebfcad
-        uint256 nodeId = 0;
+        uint256 nodeId = 2;
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1915130.json");
     }
 
@@ -230,7 +230,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         setJSON(path);
 
-
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
         uint64 oracleTimestamp = uint64(block.timestamp);
@@ -239,6 +238,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
         vm.prank(eigenPodManagerOwner);
         eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+        bytes32 latestBlockRoot = _getLatestBlockRoot();
+        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
 
         ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();        
 
@@ -251,8 +252,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // int256 initialShares = eigenPodManager.podOwnerShares(podOwner);
 
         // Withdraw
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyAndProcessWithdrawals(
-            0,
+            oracleTimestamp,
             params.stateRootProof,
             params.withdrawalProofs,
             params.validatorFieldsProofs,
