@@ -60,13 +60,13 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         validatorProofs.validatorFields = new bytes32[][](1);
 
 
-        bytes memory validatorFieldsProof = abi.encodePacked(getValidatorProof());
+        //bytes memory validatorFieldsProof = abi.encodePacked(getValidatorProof());
         // Set beacon state root, validatorIndex
         validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
         validatorProofs.stateRootProof.proof = getStateRootProof();
         validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
         validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-        validatorProofs.validatorFieldsProofs[0] = validatorFieldsProof;
+        //validatorProofs.validatorFieldsProofs[0] = validatorFieldsProof;
         validatorProofs.validatorFields[0] = getValidatorFields();
 
         return validatorProofs;
@@ -135,7 +135,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
     address newMockStakingNodeImplementation;
 
 
-    function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_Holesky() public {
         if (block.chainid != 17000) {
             return; // Skip test if not on Ethereum Mainnet
         }
@@ -147,7 +147,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
     }
 
 
-    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH() public {
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Ethereum Mainnet
@@ -166,7 +166,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // verifyAndProcessWithdrawalSuccesfullyForProofFile();
     }
 
-    function testVerifyAndProcessWithdrawalSuccesfully_32ETH() public {
+    function testVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Ethereum Mainnet
