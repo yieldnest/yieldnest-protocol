@@ -25,6 +25,7 @@ import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.so
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 
 import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
+import {Merkle} from "lib/eigenlayer-contracts/src/contracts/libraries/Merkle.sol";
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
 
@@ -241,7 +242,26 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
 
-        ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();        
+        ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();
+
+        BeaconChainProofs.WithdrawalProof memory withdrawalProof = params.withdrawalProofs[0];   
+
+
+       uint256 historicalBlockHeaderIndex = (BeaconChainProofs.HISTORICAL_SUMMARIES_INDEX <<
+            ((BeaconChainProofs.HISTORICAL_SUMMARIES_TREE_HEIGHT + 1) + 1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
+            (uint256(withdrawalProof.historicalSummaryIndex) << (1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
+            (BeaconChainProofs.BLOCK_SUMMARY_ROOT_INDEX << (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT)) |
+            uint256(withdrawalProof.blockRootIndex);
+
+       require(
+            Merkle.verifyInclusionSha256({
+                proof: withdrawalProof.historicalSummaryBlockRootProof,
+                root: params.stateRootProof.beaconStateRoot,
+                leaf: withdrawalProof.blockRoot,
+                index: historicalBlockHeaderIndex
+            }),
+            "Merkle.verifyInclusionSha256 BeaconChainProofs.verifyWithdrawal: Invalid historicalsummary merkle proof"
+        );     
 
         // Save state for checks; deal EigenPod withdrawal router balance
         // uint64 withdrawalAmountGwei = Endian.fromLittleEndianUint64(
