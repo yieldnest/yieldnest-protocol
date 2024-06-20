@@ -38,6 +38,14 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         bytes32[][] validatorFields;
     }
 
+    struct ValidatorWithdrawalProofParams {
+        BeaconChainProofs.StateRootProof stateRootProof;
+        bytes32[][] validatorFields;
+        bytes[] validatorFieldsProofs;
+        bytes32[][] withdrawalFields;
+        BeaconChainProofs.WithdrawalProof[] withdrawalProofs;
+    }
+
     function _getLatestBlockRoot() public returns (bytes32) {
         return getLatestBlockRoot();
     }
@@ -50,6 +58,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         validatorProofs.validatorFieldsProofs = new bytes[](1);
         validatorProofs.validatorFields = new bytes32[][](1);
 
+
         // Set beacon state root, validatorIndex
         validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
         validatorProofs.stateRootProof.proof = getStateRootProof();
@@ -61,6 +70,23 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         return validatorProofs;
     }
 
+    function getValidatorWithdrawalProofParams() public returns (ValidatorWithdrawalProofParams memory) {
+        ValidatorWithdrawalProofParams memory params;
+
+        params.validatorFieldsProofs = new bytes[](1);
+        params.validatorFields = new bytes32[][](1);
+        params.withdrawalFields = new bytes32[][](1);
+        params.withdrawalProofs =  new BeaconChainProofs.WithdrawalProof[](1);
+
+        params.stateRootProof.beaconStateRoot = getBeaconStateRoot();
+        params.stateRootProof.proof = getStateRootProof();
+        params.validatorFields[0] = getValidatorFields();
+        params.withdrawalFields[0] = getWithdrawalFields();
+        params.withdrawalProofs[0] = _getWithdrawalProof();
+
+        return params;
+    }
+
     function bytes32ToData(bytes32 data) public pure returns (address) {
         return address(uint160(uint256(data)));
     }
@@ -68,6 +94,32 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
     function getWithdrawalAddress() public returns (address) {
         bytes32[] memory validatorFields = getValidatorFields();
         return bytes32ToData(validatorFields[1]);
+    }
+
+
+    function _getWithdrawalProof() internal returns (BeaconChainProofs.WithdrawalProof memory) {
+        {
+            bytes32 blockRoot = getBlockRoot();
+            bytes32 slotRoot = getSlotRoot();
+            bytes32 timestampRoot = getTimestampRoot();
+            bytes32 executionPayloadRoot = getExecutionPayloadRoot();
+
+            return
+                BeaconChainProofs.WithdrawalProof(
+                    abi.encodePacked(getWithdrawalProofCapella()),
+                    abi.encodePacked(getSlotProof()),
+                    abi.encodePacked(getExecutionPayloadProof()),
+                    abi.encodePacked(getTimestampProofCapella()),
+                    abi.encodePacked(getHistoricalSummaryProof()),
+                    uint64(getBlockRootIndex()),
+                    uint64(getHistoricalSummaryIndex()),
+                    uint64(getWithdrawalIndex()),
+                    blockRoot,
+                    slotRoot,
+                    timestampRoot,
+                    executionPayloadRoot
+                );
+        }
     }
 
 }
@@ -90,6 +142,44 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 0xb7ea207e2cad7076c176af040a79ce3c9779e02f94e62548fb9856c8e1c9720398f88fd59e89e7cfe0518d43f299ea13
         uint256 nodeId = 0;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
+    }
+
+
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH() public {
+
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Ethereum Mainnet
+        }
+        /*
+            This validator  has been activated and withdrawn.
+            It has NOT been proved VerifyWithdrawalCredentials yet.
+            It has  NOT been proven verifyAndProcessWithdrawal yet.
+        */
+
+       // Validator proven:
+        // 1692941
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        uint256 nodeId = 0;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
+        // verifyAndProcessWithdrawalSuccesfullyForProofFile();
+    }
+
+    function testVerifyAndProcessWithdrawalSuccesfully_32ETH() public {
+
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Ethereum Mainnet
+        }
+         /*
+            This validator  has been activated and withdrawn.
+            It has been proved VerifyWithdrawalCredentials already.
+            It has NOT been proven verifyAndProcessWithdrawal yet.
+        */
+
+       // Validator proven:
+        // 1692941
+        // 0xa876a689610dfa8cda994afffc47fbff35b4fed1d417487ba098b3733241147639fef98e722ed54cb74676c4a8ebfcad
+        uint256 nodeId = 0;
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1915130.json");
     }
 
 
@@ -120,7 +210,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
 
-
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
@@ -135,5 +224,41 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         int256 expectedSharesIncrease = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
         assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
+    }
+
+    function verifyAndProcessWithdrawalSuccesfullyForProofFile(uint256 nodeId, string memory path) public {
+
+        setJSON(path);
+
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        uint64 oracleTimestamp = uint64(block.timestamp);
+        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+
+        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+        vm.prank(eigenPodManagerOwner);
+        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+
+        ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();        
+
+        // Save state for checks; deal EigenPod withdrawal router balance
+        // uint64 withdrawalAmountGwei = Endian.fromLittleEndianUint64(
+        //     withdrawalFields[0][BeaconChainProofs.WITHDRAWAL_VALIDATOR_AMOUNT_INDEX]
+        // );
+        // uint64 leftOverBalanceWEI = uint64(withdrawalAmountGwei - MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR) * 1e9;
+        // cheats.deal(address(eigenPod), leftOverBalanceWEI);
+        // int256 initialShares = eigenPodManager.podOwnerShares(podOwner);
+
+        // Withdraw
+        stakingNodeInstance.verifyAndProcessWithdrawals(
+            0,
+            params.stateRootProof,
+            params.withdrawalProofs,
+            params.validatorFieldsProofs,
+            params.validatorFields,
+            params.withdrawalFields
+        );
+
     }
 }

@@ -73,5 +73,23 @@ interface IStakingNode {
         bytes32[][] calldata validatorFields
     ) external;
 
+    /**
+     * @notice Verifies and processes the withdrawals of validators.
+     * @param oracleTimestamp The timestamp of the oracle.
+     * @param stateRootProof The state root proof.
+     * @param withdrawalProofs An array of withdrawal proofs.
+     * @param validatorFieldsProofs An array of validator fields proofs.
+     * @param validatorFields An array of arrays, each containing the validator fields to be verified.
+     * @param withdrawalFields An array of arrays, each containing the withdrawal fields to be processed.
+     */
+    function verifyAndProcessWithdrawals(
+        uint64 oracleTimestamp,
+        BeaconChainProofs.StateRootProof calldata stateRootProof,
+        BeaconChainProofs.WithdrawalProof[] calldata withdrawalProofs,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields,
+        bytes32[][] calldata withdrawalFields
+    ) external;
+
     function getInitializedVersion() external view returns (uint64);
 }
