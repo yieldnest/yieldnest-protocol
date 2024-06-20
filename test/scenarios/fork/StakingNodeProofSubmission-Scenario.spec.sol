@@ -137,7 +137,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_Holesky() public {
         if (block.chainid != 17000) {
-            return; // Skip test if not on Ethereum Mainnet
+            return; // Skip test if not on Holesky
         }
         // Validator proven:
         // 1692941
@@ -150,7 +150,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_Holesky() public {
 
         if (block.chainid != 17000) {
-            return; // Skip test if not on Ethereum Mainnet
+            return; // Skip test if not on Holesky
         }
         /*
             This validator  has been activated and withdrawn.
@@ -159,17 +159,19 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         */
 
        // Validator proven:
-        // 1692941
+        // 1692468
         // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
-        uint256 nodeId = 0;
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
-        // verifyAndProcessWithdrawalSuccesfullyForProofFile();
+        uint256 nodeId = 2;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
+
+        // TODO: FIXME: enable this when withdrawals are processed succesfully
+        // verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "FILLME");
     }
 
     function testVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
 
         if (block.chainid != 17000) {
-            return; // Skip test if not on Ethereum Mainnet
+            return; // Skip test if not on Holesky
         }
          /*
             This validator  has been activated and withdrawn.
