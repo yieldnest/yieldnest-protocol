@@ -308,6 +308,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
 
+            // must be set to true even though what is received is native ETH
             receiveAsTokens[i] = true;
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
