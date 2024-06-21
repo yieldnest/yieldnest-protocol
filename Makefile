@@ -1,6 +1,6 @@
 # Setups
 
-install		:;	git submodule update --init --recursive && yarn install
+install		:;	git submodule update --init --recursive && yarn install --cwd lib/SyncPools
 
 # Linting and Formatting
 
