@@ -1,6 +1,6 @@
 # Setups
 
-install		:;	git submodule update --init --recursive
+install		:;	git submodule update --init --recursive && yarn install
 
 # Linting and Formatting
 
