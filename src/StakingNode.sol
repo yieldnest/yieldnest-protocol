@@ -50,7 +50,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error NotStakingNodesAdmin();
+    error NotStakingNodesOperator();
     error ETHDepositorNotDelayedWithdrawalRouter();
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
@@ -83,8 +83,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
 
     /// @dev Allows only a whitelisted address to configure the contract
-    modifier onlyAdmin() {
-        if(!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesAdmin();
+    modifier onlyOperator() {
+        if(!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesOperator();
         _;
     }
 
@@ -153,7 +153,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @dev  This allows StakingNode to retrieve rewards from the Consensus Layer that accrue over time as 
      *       validators sweep them to the withdrawal address
      */
-    function withdrawNonBeaconChainETHBalanceWei() external onlyAdmin {
+    function withdrawNonBeaconChainETHBalanceWei() external onlyOperator {
 
         // withdraw all available balance to withdraw.
         //Warning: the ETH balance of the EigenPod may be higher in case there's beacon chain ETH there
@@ -166,7 +166,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Processes withdrawals by verifying the node's balance and transferring ETH to the StakingNodesManager.
      * @dev This function checks if the node's current balance matches the expected balance and then transfers the ETH to the StakingNodesManager.
      */
-    function processDelayedWithdrawals() public nonReentrant onlyAdmin {
+    function processDelayedWithdrawals() public nonReentrant onlyOperator {
 
         // Delayed withdrawals that do not count as validator principal are handled as rewards
         uint256 balance = address(this).balance - withdrawnValidatorPrincipal;
@@ -195,7 +195,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint40[] calldata validatorIndices,
         bytes[] calldata validatorFieldsProofs,
         bytes32[][] calldata validatorFields
-    ) external onlyAdmin {
+    ) external onlyOperator {
 
         IEigenPod(address(eigenPod)).verifyWithdrawalCredentials(
             oracleTimestamp,
@@ -250,7 +250,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bytes[] calldata validatorFieldsProofs,
         bytes32[][] calldata validatorFields,
         bytes32[][] calldata withdrawalFields
-    ) external onlyAdmin {
+    ) external onlyOperator {
 
         eigenPod.verifyAndProcessWithdrawals(
             oracleTimestamp,
@@ -276,7 +276,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function queueWithdrawals(
         uint256 sharesAmount
-    ) external onlyAdmin returns (bytes32[] memory fullWithdrawalRoots) {
+    ) external onlyOperator returns (bytes32[] memory fullWithdrawalRoots) {
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
@@ -300,7 +300,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         uint256[] memory middlewareTimesIndexes
-        ) external onlyAdmin {
+        ) external onlyOperator {
 
         uint256 totalWithdrawalAmount = 0;
 
