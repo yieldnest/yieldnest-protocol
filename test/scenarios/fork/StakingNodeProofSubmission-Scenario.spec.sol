@@ -28,6 +28,8 @@ import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/librarie
 import {Merkle} from "lib/eigenlayer-contracts/src/contracts/libraries/Merkle.sol";
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
+import "forge-std/console.sol";
+
 
 contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 
@@ -250,21 +252,31 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         BeaconChainProofs.WithdrawalProof memory withdrawalProof = params.withdrawalProofs[0];   
 
 
-       uint256 historicalBlockHeaderIndex = (BeaconChainProofs.HISTORICAL_SUMMARIES_INDEX <<
-            ((BeaconChainProofs.HISTORICAL_SUMMARIES_TREE_HEIGHT + 1) + 1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
-            (uint256(withdrawalProof.historicalSummaryIndex) << (1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
-            (BeaconChainProofs.BLOCK_SUMMARY_ROOT_INDEX << (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT)) |
-            uint256(withdrawalProof.blockRootIndex);
+        {
+            // TODO: remove this block when completed
+            uint256 historicalBlockHeaderIndex = (BeaconChainProofs.HISTORICAL_SUMMARIES_INDEX <<
+                    ((BeaconChainProofs.HISTORICAL_SUMMARIES_TREE_HEIGHT + 1) + 1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
+                    (uint256(withdrawalProof.historicalSummaryIndex) << (1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
+                    (BeaconChainProofs.BLOCK_SUMMARY_ROOT_INDEX << (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT)) |
+                    uint256(withdrawalProof.blockRootIndex);
 
-       require(
-            Merkle.verifyInclusionSha256({
-                proof: withdrawalProof.historicalSummaryBlockRootProof,
-                root: params.stateRootProof.beaconStateRoot,
-                leaf: withdrawalProof.blockRoot,
-                index: historicalBlockHeaderIndex
-            }),
-            "Merkle.verifyInclusionSha256 BeaconChainProofs.verifyWithdrawal: Invalid historicalsummary merkle proof"
-        );     
+            console.log("Blokc Root Index: ", withdrawalProof.blockRootIndex);
+            console.log("Historical Summary Block Root Proof:", vm.toString(withdrawalProof.historicalSummaryBlockRootProof));
+            console.log("Beacon State Root:",  vm.toString(params.stateRootProof.beaconStateRoot));
+            console.log("Block Root:", vm.toString(withdrawalProof.blockRoot));
+            console.log("Historical Block Header Index:", historicalBlockHeaderIndex);
+
+            require(
+                    Merkle.verifyInclusionSha256({
+                        proof: withdrawalProof.historicalSummaryBlockRootProof,
+                        root: params.stateRootProof.beaconStateRoot,
+                        leaf: withdrawalProof.blockRoot,
+                        index: historicalBlockHeaderIndex
+                    }),
+                    "Merkle.verifyInclusionSha256 BeaconChainProofs.verifyWithdrawal: Invalid historicalsummary merkle proof"
+                );   
+        }
+  
 
         // Save state for checks; deal EigenPod withdrawal router balance
         // uint64 withdrawalAmountGwei = Endian.fromLittleEndianUint64(
