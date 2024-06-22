@@ -17,24 +17,27 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     error TransferFailed(uint256 amount, address destination);
     error ZeroAddress();
     error InsufficientAssetBalance(address asset, uint256 requestedAmount, uint256 balance);
+    error ContractPaused();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
     bytes32 public constant REDEEMER_ROLE = keccak256("REDEEMER_ROLE");
+    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONNSTANTS  --------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
     address public constant ETH_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     uint256 public constant YN_ETH_UNIT = 1e18;
 
-
     IynETH public ynETH;
+    bool private _paused;
 
-    // Initializer with Init struct and REDEEMER_ROLE
+    // Initializer with Init struct and roles
     struct Init {
         address admin;
         address redeemer;
@@ -50,8 +53,11 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(REDEEMER_ROLE, init.redeemer);
+        _grantRole(PAUSER_ROLE, init.admin);
+        _grantRole(UNPAUSER_ROLE, init.admin);
 
         ynETH = init.ynETH;
+        _paused = false;
     }
 
     receive() external payable {
@@ -66,8 +72,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         return address(this).balance;
     }
 
-    function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) {
-
+    function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
         uint256 balance = availableRedemptionAssets(msg.sender);
         if (balance < amount) {
             revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
@@ -80,7 +85,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         emit AssetTransferred(ETH_ASSET, msg.sender, to, amount);
     }
 
-    function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) {
+    function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
         ynETH.processWithdrawnETH{ value: amount }();
         emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);
     }
@@ -96,6 +101,28 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
             revert ZeroAddress();
         }
         _;
+    }
+
+    /// @notice Checks if the contract is not paused.
+    modifier whenNotPaused() {
+        if (_paused) {
+            revert ContractPaused();
+        }
+        _;
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  PAUSE FUNCTIONS  ---------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Pauses the contract, preventing certain actions.
+    function pause() external onlyRole(PAUSER_ROLE) {
+        _paused = true;
+    }
+
+    /// @notice Unpauses the contract, allowing certain actions.
+    function unpause() external onlyRole(UNPAUSER_ROLE) {
+        _paused = false;
     }
 }
 
