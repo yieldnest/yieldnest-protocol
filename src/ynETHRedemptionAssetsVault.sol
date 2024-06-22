@@ -6,6 +6,7 @@ import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/c
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import {ETH_ASSET, YNETH_UNIT} from "src/Constants.sol";
 
 
 contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable {
@@ -28,11 +29,8 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  CONSTANTS  ---------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
-
-    address public constant ETH_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    uint256 public constant YN_ETH_UNIT = 1e18;
 
     IynETH public ynETH;
     bool private _paused;
@@ -65,7 +63,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     }
 
     function redemptionRate() public view returns (uint256) {
-        return ynETH.previewRedeem(YN_ETH_UNIT);
+        return ynETH.previewRedeem(YNETH_UNIT);
     }
 
     function availableRedemptionAssets(address /* redeemer */) public view returns (uint256) {
