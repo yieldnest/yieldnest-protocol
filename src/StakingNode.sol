@@ -385,7 +385,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // ad deploy time
         // Example: If ALL validators have been verified it MUST be 0
         // If NONE of the validators have been verified it MUST be equal to allocatedETH
-        int256 totalETHBalance = int256(unverifiedStakedETH) + eigenPodManager.podOwnerShares(address(this));
+        int256 totalETHBalance = int256(withdrawnValidatorPrincipal + unverifiedStakedETH) + eigenPodManager.podOwnerShares(address(this));
 
         if (totalETHBalance < 0) {
             return 0;
