@@ -81,6 +81,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @dev Accounts for withdrawn ETH balance
     uint256 public withdrawnValidatorPrincipal;
 
+    /// @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
+    ///      that is not yet verified with verifyWithdrawalCredentials.
+    uint256 public unverifiedStakedETH;
+
 
     /// @dev Allows only a whitelisted address to configure the contract
     modifier onlyOperator() {
@@ -347,7 +351,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
         emit AllocatedStakedETH(allocatedETH, amount);
+
+        // TODO: consider sunsetting allocatedETH
         allocatedETH += amount;
+
+        unverifiedStakedETH += amount;
     }
 
     function deallocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
@@ -369,11 +377,19 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function getETHBalance() public view returns (uint256) {
 
-        // NOTE: when verifyWithdrawalCredentials is enabled
-        // the eigenpod will be credited with shares. Those shares represent 1 share = 1 ETH
-        // To get the shares call: strategyManager.stakerStrategyShares(address(this), beaconChainETHStrategy)
-        // This computation will need to be updated to factor in that.
-        return allocatedETH;
+        IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
+        // TODO: unverifiedStakedETH MUST be initialized to the correct value 
+        // ad deploy time
+        // Example: If ALL validators have been verified it MUST be 0
+        // If NONE of the validators have been verified it MUST be equal to allocatedETH
+        int256 totalETHBalance = int256(unverifiedStakedETH) + eigenPodManager.podOwnerShares(address(this));
+
+        if (totalETHBalance < 0) {
+            return 0;
+        }
+
+        return uint256(totalETHBalance);
+        
     }
 
     //--------------------------------------------------------------------------------------
