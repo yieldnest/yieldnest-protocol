@@ -86,6 +86,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /// @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
     ///      that is not yet verified with verifyWithdrawalCredentials.
     uint256 public unverifiedStakedETH;
+    /// @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
+    uint256 public queuedSharesAmount;
 
 
     /// @dev Allows only a whitelisted address to configure the contract
@@ -301,6 +303,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
 
+        queuedSharesAmount += sharesAmount;
         emit QueuedWithdrawals(sharesAmount, fullWithdrawalRoots);
     }
 
@@ -329,6 +332,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         uint256 initialETHBalance = address(this).balance;
+
+        // NOTE:  completeQueuedWithdrawals can only be called by withdrawal.withdrawer for each withdrawal
         // The Eigenlayer beaconChainETHStrategy  queued withdrawal completion flow follows the following steps:
         // 1. The flow starts in the DelegationManager where queued withdrawals are managed.
         // 2. For beaconChainETHStrategy, the DelegationManager calls _withdrawSharesAsTokens interacts with the EigenPodManager.withdrawSharesAsTokens
@@ -342,6 +347,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert MismatchInExpectedETHBalanceAfterWithdrawals();
         }
 
+        queuedSharesAmount -= actualWithdrawalAmount;
         withdrawnValidatorPrincipal += actualWithdrawalAmount;
 
         emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
@@ -385,7 +391,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // ad deploy time
         // Example: If ALL validators have been verified it MUST be 0
         // If NONE of the validators have been verified it MUST be equal to allocatedETH
-        int256 totalETHBalance = int256(withdrawnValidatorPrincipal + unverifiedStakedETH) + eigenPodManager.podOwnerShares(address(this));
+        int256 totalETHBalance =
+            int256(withdrawnValidatorPrincipal + unverifiedStakedETH + queuedSharesAmount)
+            + eigenPodManager.podOwnerShares(address(this));
 
         if (totalETHBalance < 0) {
             return 0;
