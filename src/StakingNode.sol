@@ -15,6 +15,8 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+import {ONE_GWEI} from "./Constants.sol";
+
 
 
 interface StakingNodeEvents {
@@ -212,6 +214,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         for (uint256 i = 0; i < validatorIndices.length; i++) {
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
+            unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
         }
     }
 
