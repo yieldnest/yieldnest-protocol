@@ -637,12 +637,17 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             eigenPodManagerProxy.upgradeTo(address(mockEigenPodManager));
         }
 
-        MockEigenPodManager mockEigenPodManagerInstance = MockEigenPodManager(address(eigenPodManager));
-        mockEigenPodManagerInstance.setHasPod(address(stakingNodeInstance), stakingNodeInstance.eigenPod());
+        {
+            // mock latest blockRoot
+            MockEigenPodManager mockEigenPodManagerInstance = MockEigenPodManager(address(eigenPodManager));
+            mockEigenPodManagerInstance.setHasPod(address(stakingNodeInstance), stakingNodeInstance.eigenPod());
 
-        bytes32 latestBlockRoot = _getLatestBlockRoot();
-        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+            bytes32 latestBlockRoot = _getLatestBlockRoot();
+            mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+        }
 
+        uint256 stakingNodeETHBalanceBeforeVerification = stakingNodeInstance.getETHBalance();
+        uint256 ynETHTotalAssetsBeforeVerification = yneth.totalAssets();
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
@@ -656,6 +661,9 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         int256 expectedShares = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
         int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
         assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
+
+        assertEq(stakingNodeETHBalanceBeforeVerification, stakingNodeInstance.getETHBalance(), "Staking node ETH balance should not change after verification");
+        assertEq(ynETHTotalAssetsBeforeVerification, yneth.totalAssets(), "Total assets should not change after verification");
     }
     
 

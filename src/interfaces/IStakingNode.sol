@@ -52,6 +52,7 @@ interface IStakingNode {
     function allocateStakedETH(uint amount) external payable;   
     function deallocateStakedETH(uint256 amount) external payable;
     function getETHBalance() external view returns (uint);
+    function unverifiedStakedETH() external view returns (uint256);
     function nodeId() external view returns (uint);
 
     /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
