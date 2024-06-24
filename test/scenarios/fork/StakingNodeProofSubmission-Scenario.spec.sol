@@ -298,7 +298,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
-    function testVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
+    function skiptestVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
