@@ -11,6 +11,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -28,6 +29,7 @@ import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/librarie
 import {Merkle} from "lib/eigenlayer-contracts/src/contracts/libraries/Merkle.sol";
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
+import {beaconChainETHStrategy} from "src/Constants.sol";
 import "forge-std/console.sol";
 
 
@@ -181,7 +183,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Full Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_RewardsPartial_Holesky() public {
@@ -202,7 +204,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_and_RewardsPartial_Holesky() public {
@@ -223,10 +225,10 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Full Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_RewardsPartial_and_32ETH_Holesky() public {
@@ -247,10 +249,10 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
 
         // verify Full Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
     function testFail_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
@@ -271,7 +273,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         // Attempt verify Full Withdrawal without having run verifyWithdrawalCredentials
         vm.expectRevert("EigenPod._verifyAndProcessWithdrawal: Validator never proven to have withdrawal credentials pointed to this contract");
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
     function testFail_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
@@ -292,11 +294,11 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
 
         // verify Partial Withdrawal
         vm.expectRevert();
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
     function test_queueWithdrawals_32ETH_Holesky() public {
@@ -318,19 +320,19 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
-        uint32 withdrawalAmount = 32 ether;
+        uint256 withdrawalAmount = 32 ether;
 
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
 
-        uint256 unverifiedStakedETHBefore = getUnverifiedStakedETH();
-        uint256 queuedSharesBefore = getQueuedSharesAmount();
+        uint256 unverifiedStakedETHBefore = stakingNodeInstance.getUnverifiedStakedETH();
+        uint256 queuedSharesBefore = stakingNodeInstance.getQueuedSharesAmount();
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
         stakingNodeInstance.queueWithdrawals(withdrawalAmount);
 
-        uint256 unverifiedStakedETHAfter = getUnverifiedStakedETH();
-        uint256 queuedSharesAfter = getQueuedSharesAmount();
+        uint256 unverifiedStakedETHAfter = stakingNodeInstance.getUnverifiedStakedETH();
+        uint256 queuedSharesAfter = stakingNodeInstance.getQueuedSharesAmount();
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
         assertEq(unverifiedStakedETHBefore, unverifiedStakedETHAfter - withdrawalAmount);
@@ -341,14 +343,17 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         IStrategy[] memory strategies = new IStrategy[](1);
         strategies[0] = beaconChainETHStrategy;
-        Withdrawal memory withdrawal = Withdrawal({
+
+        uint256[] memory shares = new uint256[](1);
+        shares[0] = withdrawalAmount;
+        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
             staker: address(stakingNodeInstance),
             delegatedTo: address(0),
             withdrawer: address(stakingNodeInstance),
             nonce: nonce,
             startBlock: uint32(block.number),
             strategies: strategies,
-            shares: withdrawalAmount
+            shares: shares
         });
 
         IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);

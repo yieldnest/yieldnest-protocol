@@ -6,6 +6,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;
@@ -92,5 +93,17 @@ interface IStakingNode {
         bytes32[][] calldata withdrawalFields
     ) external;
 
+    function queueWithdrawals(
+        uint256 sharesAmount
+    ) external returns (bytes32[] memory fullWithdrawalRoots);
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes
+     ) external;
+
     function getInitializedVersion() external view returns (uint64);
+
+    function getUnverifiedStakedETH() external view returns (uint256);
+    function getQueuedSharesAmount() external view returns (uint256);
 }

@@ -15,9 +15,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ONE_GWEI} from "./Constants.sol";
-
-
+import {ONE_GWEI} from "src/Constants.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
