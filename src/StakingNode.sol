@@ -26,8 +26,8 @@ interface StakingNodeEvents {
      event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
      event ETHReceived(address sender, uint256 value);
      event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
-     event AllocatedStakedETH(uint256 currenAllocatedStakedETH, uint256 newAmount);
-     event DeallocatedStakedETH(uint256 amount, uint256 currenAllocatedStakedETH, uint256 currentWithdrawnValidatorPrincipal);
+     event AllocatedStakedETH(uint256 currentUnverifiedStakedETH, uint256 newAmount);
+     event DeallocatedStakedETH(uint256 amount, uint256 currentWithdrawnValidatorPrincipal);
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
      event WithdrawalProcessed(
         uint40 indexed validatorIndex,
@@ -78,17 +78,19 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     uint256 public nodeId;
 
     /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
-    uint256 public allocatedETH;
+    uint256 private _unused_former_allocatedETH;
 
     /// @dev Accounts for withdrawn ETH balance
     uint256 public withdrawnValidatorPrincipal;
 
     /// @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
-    ///      that is not yet verified with verifyWithdrawalCredentials.
+    /// that is not yet verified with verifyWithdrawalCredentials.
+    /// Increases when calling allocateETH, and decreases when verifying with verifyWithdrawalCredentials
     uint256 public unverifiedStakedETH;
-    /// @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
-    uint256 public queuedSharesAmount;
 
+    /// @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
+    /// Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals.
+    uint256 public queuedSharesAmount;
 
     /// @dev Allows only a whitelisted address to configure the contract
     modifier onlyOperator() {
@@ -359,10 +361,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /// @dev Record total staked ETH for this StakingNode
     function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
-        emit AllocatedStakedETH(allocatedETH, amount);
-
-        // TODO: consider sunsetting allocatedETH
-        allocatedETH += amount;
+        emit AllocatedStakedETH(unverifiedStakedETH, amount);
 
         unverifiedStakedETH += amount;
     }
@@ -373,9 +372,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert InsufficientWithdrawnValidatorPrincipal(amount, withdrawnValidatorPrincipal);
         }
 
-        emit DeallocatedStakedETH(amount, allocatedETH, withdrawnValidatorPrincipal);
+        emit DeallocatedStakedETH(amount, withdrawnValidatorPrincipal);
         withdrawnValidatorPrincipal -= amount;
-        allocatedETH -= amount;
 
 
         (bool success, ) = address(stakingNodesManager).call{value: amount}("");
@@ -390,7 +388,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // TODO: unverifiedStakedETH MUST be initialized to the correct value 
         // ad deploy time
         // Example: If ALL validators have been verified it MUST be 0
-        // If NONE of the validators have been verified it MUST be equal to allocatedETH
+        // If NONE of the validators have been verified it MUST be equal to former allocatedETH
         int256 totalETHBalance =
             int256(withdrawnValidatorPrincipal + unverifiedStakedETH + queuedSharesAmount)
             + eigenPodManager.podOwnerShares(address(this));
