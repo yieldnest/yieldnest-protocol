@@ -157,7 +157,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         /*
             This validator  has been activated and withdrawn.
             It has NOT been proved VerifyWithdrawalCredentials yet.
-            It has  NOT been proven verifyAndProcessWithdrawal yet.
+            It has  NOT been proven verifyAndProcessWithdrawal yet for any of the withdrawals.
         */
 
        // Validator proven:
@@ -165,9 +165,24 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
         uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+    }
 
-        // TODO: FIXME: enable this when withdrawals are processed succesfully
-        // verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "FILLME");
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_RewardsPartial_Holesky() public {
+
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+        /*
+            This validator  has been activated and withdrawn.
+            It has NOT been proved VerifyWithdrawalCredentials yet.
+            It has  NOT been proven verifyAndProcessWithdrawal yet for any of the withdrawals.
+        */
+
+       // Validator proven:
+        // 1692468
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        uint256 nodeId = 2;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
     function testVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
