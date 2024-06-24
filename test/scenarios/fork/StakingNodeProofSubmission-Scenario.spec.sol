@@ -324,12 +324,13 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
-
         uint256 unverifiedStakedETHBefore = stakingNodeInstance.getUnverifiedStakedETH();
         uint256 queuedSharesBefore = stakingNodeInstance.getQueuedSharesAmount();
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+        bytes32[] memory fullWithdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        assertEq(fullWithdrawalRoots.length, 1, "Expected exactly one full withdrawal root");
 
         uint256 unverifiedStakedETHAfter = stakingNodeInstance.getUnverifiedStakedETH();
         uint256 queuedSharesAfter = stakingNodeInstance.getQueuedSharesAmount();
@@ -355,6 +356,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             strategies: strategies,
             shares: shares
         });
+
+        bytes32 fullWithdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
+        assertEq(fullWithdrawalRoot, fullWithdrawalRoots[0], "fullWithdrawalRoot should match the first in the array");
 
         IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
         withdrawals[0] = withdrawal;
