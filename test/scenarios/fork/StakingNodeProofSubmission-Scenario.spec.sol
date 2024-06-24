@@ -164,7 +164,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 1692468
         // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
         uint256 nodeId = 2;
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
 
         // TODO: FIXME: enable this when withdrawals are processed succesfully
         // verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "FILLME");
