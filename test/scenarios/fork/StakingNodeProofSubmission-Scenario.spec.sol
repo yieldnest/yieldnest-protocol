@@ -295,7 +295,45 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
 
         // verify Partial Withdrawal
+        vm.expectRevert();
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+    }
+
+        function test_queueWithdrawals_32ETH_Holesky() public {
+
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+        /*
+            This validator  has been activated and withdrawn.
+            It has NOT been proved VerifyWithdrawalCredentials yet.
+            It has  NOT been proven verifyAndProcessWithdrawal yet for any of the withdrawals.
+        */
+
+       // Validator proven:
+        // 1692468
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        uint256 nodeId = 2;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
+
+        uint32 withdrawalAmount = 32 ether;
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+
+        uint256 unverifiedStakedETHBefore = getUnverifiedStakedETH();
+        uint256 queuedSharesBefore = getQueuedSharesAmount();
+        int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
+        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        uint256 unverifiedStakedETHAfter = getUnverifiedStakedETH();
+        uint256 queuedSharesAfter = getQueuedSharesAmount();
+        int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
+        assertEq(unverifiedStakedETHBefore, unverifiedStakedETHAfter - withdrawalAmount);
+        assertEq(queuedSharesBefore + withdrawalAmount, queuedSharesAfter);
+        assertEq(sharesBefore - sharesAfter, int256(withdrawalAmount), "Staking node shares do not match expected shares");
     }
 
     function skiptestVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {

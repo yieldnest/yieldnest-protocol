@@ -401,6 +401,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         
     }
 
+    function getUnverifiedStakedETH() public view returns (uint256) {
+        return unverifiedStakedETH;
+    }
+
+    function getQueuedSharesAmount() public view returns (uint256) {
+        return queuedSharesAmount;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  BEACON IMPLEMENTATION  ---------------------------
     //--------------------------------------------------------------------------------------
