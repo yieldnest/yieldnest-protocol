@@ -148,6 +148,20 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
     }
 
+    function testFail_VerifyWithdrawalCredentials_32ETH_Twice_Holesky() public {
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+        // Validator proven:
+        // 1692941
+        // 0xb7ea207e2cad7076c176af040a79ce3c9779e02f94e62548fb9856c8e1c9720398f88fd59e89e7cfe0518d43f299ea13
+        uint256 nodeId = 0;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
+
+        vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Validator must be inactive to prove withdrawal credentials");
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
+    }
+
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_Holesky() public {
 
@@ -188,7 +202,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+-       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_and_RewardsPartial_Holesky() public {
@@ -212,7 +226,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+-       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_RewardsPartial_and_32ETH_Holesky() public {
@@ -233,7 +247,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Partial Withdrawal
--       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+-       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
 
         // verify Full Withdrawal
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
@@ -260,6 +274,29 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
+    function testFail_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
+
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+        /*
+            This validator  has been activated and withdrawn.
+            It has NOT been proved VerifyWithdrawalCredentials yet.
+            It has  NOT been proven verifyAndProcessWithdrawal yet for any of the withdrawals.
+        */
+
+       // Validator proven:
+        // 1692468
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        uint256 nodeId = 2;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
+
+        // verify Partial Withdrawal
+-       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+
+        // verify Partial Withdrawal
+-       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+    }
 
     function testVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
 
