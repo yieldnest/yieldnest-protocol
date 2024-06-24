@@ -299,7 +299,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 -       verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
-        function test_queueWithdrawals_32ETH_Holesky() public {
+    function test_queueWithdrawals_32ETH_Holesky() public {
+
+        // WIP
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -334,6 +336,29 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         assertEq(unverifiedStakedETHBefore, unverifiedStakedETHAfter - withdrawalAmount);
         assertEq(queuedSharesBefore + withdrawalAmount, queuedSharesAfter);
         assertEq(sharesBefore - sharesAfter, int256(withdrawalAmount), "Staking node shares do not match expected shares");
+
+        uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
+
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = beaconChainETHStrategy;
+        Withdrawal memory withdrawal = Withdrawal({
+            staker: address(stakingNodeInstance),
+            delegatedTo: address(0),
+            withdrawer: address(stakingNodeInstance),
+            nonce: nonce,
+            startBlock: uint32(block.number),
+            strategies: strategies,
+            shares: withdrawalAmount
+        });
+
+        IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
+        withdrawals[0] = withdrawal;
+
+        uint256[] memory middlewareTimesIndexes = new uint256[](1);
+        // TODO: fixme
+        middlewareTimesIndexes[0] = 0;
+
+        stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
     }
 
     function skiptestVerifyAndProcessWithdrawalSuccesfully_32ETH_Holesky() public {
