@@ -280,9 +280,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         }
     }
 
-    /**
-     * @notice Queues multiple withdrawals for processing.
-     */
+    /// @dev Queues a withdrawal for processing.
+    ///      DelegationManager calls EigenPodManager.decreasesShares which
+    ///      decreases the `podOwner`'s shares by `shares`, down to a minimum of zero.
+    /// @param sharesAmount to be queued for withdrawals
+    /// @return fullWithdrawalRoots An array of keccak256 hashes of each Witdrawal created
     function queueWithdrawals(
         uint256 sharesAmount
     ) external onlyOperator returns (bytes32[] memory fullWithdrawalRoots) {
