@@ -307,6 +307,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         emit QueuedWithdrawals(sharesAmount, fullWithdrawalRoots);
     }
 
+    /// @dev Validates the withdrawal credentials for a withdrawal
+    /// This activates the activation of the staked funds within EigenLayer
+    /// @param withdrawals The Withdrawals to complete.
+    /// @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
+    ///       with the Slasher, which currently does nothing. As of M2, this parameter
+    ///       has no bearing on anything and can be ignored
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         uint256[] memory middlewareTimesIndexes
@@ -318,8 +324,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
 
-            // must be set to true even though what is received is native ETH
+            // Set receiveAsTokens to true to receive ETH when completeQueuedWithdrawals runs.
+            ///IMPORTANT: beaconChainETHStrategy shares are non-transferrable, so if `receiveAsTokens = false`
+            // and `withdrawal.withdrawer != withdrawal.staker`, any beaconChainETHStrategy shares
+            // in the `withdrawal` will be _returned to the staker_, rather than transferred to the withdrawer,
+            // unlike shares in any other strategies, which will be transferred to the withdrawer.
             receiveAsTokens[i] = true;
+            
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
             tokens[i] = new IERC20[](withdrawals[i].strategies.length);
@@ -347,7 +358,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert MismatchInExpectedETHBalanceAfterWithdrawals();
         }
 
+        // Shares are no longer queued
         queuedSharesAmount -= actualWithdrawalAmount;
+
+        // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
         withdrawnValidatorPrincipal += actualWithdrawalAmount;
 
         emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
