@@ -295,6 +295,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
 
     /**
      * @notice Checks if a withdrawal request is finalized.
+     *  A request is finalized if secondsToFinalization time has passed since 
+     *  the withdrawal request was created.        
      * @param request The withdrawal request to check.
      * @return True if the request is finalized, false otherwise.
      */
