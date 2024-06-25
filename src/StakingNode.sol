@@ -307,8 +307,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         emit QueuedWithdrawals(sharesAmount, fullWithdrawalRoots);
     }
 
-    /// @dev Validates the withdrawal credentials for a withdrawal
-    /// This activates the activation of the staked funds within EigenLayer
+    /// @dev Triggers the completion o particular queued withdrawals.
+    ///      Withdrawals can only be completed if
+    ///      max(delegationManager.minWithdrawalDelayBlocks(), delegationManager.strategyWithdrawalDelayBlocks(beaconChainETHStrategy))
+    ///      number of blocks have passed since witdrawal was queued.
     /// @param withdrawals The Withdrawals to complete.
     /// @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
     ///       with the Slasher, which currently does nothing. As of M2, this parameter
@@ -330,7 +332,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // in the `withdrawal` will be _returned to the staker_, rather than transferred to the withdrawer,
             // unlike shares in any other strategies, which will be transferred to the withdrawer.
             receiveAsTokens[i] = true;
-            
+
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
             tokens[i] = new IERC20[](withdrawals[i].strategies.length);
