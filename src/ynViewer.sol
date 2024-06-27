@@ -27,7 +27,10 @@ contract ynViewer is IynViewer {
 
     /// @inheritdoc IynViewer
     function getRate() external view returns (uint256) {
-        return 1 ether * ynETH.totalAssets() / ynETH.totalSupply();
+        uint256 _totalSupply = ynETH.totalSupply();
+        uint256 _totalAssets = ynETH.totalAssets();
+        if (_totalSupply == 0 || _totalAssets == 0) return 0;
+        return 1 ether * _totalAssets / _totalSupply;
     }
 
     /// @inheritdoc IynViewer

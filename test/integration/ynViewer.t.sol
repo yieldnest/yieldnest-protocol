@@ -19,7 +19,7 @@ contract ynViewerTest is IntegrationBaseTest {
     }
 
     function testGetRate() public {
-        assertEq(viewer.getRate(), 1 ether, "testGetRate: E0");
+        assertEq(viewer.getRate(), 0, "testGetRate: E0");
     }
 
     function testWithdrawalDelayBlocks() public {
