@@ -165,7 +165,7 @@ contract IntegrationBaseTest is Test, Utils {
         
         IReferralDepositAdapter.Init memory initArgs = IReferralDepositAdapter.Init({
             admin: actors.admin.ADMIN,
-            referralPublisher: actors.ops.REFERAL_PUBLISHER,
+            referralPublisher: actors.ops.REFERRAL_PUBLISHER,
             _ynETH: yneth
         });
         referralDepositAdapter.initialize(initArgs);

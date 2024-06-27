@@ -1,9 +1,13 @@
 import {BaseScript} from "script/BaseScript.s.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ReferralDepositAdapter} from "src/ReferralDepositAdapter.sol";
+import {IReferralDepositAdapter} from "src/interfaces/IReferralDepositAdapter.sol";
+
 import {ActorAddresses} from "script/Actors.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import { IynETH } from "src/interfaces/IynETH.sol";
+
 
 contract DeployReferralDepositAdapter is BaseScript {
 
@@ -56,6 +60,9 @@ contract DeployReferralDepositAdapter is BaseScript {
         address _broadcaster = vm.addr(deployerPrivateKey);
         console.log("Broadcaster Address:", _broadcaster);
 
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
         vm.startBroadcast(deployerPrivateKey);
 
         TransparentUpgradeableProxy referralDepositAdapterProxy;
@@ -65,6 +72,14 @@ contract DeployReferralDepositAdapter is BaseScript {
 
         referralDepositAdapterProxy = new TransparentUpgradeableProxy(logic, actors.admin.PROXY_ADMIN_OWNER, "");
         referralDepositAdapter = ReferralDepositAdapter(payable(address(referralDepositAdapterProxy)));
+
+        referralDepositAdapter.initialize(
+            IReferralDepositAdapter.Init({
+                _ynETH: IynETH(chainAddresses.yn.YNETH_ADDRESS),
+                admin: actors.admin.ADMIN,
+                referralPublisher: actors.ops.REFERRAL_PUBLISHER
+            })
+        );
 
         vm.stopBroadcast();
 
