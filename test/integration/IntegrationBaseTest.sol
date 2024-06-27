@@ -12,6 +12,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
+import {IReferralDepositAdapter} from "src/interfaces/IReferralDepositAdapter.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {ynETH} from "src/ynETH.sol";
@@ -23,6 +24,7 @@ import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {ReferralDepositAdapter} from "src/ReferralDepositAdapter.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
@@ -44,6 +46,7 @@ contract IntegrationBaseTest is Test, Utils {
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
     ynViewer public viewer;
+    ReferralDepositAdapter referralDepositAdapter;
 
     // Rewards
     RewardsReceiver public executionLayerReceiver;
@@ -57,6 +60,7 @@ contract IntegrationBaseTest is Test, Utils {
     // Assets
     ynETH public yneth;
     ynLSD public ynlsd;
+
 
     // Oracles
     YieldNestOracle public yieldNestOracle;
@@ -78,9 +82,10 @@ contract IntegrationBaseTest is Test, Utils {
         // Setup Addresses
         contractAddresses = new ContractAddresses();
         actorAddresses = new ActorAddresses();
+        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        actors = actorAddresses.getActors(block.chainid);
 
         // Setup Protocol
-        setupUtils();
         setupYnETHPoxies();
         setupYnLSDProxies();
         setupEthereum();
@@ -89,6 +94,7 @@ contract IntegrationBaseTest is Test, Utils {
         setupStakingNodesManager();
         setupYnETH();
         setupYieldNestOracleAndYnLSD();
+        setupUtils();
     }
 
     function setupYnETHPoxies() public {
@@ -149,8 +155,20 @@ contract IntegrationBaseTest is Test, Utils {
 
     function setupUtils() public {
         viewer = new ynViewer(yneth, stakingNodesManager);
-        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        actors = actorAddresses.getActors(block.chainid);
+
+        ReferralDepositAdapter referralDepositAdapterImplementation;
+        TransparentUpgradeableProxy referralDepositAdapterProxy;
+
+        referralDepositAdapterImplementation = new ReferralDepositAdapter();
+        referralDepositAdapterProxy = new TransparentUpgradeableProxy(address(referralDepositAdapterImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+        referralDepositAdapter = ReferralDepositAdapter(payable(address(referralDepositAdapterProxy)));
+        
+        IReferralDepositAdapter.Init memory initArgs = IReferralDepositAdapter.Init({
+            admin: actors.admin.ADMIN,
+            referralPublisher: actors.ops.REFERRAL_PUBLISHER,
+            _ynETH: yneth
+        });
+        referralDepositAdapter.initialize(initArgs);
     }
 
     function setupEthereum() public {
