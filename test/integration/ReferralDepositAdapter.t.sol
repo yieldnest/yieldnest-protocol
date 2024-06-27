@@ -104,7 +104,7 @@ contract ReferralDepositAdapterTest is IntegrationBaseTest {
         }
 
         
-        vm.startPrank(actors.ops.REFERAL_PUBLISHER);
+        vm.startPrank(actors.ops.REFERRAL_PUBLISHER);
         referralDepositAdapter.publishReferrals(referrals);
     }
 
