@@ -1,0 +1,13 @@
+{
+    "detectors_to_exclude": "",
+    "exclude_informational": false,
+    "exclude_low": false,
+    "exclude_medium": false,
+    "exclude_high": false,
+    "solc_remaps": [
+        "forge-std/=lib/forge-std/src/",
+        "@openzeppelin-upgrades/=lib/eigenlayer-contracts/lib/openzeppelin-contracts-upgradeable/",
+        "@openzeppelin/=lib/openzeppelin-contracts/",
+        "@eigenlayer/=lib/eigenlayer-contracts/"
+    ]
+}
