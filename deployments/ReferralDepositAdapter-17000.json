@@ -12,7 +12,7 @@
   "STAKING_NODE_CREATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
   "UNPAUSE_ADMIN": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
   "VALIDATOR_MANAGER": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
-  "implementation-ReferralDepositAdapter": "0x0b1248dF3d84a95318b22fAe869e23E553cE49E0",
+  "implementation-ReferralDepositAdapter": "0x0b1248df3d84a95318b22fae869e23e553ce49e0",
   "proxy-ReferralDepositAdapter": "0xf5333C2A259E23795023a5bD63e937e5b365DF52",
-  "proxyAdmin-ReferralDepositAdapter": "0xB221d5e97aDD0D2C4FAE213dC1688326d7f95CE1"
+  "proxyAdmin-ReferralDepositAdapter": ""0xB221d5e97aDD0D2C4FAE213dC1688326d7f95CE1
 }
