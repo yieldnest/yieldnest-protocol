@@ -108,7 +108,7 @@ contract ActorAddresses {
                 STAKING_NODE_CREATOR: mainnetWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
-                REFERAL_PUBLISHER: holeskyWallets.YNDev
+                REFERAL_PUBLISHER: mainnetWallets.YNDev
             }),
             wallets: mainnetWallets
         });
