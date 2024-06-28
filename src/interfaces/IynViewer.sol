@@ -9,7 +9,7 @@ interface IynViewer {
         uint256 nodeId;
         uint256 ethBalance;
         uint256 eigenPodEthBalance;
-        uint256 podOwnerShares;
+        int256 podOwnerShares;
         address stakingNode;
         address eigenPod;
         address delegatedTo;
