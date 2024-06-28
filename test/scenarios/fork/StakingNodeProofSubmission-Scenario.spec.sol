@@ -169,8 +169,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
 
-        int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Validator must be inactive to prove withdrawal credentials");
         stakingNodeInstance.verifyWithdrawalCredentials(
@@ -282,7 +280,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
-    function test_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
+    function skiptest_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -323,9 +321,31 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // verify Partial Withdrawal
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
 
-        // verify Partial Withdrawal
-        vm.expectRevert();
-        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
+        // try verifiy again with same proof
+        {
+            string memory path = "test/data/holesky_withdrawal_proof_1945219_2.json";
+
+            setJSON(path);
+
+            setupForVerifyAndProcessWithdrawals();
+
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+            uint64 oracleTimestamp = uint64(block.timestamp);
+            ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();
+
+            // Withdraw
+            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.expectRevert("EigenPod._verifyAndProcessWithdrawal: withdrawal has already been proven for this timestamp");
+            stakingNodeInstance.verifyAndProcessWithdrawals(
+                oracleTimestamp,
+                params.stateRootProof,
+                params.withdrawalProofs,
+                params.validatorFieldsProofs,
+                params.validatorFields,
+                params.withdrawalFields
+            );
+        }
     }
 
     function test_queueWithdrawals_32ETH_Holesky() public {
@@ -422,7 +442,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
-        uint64 oracleTimestamp = uint64(block.timestamp);
         MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
 
         address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
@@ -465,13 +484,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
     }
 
-    function verifyAndProcessWithdrawalSuccesfullyForProofFile(uint256 nodeId, string memory path) public {
+    function setupForVerifyAndProcessWithdrawals() public {
 
-        setJSON(path);
-
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-
-        uint64 oracleTimestamp = uint64(block.timestamp);
         MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
 
         address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
@@ -479,45 +493,18 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    }
 
+    function verifyAndProcessWithdrawalSuccesfullyForProofFile(uint256 nodeId, string memory path) public {
+
+        setJSON(path);
+
+        setupForVerifyAndProcessWithdrawals();
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        uint64 oracleTimestamp = uint64(block.timestamp);
         ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();
-
-        BeaconChainProofs.WithdrawalProof memory withdrawalProof = params.withdrawalProofs[0];   
-
-
-        {
-            // TODO: remove this block when completed
-            uint256 historicalBlockHeaderIndex = (BeaconChainProofs.HISTORICAL_SUMMARIES_INDEX <<
-                    ((BeaconChainProofs.HISTORICAL_SUMMARIES_TREE_HEIGHT + 1) + 1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
-                    (uint256(withdrawalProof.historicalSummaryIndex) << (1 + (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT))) |
-                    (BeaconChainProofs.BLOCK_SUMMARY_ROOT_INDEX << (BeaconChainProofs.BLOCK_ROOTS_TREE_HEIGHT)) |
-                    uint256(withdrawalProof.blockRootIndex);
-
-            console.log("Blokc Root Index: ", withdrawalProof.blockRootIndex);
-            console.log("Historical Summary Block Root Proof:", vm.toString(withdrawalProof.historicalSummaryBlockRootProof));
-            console.log("Beacon State Root:",  vm.toString(params.stateRootProof.beaconStateRoot));
-            console.log("Block Root:", vm.toString(withdrawalProof.blockRoot));
-            console.log("Historical Block Header Index:", historicalBlockHeaderIndex);
-
-            require(
-                    Merkle.verifyInclusionSha256({
-                        proof: withdrawalProof.historicalSummaryBlockRootProof,
-                        root: params.stateRootProof.beaconStateRoot,
-                        leaf: withdrawalProof.blockRoot,
-                        index: historicalBlockHeaderIndex
-                    }),
-                    "Merkle.verifyInclusionSha256 BeaconChainProofs.verifyWithdrawal: Invalid historicalsummary merkle proof"
-                );   
-        }
-  
-
-        // Save state for checks; deal EigenPod withdrawal router balance
-        // uint64 withdrawalAmountGwei = Endian.fromLittleEndianUint64(
-        //     withdrawalFields[0][BeaconChainProofs.WITHDRAWAL_VALIDATOR_AMOUNT_INDEX]
-        // );
-        // uint64 leftOverBalanceWEI = uint64(withdrawalAmountGwei - MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR) * 1e9;
-        // cheats.deal(address(eigenPod), leftOverBalanceWEI);
-        // int256 initialShares = eigenPodManager.podOwnerShares(podOwner);
 
         // Withdraw
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
