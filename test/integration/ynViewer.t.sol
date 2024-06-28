@@ -1,27 +1,34 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
-import {IynViewer} from "src/interfaces/IynViewer.sol";
-import {ynViewer as YnViewer} from "src/ynViewer.sol";
-import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 
+import "./IntegrationBaseTest.sol";
+
 contract ynViewerTest is IntegrationBaseTest {
-    IynViewer ynViewer;
 
     function setUp() public override {
         super.setUp();
-        ynViewer = new YnViewer(yneth, stakingNodesManager);
+
+        viewer = new ynViewer(address(yneth), address(stakingNodesManager));
     }
 
     function testGetAllValidators() public {
-        IStakingNodesManager.Validator[] memory validators = ynViewer.getAllValidators();
-        assertEq(validators.length, 0, "There should be no validators");
+        IStakingNodesManager.Validator[] memory validators = viewer.getAllValidators();
+        assertEq(validators.length, 0, "testGetAllValidators: E0");
     }
-    
-    function testgetAllStakingNodes() public {
-        IStakingNode[] memory stakingNodes = ynViewer.getAllStakingNodes();
-        assertEq(stakingNodes.length, 0, "There should be no staking nodes");
+
+    function testGetRate() public {
+        assertEq(viewer.getRate(), 1 ether, "testGetRate: E0");
+    }
+
+    function testWithdrawalDelayBlocks() public {
+        assertEq(viewer.withdrawalDelayBlocks(address(this)), stakingNodesManager.delegationManager().minWithdrawalDelayBlocks(), "testWithdrawalDelayBlocks: E0"); // non-strategy
+        assertGt(viewer.withdrawalDelayBlocks(address(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0)), 0, "testWithdrawalDelayBlocks: E1"); // beaconChainETHStrategy
+    }
+
+    function testGetStakingNodeData() public {
+        ynViewer.StakingNodeData[] memory _data = viewer.getStakingNodeData();
+        assertEq(_data.length, 0, "testGetStakingNodeData: E0");
     }
 }	
