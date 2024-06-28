@@ -164,6 +164,15 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
     }
 
+    function testVerifyWithdrawalCredentials_PartialRewards_Holesky() public {
+
+        uint256 nodeId = 2;
+        // Validator proven
+        // 1692473
+        // 0x80500c11e542327646b5a08a952288241b11f6ea0c185f41afa79dad03b21defe213054ab71770651f3f293dd2e4b9c7
+        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1972138.json");
+    }
+
 
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_Holesky() public {
 
