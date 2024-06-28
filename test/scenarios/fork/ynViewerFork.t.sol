@@ -3,17 +3,17 @@ pragma solidity ^0.8.24;
 
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 
-import {DeployViewer} from "../../../script/DeployViewer.s.sol";
+import {DeployYnViewer} from "../../../script/deployYnViewer.s.sol";
 
 import "../ScenarioBaseTest.sol";
 
-contract ynViewerForkTest is ScenarioBaseTest, DeployViewer {
+contract ynViewerForkTest is ScenarioBaseTest, DeployYnViewer {
 
     function setUp() public override {
         super.setUp();
 
         (, privateKey) = makeAddrAndKey("deployer");
-        DeployViewer.run();
+        DeployYnViewer.run();
     }
 
     function testGetAllValidators() public {

@@ -7,7 +7,7 @@ import {ContractAddresses} from "./ContractAddresses.sol";
 
 import "./BaseScript.s.sol";
 
-contract DeployViewer is BaseScript {
+contract DeployYnViewer is BaseScript {
 
     uint256 public privateKey; // dev: assigned in test setup
 
