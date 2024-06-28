@@ -89,6 +89,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         params.validatorFields[0] = getValidatorFields();
         params.withdrawalFields[0] = getWithdrawalFields();
         params.withdrawalProofs[0] = _getWithdrawalProof();
+        params.validatorFieldsProofs[0] = abi.encodePacked(getValidatorProof());
 
         return params;
     }
