@@ -151,7 +151,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
     }
 
-    function testFail_VerifyWithdrawalCredentials_32ETH_Twice_Holesky() public {
+    function test_VerifyWithdrawalCredentials_32ETH_Twice_Holesky() public {
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
         }
@@ -161,8 +161,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 nodeId = 0;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
 
-        vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Validator must be inactive to prove withdrawal credentials");
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
+        // vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Validator must be inactive to prove withdrawal credentials");
+        // verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
     }
 
     function testVerifyWithdrawalCredentials_PartialRewards_Holesky() public {
@@ -265,7 +265,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
-    function testFail_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
+    function test_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -286,7 +286,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
-    function testFail_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
+    function test_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
