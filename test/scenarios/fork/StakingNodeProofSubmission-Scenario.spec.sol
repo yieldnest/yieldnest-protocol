@@ -158,11 +158,28 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // Validator proven:
         // 1692941
         // 0xb7ea207e2cad7076c176af040a79ce3c9779e02f94e62548fb9856c8e1c9720398f88fd59e89e7cfe0518d43f299ea13
-        uint256 nodeId = 0;
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1915130.json");
-
-        vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Validator must be inactive to prove withdrawal credentials");
+        uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
+
+        setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
+        
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        uint64 oracleTimestamp = uint64(block.timestamp);
+
+        ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
+
+        int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Validator must be inactive to prove withdrawal credentials");
+        stakingNodeInstance.verifyWithdrawalCredentials(
+            oracleTimestamp,
+            validatorProofs.stateRootProof,
+            validatorProofs.validatorIndices,
+            validatorProofs.withdrawalCredentialProofs,
+            validatorProofs.validatorFields
+        );
     }
 
     function testVerifyWithdrawalCredentials_PartialRewards_Holesky() public {
@@ -286,7 +303,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
-    function testFail_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
+    function test_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -425,6 +442,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
     function verifyWithdrawalCredentialsSuccesfullyForProofFile(uint256 nodeId, string memory path) public {
 
         setupForVerifyWithdrawalCredentials(nodeId, path);
+        
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
         uint64 oracleTimestamp = uint64(block.timestamp);
