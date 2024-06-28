@@ -399,7 +399,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
     }
 
 
-    function verifyWithdrawalCredentialsSuccesfullyForProofFile(uint256 nodeId, string memory path) public {
+    function setupForVerifyWithdrawalCredentials(uint256 nodeId, string memory path) public {
 
         setJSON(path);
 
@@ -418,13 +418,18 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         assertEq(eigenPodAddress, address(stakingNodeInstance.eigenPod()), "EigenPod address does not match the expected address");
 
-
-        ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
-        bytes32 validatorPubkeyHash = BeaconChainProofs.getPubkeyHash(validatorProofs.validatorFields[0]);
-
-
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    }
+
+    function verifyWithdrawalCredentialsSuccesfullyForProofFile(uint256 nodeId, string memory path) public {
+
+        setupForVerifyWithdrawalCredentials(nodeId, path);
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        uint64 oracleTimestamp = uint64(block.timestamp);
+
+        ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
 
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
