@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {IDelegationManager, IStrategy} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
-import {IEigenPod} from "@eigenlayer/src/contracts/interfaces/IEigenPod.sol";
 
 import {IStakingNode, IStakingNodesManager, IynViewer} from "./interfaces/IynViewer.sol";
 
@@ -54,14 +53,14 @@ contract ynViewer is IynViewer {
 
         for (uint256 i = 0; i < _length; ++i) {
             IStakingNode _node = _nodes[i];
-            IEigenPod _eigenPod = IEigenPod(stakingNodesManager.eigenPodManager().getPod(address(_node)));
+            address _eigenPod = address(stakingNodesManager.eigenPodManager().getPod(address(_node)));
             _data[i] = StakingNodeData({
                 nodeId: _node.nodeId(),
                 ethBalance: _node.getETHBalance(),
-                eigenPodEthBalance: _eigenPod.nonBeaconChainETHBalanceWei(),
+                eigenPodEthBalance: _eigenPod.balance,
                 podOwnerShares: stakingNodesManager.strategyManager().stakerStrategyShares(address(_node), _node.beaconChainETHStrategy()),
                 stakingNode: address(_node),
-                eigenPod: address(_eigenPod),
+                eigenPod: _eigenPod,
                 delegatedTo: stakingNodesManager.delegationManager().delegatedTo(address(_node))
             });
         }
