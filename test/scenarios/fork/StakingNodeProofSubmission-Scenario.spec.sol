@@ -30,108 +30,10 @@ import {Merkle} from "lib/eigenlayer-contracts/src/contracts/libraries/Merkle.so
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
 import {beaconChainETHStrategy} from "src/Constants.sol";
+import { StakingNodeTestBase } from "test/utils/StakingNodeTestBase.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 
 import "forge-std/console.sol";
-
-
-contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
-
-    struct ValidatorProofs {
-        BeaconChainProofs.StateRootProof stateRootProof;
-        uint40[] validatorIndices;
-        bytes[] withdrawalCredentialProofs;
-        bytes[] validatorFieldsProofs;
-        bytes32[][] validatorFields;
-    }
-
-    struct ValidatorWithdrawalProofParams {
-        BeaconChainProofs.StateRootProof stateRootProof;
-        bytes32[][] validatorFields;
-        bytes[] validatorFieldsProofs;
-        bytes32[][] withdrawalFields;
-        BeaconChainProofs.WithdrawalProof[] withdrawalProofs;
-    }
-
-    function _getLatestBlockRoot() public returns (bytes32) {
-        return getLatestBlockRoot();
-    }
-
-    function getWithdrawalCredentialParams() public returns (ValidatorProofs memory) {
-        ValidatorProofs memory validatorProofs;
-        
-        validatorProofs.validatorIndices = new uint40[](1);
-        validatorProofs.withdrawalCredentialProofs = new bytes[](1);
-        validatorProofs.validatorFieldsProofs = new bytes[](1);
-        validatorProofs.validatorFields = new bytes32[][](1);
-
-
-        //bytes memory validatorFieldsProof = abi.encodePacked(getValidatorProof());
-        // Set beacon state root, validatorIndex
-        validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
-        validatorProofs.stateRootProof.proof = getStateRootProof();
-        validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
-        validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-        //validatorProofs.validatorFieldsProofs[0] = validatorFieldsProof;
-        validatorProofs.validatorFields[0] = getValidatorFields();
-
-        return validatorProofs;
-    }
-
-    function getValidatorWithdrawalProofParams() public returns (ValidatorWithdrawalProofParams memory) {
-        ValidatorWithdrawalProofParams memory params;
-
-        params.validatorFieldsProofs = new bytes[](1);
-        params.validatorFields = new bytes32[][](1);
-        params.withdrawalFields = new bytes32[][](1);
-        params.withdrawalProofs =  new BeaconChainProofs.WithdrawalProof[](1);
-
-        params.stateRootProof.beaconStateRoot = getBeaconStateRoot();
-        params.stateRootProof.proof = getStateRootProof();
-        params.validatorFields[0] = getValidatorFields();
-        params.withdrawalFields[0] = getWithdrawalFields();
-        params.withdrawalProofs[0] = _getWithdrawalProof();
-        params.validatorFieldsProofs[0] = abi.encodePacked(getValidatorProof());
-
-        return params;
-    }
-
-    function bytes32ToData(bytes32 data) public pure returns (address) {
-        return address(uint160(uint256(data)));
-    }
-
-    function getWithdrawalAddress() public returns (address) {
-        bytes32[] memory validatorFields = getValidatorFields();
-        return bytes32ToData(validatorFields[1]);
-    }
-
-
-    function _getWithdrawalProof() internal returns (BeaconChainProofs.WithdrawalProof memory) {
-        {
-            bytes32 blockRoot = getBlockRoot();
-            bytes32 slotRoot = getSlotRoot();
-            bytes32 timestampRoot = getTimestampRoot();
-            bytes32 executionPayloadRoot = getExecutionPayloadRoot();
-
-            return
-                BeaconChainProofs.WithdrawalProof(
-                    abi.encodePacked(getWithdrawalProofDeneb()),
-                    abi.encodePacked(getSlotProof()),
-                    abi.encodePacked(getExecutionPayloadProof()),
-                    abi.encodePacked(getTimestampProofDeneb()),
-                    abi.encodePacked(getHistoricalSummaryProof()),
-                    uint64(getBlockRootIndex()),
-                    uint64(getHistoricalSummaryIndex()),
-                    uint64(getWithdrawalIndex()),
-                    blockRoot,
-                    slotRoot,
-                    timestampRoot,
-                    executionPayloadRoot
-                );
-        }
-    }
-
-}
 
 
 contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase {

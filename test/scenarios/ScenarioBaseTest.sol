@@ -154,6 +154,5 @@ contract ScenarioBaseTest is Test, Utils {
         
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
-
     }
 }
