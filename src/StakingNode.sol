@@ -135,6 +135,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         nodeId = init.nodeId;
     }
 
+    function initializeV2(uint256 initialUnverifiedStakedETH) external onlyStakingNodesManager reinitializer(2) {
+        unverifiedStakedETH = initialUnverifiedStakedETH;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  EIGENPOD CREATION   ------------------------------
     //--------------------------------------------------------------------------------------
@@ -219,7 +223,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         for (uint256 i = 0; i < validatorIndices.length; i++) {
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
+            console.log("unverifiedStakedETH before:", unverifiedStakedETH);
+            console.log("effectiveBalanceGwei:", effectiveBalanceGwei);
             unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
+            console.log("unverifiedStakedETH after:", unverifiedStakedETH);
         }
     }
 
