@@ -218,7 +218,7 @@ contract StakingNodesManager is
     }
 
     // TODO: hardcode these values instead of setting them as parameters
-    function initialize2(Init2 calldata init)
+    function initializeV2(Init2 calldata init)
         external
         notZeroAddress(address(init.withdrawalAssetsVault))
         notZeroAddress(init.withdrawalManager)

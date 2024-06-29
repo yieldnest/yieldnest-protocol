@@ -31,6 +31,10 @@ import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import { ynETHRedemptionAssetsVault } from "src/ynETHRedemptionAssetsVault.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 
 contract ScenarioBaseTest is Test, Utils {
 
@@ -103,6 +107,48 @@ contract ScenarioBaseTest is Test, Utils {
             vm.prank(actors.wallets.YNSecurityCouncil);
             ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
         }
+
+        ynETHRedemptionAssetsVault ynethRedemptionAssetsVaultImplementation = new ynETHRedemptionAssetsVault();
+        TransparentUpgradeableProxy ynethRedemptionAssetsVaultProxy = new TransparentUpgradeableProxy(
+            address(ynethRedemptionAssetsVaultImplementation),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        ynETHRedemptionAssetsVault ynethRedemptionAssetsVault = ynETHRedemptionAssetsVault(payable(address(ynethRedemptionAssetsVaultProxy)));
+
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(new WithdrawalQueueManager()),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        WithdrawalQueueManager withdrawalQueueManager = WithdrawalQueueManager(address(proxy));
+
+        ynETHRedemptionAssetsVault.Init memory vaultInit = ynETHRedemptionAssetsVault.Init({
+            admin: actors.admin.PROXY_ADMIN_OWNER,
+            redeemer: address(withdrawalQueueManager),
+            ynETH: IynETH(address(yneth))
+        });
+        ynethRedemptionAssetsVault.initialize(vaultInit);
+
+        WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
+            name: "ynETH Withdrawal Manager",
+            symbol: "ynETHWM",
+            redeemableAsset: IRedeemableAsset(address(yneth)),
+            redemptionAssetsVault: IRedemptionAssetsVault(address(ynethRedemptionAssetsVault)),
+            admin: actors.admin.PROXY_ADMIN_OWNER,
+            withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER_ROLE,
+            withdrawalFee: 500, // 0.05%
+            feeReceiver: actors.admin.FEE_RECEIVER
+        });
+        withdrawalQueueManager.initialize(managerInit);
+
+        vm.prank(actors.admin.STAKING_ADMIN);
+        StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
+            withdrawalAssetsVault: address(ynethRedemptionAssetsVault),
+            withdrawalManager: actors.ops.WITHDRAWAL_MANAGER_ROLE
+        });
+        
+        stakingNodesManager.initializeV2(initParams);
 
         stakingNodeImplementation = new StakingNode();
         
