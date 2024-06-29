@@ -152,12 +152,22 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1980328.json");
     }
+    
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_Holesky_2nd_Validator() public {
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+       // Validator proven:
+        // 1692491
+        // 0x82c3291dbbbd1b466c222eeb8f2a8cfe6bd6c9a6cedf900021c7f0fc319dba23f56dfb469607d142ab84328ba58c7fea
+        uint256 nodeId = 2;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1981705.json");
+    }
 
     function test_VerifyWithdrawalCredentials_32ETH_Twice_Holesky() public {
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
         }
-
 
        // Validator proven:
         // 1692491
@@ -194,7 +204,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
     }
 
 
-    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_Holesky() public {
+    function testVerifyWithdrawalCredentialsSuccesfully_0ETH_With_verifyAndProcessWithdrawal_32ETH_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -209,6 +219,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 1692468
         // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
         uint256 nodeId = 2;
+        // The withdrawal can be proven for 0 ETH (no shares are credited)
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
         // verify Full Withdrawal
