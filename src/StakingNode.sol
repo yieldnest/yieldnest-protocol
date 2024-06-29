@@ -436,6 +436,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return queuedSharesAmount;
     }
 
+    /**
+     * @notice Retrieves the amount of ETH that has been withdrawn from validators and is held by this StakingNode.
+     * @return The amount of withdrawn validator principal in wei.
+     */
+    function getWithdrawnValidatorPrincipal() public view returns (uint256) {
+        return withdrawnValidatorPrincipal;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  BEACON IMPLEMENTATION  ---------------------------
     //--------------------------------------------------------------------------------------
