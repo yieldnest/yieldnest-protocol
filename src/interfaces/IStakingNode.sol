@@ -106,6 +106,7 @@ interface IStakingNode {
 
     function getUnverifiedStakedETH() external view returns (uint256);
     function getQueuedSharesAmount() external view returns (uint256);
+    function getWithdrawnValidatorPrincipal() external view returns (uint256);
 
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
 }
