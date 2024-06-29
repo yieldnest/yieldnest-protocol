@@ -247,7 +247,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219_2.json");
     }
 
-    function testVerifyWithdrawalCredentialsSuccesfully_32ETH_With_verifyAndProcessWithdrawal_32ETH_and_RewardsPartial_Holesky() public {
+    function testVerifyWithdrawalCredentialsSuccesfully_0ETH_With_verifyAndProcessWithdrawal_32ETH_and_RewardsPartial_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -295,7 +295,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
     }
 
-    function skiptest_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
+    function test_verifyAndProcessWithdrawal_32ETH_Without_VerifyWithdrawalCredentials_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
@@ -312,8 +312,28 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 nodeId = 2;
 
         // Attempt verify Full Withdrawal without having run verifyWithdrawalCredentials
+        string memory path = "test/data/holesky_withdrawal_proof_1945219.json";
+
+        setJSON(path);
+
+        setupForVerifyAndProcessWithdrawals();
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        uint64 oracleTimestamp = uint64(block.timestamp);
+        ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();
+
+        // Withdraw
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         vm.expectRevert("EigenPod._verifyAndProcessWithdrawal: Validator never proven to have withdrawal credentials pointed to this contract");
-        verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1945219.json");
+        stakingNodeInstance.verifyAndProcessWithdrawals(
+            oracleTimestamp,
+            params.stateRootProof,
+            params.withdrawalProofs,
+            params.validatorFieldsProofs,
+            params.validatorFields,
+            params.withdrawalFields
+        );
     }
 
     function test_verifyAndProcessWithdrawal_RewardsPartial_Twice_Holesky() public {
