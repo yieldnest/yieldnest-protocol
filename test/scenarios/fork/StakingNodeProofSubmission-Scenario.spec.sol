@@ -147,8 +147,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             return; // Skip test if not on Holesky
         }
        // Validator proven:
-        // 1692468
-        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        // 1692491
+        // 0x874af0983029e801430881094da5401d509f6a7a01840f4c6cfa3e177ecc1036caba600cafb500f92744db2984780fb0
         uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1980328.json");
     }
@@ -157,13 +157,15 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
         }
-        // Validator proven:
-        // 1692468
-        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
-        uint256 nodeId = 2;
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
-        setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
+
+       // Validator proven:
+        // 1692491
+        // 0x874af0983029e801430881094da5401d509f6a7a01840f4c6cfa3e177ecc1036caba600cafb500f92744db2984780fb0
+        uint256 nodeId = 2;
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1980328.json");
+
+        setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1980328.json");
         
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
