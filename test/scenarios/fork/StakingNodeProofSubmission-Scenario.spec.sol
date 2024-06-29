@@ -158,7 +158,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             return; // Skip test if not on Holesky
         }
        // Validator proven:
-        // 1692491
+        // 1692488
         // 0x82c3291dbbbd1b466c222eeb8f2a8cfe6bd6c9a6cedf900021c7f0fc319dba23f56dfb469607d142ab84328ba58c7fea
         uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1981705.json");
