@@ -30,7 +30,7 @@ import {Merkle} from "lib/eigenlayer-contracts/src/contracts/libraries/Merkle.so
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
 import {beaconChainETHStrategy} from "src/Constants.sol";
-
+import {Vm} from "lib/forge-std/src/Vm.sol";
 
 import "forge-std/console.sol";
 
@@ -150,7 +150,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 1692468
         // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
         uint256 nodeId = 2;
-        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1980328.json");
     }
 
     function test_VerifyWithdrawalCredentials_32ETH_Twice_Holesky() public {
@@ -481,6 +481,13 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
+        uint256 balanceGwei = BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0]);
+        console.log("Balance in Gwei:", balanceGwei);
+
+        for (uint i = 0; i < validatorProofs.validatorFields[0].length; i++) {
+            console.log("Validator Field:", vm.toString(validatorProofs.validatorFields[0][i]));
+        }
+
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
@@ -492,6 +499,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         
         int256 expectedSharesIncrease = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        console.log("Shares before:", uint256(sharesBefore));
+        console.log("Expected shares increase:", uint256(expectedSharesIncrease));
+        console.log("Shares after:", uint256(sharesAfter));
         assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
     }
 
