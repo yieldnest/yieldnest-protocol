@@ -30,6 +30,8 @@ import {Merkle} from "lib/eigenlayer-contracts/src/contracts/libraries/Merkle.so
 import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
 import {beaconChainETHStrategy} from "src/Constants.sol";
+
+
 import "forge-std/console.sol";
 
 
@@ -156,8 +158,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             return; // Skip test if not on Holesky
         }
         // Validator proven:
-        // 1692941
-        // 0xb7ea207e2cad7076c176af040a79ce3c9779e02f94e62548fb9856c8e1c9720398f88fd59e89e7cfe0518d43f299ea13
+        // 1692468
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
         uint256 nodeId = 2;
         verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
@@ -375,7 +377,12 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 queuedSharesBefore = stakingNodeInstance.getQueuedSharesAmount();
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
+        uint256 minWithdrawalDelayBlocks = delegationManager.minWithdrawalDelayBlocks();
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         bytes32[] memory fullWithdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        console.log("fullWithdrawalRoots.length", fullWithdrawalRoots.length);
 
         assertEq(fullWithdrawalRoots.length, 1, "Expected exactly one full withdrawal root");
 
@@ -383,7 +390,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 queuedSharesAfter = stakingNodeInstance.getQueuedSharesAmount();
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
-        assertEq(unverifiedStakedETHBefore, unverifiedStakedETHAfter - withdrawalAmount);
+        assertEq(unverifiedStakedETHBefore - unverifiedStakedETHAfter, withdrawalAmount);
         assertEq(queuedSharesBefore + withdrawalAmount, queuedSharesAfter);
         assertEq(sharesBefore - sharesAfter, int256(withdrawalAmount), "Staking node shares do not match expected shares");
 
@@ -414,6 +421,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // TODO: fixme
         middlewareTimesIndexes[0] = 0;
 
+        vm.roll(block.number + minWithdrawalDelayBlocks + 1);
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
     }
 
