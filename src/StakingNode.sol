@@ -15,7 +15,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ONE_GWEI} from "src/Constants.sol";
+import {ONE_GWEI, DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 import "forge-std/console.sol";
 
@@ -223,10 +223,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         for (uint256 i = 0; i < validatorIndices.length; i++) {
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
-            console.log("unverifiedStakedETH before:", unverifiedStakedETH);
-            console.log("effectiveBalanceGwei:", effectiveBalanceGwei);
-            unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
-            console.log("unverifiedStakedETH after:", unverifiedStakedETH);
+
+            // Decrease unverifiedStakedETH by DEFAULT_VALIDATOR_STAKE regardless if the current balance of the validator
+            // Since unverifiedStakedETH was increased by DEFAULT_VALIDATOR_STAKE when the validator was staked
+            // within the Beacon Chain
+            unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
         }
     }
 

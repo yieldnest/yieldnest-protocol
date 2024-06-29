@@ -7,3 +7,4 @@ address constant ETH_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 uint256 constant YNETH_UNIT = 1e18;
 uint256 constant ONE_GWEI = 1e9;
 IStrategy constant beaconChainETHStrategy = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0);
+uint256 constant DEFAULT_VALIDATOR_STAKE = 32 ether;
