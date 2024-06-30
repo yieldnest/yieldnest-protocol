@@ -155,13 +155,16 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 ethEquivalent = yneth.previewRedeem(userRequestedAmountYnETH);
         console.log("ETH equivalent of requested ynETH:", ethEquivalent);
 
-        uint256 ynETHBalanceBefore = yneth.balanceOf(userAddress);
-        vm.prank(userAddress);
-        yneth.approve(address(ynETHWithdrawalQueueManager), userRequestedAmountYnETH);
-        vm.prank(userAddress);
-        ynETHWithdrawalQueueManager.requestWithdrawal(userRequestedAmountYnETH);
-        uint256 ynETHBalanceAfter = yneth.balanceOf(userAddress);
-        assertEq(ynETHBalanceBefore - ynETHBalanceAfter, userRequestedAmountYnETH, "ynETH balance after withdrawal request does not match expected amount");
+        uint256 tokenId;
+        {
+            uint256 ynETHBalanceBefore = yneth.balanceOf(userAddress);
+            vm.prank(userAddress);
+            yneth.approve(address(ynETHWithdrawalQueueManager), userRequestedAmountYnETH);
+            vm.prank(userAddress);
+            tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userRequestedAmountYnETH);
+            uint256 ynETHBalanceAfter = yneth.balanceOf(userAddress);
+            assertEq(ynETHBalanceBefore - ynETHBalanceAfter, userRequestedAmountYnETH, "ynETH balance after withdrawal request does not match expected amount");
+        }
 
         uint256 systemAmountToWithdraw = ethEquivalent * 4;
         uint256 amountToReinvest = ethEquivalent;
@@ -169,11 +172,30 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
         console.log("Pranked address:", actors.ops.WITHDRAWAL_MANAGER);
 
+
+        uint256 vaultEthBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
+        uint256 ynETHEthBalanceBefore = address(yneth).balance; 
+
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
         stakingNodesManager.processPrincipalWithdrawalsForNode(
             nodeId,
             amountToReinvest,
             amountToQueue
         );
+
+        uint256 vaultEthBalanceAfter = address(ynETHRedemptionAssetsVaultInstance).balance;
+        uint256 ynETHEthBalanceAfter = address(yneth).balance;
+
+        assertEq(vaultEthBalanceAfter - vaultEthBalanceBefore, amountToQueue, "Assets vault balance increase does not match the queued amount.");
+        assertEq(ynETHEthBalanceAfter - ynETHEthBalanceBefore, amountToReinvest, "ynETH balance did not increase as expected.");
+
+        // Advance time to simulate the delay required for withdrawals to be processed
+        uint256 secondsToFinalization = ynETHWithdrawalQueueManager.secondsToFinalization();
+        vm.warp(block.timestamp + secondsToFinalization + 1); // Adjust time as per the specific requirements of the scenario
+        uint256 userEthBalanceBefore = userAddress.balance;
+        vm.prank(userAddress);
+        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, userAddress);
+        uint256 userEthBalanceAfter = userAddress.balance;
+        assertEq(userEthBalanceAfter - userEthBalanceBefore, ethEquivalent, "ETH balance change does not match the expected ETH equivalent");
     }
 }

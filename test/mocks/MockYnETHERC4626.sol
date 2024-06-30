@@ -126,6 +126,12 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         return Math.mulDiv(shares, totalAssets(), supply, rounding);
     }
 
+    /// @notice Burns a specified amount of ynETH shares.
+    /// @param amount The amount of shares to burn.
+    function burn(uint256 amount) external override {
+        _burn(msg.sender, amount);
+    }
+
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ASSETS -------------------------------------------

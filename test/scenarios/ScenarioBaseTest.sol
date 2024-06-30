@@ -168,5 +168,9 @@ contract ScenarioBaseTest is Test, Utils {
         
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
+
+        bytes32 burnerRole = yneth.BURNER_ROLE();
+        vm.prank(actors.admin.ADMIN);
+        yneth.grantRole(burnerRole, address(ynETHWithdrawalQueueManager));
     }
 }

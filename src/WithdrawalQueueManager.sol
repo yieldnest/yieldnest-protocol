@@ -118,7 +118,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
     //--------------------------------------------------------------------------------------
 
-    function requestWithdrawal(uint256 amount) external nonReentrant {
+    function requestWithdrawal(uint256 amount) external nonReentrant returns (uint256 tokenId) {
         if (amount <= 0) {
             revert AmountMustBeGreaterThanZero();
         }
@@ -126,7 +126,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         redeemableAsset.transferFrom(msg.sender, address(this), amount);
 
         uint256 currentRate = redemptionAssetsVault.redemptionRate();
-        uint256 tokenId = _tokenIdCounter++;
+        tokenId = _tokenIdCounter++;
         withdrawalRequests[tokenId] = WithdrawalRequest({
             amount: amount,
             feeAtRequestTime: withdrawalFee,

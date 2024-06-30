@@ -3,8 +3,9 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
-interface IynETH is IERC20 {
+interface IynETH is IERC20, IRedeemableAsset {
     function withdrawETH(uint256 ethAmount) external;
     function processWithdrawnETH() external payable;
     function receiveRewards() external payable;
