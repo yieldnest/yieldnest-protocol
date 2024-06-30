@@ -425,8 +425,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
-        uint256 balanceGwei = BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0]);
-
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
