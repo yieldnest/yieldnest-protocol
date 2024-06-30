@@ -127,4 +127,26 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
                 );
         }
     }
+
+    function setupForVerifyWithdrawalCredentials(uint256 nodeId, string memory path) public {
+
+        setJSON(path);
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+
+        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+        vm.prank(eigenPodManagerOwner);
+        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+        
+        // set existing EigenPod to be the EigenPod of the StakingNode for the 
+        // purpose of testing verifyWithdrawalCredentials
+        address eigenPodAddress = getWithdrawalAddress();
+
+        assertEq(eigenPodAddress, address(stakingNodeInstance.eigenPod()), "EigenPod address does not match the expected address");
+
+        bytes32 latestBlockRoot = _getLatestBlockRoot();
+        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    }
 }
