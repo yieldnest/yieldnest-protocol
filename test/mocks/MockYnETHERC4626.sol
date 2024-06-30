@@ -106,6 +106,38 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function previewRedeem(uint256 shares) public view override(ERC4626Upgradeable, IynETH) returns (uint256 assets) {
+       return _convertToAssets(shares, Math.Rounding.Floor);
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal override view returns (uint256) {
+
+        uint256 supply = totalSupply();
+
+        // 1:1 exchange rate on the first stake.
+        // Use totalSupply to see if this call is made before boostrap call, not totalAssets
+        if (supply == 0) {
+            return shares;
+        }
+        return Math.mulDiv(shares, totalAssets(), supply, rounding);
+    }
+
+    /// @notice Burns a specified amount of ynETH shares.
+    /// @param amount The amount of shares to burn.
+    function burn(uint256 amount) external override {
+        _burn(msg.sender, amount);
+    }
+
+    
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ASSETS -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
     function totalAssets() public view override returns (uint256) {
         uint256 total = 0;
         // allocated ETH for deposits pending to be processed

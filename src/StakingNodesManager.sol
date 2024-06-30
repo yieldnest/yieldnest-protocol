@@ -17,6 +17,9 @@ import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 
+import "forge-std/console.sol";
+
+
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
     event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot, bytes withdrawalCredentials);
@@ -26,6 +29,8 @@ interface StakingNodesManagerEvents {
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
+    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
+    event ETHReceived(address sender, uint256 amount);
 }
 
 contract StakingNodesManager is
@@ -78,6 +83,9 @@ contract StakingNodesManager is
     /// @notice Role is able to unpause the system
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
+    /// @notice Role is able to manage withdrawals
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -119,6 +127,8 @@ contract StakingNodesManager is
 
     bool public validatorRegistrationPaused;
 
+    address public withdrawalAssetsVault;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -150,6 +160,11 @@ contract StakingNodesManager is
         IDelegationManager delegationManager;
         IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
+    }
+
+    struct Init2 {
+        address withdrawalAssetsVault;
+        address withdrawalManager;
     }
     
     function initialize(Init calldata init)
@@ -206,10 +221,21 @@ contract StakingNodesManager is
         strategyManager = init.strategyManager;
     }
 
+    // TODO: hardcode these values instead of setting them as parameters
+    function initializeV2(Init2 calldata init)
+        external
+        notZeroAddress(address(init.withdrawalAssetsVault))
+        notZeroAddress(init.withdrawalManager)
+        reinitializer(2)
+        onlyRole(DEFAULT_ADMIN_ROLE) {
+        
+        // TODO: review role access here for what can execute this
+        withdrawalAssetsVault = init.withdrawalAssetsVault;
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, init.withdrawalManager);
+    }
+
     receive() external payable {
-        if (msg.sender != address(ynETH)) {
-            revert DepositorNotYnETH();
-        }
+        emit ETHReceived(msg.sender, msg.value);
     }
 
     //--------------------------------------------------------------------------------------
@@ -440,6 +466,45 @@ contract StakingNodesManager is
 
         emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, msg.value);
     }
+
+    /// @notice Processes principal withdrawals, specifying how much goes back into ynETH and how much goes to the withdrawal queue.
+    /// @param nodeId The ID of the node processing the withdrawal.
+    /// @param amountToReinvest Amount of ETH to reinvest into ynETH.
+    /// @param amountToQueue Amount of ETH to send to the withdrawal queue.
+    function processPrincipalWithdrawalsForNode(
+        uint256 nodeId, 
+        uint256 amountToReinvest, 
+        uint256 amountToQueue
+    ) 
+        public 
+        onlyRole(WITHDRAWAL_MANAGER_ROLE) 
+    {
+        // Calculate the total amount to be processed by summing reinvestment and queuing amounts
+        uint256 totalAmount = amountToReinvest + amountToQueue;
+
+        // Retrieve the staking node object using the nodeId
+        IStakingNode node = nodes[nodeId];
+
+        // Deallocate the specified total amount of ETH from the staking node
+        node.deallocateStakedETH(totalAmount);
+
+        // If there is an amount specified to reinvest, process it through ynETH
+        if (amountToReinvest > 0) {
+            ynETH.processWithdrawnETH{value: amountToReinvest }();
+        }
+
+        // If there is an amount specified to queue, send it to the withdrawal assets vault
+        if (amountToQueue > 0) {
+            (bool success, ) = address(withdrawalAssetsVault).call{value: amountToQueue}("");
+            if (!success) {
+                revert TransferFailed();
+            }
+        }
+        // Emit an event to log the processed principal withdrawal details
+        emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue);
+    }
+
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------

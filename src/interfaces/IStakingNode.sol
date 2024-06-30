@@ -6,6 +6,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;
@@ -50,7 +51,9 @@ interface IStakingNode {
     function implementation() external view returns (address);
 
     function allocateStakedETH(uint amount) external payable;   
+    function deallocateStakedETH(uint256 amount) external payable;
     function getETHBalance() external view returns (uint);
+    function unverifiedStakedETH() external view returns (uint256);
     function nodeId() external view returns (uint);
 
     /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
@@ -72,5 +75,38 @@ interface IStakingNode {
         bytes32[][] calldata validatorFields
     ) external;
 
+    /**
+     * @notice Verifies and processes the withdrawals of validators.
+     * @param oracleTimestamp The timestamp of the oracle.
+     * @param stateRootProof The state root proof.
+     * @param withdrawalProofs An array of withdrawal proofs.
+     * @param validatorFieldsProofs An array of validator fields proofs.
+     * @param validatorFields An array of arrays, each containing the validator fields to be verified.
+     * @param withdrawalFields An array of arrays, each containing the withdrawal fields to be processed.
+     */
+    function verifyAndProcessWithdrawals(
+        uint64 oracleTimestamp,
+        BeaconChainProofs.StateRootProof calldata stateRootProof,
+        BeaconChainProofs.WithdrawalProof[] calldata withdrawalProofs,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields,
+        bytes32[][] calldata withdrawalFields
+    ) external;
+
+    function queueWithdrawals(
+        uint256 sharesAmount
+    ) external returns (bytes32[] memory fullWithdrawalRoots);
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes
+     ) external;
+
     function getInitializedVersion() external view returns (uint64);
+
+    function getUnverifiedStakedETH() external view returns (uint256);
+    function getQueuedSharesAmount() external view returns (uint256);
+    function getWithdrawnValidatorPrincipal() external view returns (uint256);
+
+    function initializeV2(uint256 initialUnverifiedStakedETH) external;
 }

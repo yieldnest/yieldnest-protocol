@@ -39,6 +39,13 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error InsufficientBalance();
     error TransferFailed();
 
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES --------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -98,6 +105,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //--------------------------------------------------------------------------------------
     //----------------------------------  DEPOSITS   ---------------------------------------
     //--------------------------------------------------------------------------------------
+    
     /**
      * @notice Allows depositing ETH into the contract in exchange for shares.
      * @dev Mints shares equivalent to the deposited ETH value and assigns them to the receiver.
@@ -124,6 +132,20 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit Deposit(msg.sender, receiver, assets, shares, totalDepositedInPool);
     }
 
+    /// @notice Calculates the amount of shares to be minted for a given deposit.
+    /// @param assets The amount of assets to be deposited.
+    /// @return The amount of shares to be minted.
+    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+        return _convertToShares(assets, Math.Rounding.Floor);
+    }
+
+    /// @notice Converts a given amount of assets to shares.
+    /// @param assets The amount of assets to be converted.
+    /// @return shares The equivalent amount of shares.
+    function convertToShares(uint256 assets) public view returns (uint256 shares) {
+        return _convertToShares(assets, Math.Rounding.Floor);
+    }
+
     /// @notice Converts from ynETH to ETH using the current exchange rate.
     /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
     function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
@@ -142,12 +164,44 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         );
     }
 
-    /// @notice Calculates the amount of shares to be minted for a given deposit.
-    /// @param assets The amount of assets to be deposited.
-    /// @return The amount of shares to be minted.
-    function previewDeposit(uint256 assets) public view virtual returns (uint256) {
-        return _convertToShares(assets, Math.Rounding.Floor);
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Calculates the amount of assets that would be redeemed for a given amount of shares at current block
+    /// @param shares The amount of shares to redeem.
+    /// @return assets The equivalent amount of assets.
+    function previewRedeem(uint256 shares) external view returns (uint256 assets) {
+       return _convertToAssets(shares, Math.Rounding.Floor);
     }
+
+    /// @notice Converts a given amount of shares to assets at current block
+    /// @param shares The amount of shares to convert.
+    /// @return assets The equivalent amount of assets.
+    function convertToAssets(uint256 shares) external view returns (uint256 assets) {
+       return _convertToAssets(shares, Math.Rounding.Floor);
+    }
+
+    /// @dev Internal implementation of {convertToAssets}.
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
+
+        uint256 supply = totalSupply();
+
+        // 1:1 exchange rate on the first stake.
+        // Use totalSupply to see if this call is made before boostrap call, not totalAssets
+        if (supply == 0) {
+            return shares;
+        }
+        return Math.mulDiv(shares, totalAssets(), supply, rounding);
+    }
+
+    function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
+        _burn(msg.sender, amount);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ASSETS -------------------------------------------
+    //--------------------------------------------------------------------------------------
 
     /// @notice Calculates the total assets controlled by the protocol.
     /// @dev This includes both the ETH deposited in the pool awaiting processing and the ETH already sent to validators on the beacon chain.

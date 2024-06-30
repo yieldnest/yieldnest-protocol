@@ -17,6 +17,8 @@ interface ILSDStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
+    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
+    event QueuedWithdrawals(IERC20[] indexed assets, uint256[] sharesToWithdraw, bytes32[] withdrawalRoots);
 }
 
 /**
@@ -34,6 +36,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
 
     error ZeroAddress();
     error NotLSDRestakingManager();
+    error UnexpectedWithdrawnBalance(IERC20 asset, uint256 balanceBefore, uint256 balanceAfter, uint256 expectedDelta);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -94,6 +97,60 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
             uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, retrievedAmount);
             emit DepositToEigenlayer(asset, strategy, retrievedAmount, eigenShares);
         }
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EIGENLAYER WITHDRAWALS  --------------------------
+    //--------------------------------------------------------------------------------------
+
+    function queueWithdrawals(
+        IERC20[] memory assets,
+        uint256[] memory sharesToWithdraw
+    ) external onlyLSDRestakingManager returns (bytes32[] memory withdrawalRoots) {
+        IDelegationManager.QueuedWithdrawalParams[] memory withdrawals =
+            new IDelegationManager.QueuedWithdrawalParams[](assets.length);
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = ynLSD.strategies(assets[i]);
+
+            uint256[] memory shares = new uint256[](1);
+            shares[0] = sharesToWithdraw[i];
+
+            withdrawals[i] = IDelegationManager.QueuedWithdrawalParams({
+                strategies: strategies,
+                shares: shares,
+                withdrawer: address(this)
+            });
+        }
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+        withdrawalRoots = delegationManager.queueWithdrawals(withdrawals);
+
+        emit QueuedWithdrawals(assets, sharesToWithdraw, withdrawalRoots);
+    }
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes,
+        IERC20[][] calldata tokens
+    ) external onlyLSDRestakingManager {
+
+        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            receiveAsTokens[i] = true;
+        }
+
+        IDelegationManager delegationManager = ynLSD.delegationManager();
+
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals,
+            tokens,
+            middlewareTimesIndexes,
+            receiveAsTokens
+        );
+
+        emit CompletedQueuedWithdrawals(withdrawals);
     }
 
     //--------------------------------------------------------------------------------------
