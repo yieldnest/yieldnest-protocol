@@ -33,8 +33,6 @@ import {beaconChainETHStrategy} from "src/Constants.sol";
 import { StakingNodeTestBase } from "test/utils/StakingNodeTestBase.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 
-import "forge-std/console.sol";
-
 
 contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase {
 
@@ -323,8 +321,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
             fullWithdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
 
-            console.log("fullWithdrawalRoots.length", fullWithdrawalRoots.length);
-
             assertEq(fullWithdrawalRoots.length, 1, "Expected exactly one full withdrawal root");
 
             uint256 queuedSharesAfter = stakingNodeInstance.getQueuedSharesAmount();
@@ -430,11 +426,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
         uint256 balanceGwei = BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0]);
-        console.log("Balance in Gwei:", balanceGwei);
-
-        for (uint i = 0; i < validatorProofs.validatorFields[0].length; i++) {
-            console.log("Validator Field:", vm.toString(validatorProofs.validatorFields[0][i]));
-        }
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
@@ -447,9 +438,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         
         int256 expectedSharesIncrease = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-        console.log("Shares before:", uint256(sharesBefore));
-        console.log("Expected shares increase:", uint256(expectedSharesIncrease));
-        console.log("Shares after:", uint256(sharesAfter));
         assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
     }
 
