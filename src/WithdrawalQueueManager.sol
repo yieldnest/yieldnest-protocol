@@ -11,6 +11,9 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 
+import "forge-std/console.sol";
+
+
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
@@ -163,12 +166,12 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         }
 
         withdrawalRequests[tokenId].processed = true;
-        pendingRequestedRedemptionAmount -= calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+        pendingRequestedRedemptionAmount -= unitOfAccountAmount;
 
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
 
-        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
 
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
         uint256 netUnitOfAccountAmount = unitOfAccountAmount - feeAmount;
