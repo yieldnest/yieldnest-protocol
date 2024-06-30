@@ -140,5 +140,30 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
         assertEq(balanceAfter - balanceBefore, withdrawalAmount, "ETH balance after withdrawal does not match expected amount");
         assertEq(withdrawnValidatorPrincipalAfter - withdrawnValidatorPrincipalBefore, withdrawalAmount, "Withdrawn validator principal after withdrawal does not match expected amount");
+
+        uint256 userRequestedAmountYnETH = 1 ether;
+
+        address userAddress = address(0x12345678);
+        vm.deal(userAddress, 100 ether); // Give the user some Ether to start with
+        vm.prank(userAddress);
+        yneth.depositETH{value: 10 ether}(userAddress); // User mints ynETH by depositing ETH
+
+        uint256 ynETHBalanceBefore = yneth.balanceOf(userAddress);
+        vm.prank(userAddress);
+        yneth.approve(address(ynETHWithdrawalQueueManager), userRequestedAmountYnETH);
+        vm.prank(userAddress);
+        ynETHWithdrawalQueueManager.requestWithdrawal(userRequestedAmountYnETH);
+        uint256 ynETHBalanceAfter = yneth.balanceOf(userAddress);
+        assertEq(ynETHBalanceBefore - ynETHBalanceAfter, userRequestedAmountYnETH, "ynETH balance after withdrawal request does not match expected amount");
+
+        // uint256 amountToReinvest = withdrawalAmount / 2;
+        // uint256 amountToQueue = withdrawalAmount - amountToReinvest;
+
+        // vm.prank(actors.ops.WITHDRAWAL_MANAGER_ROLE);
+        // stakingNodesManager.processPrincipalWithdrawalsForNode(
+        //     stakingNodeInstance.nodeId(),
+        //     amountToReinvest,
+        //     amountToQueue
+        // );
     }
 }

@@ -56,6 +56,10 @@ contract ScenarioBaseTest is Test, Utils {
     // Assets
     ynETH public yneth;
 
+    // Withdrawals
+    WithdrawalQueueManager public ynETHWithdrawalQueueManager;
+    ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
+
     // Eigen
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
@@ -100,13 +104,15 @@ contract ScenarioBaseTest is Test, Utils {
 
     function applyNextReleaseUpgrades() internal {
 
-        if (block.chainid == 17000) {
-            // Specific logic for chainId 17000
-            address newStakingNodesManagerImpl = address(new HoleskyStakingNodesManager());
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        yneth.unpauseTransfers();
 
-            vm.prank(actors.wallets.YNSecurityCouncil);
-            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
-        }
+        address newStakingNodesManagerImpl = block.chainid == 17000
+            ? address(new HoleskyStakingNodesManager())
+            : address(new StakingNodesManager());
+        
+        vm.prank(actors.wallets.YNSecurityCouncil);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
 
         ynETHRedemptionAssetsVault ynethRedemptionAssetsVaultImplementation = new ynETHRedemptionAssetsVault();
         TransparentUpgradeableProxy ynethRedemptionAssetsVaultProxy = new TransparentUpgradeableProxy(
@@ -114,37 +120,37 @@ contract ScenarioBaseTest is Test, Utils {
             actors.admin.PROXY_ADMIN_OWNER,
             ""
         );
-        ynETHRedemptionAssetsVault ynethRedemptionAssetsVault = ynETHRedemptionAssetsVault(payable(address(ynethRedemptionAssetsVaultProxy)));
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(ynethRedemptionAssetsVaultProxy)));
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(new WithdrawalQueueManager()),
             actors.admin.PROXY_ADMIN_OWNER,
             ""
         );
-        WithdrawalQueueManager withdrawalQueueManager = WithdrawalQueueManager(address(proxy));
+        ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(proxy));
 
         ynETHRedemptionAssetsVault.Init memory vaultInit = ynETHRedemptionAssetsVault.Init({
             admin: actors.admin.PROXY_ADMIN_OWNER,
-            redeemer: address(withdrawalQueueManager),
+            redeemer: address(ynETHWithdrawalQueueManager),
             ynETH: IynETH(address(yneth))
         });
-        ynethRedemptionAssetsVault.initialize(vaultInit);
+        ynETHRedemptionAssetsVaultInstance.initialize(vaultInit);
 
         WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
             name: "ynETH Withdrawal Manager",
             symbol: "ynETHWM",
             redeemableAsset: IRedeemableAsset(address(yneth)),
-            redemptionAssetsVault: IRedemptionAssetsVault(address(ynethRedemptionAssetsVault)),
+            redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
             admin: actors.admin.PROXY_ADMIN_OWNER,
             withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER_ROLE,
             withdrawalFee: 500, // 0.05%
             feeReceiver: actors.admin.FEE_RECEIVER
         });
-        withdrawalQueueManager.initialize(managerInit);
+        ynETHWithdrawalQueueManager.initialize(managerInit);
 
         vm.prank(actors.admin.STAKING_ADMIN);
         StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
-            withdrawalAssetsVault: address(ynethRedemptionAssetsVault),
+            withdrawalAssetsVault: address(ynETHRedemptionAssetsVaultInstance),
             withdrawalManager: actors.ops.WITHDRAWAL_MANAGER_ROLE
         });
         
