@@ -148,12 +148,12 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 userRequestedAmountYnETH = 1 ether;
 
         address userAddress = address(0x12345678);
+        address receivalAddress = address(0x987654321);
         vm.deal(userAddress, 100 ether); // Give the user some Ether to start with
         vm.prank(userAddress);
         yneth.depositETH{value: 10 ether}(userAddress); // User mints ynETH by depositing ETH
 
         uint256 ethEquivalent = yneth.previewRedeem(userRequestedAmountYnETH);
-        console.log("ETH equivalent of requested ynETH:", ethEquivalent);
 
         uint256 tokenId;
         {
@@ -192,10 +192,13 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         // Advance time to simulate the delay required for withdrawals to be processed
         uint256 secondsToFinalization = ynETHWithdrawalQueueManager.secondsToFinalization();
         vm.warp(block.timestamp + secondsToFinalization + 1); // Adjust time as per the specific requirements of the scenario
-        uint256 userEthBalanceBefore = userAddress.balance;
+        uint256 userEthBalanceBefore = receivalAddress.balance;
         vm.prank(userAddress);
-        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, userAddress);
-        uint256 userEthBalanceAfter = userAddress.balance;
-        assertEq(userEthBalanceAfter - userEthBalanceBefore, ethEquivalent, "ETH balance change does not match the expected ETH equivalent");
+        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receivalAddress);
+        uint256 userEthBalanceAfter = receivalAddress.balance;
+        uint256 feePercentage = ynETHWithdrawalQueueManager.withdrawalFee();
+        uint256 feeAmount = (ethEquivalent * feePercentage) / ynETHWithdrawalQueueManager.FEE_PRECISION();
+        uint256 expectedReceivedAmount = ethEquivalent - feeAmount;
+        assertEq(userEthBalanceAfter - userEthBalanceBefore, expectedReceivedAmount, "ETH balance change does not match the expected ETH equivalent");
     }
 }
