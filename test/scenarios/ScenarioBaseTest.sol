@@ -35,6 +35,8 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import { ynETHRedemptionAssetsVault } from "src/ynETHRedemptionAssetsVault.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import "forge-std/console.sol";
+
 
 contract ScenarioBaseTest is Test, Utils {
 
@@ -114,6 +116,10 @@ contract ScenarioBaseTest is Test, Utils {
         vm.prank(actors.wallets.YNSecurityCouncil);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
 
+        address newynETHImpl = address(new ynETH());
+        vm.prank(actors.wallets.YNSecurityCouncil);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newynETHImpl, "");
+
         ynETHRedemptionAssetsVault ynethRedemptionAssetsVaultImplementation = new ynETHRedemptionAssetsVault();
         TransparentUpgradeableProxy ynethRedemptionAssetsVaultProxy = new TransparentUpgradeableProxy(
             address(ynethRedemptionAssetsVaultImplementation),
@@ -142,19 +148,21 @@ contract ScenarioBaseTest is Test, Utils {
             redeemableAsset: IRedeemableAsset(address(yneth)),
             redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
             admin: actors.admin.PROXY_ADMIN_OWNER,
-            withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER_ROLE,
+            withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
             withdrawalFee: 500, // 0.05%
             feeReceiver: actors.admin.FEE_RECEIVER
         });
         ynETHWithdrawalQueueManager.initialize(managerInit);
 
-        vm.prank(actors.admin.STAKING_ADMIN);
         StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
             withdrawalAssetsVault: address(ynETHRedemptionAssetsVaultInstance),
-            withdrawalManager: actors.ops.WITHDRAWAL_MANAGER_ROLE
+            withdrawalManager: actors.ops.WITHDRAWAL_MANAGER
         });
         
+        vm.prank(actors.admin.ADMIN);
         stakingNodesManager.initializeV2(initParams);
+        assert(stakingNodesManager.hasRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER));
+        console.log("WITHDRAWAL_MANAGER address:", actors.ops.WITHDRAWAL_MANAGER);
 
         stakingNodeImplementation = new StakingNode();
         

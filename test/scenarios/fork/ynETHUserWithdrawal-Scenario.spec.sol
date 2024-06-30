@@ -101,45 +101,49 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         }
 
 
-        uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
+        {
+            // queueWithdrawals and completeQueuedWithdrawals
 
-        IStrategy[] memory strategies = new IStrategy[](1);
-        strategies[0] = beaconChainETHStrategy;
+            uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
 
-        uint256[] memory shares = new uint256[](1);
-        shares[0] = withdrawalAmount;
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
-            staker: address(stakingNodeInstance),
-            delegatedTo: address(0),
-            withdrawer: address(stakingNodeInstance),
-            nonce: nonce,
-            startBlock: uint32(block.number),
-            strategies: strategies,
-            shares: shares
-        });
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = beaconChainETHStrategy;
 
-        bytes32 fullWithdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-        assertEq(fullWithdrawalRoot, fullWithdrawalRoots[0], "fullWithdrawalRoot should match the first in the array");
+            uint256[] memory shares = new uint256[](1);
+            shares[0] = withdrawalAmount;
+            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+                staker: address(stakingNodeInstance),
+                delegatedTo: address(0),
+                withdrawer: address(stakingNodeInstance),
+                nonce: nonce,
+                startBlock: uint32(block.number),
+                strategies: strategies,
+                shares: shares
+            });
 
-        IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
-        withdrawals[0] = withdrawal;
+            bytes32 fullWithdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
+            assertEq(fullWithdrawalRoot, fullWithdrawalRoots[0], "fullWithdrawalRoot should match the first in the array");
 
-        uint256[] memory middlewareTimesIndexes = new uint256[](1);
-        middlewareTimesIndexes[0] = 0; // value is not used, as per EigenLayer docs
+            IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
+            withdrawals[0] = withdrawal;
 
-        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
+            uint256[] memory middlewareTimesIndexes = new uint256[](1);
+            middlewareTimesIndexes[0] = 0; // value is not used, as per EigenLayer docs
 
-        uint256 balanceBefore = address(stakingNodeInstance).balance;
-        uint256 withdrawnValidatorPrincipalBefore = stakingNodeInstance.getWithdrawnValidatorPrincipal();
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
-        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-        stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
+            uint256 balanceBefore = address(stakingNodeInstance).balance;
+            uint256 withdrawnValidatorPrincipalBefore = stakingNodeInstance.getWithdrawnValidatorPrincipal();
 
-        uint256 balanceAfter = address(stakingNodeInstance).balance;
-        uint256 withdrawnValidatorPrincipalAfter = stakingNodeInstance.getWithdrawnValidatorPrincipal();
+            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
 
-        assertEq(balanceAfter - balanceBefore, withdrawalAmount, "ETH balance after withdrawal does not match expected amount");
-        assertEq(withdrawnValidatorPrincipalAfter - withdrawnValidatorPrincipalBefore, withdrawalAmount, "Withdrawn validator principal after withdrawal does not match expected amount");
+            uint256 balanceAfter = address(stakingNodeInstance).balance;
+            uint256 withdrawnValidatorPrincipalAfter = stakingNodeInstance.getWithdrawnValidatorPrincipal();
+
+            assertEq(balanceAfter - balanceBefore, withdrawalAmount, "ETH balance after withdrawal does not match expected amount");
+            assertEq(withdrawnValidatorPrincipalAfter - withdrawnValidatorPrincipalBefore, withdrawalAmount, "Withdrawn validator principal after withdrawal does not match expected amount");
+        }
 
         uint256 userRequestedAmountYnETH = 1 ether;
 
@@ -147,6 +151,9 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         vm.deal(userAddress, 100 ether); // Give the user some Ether to start with
         vm.prank(userAddress);
         yneth.depositETH{value: 10 ether}(userAddress); // User mints ynETH by depositing ETH
+
+        uint256 ethEquivalent = yneth.previewRedeem(userRequestedAmountYnETH);
+        console.log("ETH equivalent of requested ynETH:", ethEquivalent);
 
         uint256 ynETHBalanceBefore = yneth.balanceOf(userAddress);
         vm.prank(userAddress);
@@ -156,14 +163,17 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 ynETHBalanceAfter = yneth.balanceOf(userAddress);
         assertEq(ynETHBalanceBefore - ynETHBalanceAfter, userRequestedAmountYnETH, "ynETH balance after withdrawal request does not match expected amount");
 
-        // uint256 amountToReinvest = withdrawalAmount / 2;
-        // uint256 amountToQueue = withdrawalAmount - amountToReinvest;
+        uint256 systemAmountToWithdraw = ethEquivalent * 4;
+        uint256 amountToReinvest = ethEquivalent;
+        uint256 amountToQueue = systemAmountToWithdraw - amountToReinvest;
 
-        // vm.prank(actors.ops.WITHDRAWAL_MANAGER_ROLE);
-        // stakingNodesManager.processPrincipalWithdrawalsForNode(
-        //     stakingNodeInstance.nodeId(),
-        //     amountToReinvest,
-        //     amountToQueue
-        // );
+        console.log("Pranked address:", actors.ops.WITHDRAWAL_MANAGER);
+
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        stakingNodesManager.processPrincipalWithdrawalsForNode(
+            nodeId,
+            amountToReinvest,
+            amountToQueue
+        );
     }
 }
