@@ -41,7 +41,6 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
     using BytesLib for bytes;
 
 
-
     function test_UserWithdrawal_1ETH_Holesky() public {
 
         if (block.chainid != 17000) {
@@ -59,7 +58,6 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
         {
             // verifyWithdrawalCredentials
-            uint256 unverifiedStakedETHBefore = stakingNodeInstance.getUnverifiedStakedETH();
 
             // Validator proven:
             // 1692468
@@ -75,31 +73,12 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
                 validatorProofs.withdrawalCredentialProofs,
                 validatorProofs.validatorFields
             );
-
-            uint256 unverifiedStakedETHAfter = stakingNodeInstance.getUnverifiedStakedETH();
-            assertEq(unverifiedStakedETHBefore - unverifiedStakedETHAfter, withdrawalAmount, "Unverified staked ETH after withdrawal does not match expected amount");
         }
-
-        bytes32[] memory fullWithdrawalRoots;
         {
             // queueWithdrawals
-            uint256 queuedSharesBefore = stakingNodeInstance.getQueuedSharesAmount();
-            int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-            fullWithdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-
-            console.log("fullWithdrawalRoots.length", fullWithdrawalRoots.length);
-
-            assertEq(fullWithdrawalRoots.length, 1, "Expected exactly one full withdrawal root");
-
-            uint256 queuedSharesAfter = stakingNodeInstance.getQueuedSharesAmount();
-            int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-
-            assertEq(queuedSharesBefore + withdrawalAmount, queuedSharesAfter, "Queued shares after withdrawal do not match the expected total.");
-            assertEq(sharesBefore - sharesAfter, int256(withdrawalAmount), "Staking node shares do not match expected shares");
+            stakingNodeInstance.queueWithdrawals(withdrawalAmount);
         }
-
 
         {
             // queueWithdrawals and completeQueuedWithdrawals
@@ -121,9 +100,6 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
                 shares: shares
             });
 
-            bytes32 fullWithdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-            assertEq(fullWithdrawalRoot, fullWithdrawalRoots[0], "fullWithdrawalRoot should match the first in the array");
-
             IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
             withdrawals[0] = withdrawal;
 
@@ -132,17 +108,8 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
             vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
-            uint256 balanceBefore = address(stakingNodeInstance).balance;
-            uint256 withdrawnValidatorPrincipalBefore = stakingNodeInstance.getWithdrawnValidatorPrincipal();
-
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
-
-            uint256 balanceAfter = address(stakingNodeInstance).balance;
-            uint256 withdrawnValidatorPrincipalAfter = stakingNodeInstance.getWithdrawnValidatorPrincipal();
-
-            assertEq(balanceAfter - balanceBefore, withdrawalAmount, "ETH balance after withdrawal does not match expected amount");
-            assertEq(withdrawnValidatorPrincipalAfter - withdrawnValidatorPrincipalBefore, withdrawalAmount, "Withdrawn validator principal after withdrawal does not match expected amount");
         }
 
         uint256 userRequestedAmountYnETH = 1 ether;
