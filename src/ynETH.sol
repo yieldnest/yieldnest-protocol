@@ -39,6 +39,13 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error InsufficientBalance();
     error TransferFailed();
 
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES --------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -186,6 +193,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
             return shares;
         }
         return Math.mulDiv(shares, totalAssets(), supply, rounding);
+    }
+
+    function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
+        _burn(msg.sender, amount);
     }
 
     //--------------------------------------------------------------------------------------

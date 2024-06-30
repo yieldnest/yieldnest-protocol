@@ -13,7 +13,7 @@ interface IWithdrawalQueueManager {
         bool processed;
     }
 
-    function requestWithdrawal(uint256 amount) external;
+    function requestWithdrawal(uint256 amount) external returns (uint256);
     function claimWithdrawal(uint256 tokenId, address receiver) external;
     function setSecondsToFinalization(uint256 _secondsToFinalization) external;
 }
