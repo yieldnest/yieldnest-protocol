@@ -88,40 +88,6 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 		vm.expectRevert("Pausable: index is paused");
 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 	}
-
-	function skiptestQueueWithdrawals() public {
-		// Setup: Obtain stETH and Deposit assets to ynLSD by User
-		TestAssetUtils testAssetUtils = new TestAssetUtils();
-		IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-		uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
-		stETH.approve(address(ynlsd), balance);
-		ynlsd.deposit(stETH, balance, address(this));
-
-		// Deposit assets to Eigenlayer by LSD ReStaking Manager
-		IERC20[] memory assets = new IERC20[](1);
-		assets[0] = stETH;
-		uint256[] memory amounts = new uint256[](1);
-		amounts[0] = balance;
-		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-
-		// Queue withdrawals
-		IDelegationManager.QueuedWithdrawalParams[] memory queuedWithdrawalParams = new IDelegationManager.QueuedWithdrawalParams[](1);
-		queuedWithdrawalParams[0] = IDelegationManager.QueuedWithdrawalParams({
-			strategies: new IStrategy[](1),
-			shares: new uint256[](1),
-			withdrawer: address(this)
-		});
-		queuedWithdrawalParams[0].strategies[0] = IStrategy(address(ynlsd.strategies(stETH)));
-		queuedWithdrawalParams[0].shares[0] = balance;
-
-		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-		// sharestToWithdraw = amount
-		bytes32[] memory withdrawalRoots = lsdStakingNode.queueWithdrawals(assets, amounts);
-
-		// Check the withdrawal roots are correctly generated
-		assertEq(withdrawalRoots.length, 1, "Incorrect number of withdrawal roots generated");
-	}
 }
 
 
