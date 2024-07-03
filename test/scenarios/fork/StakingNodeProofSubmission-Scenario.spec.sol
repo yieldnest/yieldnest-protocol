@@ -33,6 +33,7 @@ import {beaconChainETHStrategy} from "src/Constants.sol";
 import { StakingNodeTestBase } from "test/utils/StakingNodeTestBase.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 
+import "forge-std/console.sol";
 
 contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase {
 
@@ -105,6 +106,26 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         // 1692473
         // 0x80500c11e542327646b5a08a952288241b11f6ea0c185f41afa79dad03b21defe213054ab71770651f3f293dd2e4b9c7
         verifyAndProcessWithdrawalSuccesfullyForProofFile(nodeId, "test/data/holesky_withdrawal_proof_1972138.json");
+    }
+
+
+    function testVerifyWithdrawalCredentialsSuccesfully_0ETH_Holesky() public {
+
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+        /*
+            This validator  has been activated and withdrawn.
+            It has NOT been proved VerifyWithdrawalCredentials yet.
+            It has  NOT been proven verifyAndProcessWithdrawal yet for any of the withdrawals.
+        */
+
+       // Validator proven:
+        // 1692468
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        uint256 nodeId = 2;
+        // The withdrawal can be proven for 0 ETH (no shares are credited)
+        verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
     }
 
 
@@ -313,7 +334,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             verifyWithdrawalCredentialsSuccesfullyForProofFile(nodeId, "test/data/holesky_wc_proof_1916455.json");
 
             uint256 unverifiedStakedETHAfter = stakingNodeInstance.getUnverifiedStakedETH();
-            assertEq(unverifiedStakedETHBefore - unverifiedStakedETHAfter, withdrawalAmount, "Unverified staked ETH after withdrawal does not match expected amount");
+
+            // IMPORTANT: the unverifiedStakedETH is the same as the validator has already been withdrawn
+            assertEq(unverifiedStakedETHBefore - unverifiedStakedETHAfter, 0, "Unverified staked ETH after withdrawal does not match expected amount");
         }
 
         bytes32[] memory fullWithdrawalRoots;
@@ -406,6 +429,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
+        uint256 stakingNodeETHBalanceBeforeVerification = stakingNodeInstance.getETHBalance();
+        uint256 ynETHTotalAssetsBeforeVerification = yneth.totalAssets();
+
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
             oracleTimestamp,
@@ -418,6 +444,12 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         int256 expectedSharesIncrease = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
         assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
+
+        assertEq(stakingNodeETHBalanceBeforeVerification, stakingNodeInstance.getETHBalance(), "Staking node ETH balance should not change after verification");
+
+        console.log("Staking node ETH balance before verification:", stakingNodeETHBalanceBeforeVerification);
+        console.log("ynETH total assets before verification:", ynETHTotalAssetsBeforeVerification);
+        assertEq(ynETHTotalAssetsBeforeVerification, yneth.totalAssets(), "Total assets should not change after verification");
     }
 
     function setupForVerifyAndProcessWithdrawals() public {
