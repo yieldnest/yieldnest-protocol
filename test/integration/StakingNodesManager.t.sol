@@ -555,11 +555,13 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
 
 contract StakingNodesManagerMisc is IntegrationBaseTest {
 
-    function testSendingETHToStakingNodesManagerShouldRevert() public {
+    function testSendingETHToStakingNodesManagerShouldNotRevert() public {
         uint256 amountToSend = 1 ether;
 
         // Send ETH to the StakingNodesManager contract
         (bool sent, ) = address(stakingNodesManager).call{value: amountToSend}("");
-        assertFalse(sent, "Sending ETH should fail");
+        assertTrue(sent, "ETH transfer failed");
+        assertEq(address(stakingNodesManager).balance, amountToSend, "Balance of StakingNodesManager incorrect after receiving ETH");
+
     }
 }
