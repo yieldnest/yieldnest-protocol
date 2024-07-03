@@ -96,6 +96,10 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
     function testVerifyWithdrawalCredentials_PartialRewards_Holesky() public {
 
+        if (block.chainid != 17000) {
+            return; // Skip test if not on Holesky
+        }
+
         uint256 nodeId = 2;
         // Validator proven
         // 1692473
