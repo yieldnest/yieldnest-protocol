@@ -323,6 +323,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 withdrawalAmount = 32 ether;
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
+        uint256[] memory stakingNodeBalancesBefore = getAllStakingNodeBalances();
+        uint256 totalAssetsBefore = yneth.totalAssets();
+        uint256 totalSupplyBefore = yneth.totalSupply();
 
         {
             // verifyWithdrawalCredentials
@@ -357,29 +360,34 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             assertEq(sharesBefore - sharesAfter, int256(withdrawalAmount), "Staking node shares do not match expected shares");
         }
 
+        runSystemStateInvariants(totalAssetsBefore, totalSupplyBefore, stakingNodeBalancesBefore);
 
-        uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
+        IDelegationManager.Withdrawal[] memory withdrawals;
+        {   
+            uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
 
-        IStrategy[] memory strategies = new IStrategy[](1);
-        strategies[0] = beaconChainETHStrategy;
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = beaconChainETHStrategy;
 
-        uint256[] memory shares = new uint256[](1);
-        shares[0] = withdrawalAmount;
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
-            staker: address(stakingNodeInstance),
-            delegatedTo: address(0),
-            withdrawer: address(stakingNodeInstance),
-            nonce: nonce,
-            startBlock: uint32(block.number),
-            strategies: strategies,
-            shares: shares
-        });
+            uint256[] memory shares = new uint256[](1);
+            shares[0] = withdrawalAmount;
+            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+                staker: address(stakingNodeInstance),
+                delegatedTo: address(0),
+                withdrawer: address(stakingNodeInstance),
+                nonce: nonce,
+                startBlock: uint32(block.number),
+                strategies: strategies,
+                shares: shares
+            });
 
-        bytes32 fullWithdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-        assertEq(fullWithdrawalRoot, fullWithdrawalRoots[0], "fullWithdrawalRoot should match the first in the array");
+            bytes32 fullWithdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
 
-        IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
-        withdrawals[0] = withdrawal;
+            assertEq(fullWithdrawalRoot, fullWithdrawalRoots[0], "fullWithdrawalRoot should match the first in the array");
+
+            withdrawals = new IDelegationManager.Withdrawal[](1);
+            withdrawals[0] = withdrawal;
+        }
 
         uint256[] memory middlewareTimesIndexes = new uint256[](1);
         middlewareTimesIndexes[0] = 0; // value is not used, as per EigenLayer docs
@@ -391,6 +399,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
+        
+        runSystemStateInvariants(totalAssetsBefore, totalSupplyBefore, stakingNodeBalancesBefore);
 
         uint256 balanceAfter = address(stakingNodeInstance).balance;
         uint256 withdrawnValidatorPrincipalAfter = stakingNodeInstance.getWithdrawnValidatorPrincipal();
@@ -486,4 +496,27 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         );
 
     }
+
+    function getAllStakingNodeBalances() public view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](stakingNodesManager.nodesLength());
+        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            IStakingNode stakingNode = stakingNodesManager.nodes(i);
+            balances[i] = stakingNode.getETHBalance();
+        }
+        return balances;
+    }
+
+    function runSystemStateInvariants(
+        uint256 previousTotalAssets,
+        uint256 previousTotalSupply,
+        uint256[] memory previousStakingNodeBalances
+    ) public {  
+        assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
+        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            assertEq(currentStakingNodeBalance, previousStakingNodeBalances[i], "Staking node balance integrity check failed for node ID: ");
+        }
+	}
 }
