@@ -35,8 +35,12 @@ contract DelegateTransactionBuilder is BaseScript {
             require(address(allNodes[i]) == stakingNodes[i], "Node address mismatch.");
         }
 
+        // https://app.eigenlayer.xyz/operator/0xa83e07353a9ed2af88e7281a2fa7719c01356d8e
         address OPERATOR_A41 = 0xa83e07353A9ED2aF88e7281a2fA7719c01356D8e;
+
+        // https://app.eigenlayer.xyz/operator/0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5
         address OPERATOR_P2P = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
+
 
         address[] memory operators = new address[](5);
         operators[0] = OPERATOR_A41;
@@ -56,7 +60,7 @@ contract DelegateTransactionBuilder is BaseScript {
                 bytes32(0)
             );
             console.log("Node address:", stakingNodes[i]);
-            console.log("Index:", i);
+            console.log("Node Index:", i);
             console.log("Delegating to operator:", currentOperator);
             console.log("Delegate transaction data:", vm.toString(abi.encodePacked(delegateTxData)));
         }
