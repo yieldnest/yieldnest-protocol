@@ -227,7 +227,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // Decrease unverifiedStakedETH by DEFAULT_VALIDATOR_STAKE regardless if the current balance of the validator
             // Since unverifiedStakedETH was increased by DEFAULT_VALIDATOR_STAKE when the validator was staked
             // within the Beacon Chain
-            unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
+            unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
         }
     }
 
