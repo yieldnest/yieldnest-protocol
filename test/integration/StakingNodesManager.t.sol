@@ -15,6 +15,9 @@ import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
 
+import "forge-std/console.sol";
+
+
 
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
 
@@ -129,6 +132,9 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
         
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
+
+        // uint64 initializedVersion = stakingNodeInstance.getInitializedVersion();
+        // console.log("Initialized version initializedVersion", initializedVersion);
 
         TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
         vm.prank(actors.admin.STAKING_ADMIN);
