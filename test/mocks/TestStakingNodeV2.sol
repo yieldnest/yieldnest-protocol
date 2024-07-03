@@ -15,7 +15,7 @@ contract TestStakingNodeV2 is StakingNode {
         uint valueToBeInitialized;
     }
 
-    function initializeV2(ReInit memory reInit) public reinitializer(2) {
+    function initializeV2(ReInit memory reInit) public reinitializer(3) {
         valueToBeInitialized = reInit.valueToBeInitialized;
     }
 
