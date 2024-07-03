@@ -40,6 +40,6 @@ contract ynViewerForkTest is ScenarioBaseTest, DeployYnViewer {
         assertGe(_data[0].podOwnerShares, 0, "testGetStakingNodeData: E4");
         assertNotEq(_data[0].stakingNode, address(0), "testGetStakingNodeData: E5");
         assertNotEq(_data[0].eigenPod, address(0), "testGetStakingNodeData: E6");
-        assertEq(_data[0].delegatedTo, address(0), "testGetStakingNodeData: E7"); // no delegation
+        assertNotEq(_data[0].delegatedTo, address(0), "testGetStakingNodeData: E7");
     }
 }
