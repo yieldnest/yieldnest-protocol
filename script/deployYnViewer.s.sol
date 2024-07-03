@@ -28,5 +28,8 @@ contract DeployYnViewer is BaseScript {
         viewer = ynViewer(address(new TransparentUpgradeableProxy(_viewerImplementation, _actors.admin.PROXY_ADMIN_OWNER, "")));
 
         vm.stopBroadcast();
+
+        console.log("ynViewer proxy deployed at: ", address(viewer));
+        console.log("ynViewer implementation deployed at: ", _viewerImplementation);
     }
 }
