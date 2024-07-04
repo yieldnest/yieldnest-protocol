@@ -37,6 +37,7 @@ import "forge-std/console.sol";
 
 contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase {
 
+    using BeaconChainProofs for *;
     using stdStorage for StdStorage;
     using BytesLib for bytes;
 
@@ -439,8 +440,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
-        uint256 stakingNodeETHBalanceBeforeVerification = stakingNodeInstance.getETHBalance();
+        uint256[] memory stakingNodeBalancesBefore = getAllStakingNodeBalances();
         uint256 ynETHTotalAssetsBeforeVerification = yneth.totalAssets();
+        uint256 totalSupplyBefore = yneth.totalSupply();
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyWithdrawalCredentials(
@@ -455,11 +457,8 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
         assertEq(sharesAfter - sharesBefore, expectedSharesIncrease, "Staking node shares do not match expected shares");
 
-        assertEq(stakingNodeETHBalanceBeforeVerification, stakingNodeInstance.getETHBalance(), "Staking node ETH balance should not change after verification");
+        runSystemStateInvariants(ynETHTotalAssetsBeforeVerification, totalSupplyBefore, stakingNodeBalancesBefore);
 
-        console.log("Staking node ETH balance before verification:", stakingNodeETHBalanceBeforeVerification);
-        console.log("ynETH total assets before verification:", ynETHTotalAssetsBeforeVerification);
-        assertEq(ynETHTotalAssetsBeforeVerification, yneth.totalAssets(), "Total assets should not change after verification");
     }
 
     function setupForVerifyAndProcessWithdrawals() public {
@@ -484,7 +483,15 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint64 oracleTimestamp = uint64(block.timestamp);
         ValidatorWithdrawalProofParams memory params = getValidatorWithdrawalProofParams();
 
-        // Withdraw
+        int256 sharesBefore = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
+        uint256 totalAssetsBefore = yneth.totalAssets();
+        uint256 totalSupplyBefore = yneth.totalSupply();
+        uint256[] memory stakingNodeBalancesBefore = getAllStakingNodeBalances();
+
+        console.log("getWithdrawalAmountGwei", params.withdrawalFields[0].getWithdrawalAmountGwei());
+
+        
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyAndProcessWithdrawals(
             oracleTimestamp,
@@ -495,6 +502,19 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             params.withdrawalFields
         );
 
+        uint256 stakingNodeBalanceBefore = stakingNodeBalancesBefore[nodeId];
+        uint256 stakingNodeBalanceAfter = stakingNodeInstance.getETHBalance();
+        console.log("Staking node balance before verification for node ID", nodeId, ":", stakingNodeBalanceBefore);
+        console.log("Staking node balance after verification for node ID", nodeId, ":", stakingNodeBalanceAfter);
+
+        runSystemStateInvariants(totalAssetsBefore, totalSupplyBefore, stakingNodeBalancesBefore);
+
+        int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
+        console.log("Shares before verification:", uint256(sharesBefore));
+        console.log("Shares after verification:", uint256(sharesAfter));
+        
+        // assertLt(sharesAfter, sharesBefore, "Shares should decrease after proving withdrawals");
     }
 
     function getAllStakingNodeBalances() public view returns (uint256[] memory) {

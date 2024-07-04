@@ -31,8 +31,9 @@ interface StakingNodeEvents {
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
      event WithdrawalProcessed(
         uint40 indexed validatorIndex,
-        uint256 amount,
+        uint256 effectiveBalance,
         bytes32 withdrawalCredentials,
+        uint256 withdrawalAmount,
         uint64 oracleTimestamp
     );
 
@@ -223,10 +224,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         for (uint256 i = 0; i < validatorIndices.length; i++) {
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
-
-            // Decrease unverifiedStakedETH by DEFAULT_VALIDATOR_STAKE regardless if the current balance of the validator
-            // Since unverifiedStakedETH was increased by DEFAULT_VALIDATOR_STAKE when the validator was staked
-            // within the Beacon Chain
             unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
         }
     }
@@ -272,6 +269,24 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bytes32[][] calldata withdrawalFields
     ) external onlyOperator {
 
+
+        for (uint256 i = 0; i < withdrawalProofs.length; i++) {
+
+            emit WithdrawalProcessed(
+                validatorFields[i].getValidatorIndex(),
+                validatorFields[i].getEffectiveBalanceGwei() * ONE_GWEI,
+                validatorFields[i].getWithdrawalCredentials(),
+                validatorFields[i].getWithdrawalAmountGwei() * ONE_GWEI,
+                oracleTimestamp
+            );
+            IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyHashToInfo(validatorFields[i].getPubkeyHash());
+            int256 deltaShares = calculateFullWithdrawalDeltaShares(
+                withdrawalFields[i].getWithdrawalAmountGwei(),
+                validatorInfo.restakedBalanceGwei
+            );
+            unverifiedStakedETH = _int256ToUint256Floor0(int256(unverifiedStakedETH) - deltaShares);
+        }
+
         eigenPod.verifyAndProcessWithdrawals(
             oracleTimestamp,
             stateRootProof,
@@ -280,16 +295,28 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             validatorFields,
             withdrawalFields
         );
-
-        for (uint256 i = 0; i < withdrawalProofs.length; i++) {
-            emit WithdrawalProcessed(
-                validatorFields[i].getValidatorIndex(),
-                validatorFields[i].getEffectiveBalanceGwei(), // Assuming the first field in withdrawalFields array is the amount
-                validatorFields[i].getWithdrawalCredentials(),
-                oracleTimestamp
-            );
-        }
     }
+
+    function calculateFullWithdrawalDeltaShares(uint256 withdrawalAmount, uint256 previouslyRestakedAmount) internal returns (int256) {
+        uint256 amountToQueue;
+        if (withdrawalAmount > DEFAULT_VALIDATOR_STAKE) {
+            amountToQueue = DEFAULT_VALIDATOR_STAKE;
+        } else {
+            amountToQueue = DEFAULT_VALIDATOR_STAKE;
+        }
+
+        return _calculateSharesDelta(amountToQueue, previouslyRestakedAmount);
+    }
+
+    function _int256ToUint256Floor0(int256 x) internal view returns (uint256) {
+        if (x < 0) return 0;
+        return uint256(x);
+    }
+
+    function _calculateSharesDelta(uint256 newAmount, uint256 previousAmount) internal pure returns (int256) {
+        return int256(newAmount) - int256(previousAmount);
+    }
+
 
     /// @dev Queues a withdrawal for processing.
     ///      DelegationManager calls EigenPodManager.decreasesShares which
