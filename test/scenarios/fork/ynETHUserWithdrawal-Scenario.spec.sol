@@ -92,7 +92,7 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             shares[0] = withdrawalAmount;
             IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
                 staker: address(stakingNodeInstance),
-                delegatedTo: address(0),
+                delegatedTo: delegationManager.delegatedTo(address(stakingNodeInstance)),
                 withdrawer: address(stakingNodeInstance),
                 nonce: nonce,
                 startBlock: uint32(block.number),

@@ -149,4 +149,24 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
     }
+
+    function runSystemStateInvariants(
+        uint256 previousTotalAssets,
+        uint256 previousTotalSupply,
+        uint256[] memory previousStakingNodeBalances
+    ) public {  
+        assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
+        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            assertEq(currentStakingNodeBalance, previousStakingNodeBalances[i], "Staking node balance integrity check failed for node ID: ");
+        }
+	}
+
+    function runStakingNodeInvariants(uint256 nodeId) public {
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        uint256 unverifiedStakedETH = stakingNodeInstance.getUnverifiedStakedETH();
+        int256 shares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+    }
 }
