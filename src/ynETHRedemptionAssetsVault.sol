@@ -33,7 +33,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     //--------------------------------------------------------------------------------------
 
     IynETH public ynETH;
-    bool private _paused;
+    bool public _paused;
 
     // Initializer with Init struct and roles
     struct Init {
@@ -66,12 +66,12 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         return ynETH.previewRedeem(YNETH_UNIT);
     }
 
-    function availableRedemptionAssets(address /* redeemer */) public view returns (uint256) {
+    function availableRedemptionAssets() public view returns (uint256) {
         return address(this).balance;
     }
 
     function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
-        uint256 balance = availableRedemptionAssets(msg.sender);
+        uint256 balance = availableRedemptionAssets();
         if (balance < amount) {
             revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
         }

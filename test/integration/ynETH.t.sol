@@ -8,8 +8,6 @@ import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 
-import "forge-std/console.sol";
-
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
     function testDepositETH() public {
@@ -187,13 +185,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
                 expectedTotalAssets,
                 Math.Rounding.Floor
             );
-
-        uint256 withdrawalAssetsVaultBalance = address(stakingNodesManager.withdrawalAssetsVault()).balance;
-        console.log("Address of withdrawalAssetsVault:", address(stakingNodesManager.withdrawalAssetsVault()));
-        console.log("Balance of withdrawalAssetsVault:", withdrawalAssetsVaultBalance);
-
-        console.log("Shares after deposit and rewards", sharesAfterDepositAndRewards);
-        console.log("Expected shares", expectedShares);
 
         // Assert
         assertTrue(compareWithThreshold(sharesAfterDepositAndRewards, expectedShares, 1), "Shares should be within threshold of 1 of the expected ETH amount after deposit and rewards processed through RewardsReceiver");

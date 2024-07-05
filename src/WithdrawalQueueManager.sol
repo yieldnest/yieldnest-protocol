@@ -176,7 +176,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
         uint256 netUnitOfAccountAmount = unitOfAccountAmount - feeAmount;
 
-        uint256 currentBalance = redemptionAssetsVault.availableRedemptionAssets(address(this));
+        uint256 currentBalance = redemptionAssetsVault.availableRedemptionAssets();
         if (currentBalance < unitOfAccountAmount) {
             revert InsufficientBalance(currentBalance, unitOfAccountAmount);
         }
@@ -254,7 +254,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     /// @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
     /// @return surplus The amount of surplus redemption assets in the unit of account.
     function surplusRedemptionAssets() public view returns (uint256) {
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets(address(this));
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
         if (availableAmount > pendingRequestedRedemptionAmount) {
             return availableAmount - pendingRequestedRedemptionAmount;
         } 
@@ -265,7 +265,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     /// @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
     /// @return deficit The amount of deficit redemption assets in the unit of account.
     function deficitRedemptionAssets() public view returns (uint256) {
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets(address(this));
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
         if (pendingRequestedRedemptionAmount > availableAmount) {
             return pendingRequestedRedemptionAmount - availableAmount;
         }
