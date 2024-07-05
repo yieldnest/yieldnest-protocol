@@ -188,6 +188,13 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
                 Math.Rounding.Floor
             );
 
+        uint256 withdrawalAssetsVaultBalance = address(stakingNodesManager.withdrawalAssetsVault()).balance;
+        console.log("Address of withdrawalAssetsVault:", address(stakingNodesManager.withdrawalAssetsVault()));
+        console.log("Balance of withdrawalAssetsVault:", withdrawalAssetsVaultBalance);
+
+        console.log("Shares after deposit and rewards", sharesAfterDepositAndRewards);
+        console.log("Expected shares", expectedShares);
+
         // Assert
         assertTrue(compareWithThreshold(sharesAfterDepositAndRewards, expectedShares, 1), "Shares should be within threshold of 1 of the expected ETH amount after deposit and rewards processed through RewardsReceiver");
     }

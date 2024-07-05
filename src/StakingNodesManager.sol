@@ -535,6 +535,22 @@ contract StakingNodesManager is
         return hasRole(STAKING_NODES_DELEGATOR_ROLE, _address);
     }
 
+    function totalDeposited() external view returns (uint256) {
+       
+        uint256 _nodesLength = nodes.length;
+
+        uint256 totalETHDeposited = 0;
+        for (uint256 i = 0; i < _nodesLength; i++) {
+            totalETHDeposited += nodes[i].getETHBalance();
+        }
+
+        if (withdrawalAssetsVault != address(0)) {
+            totalETHDeposited += withdrawalAssetsVault.balance;
+        }
+
+        return totalETHDeposited;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------

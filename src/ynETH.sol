@@ -211,21 +211,15 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         // Allocated ETH for deposits pending to be processed.
         total += totalDepositedInPool;
         // The total ETH sent to the beacon chain.
-        total += totalDepositedInValidators();
+        total += totalDeposited();
         return total;
     }
 
-    /// @notice Calculates the total amount of ETH deposited across all validators.
-    /// @dev Iterates through all staking nodes to sum up their ETH balances.
+    /// @notice Returns the total amount of ETH deposited across all validators.
     /// @return totalDeposited The total amount of ETH deposited in all validators.
-    function totalDepositedInValidators() internal view returns (uint256) {
-        
-        IStakingNode[]  memory nodes = stakingNodesManager.getAllNodes();
-        uint256 totalDeposited = 0;
-        for (uint256 i = 0; i < nodes.length; i++) {
-            totalDeposited += nodes[i].getETHBalance();
-        }
-        return totalDeposited;
+    function totalDeposited() internal view returns (uint256) {
+
+        return stakingNodesManager.totalDeposited();
     }
 
     //--------------------------------------------------------------------------------------
