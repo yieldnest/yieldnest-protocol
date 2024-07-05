@@ -39,6 +39,8 @@ interface IStakingNodesManager {
     function nodesLength() external view returns (uint);
 
     function upgradeableBeacon() external returns (UpgradeableBeacon);
+
+    function totalDeposited() external view returns (uint256);
 }
 
 
