@@ -16,6 +16,8 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+
 
 import "forge-std/console.sol";
 
@@ -127,7 +129,7 @@ contract StakingNodesManager is
 
     bool public validatorRegistrationPaused;
 
-    address public withdrawalAssetsVault;
+    IRedemptionAssetsVault public redemptionAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -163,7 +165,7 @@ contract StakingNodesManager is
     }
 
     struct Init2 {
-        address withdrawalAssetsVault;
+        IRedemptionAssetsVault redemptionAssetsVault;
         address withdrawalManager;
     }
     
@@ -224,13 +226,13 @@ contract StakingNodesManager is
     // TODO: hardcode these values instead of setting them as parameters
     function initializeV2(Init2 calldata init)
         external
-        notZeroAddress(address(init.withdrawalAssetsVault))
+        notZeroAddress(address(init.redemptionAssetsVault))
         notZeroAddress(init.withdrawalManager)
         reinitializer(2)
         onlyRole(DEFAULT_ADMIN_ROLE) {
         
         // TODO: review role access here for what can execute this
-        withdrawalAssetsVault = init.withdrawalAssetsVault;
+        redemptionAssetsVault = init.redemptionAssetsVault;
         _grantRole(WITHDRAWAL_MANAGER_ROLE, init.withdrawalManager);
     }
 
@@ -500,7 +502,7 @@ contract StakingNodesManager is
 
         // If there is an amount specified to queue, send it to the withdrawal assets vault
         if (amountToQueue > 0) {
-            (bool success, ) = address(withdrawalAssetsVault).call{value: amountToQueue}("");
+            (bool success, ) = address(redemptionAssetsVault).call{value: amountToQueue}("");
             if (!success) {
                 revert TransferFailed();
             }
@@ -544,8 +546,8 @@ contract StakingNodesManager is
             totalETHDeposited += nodes[i].getETHBalance();
         }
 
-        if (withdrawalAssetsVault != address(0)) {
-            totalETHDeposited += withdrawalAssetsVault.balance;
+        if (address(redemptionAssetsVault) != address(0)) {
+            totalETHDeposited += redemptionAssetsVault.availableRedemptionAssets();
         }
 
         return totalETHDeposited;

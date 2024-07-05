@@ -26,5 +26,5 @@ interface IRedemptionAssetsVault {
 
     /// @notice Gets the total amount of redemption assets available for withdrawal in the unit of account.
     /// @return The available amount of redemption assets
-    function availableRedemptionAssets(address redeemer) external view returns (uint256);
+    function availableRedemptionAssets() external view returns (uint256);
 }

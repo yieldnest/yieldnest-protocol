@@ -155,7 +155,7 @@ contract ScenarioBaseTest is Test, Utils {
         ynETHWithdrawalQueueManager.initialize(managerInit);
 
         StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
-            withdrawalAssetsVault: address(ynETHRedemptionAssetsVaultInstance),
+            redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
             withdrawalManager: actors.ops.WITHDRAWAL_MANAGER
         });
         
