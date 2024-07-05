@@ -134,6 +134,19 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         }
     }
 
+    function setupForVerifyAndProcessWithdrawals(uint256 nodeId, string memory path) public {
+
+        setJSON(path);
+
+        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+
+        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+        vm.prank(eigenPodManagerOwner);
+        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+        bytes32 latestBlockRoot = _getLatestBlockRoot();
+        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    }
+
     function setupForVerifyWithdrawalCredentials(uint256 nodeId, string memory path) public {
 
         setJSON(path);
