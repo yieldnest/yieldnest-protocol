@@ -82,34 +82,7 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
         {
             // queueWithdrawals and completeQueuedWithdrawals
-
-            uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
-
-            IStrategy[] memory strategies = new IStrategy[](1);
-            strategies[0] = beaconChainETHStrategy;
-
-            uint256[] memory shares = new uint256[](1);
-            shares[0] = withdrawalAmount;
-            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
-                staker: address(stakingNodeInstance),
-                delegatedTo: delegationManager.delegatedTo(address(stakingNodeInstance)),
-                withdrawer: address(stakingNodeInstance),
-                nonce: nonce,
-                startBlock: uint32(block.number),
-                strategies: strategies,
-                shares: shares
-            });
-
-            IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
-            withdrawals[0] = withdrawal;
-
-            uint256[] memory middlewareTimesIndexes = new uint256[](1);
-            middlewareTimesIndexes[0] = 0; // value is not used, as per EigenLayer docs
-
-            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
-
-            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
+            completeQueuedWithdrawals(stakingNodeInstance, withdrawalAmount);
         }
 
         uint256 userRequestedAmountYnETH = 1 ether;
