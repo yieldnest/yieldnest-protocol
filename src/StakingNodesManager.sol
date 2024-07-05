@@ -474,18 +474,23 @@ contract StakingNodesManager is
         emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, msg.value);
     }
 
-    /// @notice Processes principal withdrawals, specifying how much goes back into ynETH and how much goes to the withdrawal queue.
-    /// @param nodeId The ID of the node processing the withdrawal.
-    /// @param amountToReinvest Amount of ETH to reinvest into ynETH.
-    /// @param amountToQueue Amount of ETH to send to the withdrawal queue.
-    function processPrincipalWithdrawalsForNode(
-        uint256 nodeId, 
-        uint256 amountToReinvest, 
-        uint256 amountToQueue
-    ) 
-        public 
-        onlyRole(WITHDRAWAL_MANAGER_ROLE) 
-    {
+    /// @notice Processes an array of principal withdrawals.
+    /// @param actions Array of WithdrawalAction containing details for each withdrawal.
+    function processPrincipalWithdrawals(
+        WithdrawalAction[] memory actions
+    ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
+        for (uint i = 0; i < actions.length; i++) {
+            _processPrincipalWithdrawalForNode(actions[i]);
+        }
+    }
+
+    /// @notice Processes principal withdrawals for a single node, specifying how much goes back into ynETH and how much goes to the withdrawal queue.
+    /// @param action The WithdrawalAction containing details for the withdrawal.
+    function _processPrincipalWithdrawalForNode(WithdrawalAction memory action) internal {
+        uint256 nodeId = action.nodeId;
+        uint256 amountToReinvest = action.amountToReinvest;
+        uint256 amountToQueue = action.amountToQueue;
+
         // Calculate the total amount to be processed by summing reinvestment and queuing amounts
         uint256 totalAmount = amountToReinvest + amountToQueue;
 
@@ -497,7 +502,7 @@ contract StakingNodesManager is
 
         // If there is an amount specified to reinvest, process it through ynETH
         if (amountToReinvest > 0) {
-            ynETH.processWithdrawnETH{value: amountToReinvest }();
+            ynETH.processWithdrawnETH{value: amountToReinvest}();
         }
 
         // If there is an amount specified to queue, send it to the withdrawal assets vault
@@ -510,7 +515,6 @@ contract StakingNodesManager is
         // Emit an event to log the processed principal withdrawal details
         emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue);
     }
-
 
 
     //--------------------------------------------------------------------------------------
