@@ -232,11 +232,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  DELEGATION   -------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Delegates authority to an operator.
+     * @dev Delegates the staking node's authority to an operator using a signature with expiry.
+     * @param operator The address of the operator to whom the delegation is made.
+     * @param approverSignatureAndExpiry The signature of the approver along with its expiry details.
+     * @param approverSalt The unique salt used to prevent replay attacks.
+     */
     function delegate(
         address operator,
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
         bytes32 approverSalt
-        ) public override onlyDelegator {
+    ) public override onlyDelegator {
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
         delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
@@ -244,6 +251,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         emit Delegated(operator, approverSalt);
     }
 
+    /**
+     * @notice Undelegates the authority previously delegated to an operator.
+     * @dev This function revokes the delegation by calling the `undelegate` method on the `DelegationManager`.
+     * It emits an `Undelegated` event with the address of the operator from whom the delegation is being removed.
+     */
     function undelegate() public onlyDelegator {
    
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
@@ -260,6 +272,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
 
+    /**
+     * @notice Verifies and processes multiple withdrawals for validators.
+     * @dev This function processes each withdrawal proof provided, updating the unverified staked ETH and emitting relevant events.
+     * @param oracleTimestamp The timestamp from the oracle used for verification.
+     * @param stateRootProof The proof of the state root.
+     * @param withdrawalProofs An array of withdrawal proofs to be processed.
+     * @param validatorFieldsProofs An array of proofs for validator fields.
+     * @param validatorFields An array of validator fields, each corresponding to a withdrawal proof.
+     * @param withdrawalFields An array of withdrawal fields, each corresponding to a withdrawal proof.
+     */
     function verifyAndProcessWithdrawals(
         uint64 oracleTimestamp,
         BeaconChainProofs.StateRootProof calldata stateRootProof,
@@ -269,9 +291,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bytes32[][] calldata withdrawalFields
     ) external onlyOperator {
 
-
         for (uint256 i = 0; i < withdrawalProofs.length; i++) {
-
+            // Emit event for each withdrawal processed
             emit WithdrawalProcessed(
                 validatorFields[i].getValidatorIndex(),
                 validatorFields[i].getEffectiveBalanceGwei() * ONE_GWEI,
@@ -280,18 +301,23 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 oracleTimestamp
             );
 
-            // if it's a full withdrawal
+            // Check if the withdrawal is a full withdrawal
             if (withdrawalProofs[i].getWithdrawalEpoch() >= validatorFields[i].getWithdrawableEpoch()) {
+                // Retrieve validator info using the pubkey hash
                 IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyHashToInfo(validatorFields[i].getPubkeyHash());
+                
+                // Calculate the change in shares due to the full withdrawal
                 int256 deltaShares = calculateFullWithdrawalDeltaShares(
-                    withdrawalFields[i].getWithdrawalAmountGwei(),
-                    validatorInfo.restakedBalanceGwei
+                    withdrawalFields[i].getWithdrawalAmountGwei() * ONE_GWEI,
+                    validatorInfo.restakedBalanceGwei * ONE_GWEI
                 );
-                unverifiedStakedETH = _int256ToUint256Floor0(int256(unverifiedStakedETH) - deltaShares);
+                
+                // Update the unverified staked ETH by subtracting the deltaShares
+                unverifiedStakedETH = _int256ToUint256Min0(int256(unverifiedStakedETH) - deltaShares);
             }
-
         }
 
+        // Call the EigenPod to verify and process the withdrawals
         eigenPod.verifyAndProcessWithdrawals(
             oracleTimestamp,
             stateRootProof,
@@ -302,6 +328,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         );
     }
 
+    /**
+     * @dev Calculates the change in shares due to a full withdrawal.
+     * @param withdrawalAmount The amount of ETH being withdrawn.
+     * @param previouslyRestakedAmount The amount of ETH that was previously restaked.
+     * @return The change in shares as an int256, which could be negative if the withdrawal amount exceeds the previously restaked amount.
+     */
     function calculateFullWithdrawalDeltaShares(uint256 withdrawalAmount, uint256 previouslyRestakedAmount) internal returns (int256) {
         uint256 amountToQueue;
         if (withdrawalAmount > DEFAULT_VALIDATOR_STAKE) {
@@ -312,8 +344,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         return _calculateSharesDelta(amountToQueue, previouslyRestakedAmount);
     }
-
-    function _int256ToUint256Floor0(int256 x) internal view returns (uint256) {
+    /**
+     * @dev Converts an int256 to uint256. Returns 0 if the input is negative.
+     * @param x The int256 value to convert.
+     * @return uint256 The converted value, or 0 if the input is negative.
+     */
+    function _int256ToUint256Min0(int256 x) internal view returns (uint256) {
         if (x < 0) return 0;
         return uint256(x);
     }
@@ -425,22 +461,27 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         unverifiedStakedETH += amount;
     }
 
+    /**
+     * @notice Deallocates a specified amount of staked ETH from the withdrawn validator principal
+    *          and transfers it to the StakingNodesManager.
+     * @dev This function can only be called by the StakingNodesManager. It emits a DeallocatedStakedETH
+     *      event upon successful deallocation.
+     * @param amount The amount of ETH to deallocate and transfer.
+     */
     function deallocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
-
         if (amount > withdrawnValidatorPrincipal) {
             revert InsufficientWithdrawnValidatorPrincipal(amount, withdrawnValidatorPrincipal);
         }
 
         emit DeallocatedStakedETH(amount, withdrawnValidatorPrincipal);
-        withdrawnValidatorPrincipal -= amount;
 
+        withdrawnValidatorPrincipal -= amount;
 
         (bool success, ) = address(stakingNodesManager).call{value: amount}("");
         if (!success) {
             revert TransferFailed();
         }
     }
-
     function getETHBalance() public view returns (uint256) {
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
@@ -460,10 +501,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         
     }
 
+    /// @notice Retrieves the amount of unverified staked ETH held by this StakingNode.
+    /// @return The amount of unverified staked ETH in wei.
     function getUnverifiedStakedETH() public view returns (uint256) {
         return unverifiedStakedETH;
     }
 
+    /// @notice Retrieves the amount of shares currently queued for withdrawal.
+    /// @return The amount of queued shares.
     function getQueuedSharesAmount() public view returns (uint256) {
         return queuedSharesAmount;
     }
