@@ -37,56 +37,60 @@ import "forge-std/console.sol";
 
 
 contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
-        using stdStorage for StdStorage;
+    using stdStorage for StdStorage;
     using BytesLib for bytes;
 
+
+    struct TestState {
+        uint256 nodeId;
+        uint256 withdrawalAmount;
+        IStakingNode stakingNodeInstance;
+        uint256 totalAssetsBefore;
+        uint256 totalSupplyBefore;
+        uint256[] stakingNodeBalancesBefore;
+    }
 
     function test_UserWithdrawal_1ETH_Holesky() public {
 
         if (block.chainid != 17000) {
             return; // Skip test if not on Holesky
         }
-        /*
-            This validator has been activated and withdrawn.
-            It has NOT been proved VerifyWithdrawalCredentials yet.
-            It has  NOT been proven verifyAndProcessWithdrawal yet for any of the withdrawals.
-        */
 
-        uint256 nodeId = 2;
-        uint256 withdrawalAmount = 32 ether;
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        TestState memory state = TestState({
+            nodeId: 2,
+            withdrawalAmount: 32 ether,
+            stakingNodeInstance: stakingNodesManager.nodes(2),
+            totalAssetsBefore: yneth.totalAssets(),
+            totalSupplyBefore: yneth.totalSupply(),
+            stakingNodeBalancesBefore: getAllStakingNodeBalances()
+        });
 
         {
             // verifyWithdrawalCredentials
-
-            // Validator proven:
-            // 1692468
-            // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
-            setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
-
+            setupForVerifyWithdrawalCredentials(state.nodeId, "test/data/holesky_wc_proof_1916455.json");
             ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodeInstance.verifyWithdrawalCredentials(
-                 uint64(block.timestamp),
+            state.stakingNodeInstance.verifyWithdrawalCredentials(
+                uint64(block.timestamp),
                 validatorProofs.stateRootProof,
                 validatorProofs.validatorIndices,
                 validatorProofs.withdrawalCredentialProofs,
                 validatorProofs.validatorFields
             );
         }
-        {
-            // queueWithdrawals
-            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-        }
 
-        {
-            // queueWithdrawals and completeQueuedWithdrawals
-            completeQueuedWithdrawals(stakingNodeInstance, withdrawalAmount);
-        }
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+        
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        state.stakingNodeInstance.queueWithdrawals(state.withdrawalAmount);
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        completeQueuedWithdrawals(state.stakingNodeInstance, state.withdrawalAmount);
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         uint256 userRequestedAmountYnETH = 1 ether;
-
         address userAddress = address(0x12345678);
         address receivalAddress = address(0x987654321);
         vm.deal(userAddress, 100 ether); // Give the user some Ether to start with
@@ -112,13 +116,12 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
         console.log("Pranked address:", actors.ops.WITHDRAWAL_MANAGER);
 
-
         uint256 vaultEthBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
         uint256 ynETHEthBalanceBefore = address(yneth).balance; 
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
         stakingNodesManager.processPrincipalWithdrawalsForNode(
-            nodeId,
+            state.nodeId,
             amountToReinvest,
             amountToQueue
         );
