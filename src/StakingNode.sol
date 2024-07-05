@@ -279,12 +279,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 validatorFields[i].getWithdrawalAmountGwei() * ONE_GWEI,
                 oracleTimestamp
             );
-            IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyHashToInfo(validatorFields[i].getPubkeyHash());
-            int256 deltaShares = calculateFullWithdrawalDeltaShares(
-                withdrawalFields[i].getWithdrawalAmountGwei(),
-                validatorInfo.restakedBalanceGwei
-            );
-            unverifiedStakedETH = _int256ToUint256Floor0(int256(unverifiedStakedETH) - deltaShares);
+
+            // if it's a full withdrawal
+            if (withdrawalProofs[i].getWithdrawalEpoch() >= validatorFields[i].getWithdrawableEpoch()) {
+                IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyHashToInfo(validatorFields[i].getPubkeyHash());
+                int256 deltaShares = calculateFullWithdrawalDeltaShares(
+                    withdrawalFields[i].getWithdrawalAmountGwei(),
+                    validatorInfo.restakedBalanceGwei
+                );
+                unverifiedStakedETH = _int256ToUint256Floor0(int256(unverifiedStakedETH) - deltaShares);
+            }
+
         }
 
         eigenPod.verifyAndProcessWithdrawals(
