@@ -23,6 +23,12 @@ interface IStakingNodesManager {
         uint nodeId;
     }
 
+    struct WithdrawalAction {
+        uint256 nodeId;
+        uint256 amountToReinvest;
+        uint256 amountToQueue;
+    }
+
     function eigenPodManager() external view returns (IEigenPodManager);
     function delegationManager() external view returns (IDelegationManager);
     function strategyManager() external view returns (IStrategyManager);
@@ -41,6 +47,10 @@ interface IStakingNodesManager {
     function upgradeableBeacon() external returns (UpgradeableBeacon);
 
     function totalDeposited() external view returns (uint256);
+
+    function processPrincipalWithdrawals(
+        WithdrawalAction[] memory actions
+    ) external;
 }
 
 

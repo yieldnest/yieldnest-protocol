@@ -48,6 +48,8 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 totalAssetsBefore;
         uint256 totalSupplyBefore;
         uint256[] stakingNodeBalancesBefore;
+        uint256 previousYnETHRedemptionAssetsVaultBalance;
+        uint256 previousYnETHBalance;
     }
 
     function test_UserWithdrawal_1ETH_Holesky() public {
@@ -70,7 +72,9 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             stakingNodeInstance: stakingNodesManager.nodes(2),
             totalAssetsBefore: yneth.totalAssets(),
             totalSupplyBefore: yneth.totalSupply(),
-            stakingNodeBalancesBefore: getAllStakingNodeBalances()
+            stakingNodeBalancesBefore: getAllStakingNodeBalances(),
+            previousYnETHRedemptionAssetsVaultBalance: ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(),
+            previousYnETHBalance: address(yneth).balance
         });
 
         {
@@ -117,21 +121,23 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 amountToReinvest = ethEquivalent;
         uint256 amountToQueue = systemAmountToWithdraw - amountToReinvest;
 
-        uint256 vaultEthBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
-        uint256 ynETHEthBalanceBefore = address(yneth).balance; 
-
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        stakingNodesManager.processPrincipalWithdrawalsForNode(
-            state.nodeId,
-            amountToReinvest,
-            amountToQueue
+        IStakingNodesManager.WithdrawalAction[] memory actions = new IStakingNodesManager.WithdrawalAction[](1);
+        actions[0] = IStakingNodesManager.WithdrawalAction({
+            nodeId: state.nodeId,
+            amountToReinvest: amountToReinvest,
+            amountToQueue: amountToQueue
+        });
+        stakingNodesManager.processPrincipalWithdrawals(actions);
+
+        runSystemStateInvariants(
+            state.totalAssetsBefore, 
+            state.totalSupplyBefore, 
+            state.stakingNodeBalancesBefore, 
+            actions, 
+            state.previousYnETHRedemptionAssetsVaultBalance, 
+            state.previousYnETHBalance
         );
-
-        uint256 vaultEthBalanceAfter = address(ynETHRedemptionAssetsVaultInstance).balance;
-        uint256 ynETHEthBalanceAfter = address(yneth).balance;
-
-        assertEq(vaultEthBalanceAfter - vaultEthBalanceBefore, amountToQueue, "Assets vault balance increase does not match the queued amount.");
-        assertEq(ynETHEthBalanceAfter - ynETHEthBalanceBefore, amountToReinvest, "ynETH balance did not increase as expected.");
 
         // Advance time to simulate the delay required for withdrawals to be processed
         uint256 secondsToFinalization = ynETHWithdrawalQueueManager.secondsToFinalization();

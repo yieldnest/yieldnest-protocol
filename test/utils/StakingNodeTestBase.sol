@@ -50,6 +50,12 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         BeaconChainProofs.WithdrawalProof[] withdrawalProofs;
     }
 
+    struct WithdrawAction {
+        uint256 nodeId;
+        uint256 amountToReinvest;
+        uint256 amountToQueue;
+    }
+
     function _getLatestBlockRoot() public returns (bytes32) {
         return getLatestBlockRoot();
     }
@@ -162,6 +168,40 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
             uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
             assertEq(currentStakingNodeBalance, previousStakingNodeBalances[i], "Staking node balance integrity check failed for node ID: ");
         }
+	}
+
+    function runSystemStateInvariants(
+        uint256 previousTotalAssets,
+        uint256 previousTotalSupply,
+        uint256[] memory previousStakingNodeBalances,
+        IStakingNodesManager.WithdrawalAction[] memory withdrawActions,
+        uint256 previousYnETHRedemptionAssetsVaultBalance,
+        uint256 previousYnETHBalance
+    ) public {  
+        assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
+        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            uint256 expectedBalance = previousStakingNodeBalances[i];
+            for (uint j = 0; j < withdrawActions.length; j++) {
+                if (withdrawActions[j].nodeId == i) {
+                    expectedBalance -= withdrawActions[j].amountToQueue + withdrawActions[j].amountToReinvest;
+                }
+            }
+            assertEq(currentStakingNodeBalance, expectedBalance, "Staking node balance integrity check failed for node ID: ");
+        }
+
+        uint256 currentYnETHRedemptionAssetsVaultBalance = ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets();
+        uint256 expectedVaultBalance = previousYnETHRedemptionAssetsVaultBalance;
+        uint256 expectedYnETHBalance = previousYnETHBalance;
+        for (uint j = 0; j < withdrawActions.length; j++) {
+            expectedVaultBalance += withdrawActions[j].amountToQueue;
+            expectedYnETHBalance += withdrawActions[j].amountToReinvest;
+        }
+        assertEq(currentYnETHRedemptionAssetsVaultBalance, expectedVaultBalance, "YnETH Redemption Assets Vault balance integrity check failed after withdrawals");
+        assertEq(address(yneth).balance, expectedYnETHBalance, "YnETH balance integrity check failed after withdrawals");
+        assertEq(yneth.totalDepositedInPool(), expectedYnETHBalance, "Total Deposited in Pool integrity check failed after withdrawals");
 	}
 
     function runStakingNodeInvariants(uint256 nodeId) public {
