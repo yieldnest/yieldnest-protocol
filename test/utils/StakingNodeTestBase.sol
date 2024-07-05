@@ -200,4 +200,13 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
     }
+
+    function getAllStakingNodeBalances() public view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](stakingNodesManager.nodesLength());
+        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            IStakingNode stakingNode = stakingNodesManager.nodes(i);
+            balances[i] = stakingNode.getETHBalance();
+        }
+        return balances;
+    }
 }

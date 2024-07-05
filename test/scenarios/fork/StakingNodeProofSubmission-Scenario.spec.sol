@@ -526,13 +526,4 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         console.log("Shares before verification:", uint256(sharesBefore));
         console.log("Shares after verification:", uint256(sharesAfter));
     }
-
-    function getAllStakingNodeBalances() public view returns (uint256[] memory) {
-        uint256[] memory balances = new uint256[](stakingNodesManager.nodesLength());
-        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-            IStakingNode stakingNode = stakingNodesManager.nodes(i);
-            balances[i] = stakingNode.getETHBalance();
-        }
-        return balances;
-    }
 }
