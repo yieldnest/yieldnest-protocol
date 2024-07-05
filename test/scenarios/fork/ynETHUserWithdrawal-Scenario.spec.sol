@@ -56,6 +56,14 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             return; // Skip test if not on Holesky
         }
 
+        // Withdrawing user configuration
+        uint256 userRequestedAmountYnETH = 1 ether;
+        address userAddress = address(0x12345678);
+        address receivalAddress = address(0x987654321);
+        vm.deal(userAddress, 100 ether); // Give the user some Ether to start with
+        vm.prank(userAddress);
+        yneth.depositETH{value: 10 ether}(userAddress); // User mints ynETH by depositing ETH
+
         TestState memory state = TestState({
             nodeId: 2,
             withdrawalAmount: 32 ether,
@@ -90,13 +98,6 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
-        uint256 userRequestedAmountYnETH = 1 ether;
-        address userAddress = address(0x12345678);
-        address receivalAddress = address(0x987654321);
-        vm.deal(userAddress, 100 ether); // Give the user some Ether to start with
-        vm.prank(userAddress);
-        yneth.depositETH{value: 10 ether}(userAddress); // User mints ynETH by depositing ETH
-
         uint256 ethEquivalent = yneth.previewRedeem(userRequestedAmountYnETH);
 
         uint256 tokenId;
@@ -110,11 +111,11 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             assertEq(ynETHBalanceBefore - ynETHBalanceAfter, userRequestedAmountYnETH, "ynETH balance after withdrawal request does not match expected amount");
         }
 
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
         uint256 systemAmountToWithdraw = ethEquivalent * 4;
         uint256 amountToReinvest = ethEquivalent;
         uint256 amountToQueue = systemAmountToWithdraw - amountToReinvest;
-
-        console.log("Pranked address:", actors.ops.WITHDRAWAL_MANAGER);
 
         uint256 vaultEthBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
         uint256 ynETHEthBalanceBefore = address(yneth).balance; 
