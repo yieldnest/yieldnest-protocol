@@ -143,12 +143,23 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 secondsToFinalization = ynETHWithdrawalQueueManager.secondsToFinalization();
         vm.warp(block.timestamp + secondsToFinalization + 1); // Adjust time as per the specific requirements of the scenario
         uint256 userEthBalanceBefore = receivalAddress.balance;
+        uint256 ynETHRedemptionAssetsVaultBalanceBefore = ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets();
+
         vm.prank(userAddress);
         ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receivalAddress);
+        
         uint256 userEthBalanceAfter = receivalAddress.balance;
+
         uint256 feePercentage = ynETHWithdrawalQueueManager.withdrawalFee();
         uint256 feeAmount = (ethEquivalent * feePercentage) / ynETHWithdrawalQueueManager.FEE_PRECISION();
         uint256 expectedReceivedAmount = ethEquivalent - feeAmount;
         assertEq(userEthBalanceAfter - userEthBalanceBefore, expectedReceivedAmount, "ETH balance change does not match the expected ETH equivalent");
+
+        uint256 ynETHRedemptionAssetsVaultBalanceAfter = ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets();
+        assertEq(
+            ynETHRedemptionAssetsVaultBalanceBefore - ynETHRedemptionAssetsVaultBalanceAfter,
+            ethEquivalent,
+            "Difference in ynETH Redemption assets vault available assets does not match the expected ETH equivalent"
+        );
     }
 }
