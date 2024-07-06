@@ -58,18 +58,31 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         _paused = false;
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  REDEMPTION  --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Accepts incoming ETH deposits.
     receive() external payable {
         emit AssetsDeposited(msg.sender, ETH_ASSET, msg.value);
     }
 
+    /// @notice Calculates the current redemption rate of ynETH to ETH.
+    /// @return The current redemption rate as a uint256.
     function redemptionRate() public view returns (uint256) {
         return ynETH.previewRedeem(YNETH_UNIT);
     }
 
+    /// @notice Returns the total amount of ETH available for redemption.
+    /// @return The available ETH balance as a uint256.
     function availableRedemptionAssets() public view returns (uint256) {
         return address(this).balance;
     }
 
+    /// @notice Transfers a specified amount of redemption assets to a given address.
+    /// @param to The recipient address of the assets.
+    /// @param amount The amount of assets to transfer.
+    /// @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
     function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) {
@@ -83,6 +96,9 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         emit AssetTransferred(ETH_ASSET, msg.sender, to, amount);
     }
 
+    /// @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
+    /// @param amount The amount of ETH to withdraw and process.
+    /// @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
     function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
         ynETH.processWithdrawnETH{ value: amount }();
         emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);

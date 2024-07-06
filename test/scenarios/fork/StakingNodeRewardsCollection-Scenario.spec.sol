@@ -35,9 +35,6 @@ import { StakingNodeTestBase } from "test/utils/StakingNodeTestBase.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
 import { ONE_GWEI } from "src/Constants.sol";
 
-
-import "forge-std/console.sol";
-
 contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
 
     using BeaconChainProofs for *;
@@ -128,5 +125,7 @@ contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
                 "Rewards amount does not match the partial rewards amount"
             );
         }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
     }
 }
