@@ -42,15 +42,22 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     error InsufficientAssetBalance(IERC20 asset, uint256 balance, uint256 requestedAmount);
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant ASSET_MANAGER_ROLE = keccak256("ASSET_MANAGER_ROLE");
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
-    IRateProvider public rateProvider;
 
     /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
 
     mapping(address => AssetData) public assetData;
-    
+
+    IRateProvider public rateProvider;
+
     bool public depositsPaused;
 
     IEigenStrategyManager eigenStrategyManager;
@@ -318,6 +325,87 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             IERC20(asset).safeTransfer(strategyManagerAddress, amounts[i]);
             emit AssetRetrieved(assets[i], amounts[i], strategyManagerAddress);
         }
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ASSET MANAGEMENT  --------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Adds a new asset to the system.
+     * @dev Adds an asset to the assetData mapping and sets it as active. This function can only be called by the strategy manager.
+     * @param asset The address of the ERC20 token to be added.
+     * @param initialBalance The initial balance of the asset to be set in the system.
+     */
+    function addAsset(IERC20 asset, uint256 initialBalance) public onlyRole(ASSET_MANAGER_ROLE) {
+        address assetAddress = address(asset);
+        require(!assetData[assetAddress].active, "Asset already active");
+
+        assets.push(asset);
+
+        assetData[assetAddress] = AssetData({
+            balance: initialBalance,
+            active: true
+        });
+
+        //emit AssetAdded(asset, initialBalance);
+    }
+
+    /**
+     * @notice Disables an existing asset in the system.
+     * @dev Sets an asset as inactive in the assetData mapping. This function can only be called by the strategy manager.
+     * @param asset The address of the ERC20 token to be disabled.
+     */
+    function disableAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) {
+        address assetAddress = address(asset);
+        require(assetData[assetAddress].active, "Asset already inactive");
+
+        assetData[assetAddress].active = false;
+
+        emit AssetRetrieved(asset, 0, address(this)); // Using AssetRetrieved event to log the disabling
+    }
+
+    /**
+     * @notice Deletes an asset from the system entirely.
+     * @dev Removes an asset from the assetData mapping and the assets array. This function can only be called by the strategy manager.
+     * @param asset The address of the ERC20 token to be deleted.
+     */
+    function deleteAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) {
+        address assetAddress = address(asset);
+        require(assetData[assetAddress].active, "Asset not active or does not exist");
+
+        uint256 currentBalance = asset.balanceOf(address(this));
+        require(currentBalance == 0, "Asset balance must be zero in current contract");
+
+        uint256 strategyBalance = eigenStrategyManager.getStakedAssetBalance(asset);
+        require(strategyBalance == 0, "Asset balance must be zero in strategy manager");
+
+        // Remove asset from the assets array
+        uint256 assetIndex = findAssetIndex(asset);
+        require(assetIndex < assets.length, "Asset index out of bounds");
+
+        // Move the last element into the place to delete
+        assets[assetIndex] = assets[assets.length - 1];
+        assets.pop();
+
+        // Remove asset from the mapping
+        delete assetData[assetAddress];
+
+        //emit AssetDeleted(asset);
+    }
+
+    /**
+     * @notice Finds the index of an asset in the assets array.
+     * @param asset The asset to find.
+     * @return uint256 The index of the asset.
+     */
+    function findAssetIndex(IERC20 asset) internal view returns (uint256) {
+        for (uint256 i = 0; i < assets.length; i++) {
+            if (address(assets[i]) == address(asset)) {
+                return i;
+            }
+        }
+        revert("Asset not found");
     }
 
     //--------------------------------------------------------------------------------------

@@ -9,4 +9,5 @@ interface IEigenStrategyManager {
         IERC20[] calldata assets
     ) external view returns (uint256[] memory stakedBalances);
 
+    function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance);
 }
