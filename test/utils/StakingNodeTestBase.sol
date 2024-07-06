@@ -10,6 +10,7 @@ import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -261,5 +262,14 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
             balances[i] = stakingNode.getETHBalance();
         }
         return balances;
+    }
+
+    function sumTotalDelayedWithdrawalsForUser(address user) public view returns (uint256 totalDelayedWithdrawals) {
+
+        IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals
+            = delayedWithdrawalRouter.getUserDelayedWithdrawals(user);
+        for (uint256 j = 0; j < delayedWithdrawals.length; j++) {
+            totalDelayedWithdrawals += delayedWithdrawals[j].amount;
+        }
     }
 }
