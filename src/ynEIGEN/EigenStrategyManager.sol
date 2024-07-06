@@ -13,6 +13,10 @@ import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManage
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 
+
+/** @title EigenStrategyManager
+ *  @dev This contract handles the strategy management for ynEigen asset allocations.
+ */
 contract EigenStrategyManager is 
         IEigenStrategyManager,
         Initializable,
@@ -198,17 +202,11 @@ contract EigenStrategyManager is
         }
     }
 
-    function toUserAssetAmount(IERC20 asset, uint256 userUnderlyingView) public view returns (uint256) {
-        uint256 underlyingAmount;
-        if (address(asset) == address(wstETH)) {
-            // Adjust for wstETH using view method, converting stETH to wstETH
-            return wstETH.getWstETHByStETH(userUnderlyingView);
-        }
-        if (address(asset) == address(woETH)) {
-            // Adjust for woETH using view method, converting oETH to woETH
-            return woETH.previewDeposit(userUnderlyingView);
-        } 
-        return userUnderlyingView;
+    function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = asset;
+        uint256[] memory balances = getStakedAssetsBalances(assets);
+        stakedBalance = balances[0];
     }
 
     //--------------------------------------------------------------------------------------
