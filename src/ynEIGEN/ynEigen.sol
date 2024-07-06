@@ -111,8 +111,8 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
     /**
      * @notice Deposits a specified amount of an asset into the contract and mints shares to the receiver.
-     * @dev This function first checks if the asset is supported, then converts the asset amount to ETH equivalent,
-     * calculates the shares to be minted based on the ETH value, mints the shares to the receiver, and finally
+     * @dev This function first checks if the asset is supported, then converts the asset amount to unitOfAccount equivalent,
+     * calculates the shares to be minted based on the unitOfAccount value, mints the shares to the receiver, and finally
      * transfers the asset from the sender to the contract. Emits a Deposit event upon success.
      * @param asset The ERC20 asset to be deposited.
      * @param amount The amount of the asset to be deposited.
@@ -149,10 +149,10 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
         asset.safeTransferFrom(sender, address(this), amount);
 
-        // Convert the value of the asset deposited to ETH
-        uint256 assetAmountInETH = convertToUnitOfAccount(asset, amount);
-        // Calculate how many shares to be minted using the same formula as ynETH
-        shares = _convertToShares(assetAmountInETH, Math.Rounding.Floor);
+        // Convert the value of the asset deposited to unitOfAccount
+        uint256 assetAmountInUnitOfAccount = convertToUnitOfAccount(asset, amount);
+        // Calculate how many shares to be minted using the same formula as ynUnitOfAccount
+        shares = _convertToShares(assetAmountInUnitOfAccount, Math.Rounding.Floor);
 
         // Mint the calculated shares to the receiver 
         _mint(receiver, shares);
@@ -178,7 +178,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             return amount;
         }
         
-        // Can only happen in bootstrap phase if `totalControlled` and `ynETHSupply` could be manipulated
+        // Can only happen in bootstrap phase if `totalAssets` and `totalSupply` could be manipulated
         // independently. That should not be possible.
         return Math.mulDiv(
             amount,
@@ -212,8 +212,8 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
         uint256[] memory depositedBalances = getAllAssetBalances();
         for (uint256 i = 0; i < assets.length; i++) {
-            uint256 balanceInETH = convertToUnitOfAccount(assets[i], depositedBalances[i]);
-            total += balanceInETH;
+            uint256 balanceInUnitOfAccount = convertToUnitOfAccount(assets[i], depositedBalances[i]);
+            total += balanceInUnitOfAccount;
         }
         return total;
     }
@@ -324,14 +324,14 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     //----------------------------------  PAUSING  -----------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Pauses ETH deposits.
+    /// @notice Pauses deposits.
     /// @dev Can only be called by an account with the PAUSER_ROLE.
     function pauseDeposits() external onlyRole(PAUSER_ROLE) {
         depositsPaused = true;
         emit DepositsPausedUpdated(depositsPaused);
     }
 
-    /// @notice Unpauses ETH deposits.
+    /// @notice Unpauses deposits.
     /// @dev Can only be called by an account with the UNPAUSER_ROLE.
     function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
         depositsPaused = false;
