@@ -18,7 +18,7 @@ pragma solidity ^0.8.24;
 // import {BaseScript} from "script/BaseScript.s.sol";
 // import {console} from "lib/forge-std/src/console.sol";
 
-contract DeployYnLSD is BaseScript {
+contract DeployYnLSD {
     // ynLSD public ynlsd;
     // YieldNestOracle public yieldNestOracle;
 
