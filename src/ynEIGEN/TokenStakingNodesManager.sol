@@ -65,9 +65,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     IEigenStrategyManager eigenStrategyManager;
 
     UpgradeableBeacon public upgradeableBeacon;
-
-    /// @notice Mapping of ERC20 tokens to their corresponding EigenLayer strategy contracts.
-    mapping(IERC20 => IStrategy) public strategies;
     
     /**
      * @notice Array of LSD Staking Node contracts.
