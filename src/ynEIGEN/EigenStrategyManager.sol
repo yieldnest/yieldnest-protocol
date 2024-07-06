@@ -12,7 +12,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
-
+import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 /** @title EigenStrategyManager
  *  @dev This contract handles the strategy management for ynEigen asset allocations.
@@ -126,6 +127,7 @@ contract EigenStrategyManager is
 
         IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
+            IERC20 asset = assets[i];
             require(amounts[i] > 0, "Staking amount must be greater than zero");
             IStrategy strategy = address(strategies[asset]);
             require(address(strategy) != address(0), "No strategy for asset");
@@ -200,6 +202,19 @@ contract EigenStrategyManager is
                 stakedBalances[j] += strategyBalance;
             }
         }
+    }
+
+    function toUserAssetAmount(IERC20 asset, uint256 userUnderlyingView) public view returns (uint256) {
+        uint256 underlyingAmount;
+        if (address(asset) == address(wstETH)) {
+            // Adjust for wstETH using view method, converting stETH to wstETH
+            return wstETH.getWstETHByStETH(userUnderlyingView);
+        }
+        if (address(asset) == address(woETH)) { 
+            // Adjust for woETH using view method, converting oETH to woETH
+            return woETH.previewDeposit(userUnderlyingView);
+        }
+        return userUnderlyingView;
     }
 
     function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
