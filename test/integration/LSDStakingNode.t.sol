@@ -3,9 +3,7 @@ pragma solidity 0.8.24;
 
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {IStrategyManager}	from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";

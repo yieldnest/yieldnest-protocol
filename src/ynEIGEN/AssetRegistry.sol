@@ -11,7 +11,6 @@ import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";

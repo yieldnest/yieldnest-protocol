@@ -6,7 +6,6 @@ import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {ynEigen} from "src/ynEigen/ynEigen.sol";
 import {stdJson} from "lib/forge-std/src/StdJson.sol";
-import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {Script} from "lib/forge-std/src/Script.sol";
@@ -26,10 +25,10 @@ abstract contract BaseScript is Script, Utils {
         StakingNode stakingNodeImplementation;
     }
 
-    struct ynLSDDeployment {
-        ynEigen yneigen;
-        LSDStakingNode lsdStakingNodeImplementation;
-    }
+    // struct ynLSDDeployment {
+    //     ynEigen yneigen;
+    //     LSDStakingNode lsdStakingNodeImplementation;
+    // }
 
     function getDeploymentFile() internal virtual view returns (string memory) {
         string memory root = vm.projectRoot();
