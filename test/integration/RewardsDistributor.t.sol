@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {NonPayableContract} from "test/utils/NonPayableContract.sol";
 
 contract RewardsDistributorTest is IntegrationBaseTest {
 
@@ -39,7 +40,7 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 
 		// set invalid fee receiver
 		vm.prank(actors.admin.REWARDS_ADMIN);
-		address nonPayableAddress = address(yieldNestOracle);
+		address nonPayableAddress = address(new NonPayableContract());
 		address payable payableAddress = payable(nonPayableAddress);
 		rewardsDistributor.setFeesReceiver(payableAddress);
 
