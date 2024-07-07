@@ -289,10 +289,14 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         emit DepositsPausedUpdated(depositsPaused);
     }
 
+    /**
+     * @notice Checks if an asset is supported by the asset registry.
+     * @param asset The ERC20 token to check for support.
+     * @return bool True if the asset is supported, false otherwise.
+     */
     function assetIsSupported(IERC20 asset) public returns (bool) {
-        return assets[address(asset)].active;
+        return assetRegistry.assetIsSupported(asset);
     }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------

@@ -292,12 +292,16 @@ interface IAssetRegistryEvents {
         emit PausedUpdated(actionsPaused);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VIEWS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
     /** 
      * @notice Checks if an asset is supported.
      * @dev Returns true if the asset is active.
      */
     function assetIsSupported(IERC20 asset) public returns (bool) {
-        return assets[address(asset)].active;
+        return assetData[address(asset)].active;
     }
 
     //--------------------------------------------------------------------------------------
