@@ -13,14 +13,14 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {ynBase} from "src/ynBase.sol";
 
 interface ITokenStakingNodesManagerEvents {
 
     event AssetRetrieved(IERC20 asset, uint256 amount, uint256 nodeId, address sender);
-    event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
+    event TokenStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
     event DepositsPausedUpdated(bool paused);
 
@@ -67,11 +67,11 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     UpgradeableBeacon public upgradeableBeacon;
     
     /**
-     * @notice Array of LSD Staking Node contracts.
+     * @notice Array of Token Staking Node contracts.
      * @dev These nodes are crucial for the delegation process within the YieldNest protocol. Each node represents a unique staking entity
-     * that can delegate LSD tokens to various operators for yield optimization. 
+     * that can delegate tokens to various operators for yield optimization. 
      */
-    ILSDStakingNode[] public nodes;
+    ITokenStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
     //--------------------------------------------------------------------------------------
@@ -100,8 +100,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         address pauser;
         address unpauser;
         address stakingAdmin;
-        address lsdRestakingManager;
-        address lsdStakingNodeCreatorRole;
+        address tokenRestakingManager;
+        address tokenStakingNodeCreatorRole;
         address[] pauseWhitelist;
     }
 
@@ -111,15 +111,15 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         notZeroAddress(address(init.oracle))
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.stakingAdmin))
-        notZeroAddress(address(init.lsdRestakingManager))
-        notZeroAddress(init.lsdStakingNodeCreatorRole)
+        notZeroAddress(address(init.tokenRestakingManager))
+        notZeroAddress(init.tokenStakingNodeCreatorRole)
         initializer {
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
-        _grantRole(TOKEN_RESTAKING_MANAGER_ROLE, init.lsdRestakingManager);
-        _grantRole(TOKEN_STAKING_NODE_CREATOR_ROLE, init.lsdStakingNodeCreatorRole);
+        _grantRole(TOKEN_RESTAKING_MANAGER_ROLE, init.tokenRestakingManager);
+        _grantRole(TOKEN_STAKING_NODE_CREATOR_ROLE, init.tokenStakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
@@ -135,17 +135,17 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //--------------------------------------------------------------------------------------
 
     /**
-     * @notice Creates a new LSD Staking Node using the Upgradeable Beacon pattern.
+     * @notice Creates a new Token Staking Node using the Upgradeable Beacon pattern.
      * @dev This function creates a new BeaconProxy instance pointing to the current implementation set in the upgradeableBeacon.
      * It initializes the staking node, adds it to the nodes array, and emits an event.
      * Reverts if the maximum number of staking nodes has been reached.
-     * @return ILSDStakingNode The interface of the newly created LSD Staking Node.
+     * @return ITokenStakingNode The interface of the newly created Token Staking Node.
      */
-    function createLSDStakingNode()
+    function createTokenStakingNode()
         public
         notZeroAddress((address(upgradeableBeacon)))
         onlyRole(TOKEN_STAKING_NODE_CREATOR_ROLE)
-        returns (ILSDStakingNode) {
+        returns (ITokenStakingNode) {
 
         uint256 nodeId = nodes.length;
 
@@ -154,30 +154,30 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         }
 
         BeaconProxy proxy = new BeaconProxy(address(upgradeableBeacon), "");
-        ILSDStakingNode node = ILSDStakingNode(payable(proxy));
+        ITokenStakingNode node = ITokenStakingNode(payable(proxy));
 
-        initializeLSDStakingNode(node, nodeId);
+        initializeTokenStakingNode(node, nodeId);
 
         nodes.push(node);
 
-        emit LSDStakingNodeCreated(nodeId, address(node));
+        emit TokenStakingNodeCreated(nodeId, address(node));
 
         return node;
     }
 
     /**
-     * @notice Initializes a newly created LSD Staking Node.
+     * @notice Initializes a newly created Token Staking Node.
      * @dev This function checks the current initialized version of the node and performs initialization if it hasn't been done.
      * For future versions, additional conditional blocks should be added to handle version-specific initialization.
-     * @param node The ILSDStakingNode instance to be initialized.
+     * @param node The ITokenStakingNode instance to be initialized.
      * @param nodeId The ID of the staking node.
      */
-    function initializeLSDStakingNode(ILSDStakingNode node, uint256 nodeId) virtual internal {
+    function initializeTokenStakingNode(ITokenStakingNode node, uint256 nodeId) virtual internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
              node.initialize(
-               ILSDStakingNode.Init(ITokenStakingNodesManager(address(this)), nodeId)
+               ITokenStakingNode.Init(ITokenStakingNodesManager(address(this)), nodeId)
              );
 
              // update version to latest
@@ -190,12 +190,12 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     }
 
     /**
-     * @notice Registers a new LSD Staking Node implementation contract.
-     * @dev This function sets a new implementation contract for the LSD Staking Node by creating a new UpgradeableBeacon.
+     * @notice Registers a new Token Staking Node implementation contract.
+     * @dev This function sets a new implementation contract for the Token Staking Node by creating a new UpgradeableBeacon.
      * It can only be called once to boostrap the first implementation.
-     * @param _implementationContract The address of the new LSD Staking Node implementation contract.
+     * @param _implementationContract The address of the new Token Staking Node implementation contract.
      */
-    function registerLSDStakingNodeImplementationContract(address _implementationContract)
+    function registerTokenStakingNodeImplementationContract(address _implementationContract)
         public
         onlyRole(STAKING_ADMIN_ROLE)
         notZeroAddress(_implementationContract) {
@@ -210,13 +210,13 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     }
 
     /**
-     * @notice Upgrades the LSD Staking Node implementation to a new version.
-     * @dev This function upgrades the implementation contract of the LSD Staking Nodes by setting a new implementation address in the upgradeable beacon.
+     * @notice Upgrades the Token Staking Node implementation to a new version.
+     * @dev This function upgrades the implementation contract of the Token Staking Nodes by setting a new implementation address in the upgradeable beacon.
      * It then reinitializes all existing staking nodes to ensure they are compatible with the new implementation.
      * This function can only be called by an account with the STAKING_ADMIN_ROLE.
      * @param _implementationContract The address of the new implementation contract.
      */
-    function upgradeLSDStakingNodeImplementation(address _implementationContract)  
+    function upgradeTokenStakingNodeImplementation(address _implementationContract)  
         public 
         onlyRole(STAKING_ADMIN_ROLE) 
         notZeroAddress(_implementationContract) {
@@ -231,7 +231,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
         // Reinitialize all nodes to ensure compatibility with the new implementation.
         for (uint256 i = 0; i < nodeCount; i++) {
-            initializeLSDStakingNode(nodes[i], nodeCount);
+            initializeTokenStakingNode(nodes[i], nodeCount);
         }
 
         emit UpgradedStakingNodeImplementationContract(address(_implementationContract), nodeCount);
@@ -244,7 +244,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
-    function hasLSDRestakingManagerRole(address account) external view returns (bool) {
+    function hasTokenRestakingManagerRole(address account) external view returns (bool) {
         return hasRole(TOKEN_RESTAKING_MANAGER_ROLE, account);
     }
 
@@ -252,7 +252,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function getAllNodes() public view returns (ILSDStakingNode[] memory) {
+    function getAllNodes() public view returns (ITokenStakingNode[] memory) {
         return nodes;
     }
 

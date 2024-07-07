@@ -8,7 +8,7 @@ import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
 import {ynBase} from "src/ynBase.sol";

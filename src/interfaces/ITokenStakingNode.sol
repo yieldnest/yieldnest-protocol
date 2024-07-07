@@ -6,7 +6,7 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
-interface ILSDStakingNode {
+interface ITokenStakingNode {
 
     /// @notice Configuration for contract initialization.
     struct Init {

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {IynEigen} from "src/interfaces/IynEigen.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {TestLSDStakingNodeV2} from "test/mocks/TestLSDStakingNodeV2.sol";
 
