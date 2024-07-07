@@ -204,8 +204,15 @@ contract EigenStrategyManager is
         }
     }
 
+    /**
+     * @notice Converts the user's underlying asset amount to the equivalent user asset amount.
+     * @dev This function handles the conversion for wrapped staked ETH (wstETH) and wrapped other ETH (woETH),
+     *      returning the equivalent amount in the respective wrapped token.
+     * @param asset The ERC20 token for which the conversion is being made.
+     * @param userUnderlyingView The amount of the underlying asset.
+     * @return The equivalent amount in the user asset denomination.
+     */
     function toUserAssetAmount(IERC20 asset, uint256 userUnderlyingView) public view returns (uint256) {
-        uint256 underlyingAmount;
         if (address(asset) == address(wstETH)) {
             // Adjust for wstETH using view method, converting stETH to wstETH
             return wstETH.getWstETHByStETH(userUnderlyingView);
@@ -217,6 +224,11 @@ contract EigenStrategyManager is
         return userUnderlyingView;
     }
 
+    /**
+     * @notice Retrieves the total staked balance of a specific asset across all nodes.
+     * @param asset The ERC20 token for which the staked balance is to be retrieved.
+     * @return stakedBalance The total staked balance of the specified asset.
+     */
     function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
         IERC20[] memory assets = new IERC20[](1);
         assets[0] = asset;
