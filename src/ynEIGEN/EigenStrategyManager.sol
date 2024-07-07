@@ -10,7 +10,7 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
@@ -83,7 +83,7 @@ contract EigenStrategyManager is
         public
         notZeroAddress(address(init.strategyManager))
         notZeroAddress(address(init.admin))
-        notZeroAddress(address(init.lsdRestakingManager))
+        notZeroAddress(address(init.tokenRestakingManager))
         initializer {
         __AccessControl_init();
 
@@ -122,7 +122,7 @@ contract EigenStrategyManager is
     ) external onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
         require(assets.length == amounts.length, "Assets and amounts length mismatch");
 
-        ILSDStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
+        ITokenStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
         require(address(node) != address(0), "Invalid node ID");
 
         IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
@@ -181,14 +181,14 @@ contract EigenStrategyManager is
      */
     function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
 
-        // Add balances contained in each LSDStakingNode, including those managed by strategies.
+        // Add balances contained in each TokenStakingNode, including those managed by strategies.
 
-        ILSDStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
         uint256 nodesCount = nodes.length;
         uint256 assetsCount = assets.length;
         for (uint256 i; i < nodesCount; i++ ) {
             
-            ILSDStakingNode node = nodes[i];
+            ITokenStakingNode node = nodes[i];
             for (uint256 j = 0; j < assetsCount; j++) {
                 
                 IERC20 asset = assets[j];

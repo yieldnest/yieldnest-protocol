@@ -10,21 +10,21 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
-interface ILSDStakingNodeEvents {
+interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
 }
 
 /**
- * @title LSD Staking Node
- * @dev Implements staking node functionality for LSD tokens, enabling LSD staking, delegation, and rewards management.
+ * @title Token Staking Node
+ * @dev Implements staking node functionality for tokens, enabling token staking, delegation, and rewards management.
  * This contract interacts with the Eigenlayer protocol to deposit assets, delegate staking operations, and manage staking rewards.
  */
-contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgradeable, ILSDStakingNodeEvents {
+contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUpgradeable, ITokenStakingNodeEvents {
 
     using SafeERC20 for IERC20;
 
@@ -33,7 +33,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //--------------------------------------------------------------------------------------
 
     error ZeroAddress();
-    error NotLSDRestakingManager();
+    error NotTokenRestakingManager();
     error NotStrategyManager();
 
     //--------------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
         address operator,
         ISignatureUtils.SignatureWithExpiry memory signature,
         bytes32 approverSalt
-    ) public virtual onlyLSDRestakingManager {
+    ) public virtual onlyTokenRestakingManager {
 
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
@@ -117,7 +117,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     /**
      * @notice Undelegates the staking operation.
      */
-    function undelegate() public override onlyLSDRestakingManager {
+    function undelegate() public override onlyTokenRestakingManager {
 
         IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
         bytes32[] memory withdrawalRoots = delegationManager.undelegate(address(this));
@@ -129,7 +129,7 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
      * @notice Recovers assets that were deposited directly
      * @param asset The asset to be recovered
      */
-    function recoverAssets(IERC20 asset) external onlyLSDRestakingManager {
+    function recoverAssets(IERC20 asset) external onlyTokenRestakingManager {
         asset.safeTransfer(address(tokenStakingNodesManager), asset.balanceOf(address(this)));
     }
 
@@ -137,9 +137,9 @@ contract LSDStakingNode is ILSDStakingNode, Initializable, ReentrancyGuardUpgrad
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    modifier onlyLSDRestakingManager() {
-        if (!tokenStakingNodesManager.hasLSDRestakingManagerRole(msg.sender)) {
-            revert NotLSDRestakingManager();
+    modifier onlyTokenRestakingManager() {
+        if (!tokenStakingNodesManager.hasTokenRestakingManagerRole(msg.sender)) {
+            revert NotTokenRestakingManager();
         }
         _;
     }

@@ -15,7 +15,6 @@ import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {ynETH} from "src/ynETH.sol";
-import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {ynViewer} from "src/ynViewer.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
