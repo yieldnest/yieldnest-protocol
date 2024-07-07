@@ -53,8 +53,6 @@ contract IntegrationBaseTest is Test, Utils {
 
     // Assets
     ynETH public yneth;
-    ynLSD public ynLSD;
-
 
     // Eigen
     IEigenPodManager public eigenPodManager;
@@ -193,8 +191,6 @@ contract IntegrationBaseTest is Test, Utils {
             validatorManager: actors.ops.VALIDATOR_MANAGER,
             pauser: actors.ops.PAUSE_ADMIN,
             unpauser: actors.admin.UNPAUSE_ADMIN,
-            maxNodeCount: 10,
-            depositContract: depositContractEth2,
             ynETH: IynETH(address(yneth)),
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,

@@ -22,4 +22,6 @@ interface IynEigen {
         IERC20[] calldata assetsToRetrieve,
         uint256[] calldata amounts
     ) external;
+
+    function assetBalances(IERC20[] calldata assetsArray) external view returns (uint256[] memory balances);
 }
