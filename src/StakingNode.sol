@@ -223,6 +223,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         for (uint256 i = 0; i < validatorIndices.length; i++) {
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
+
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
             unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
         }
