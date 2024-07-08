@@ -73,6 +73,7 @@ contract EigenStrategyManager is
         IynEigen ynEigen;
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
+        ITokenStakingNodesManager tokenStakingNodesManager;
         address admin;
         address strategyController;
         address unpauser;
@@ -103,6 +104,7 @@ contract EigenStrategyManager is
 
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
+        tokenStakingNodesManager = init.tokenStakingNodesManager;
     }
 
     //--------------------------------------------------------------------------------------
