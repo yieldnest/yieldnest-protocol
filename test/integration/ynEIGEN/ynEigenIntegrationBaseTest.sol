@@ -233,7 +233,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
 
         assetRegistry = new AssetRegistry();
         AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
-            assets: assets, // Initialize with an empty array of assets
+            assets: assets,
             rateProvider: IRateProvider(address(rateProvider)),
             eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
             ynEigen: IynEigen(address(ynEigenToken)),
