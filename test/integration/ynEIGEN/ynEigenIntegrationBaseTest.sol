@@ -200,8 +200,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     }
 
     function setupEigenStrategyManagerAndAssetRegistry() public {
-        IERC20[] memory assets = new IERC20[](2);
-        IStrategy[] memory strategies = new IStrategy[](2);
+        IERC20[] memory assets = new IERC20[](3);
+        IStrategy[] memory strategies = new IStrategy[](3);
 
         // stETH
         // We acccept deposits in wstETH, and deploy to the stETH strategy
