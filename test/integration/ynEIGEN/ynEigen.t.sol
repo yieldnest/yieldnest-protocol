@@ -68,23 +68,28 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 32 ether;
 
+        address prankedUser = address(0x123);
         uint256 initialSupply = ynEigenToken.totalSupply();
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
-        uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
+        uint256 balance = testAssetUtils.get_wstETH(prankedUser, amount);
         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
+        vm.prank(prankedUser);
         wstETH.approve(address(ynEigenToken), 32 ether);
         uint256 depositAmountOne = 5 ether;
         uint256 depositAmountTwo = 3 ether;
         uint256 depositAmountThree = 7 ether;
 
-        ynEigenToken.deposit(wstETH, depositAmountOne, address(this));
-        ynEigenToken.deposit(wstETH, depositAmountTwo, address(this));
-        // ynEigenToken.deposit(wstETH, depositAmountThree, address(this));
+        vm.prank(prankedUser);
+        ynEigenToken.deposit(wstETH, depositAmountOne, prankedUser);
+        vm.prank(prankedUser);
+        ynEigenToken.deposit(wstETH, depositAmountTwo, prankedUser);
+        // vm.prank(prankedUser);
+        // ynEigenToken.deposit(wstETH, depositAmountThree, prankedUser);
 
-        // assertEq(ynEigenToken.balanceOf(address(this)), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
+        // assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
     
 //     function testDespositUnsupportedAsset() public {

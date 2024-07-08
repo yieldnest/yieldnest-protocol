@@ -11,6 +11,8 @@ import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 
 import {ynBase} from "src/ynBase.sol";
+import "forge-std/console.sol";
+
 
 interface IynEigenEvents {
     event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
@@ -164,6 +166,8 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         if (currentTotalSupply == 0) {
             return amount;
         }
+
+        console.log("Total assets in unit of account:", currentTotalAssets);
         
         // Can only happen in bootstrap phase if `totalAssets` and `totalSupply` could be manipulated
         // independently. That should not be possible.
