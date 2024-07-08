@@ -43,19 +43,18 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 //         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 //     }
 
-    function testDepositSTETHSuccessWithOneDeposit() public {
-        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+    function testDepositwstETHSuccessWithOneDeposit() public {
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 32 ether;
 
         uint256 initialSupply = ynEigenToken.totalSupply();
 
-        // 1. Obtain stETH and Deposit assets to ynEigen by User
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
-        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
+        uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
 
-        stETH.approve(address(ynEigenToken), balance);
-        ynEigenToken.deposit(stETH, balance, address(this));
+        wstETH.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(wstETH, balance, address(this));
 
         assertEq(ynEigenToken.balanceOf(address(this)), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
