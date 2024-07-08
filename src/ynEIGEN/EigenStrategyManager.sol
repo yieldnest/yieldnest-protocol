@@ -182,6 +182,7 @@ contract EigenStrategyManager is
      */
     function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
 
+        stakedBalances = new uint256[](assets.length);
         // Add balances contained in each TokenStakingNode, including those managed by strategies.
 
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
@@ -227,22 +228,37 @@ contract EigenStrategyManager is
     /**
      * @notice Retrieves the total staked balance of a specific asset across all nodes.
      * @param asset The ERC20 token for which the staked balance is to be retrieved.
-     * @return stakedBalance The total staked balance of the specified asset.
+     * @return stakedBalances The total staked balance of the specified asset.
      */
     function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
-        IERC20[] memory assets = new IERC20[](1);
-        assets[0] = asset;
-        uint256[] memory balances = getStakedAssetsBalances(assets);
-        stakedBalance = balances[0];
+        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        uint256 nodesCount = nodes.length;
+        for (uint256 i; i < nodesCount; i++ ) {
+            ITokenStakingNode node = nodes[i];
+            stakedBalance += getStakedAssetBalanceForNode(asset, node);
+        }
+    }
 
-         uint256 balanceNode = asset.balanceOf(address(node));
-        stakedBalances[j] += balanceNode;
+    /**
+     * @notice Retrieves the staked balance of a specific asset for a given node.
+     * @param asset The ERC20 token for which the staked balance is to be retrieved.
+     * @param node The specific node for which the staked balance is to be retrieved.
+     * @return stakedBalance The staked balance of the specified asset for the given node.
+     */
+    function getStakedAssetBalanceForNode(
+        IERC20 asset,
+        ITokenStakingNode node
+    ) public view returns (uint256 stakedBalance) {
+        uint256 balanceNode = asset.balanceOf(address(node));
+        stakedBalance += balanceNode;
 
         uint256 strategyBalance = toUserAssetAmount(
             asset,
             strategies[asset].userUnderlyingView((address(node)))
         );
+        stakedBalance += strategyBalance;
     }
+
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------

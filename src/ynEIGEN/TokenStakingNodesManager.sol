@@ -107,7 +107,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     function initialize(Init calldata init)
         public
         notZeroAddress(address(init.strategyManager))
-        notZeroAddress(address(init.oracle))
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.stakingAdmin))
         notZeroAddress(address(init.tokenRestakingManager))
