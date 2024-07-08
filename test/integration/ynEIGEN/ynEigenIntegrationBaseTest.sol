@@ -231,7 +231,6 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         eigenStrategyManager.initialize(eigenStrategyManagerInit);
 
-        assetRegistry = new AssetRegistry();
         AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
             assets: assets,
             rateProvider: IRateProvider(address(rateProvider)),
