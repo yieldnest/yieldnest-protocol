@@ -189,7 +189,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             pauser: actors.ops.PAUSE_ADMIN,
             unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingAdmin: actors.admin.STAKING_ADMIN,
-            tokenRestakingManager: address(rewardsDistributor),
+            tokenStakingNodeOperator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
             tokenStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR
         });
 

@@ -25,6 +25,7 @@ contract ActorAddresses {
         address POOLED_DEPOSITS_OWNER;
         address PAUSE_ADMIN;
         address STRATEGY_CONTROLLER;
+        address TOKEN_STAKING_NODE_OPERATOR;
     }
 
     struct Wallets {
@@ -33,6 +34,7 @@ contract ActorAddresses {
         address YNDev;
         address YNValidatorService;
         address YNStrategyController;
+        address YNTokenStakingNodeOperator;
     }
 
     struct Actors {
@@ -53,7 +55,9 @@ contract ActorAddresses {
                 YNDev: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 YNValidatorService: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 // TODO: replace with concrete deployment
-                YNStrategyController: 0x1234567890123456789012345678901234567890 
+                YNStrategyController: 0x1234567890123456789012345678901234567890,
+                // TODO: replace with concrete deployment
+                YNTokenStakingNodeOperator:0x2234567890123456789012345678901234567890
             });
 
             actors[17000] = Actors({
@@ -78,7 +82,8 @@ contract ActorAddresses {
                     STAKING_NODE_CREATOR: holeskyWallets.YNDev,
                     POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
                     PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
-                    STRATEGY_CONTROLLER: holeskyWallets.YNStrategyController
+                    STRATEGY_CONTROLLER: holeskyWallets.YNStrategyController,
+                    TOKEN_STAKING_NODE_OPERATOR: holeskyWallets.YNTokenStakingNodeOperator
                 }),
                 wallets: holeskyWallets
             });
@@ -90,7 +95,9 @@ contract ActorAddresses {
             YNDev: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
             YNValidatorService: 0x8e20eAf121154B69B7b880FA6c617c0175c4dE2e,
             // TODO: replace with concrete deployment
-            YNStrategyController: 0x1234567890123456789012345678901234567890 
+            YNStrategyController: 0x1234567890123456789012345678901234567890,
+            // TODO: replace with concrete deployment
+            YNTokenStakingNodeOperator:0x2234567890123456789012345678901234567890
         });
 
         actors[1] = Actors({
@@ -115,7 +122,8 @@ contract ActorAddresses {
                 STAKING_NODE_CREATOR: mainnetWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
-                STRATEGY_CONTROLLER: mainnetWallets.YNStrategyController
+                STRATEGY_CONTROLLER: mainnetWallets.YNStrategyController,
+                TOKEN_STAKING_NODE_OPERATOR: mainnetWallets.YNTokenStakingNodeOperator
             }),
             wallets: mainnetWallets
         });
