@@ -92,30 +92,30 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
     
-//     function testDespositUnsupportedAsset() public {
-//         IERC20 asset = IERC20(address(1));
-//         uint256 amount = 1 ether;
-//         address receiver = address(this);
+    function testDepositUnsupportedAsset() public {
+        IERC20 asset = IERC20(address(1));
+        uint256 amount = 1 ether;
+        address receiver = address(this);
 
-//         vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
-//         ynlsd.deposit(asset, amount, receiver);
-//     }
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, address(asset)));
+        ynEigenToken.deposit(asset, amount, receiver);
+    }
     
-//     function testDepositWithZeroAmount() public {
-//         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 0; // Zero amount for deposit
-//         address receiver = address(this);
+    function testDepositWithZeroAmount() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 amount = 0; // Zero amount for deposit
+        address receiver = address(this);
 
-//         vm.expectRevert(ynLSD.ZeroAmount.selector);
-//         ynlsd.deposit(asset, amount, receiver);
-//     }
+        vm.expectRevert(ynEigen.ZeroAmount.selector);
+        ynEigenToken.deposit(asset, amount, receiver);
+    }
 
-//     function testConvertToShares() public {
-//         IERC20 asset = IERC20(address(this));
-//         uint256 amount = 1000;
-//         vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
-//         ynlsd.convertToShares(asset, amount);
-//     }
+    function testConvertToShares() public {
+        IERC20 asset = IERC20(address(this));
+        uint256 amount = 1000;
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, address(asset)));
+        ynEigenToken.convertToShares(asset, amount);
+    }
 
 //     function testConvertToSharesBootstrapStrategy() public {
 //         vm.prank(actors.ops.STAKING_NODE_CREATOR);
