@@ -228,7 +228,7 @@ contract EigenStrategyManager is
     /**
      * @notice Retrieves the total staked balance of a specific asset across all nodes.
      * @param asset The ERC20 token for which the staked balance is to be retrieved.
-     * @return stakedBalances The total staked balance of the specified asset.
+     * @return stakedBalance The total staked balance of the specified asset.
      */
     function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();

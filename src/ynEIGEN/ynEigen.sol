@@ -287,7 +287,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
      * @param asset The ERC20 token to check for support.
      * @return bool True if the asset is supported, false otherwise.
      */
-    function assetIsSupported(IERC20 asset) public returns (bool) {
+    function assetIsSupported(IERC20 asset) public view returns (bool) {
         return assetRegistry.assetIsSupported(asset);
     }
     //--------------------------------------------------------------------------------------
