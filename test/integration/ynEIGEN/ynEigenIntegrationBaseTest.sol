@@ -34,7 +34,7 @@ import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 
-contract ynIntegrationBaseTest is Test, Utils {
+contract YnEigenIntegrationBaseTest is Test, Utils {
 
     // State
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -149,6 +149,7 @@ contract ynIntegrationBaseTest is Test, Utils {
     function setupYnEigen() public {
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+
         
         ynEigen.Init memory ynEigenInit = ynEigen.Init({
             name: "Eigenlayer YieldNest LSD",
