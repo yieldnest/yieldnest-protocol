@@ -33,7 +33,7 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         stETH.approve(address(wstETH), amount);
         uint256 wstETHAmount = wstETH.wrap(amount);
         wstETH.approve(address(ynEigen), wstETHAmount);
-        ynEigen.deposit(address(wstETH), wstETHAmount, receiver);
+        ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
     }
 
     function depositOETH(uint256 amount, address receiver) external {
@@ -42,6 +42,6 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         oeth.approve(address(woETH), amount);
         uint256 woETHShares = woETH.deposit(amount, address(this));
         woETH.approve(address(ynEigen), woETHShares);
-        ynEigen.deposit(address(oeth), woETHShares, receiver);
+        ynEigen.deposit(IERC20(address(oeth)), woETHShares, receiver);
     }
 }

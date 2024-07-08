@@ -64,6 +64,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         string name;
         string symbol;
         IAssetRegistry assetRegistry;
+        IEigenStrategyManager eigenStrategyManager;
         address admin;
         address pauser;
         address unpauser;
@@ -84,6 +85,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
         assetRegistry = init.assetRegistry;
+        eigenStrategyManager = init.eigenStrategyManager;
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
