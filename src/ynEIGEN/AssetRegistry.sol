@@ -105,6 +105,7 @@ interface IAssetRegistryEvents {
             if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
             }
+            assets.push(init.assets[i]);
             _assetData[init.assets[i]] = AssetData({
                 active: true
             });
@@ -210,6 +211,7 @@ interface IAssetRegistryEvents {
         uint256 total = 0;
 
         uint256[] memory depositedBalances = getAllAssetBalances();
+
         for (uint256 i = 0; i < assets.length; i++) {
             uint256 balanceInUnitOfAccount = convertToUnitOfAccount(assets[i], depositedBalances[i]);
             total += balanceInUnitOfAccount;
