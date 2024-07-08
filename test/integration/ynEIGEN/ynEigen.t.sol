@@ -17,33 +17,6 @@ import "forge-std/console.sol";
 
 
 contract ynEigenTest is ynEigenIntegrationBaseTest {
-//     function testDepositSTETHFailingWhenStrategyIsPaused() public {
-//         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 1 ether;
-
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
-        
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-//         assertEq(compareRebasingTokenBalances(asset.balanceOf(address(this)), balance), true, "Amount not received");
-//         vm.stopPrank();
-
-//         asset.approve(address(ynlsd), amount);
-
-//         IERC20[] memory assets = new IERC20[](1);
-//         uint256[] memory amounts = new uint256[](1);
-//         assets[0] = asset;
-//         amounts[0] = amount;
-
-//         vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
-//         IPausable(address(strategyManager)).pause(1);
-
-//         vm.expectRevert(bytes("Pausable: index is paused"));
-//         vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-//         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-//     }
 
     function testDepositwstETHSuccessWithOneDeposit() public {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
@@ -117,55 +90,32 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         ynEigenToken.convertToShares(asset, amount);
     }
 
-//     function testConvertToSharesBootstrapStrategy() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         ynlsd.createLSDStakingNode();
-//         uint256[] memory totalAssets = ynlsd.getTotalAssets();
-//         ynlsd.nodes(0);
-        
-//         uint256 bootstrapAmountUnits = ynlsd.BOOTSTRAP_AMOUNT_UNITS() * 1e18 - 1;
-//         assertTrue(compareWithThreshold(totalAssets[0], bootstrapAmountUnits, 1), "Total assets should be equal to bootstrap amount");
-//     }
+    function testConvertToSharesWithNoAssets() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNodesManager.createTokenStakingNode();
+        uint256 totalAssets = ynEigenToken.totalAssets();
+        assertEq(totalAssets, 0, "Total assets should be zero initially");
+    }
 
-//     function testConvertToSharesZeroStrategy() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         ynlsd.createLSDStakingNode();
-//         uint256[] memory totalAssets = ynlsd.getTotalAssets();
-//         ynlsd.nodes(0);
-
-//         assertEq(totalAssets[1], 0, "Total assets should be equal to bootstrap 0");
-//     }
-
-//     function testGetTotalAssets() public {
-//         uint256 totalAssetsInETH = ynlsd.convertToETH(ynlsd.assets(0), ynlsd.BOOTSTRAP_AMOUNT_UNITS() * 1e18 - 1);
-//         uint256 totalAssets = ynlsd.totalAssets();
-//         assertTrue(compareWithThreshold(totalAssets, totalAssetsInETH, 1), "Total assets should be equal to bootstrap amount converted to its ETH value");
-//     }
+    function testGetTotalAssetsConsistency() public {
+        uint256 totalAssets = ynEigenToken.totalAssets();
+        assertEq(totalAssets, 0, "Total assets should match bootstrap amount in ETH");
+    }
     
-//     function testLSDWrongStrategy() public {
-//         // IERC20 asset = IERC20(address(1));
-//         // vm.expectRevert(abi.encodeWithSelector(ynLSD.UnsupportedAsset.selector, address(asset)));
-//         // TODO: Come back to this
-//     }
+    function testDepositUnsupportedAssetReverts() public {
+        IERC20 asset = IERC20(address(1));
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, asset));
+        ynEigenToken.convertToShares(asset, 1000);
+    }
 
-//     function testGetSharesForAsset() public {
-//         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-//         uint256 amount = 1000;
-//         AggregatorV3Interface assetPriceFeed = AggregatorV3Interface(chainAddresses.lsd.RETH_FEED_ADDRESS);
+    function testCalculateSharesForAsset() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        uint256 amount = 1000;
+        uint256 shares = ynEigenToken.convertToShares(asset, amount);
+        uint256 assetRate = rateProvider.rate(address(asset));
 
-//         // Call the getSharesForAsset function
-//         uint256 shares = ynlsd.convertToShares(asset, amount);
-//         (, int256 price, , uint256 timeStamp, ) = assetPriceFeed.latestRoundData();
-
-//         // assertEq(ynlsd.totalAssets(), 0);
-//         // assertEq(ynlsd.totalSupply(), 0);
-
-//         assertEq(timeStamp > 0, true, "Zero timestamp");
-//         assertEq(price > 0, true, "Zero price");
-//         assertEq(block.timestamp - timeStamp < 86400, true, "Price stale for more than 24 hours");
-//         assertEq(shares, (uint256(price) * amount) / 1e18, "Total shares don't match");
-//     }
-
+        assertEq(shares, (uint256(assetRate) * amount) / 1e18, "Total shares calculation mismatch");
+    }
 //     function testTotalAssetsAfterDeposit() public {
 //         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 //         uint256 amount = 1 ether;
