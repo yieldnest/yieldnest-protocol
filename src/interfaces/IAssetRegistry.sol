@@ -9,10 +9,10 @@ interface IAssetRegistry {
     }
 
     function assetData(IERC20 asset) external view returns (AssetData memory);
-    function addAsset(IERC20 asset, uint256 initialBalance) external;
+    function addAsset(IERC20 asset) external;
     function disableAsset(IERC20 asset) external;
     function deleteAsset(IERC20 asset) external;
     function totalAssets() external view returns (uint256);
     function convertToUnitOfAccount(IERC20 asset, uint256 amount) external view returns (uint256);
-    function assetIsSupported(IERC20 asset) external returns (bool);
+    function assetIsSupported(IERC20 asset) external view returns (bool);
 }
