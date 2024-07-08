@@ -123,9 +123,8 @@ interface IAssetRegistryEvents {
      * @notice Adds a new asset to the system.
      * @dev Adds an asset to the _assetData mapping and sets it as active. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be added.
-     * @param initialBalance The initial balance of the asset to be set in the system.
      */
-    function addAsset(IERC20 asset, uint256 initialBalance) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
+    function addAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
         require(!_assetData[asset].active, "Asset already active");
 
         assets.push(asset);
@@ -292,7 +291,7 @@ interface IAssetRegistryEvents {
      * @notice Checks if an asset is supported.
      * @dev Returns true if the asset is active.
      */
-    function assetIsSupported(IERC20 asset) public returns (bool) {
+    function assetIsSupported(IERC20 asset) public view returns (bool) {
         return _assetData[asset].active;
     }
 
