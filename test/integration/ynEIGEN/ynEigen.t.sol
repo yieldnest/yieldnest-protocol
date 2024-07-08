@@ -2,16 +2,15 @@
 pragma solidity 0.8.24;
 
 import "./ynEigenIntegrationBaseTest.sol";
-// import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
-// import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-// import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-// import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-// import {AggregatorV3Interface} from "src/external/chainlink/AggregatorV3Interface.sol";
-// import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
-// import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 // import {TestTokenStakingNodeV2} from "test/mocks/TestTokenStakingNodeV2.sol";
 // import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
-// import {ynBase} from "src/ynBase.sol";
+import {ynBase} from "src/ynBase.sol";
 
 import "forge-std/console.sol";
 
@@ -116,84 +115,76 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         assertEq(shares, (uint256(assetRate) * amount) / 1e18, "Total shares calculation mismatch");
     }
-//     function testTotalAssetsAfterDeposit() public {
-//         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 1 ether;
+    function testTotalAssetsAfterDeposit() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 1 ether;
 
-//         IPausable pausableStrategyManager = IPausable(address(strategyManager));
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         ILSDStakingNode lsdStakingNode = ynlsd.createLSDStakingNode();
+        IPausable pausableStrategyManager = IPausable(address(strategyManager));
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 
-//         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
+        address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
 
-//         vm.startPrank(unpauser);
-//         pausableStrategyManager.unpause(0);
-//         vm.stopPrank();
+        vm.startPrank(unpauser);
+        pausableStrategyManager.unpause(0);
+        vm.stopPrank();
 
-//         uint256 totalAssetsBeforeDeposit = ynlsd.totalAssets();
+        uint256 totalAssetsBeforeDeposit = ynEigenToken.totalAssets();
         
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-//         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
-//         asset.approve(address(ynlsd), balance);
-//         ynlsd.deposit(asset, balance, address(this));
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
+        assertEq(balance == amount, true, "Amount not received");
+        asset.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(asset, balance, address(this));
+        {
+            IERC20[] memory assets = new IERC20[](1);
+            uint256[] memory amounts = new uint256[](1);
+            assets[0] = asset;
+            amounts[0] = amount;
 
+            uint256 nodeId = tokenStakingNode.nodeId();
+            vm.prank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        }
+        uint256 totalAssetsAfterDeposit = ynEigenToken.totalAssets();
+        uint256 assetRate = rateProvider.rate(address(asset));
 
-//         {
-//             IERC20[] memory assets = new IERC20[](1);
-//             uint256[] memory amounts = new uint256[](1);
-//             assets[0] = asset;
-//             amounts[0] = amount;
-
-//             vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-
-//             lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-//         }
-
-//         uint256 totalAssetsAfterDeposit = ynlsd.totalAssets();
-
-//         uint256 oraclePrice = yieldNestOracle.getLatestPrice(address(asset));
-
-//         IStrategy strategy = ynlsd.strategies(IERC20(chainAddresses.lsd.STETH_ADDRESS));
-//         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(lsdStakingNode)));
+        IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.STETH_ADDRESS));
+        uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(tokenStakingNode)));
         
-//         uint256 expectedBalance = balanceInStrategyForNode * oraclePrice / 1e18;
+        uint256 expectedBalance = balanceInStrategyForNode * assetRate / 1e18;
 
-//         // Assert that totalAssets reflects the deposit
-//         assertEq(
-//             compareWithThreshold(totalAssetsAfterDeposit - totalAssetsBeforeDeposit,expectedBalance, 1), true, 
-//             "Total assets do not reflect the deposit"
-//         );
-//     }
+        // Assert that totalAssets reflects the deposit
+        assertEq(
+            totalAssetsAfterDeposit - totalAssetsBeforeDeposit >= expectedBalance - 1 && totalAssetsAfterDeposit - totalAssetsBeforeDeposit <= expectedBalance + 1, 
+            true, 
+            "Total assets do not reflect the deposit"
+        );
+    }
 
-//     function testPreviewDeposit() public {
-//         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 1 ether;
+    function testPreviewDeposit() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 amount = 1 ether;
 
-//         AggregatorV3Interface priceFeed = AggregatorV3Interface(chainAddresses.lsd.STETH_FEED_ADDRESS);
-//         (, int256 price,,,) = priceFeed.latestRoundData();
-//         uint256 stethPrice = uint256(price);
+        uint256 wstethPrice = rateProvider.rate(chainAddresses.lsd.WSTETH_ADDRESS);
 
-//         uint256 expectedDepositPreview = amount * stethPrice / 1e18;
-//         uint256 previewDeposit = ynlsd.previewDeposit(asset, amount);
-//         assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
-//     }
+        uint256 expectedDepositPreview = amount * wstethPrice / 1e18;
+        uint256 previewDeposit = ynEigenToken.previewDeposit(asset, amount);
+        assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
+    }
 
-//     function testConvertToETH() public {
-//         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 1 ether;
+    function testConvertToETH() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 amount = 1 ether;
 
-//         AggregatorV3Interface priceFeed = AggregatorV3Interface(chainAddresses.lsd.STETH_FEED_ADDRESS);
-//         (, int256 price,,,) = priceFeed.latestRoundData();
-//         uint256 stethPrice = uint256(price);
+        uint256 wstethPrice = rateProvider.rate(chainAddresses.lsd.WSTETH_ADDRESS);
 
-//         uint256 expectedDepositPreview = amount * stethPrice / 1e18;
+        uint256 expectedETHAmount = amount * wstethPrice / 1e18;
 
-//         uint256 ethAmount = ynlsd.convertToETH(asset, amount);
-//         assertEq(ethAmount, expectedDepositPreview, "convertToEth does not match expected value");
-//     }
-// }
+        uint256 ethAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
+        assertEq(ethAmount, expectedETHAmount, "convertToEth does not match expected value");
+    }
 
 // contract ynLSDAdminTest is IntegrationBaseTest {
 
