@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity 0.8.24;
 
-import "./IntegrationBaseTest.sol";
+import "./ynEigenIntegrationBaseTest.sol";
 // import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 // import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 // import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -14,7 +14,7 @@ import "./IntegrationBaseTest.sol";
 // import {ynBase} from "src/ynBase.sol";
 
 
-contract ynLSDAssetTest is IntegrationBaseTest {
+contract ynEigenTest is IntegrationBaseTest {
 //     function testDepositSTETHFailingWhenStrategyIsPaused() public {
 //         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 //         uint256 amount = 1 ether;
