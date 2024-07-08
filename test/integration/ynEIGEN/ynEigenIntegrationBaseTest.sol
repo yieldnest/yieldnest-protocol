@@ -25,7 +25,10 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
 
+import {IynEigen} from "src/interfaces/IynEigen.sol";
+import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
@@ -34,7 +37,7 @@ import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 
-contract YnEigenIntegrationBaseTest is Test, Utils {
+contract ynEigenIntegrationBaseTest is Test, Utils {
 
     // State
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -62,6 +65,7 @@ contract YnEigenIntegrationBaseTest is Test, Utils {
     // Assets
     ynEigen public ynEigenToken;
     AssetRegistry public assetRegistry;
+    LSDRateProvider public rateProvider;
 
     // Strategy
     EigenStrategyManager eigenStrategyManager;
@@ -93,23 +97,26 @@ contract YnEigenIntegrationBaseTest is Test, Utils {
         TransparentUpgradeableProxy eigenStrategyManagerProxy;
         TransparentUpgradeableProxy tokenStakingNodesManagerProxy;
         TransparentUpgradeableProxy assetRegistryProxy;
+        TransparentUpgradeableProxy rateProviderProxy;
 
         ynEigenToken = new ynEigen();
         eigenStrategyManager = new EigenStrategyManager();
         tokenStakingNodesManager = new TokenStakingNodesManager();
         assetRegistry = new AssetRegistry();
+        rateProvider = new LSDRateProvider();
 
-        
         ynEigenProxy = new TransparentUpgradeableProxy(address(ynEigenToken), actors.admin.PROXY_ADMIN_OWNER, "");
         eigenStrategyManagerProxy = new TransparentUpgradeableProxy(address(eigenStrategyManager), actors.admin.PROXY_ADMIN_OWNER, "");
         tokenStakingNodesManagerProxy = new TransparentUpgradeableProxy(address(tokenStakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
         assetRegistryProxy = new TransparentUpgradeableProxy(address(assetRegistry), actors.admin.PROXY_ADMIN_OWNER, "");
+        rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
 
         // Wrapping proxies with their respective interfaces
         ynEigenToken = ynEigen(payable(ynEigenProxy));
         eigenStrategyManager = EigenStrategyManager(payable(eigenStrategyManagerProxy));
         tokenStakingNodesManager = TokenStakingNodesManager(payable(tokenStakingNodesManagerProxy));
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
+        rateProvider = LSDRateProvider(payable(rateProviderProxy));
 
         // Re-deploying ynEigen and creating its proxy again
         ynEigenToken = new ynEigen();
@@ -130,6 +137,11 @@ contract YnEigenIntegrationBaseTest is Test, Utils {
         assetRegistry = new AssetRegistry();
         assetRegistryProxy = new TransparentUpgradeableProxy(address(assetRegistry), actors.admin.PROXY_ADMIN_OWNER, "");
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
+
+        // Re-deploying LSDRateProvider and creating its proxy again
+        rateProvider = new LSDRateProvider();
+        rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
+        rateProvider = LSDRateProvider(payable(rateProviderProxy));
     }
 
     function setupUtils() public {
@@ -185,6 +197,22 @@ contract YnEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodesManager.initialize(tokenStakingNodesManagerInit);
         vm.prank(actors.admin.STAKING_ADMIN); // TokenStakingNodesManager is the only contract that can register a staking node implementation contract
         tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(address(tokenStakingNodeImplementation));
+    }
+
+    function setupAssetRegistry() public {
+        assetRegistry = new AssetRegistry();
+        AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
+            name: "ynEigen Asset Registry",
+            symbol: "ynEAR",
+            assets: new IERC20[](0), // Initialize with an empty array of assets
+            rateProvider: IRateProvider(address(rateProvider)),
+            eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
+            ynEigen: IynEigen(address(ynEigenToken)),
+            admin: actors.admin.ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN
+        });
+        assetRegistry.initialize(assetRegistryInit);
     }
 }
 

@@ -14,7 +14,7 @@ import "./ynEigenIntegrationBaseTest.sol";
 // import {ynBase} from "src/ynBase.sol";
 
 
-contract ynEigenTest is IntegrationBaseTest {
+contract ynEigenTest is ynEigenIntegrationBaseTest {
 //     function testDepositSTETHFailingWhenStrategyIsPaused() public {
 //         IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 //         uint256 amount = 1 ether;
@@ -43,22 +43,22 @@ contract ynEigenTest is IntegrationBaseTest {
 //         lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
 //     }
 
-//     function testDepositSTETHSuccessWithOneDeposit() public {
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 32 ether;
+    function testDepositSTETHSuccessWithOneDeposit() public {
+        IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        uint256 amount = 32 ether;
 
-//         uint256 initialSupply = ynlsd.totalSupply();
+        uint256 initialSupply = ynEigenToken.totalSupply();
 
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-//         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
+        // 1. Obtain stETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_stETH(address(this), amount);
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
-//         stETH.approve(address(ynlsd), balance);
-//         ynlsd.deposit(stETH, balance, address(this));
+        stETH.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(stETH, balance, address(this));
 
-//         assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
-//     }
+        assertEq(ynEigenToken.balanceOf(address(this)), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
+    }
     
 //     function testDepositSTETHSuccessWithMultipleDeposits() public {
 //         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
