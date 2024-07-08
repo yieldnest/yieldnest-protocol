@@ -36,6 +36,8 @@ import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+
 
 contract ynEigenIntegrationBaseTest is Test, Utils {
 
@@ -223,6 +225,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             ynEigen: IynEigen(address(ynEigenToken)),
             strategyManager: IStrategyManager(address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS)),
             delegationManager: IDelegationManager(address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS)),
+            tokenStakingNodesManager: ITokenStakingNodesManager(address(tokenStakingNodesManager)),
             admin: actors.admin.ADMIN,
             strategyController: actors.ops.STRATEGY_CONTROLLER,
             unpauser: actors.admin.UNPAUSE_ADMIN,
