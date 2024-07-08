@@ -86,10 +86,10 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         ynEigenToken.deposit(wstETH, depositAmountOne, prankedUser);
         vm.prank(prankedUser);
         ynEigenToken.deposit(wstETH, depositAmountTwo, prankedUser);
-        // vm.prank(prankedUser);
-        // ynEigenToken.deposit(wstETH, depositAmountThree, prankedUser);
+        vm.prank(prankedUser);
+        ynEigenToken.deposit(wstETH, depositAmountThree, prankedUser);
 
-        // assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
+        assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
     
 //     function testDespositUnsupportedAsset() public {
