@@ -93,6 +93,8 @@ interface IAssetRegistryEvents {
         public
         notZeroAddress(address(init.rateProvider))
         notZeroAddress(address(init.admin))
+        notZeroAddress(address(init.pauser))
+        notZeroAddress(address(init.unpauser))
         initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
