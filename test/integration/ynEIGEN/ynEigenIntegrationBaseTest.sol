@@ -90,6 +90,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         setupEigenLayer();
         setupTokenStakingNodesManager();
         setupYnEigen();
+        setupEigenStrategyManagerAndAssetRegistry();
     }
 
     function setupYnEigenProxies() public {
@@ -162,7 +163,6 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
 
-        
         ynEigen.Init memory ynEigenInit = ynEigen.Init({
             name: "Eigenlayer YieldNest LSD",
             symbol: "ynLSDe",
@@ -199,12 +199,41 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(address(tokenStakingNodeImplementation));
     }
 
-    function setupAssetRegistry() public {
+    function setupEigenStrategyManagerAndAssetRegistry() public {
+        IERC20[] memory assets = new IERC20[](2);
+        IStrategy[] memory strategies = new IStrategy[](2);
+
+        // stETH
+        // We acccept deposits in wstETH, and deploy to the stETH strategy
+        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
+
+        // rETH
+        assets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        strategies[1] = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
+
+        // oETH
+        // We accept deposits in woETH, and deploy to the oETH strategy
+        assets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+        strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+
+        EigenStrategyManager.Init memory eigenStrategyManagerInit = EigenStrategyManager.Init({
+            assets: assets,
+            strategies: strategies,
+            ynEigen: IynEigen(address(0)),
+            strategyManager: IStrategyManager(address(0)),
+            delegationManager: IDelegationManager(address(0)),
+            admin: actors.admin.ADMIN,
+            strategyController: address(0),
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN
+        });
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+        eigenStrategyManager.initialize(eigenStrategyManagerInit);
+
         assetRegistry = new AssetRegistry();
         AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
-            name: "ynEigen Asset Registry",
-            symbol: "ynEAR",
-            assets: new IERC20[](0), // Initialize with an empty array of assets
+            assets: assets, // Initialize with an empty array of assets
             rateProvider: IRateProvider(address(rateProvider)),
             eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
             ynEigen: IynEigen(address(ynEigenToken)),
