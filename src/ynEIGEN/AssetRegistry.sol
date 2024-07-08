@@ -78,8 +78,6 @@ interface IAssetRegistryEvents {
     }
 
     struct Init {
-        string name;
-        string symbol;
         IERC20[] assets;
         IRateProvider rateProvider;
         IEigenStrategyManager eigenStrategyManager;
