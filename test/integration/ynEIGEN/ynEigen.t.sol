@@ -13,6 +13,8 @@ import "./ynEigenIntegrationBaseTest.sol";
 // import {TestYnLSDV2} from "test/mocks/TestYnLSDV2.sol";
 // import {ynBase} from "src/ynBase.sol";
 
+import "forge-std/console.sol";
+
 
 contract ynEigenTest is ynEigenIntegrationBaseTest {
 //     function testDepositSTETHFailingWhenStrategyIsPaused() public {
@@ -51,36 +53,39 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
         TestAssetUtils testAssetUtils = new TestAssetUtils();
-        uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
+        address prankedUser = address(0x123);
+        uint256 balance = testAssetUtils.get_wstETH(prankedUser, amount);
 
+        vm.prank(prankedUser);
         wstETH.approve(address(ynEigenToken), balance);
-        ynEigenToken.deposit(wstETH, balance, address(this));
+        vm.prank(prankedUser);
+        ynEigenToken.deposit(wstETH, balance, prankedUser);
 
-        assertEq(ynEigenToken.balanceOf(address(this)), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
+        assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
     
-//     function testDepositSTETHSuccessWithMultipleDeposits() public {
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 amount = 32 ether;
+    function testDepositwstETHSuccessWithMultipleDeposits() public {
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 amount = 32 ether;
 
-//         uint256 initialSupply = ynlsd.totalSupply();
+        uint256 initialSupply = ynEigenToken.totalSupply();
 
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         uint256 balance = testAssetUtils.get_stETH(address(this),amount);
-//         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
-//         stETH.approve(address(ynlsd), 32 ether);
-//         uint256 depositAmountOne = 5 ether;
-//         uint256 depositAmountTwo = 3 ether;
-//         uint256 depositAmountThree = 7 ether;
+        wstETH.approve(address(ynEigenToken), 32 ether);
+        uint256 depositAmountOne = 5 ether;
+        uint256 depositAmountTwo = 3 ether;
+        uint256 depositAmountThree = 7 ether;
 
-//         ynlsd.deposit(stETH, depositAmountOne, address(this));
-//         ynlsd.deposit(stETH, depositAmountTwo, address(this));
-//         ynlsd.deposit(stETH, depositAmountThree, address(this));
+        ynEigenToken.deposit(wstETH, depositAmountOne, address(this));
+        ynEigenToken.deposit(wstETH, depositAmountTwo, address(this));
+        // ynEigenToken.deposit(wstETH, depositAmountThree, address(this));
 
-//         assertEq(ynlsd.balanceOf(address(this)), ynlsd.totalSupply() - initialSupply, "ynlsd balance does not match total supply");
-//     }
+        // assertEq(ynEigenToken.balanceOf(address(this)), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
+    }
     
 //     function testDespositUnsupportedAsset() public {
 //         IERC20 asset = IERC20(address(1));
