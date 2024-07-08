@@ -31,6 +31,7 @@ import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
 import {beaconChainETHStrategy} from "src/Constants.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
+import "forge-std/console.sol";
 
 contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 
@@ -196,6 +197,9 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         middlewareTimesIndexes[0] = 0; // value is not used, as per EigenLayer docs
 
         vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
+
+        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
+        stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
