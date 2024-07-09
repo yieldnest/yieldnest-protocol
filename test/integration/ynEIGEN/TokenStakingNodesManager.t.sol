@@ -52,7 +52,7 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
         address newImplementation = address(new TestTokenStakingNodesManagerV2());
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager)))
-            .upgradeAndCall(ITransparentUpgradeableProxy(address(ynEigenToken)), newImplementation, "");
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(tokenStakingNodesManager)), newImplementation, "");
 
         // Attempt to create a token staking node after the upgrade - should fail since implementation is not there
         vm.expectRevert();
@@ -68,7 +68,7 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
         address newYnEigenTokenImpl = address(new TestTokenStakingNodesManagerV2());
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager)))
-            .upgradeAndCall(ITransparentUpgradeableProxy(address(ynEigenToken)), newYnEigenTokenImpl, "");
+            .upgradeAndCall(ITransparentUpgradeableProxy(address(tokenStakingNodesManager)), newYnEigenTokenImpl, "");
 
         TestTokenStakingNodeV2 testTokenStakingNodeV2 = new TestTokenStakingNodeV2();
         vm.prank(actors.admin.STAKING_ADMIN);
