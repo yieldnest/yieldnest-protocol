@@ -4,10 +4,8 @@ pragma solidity ^0.8.24;
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
-import {ynLSD} from "src/ynLSD.sol";
+import {ynEigen} from "src/ynEigen/ynEigen.sol";
 import {stdJson} from "lib/forge-std/src/StdJson.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
-import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {Script} from "lib/forge-std/src/Script.sol";
@@ -27,11 +25,10 @@ abstract contract BaseScript is Script, Utils {
         StakingNode stakingNodeImplementation;
     }
 
-    struct ynLSDDeployment {
-        ynLSD ynlsd;
-        LSDStakingNode lsdStakingNodeImplementation;
-        YieldNestOracle yieldNestOracle;
-    }
+    // struct ynLSDDeployment {
+    //     ynEigen yneigen;
+    //     LSDStakingNode lsdStakingNodeImplementation;
+    // }
 
     function getDeploymentFile() internal virtual view returns (string memory) {
         string memory root = vm.projectRoot();
@@ -84,28 +81,27 @@ abstract contract BaseScript is Script, Utils {
         return deployment;
     }
 
-    function saveynLSDDeployment(ynLSDDeployment memory deployment) public {
-        string memory json = "ynLSDDeployment";
-        ActorAddresses.Actors memory actors = getActors();
-        string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address(actors.eoa.DEFAULT_SIGNER));
-        // actors
-        vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address(actors.admin.PROXY_ADMIN_OWNER));
-        vm.serializeAddress(json, "ADMIN", address(actors.admin.ADMIN));
-        vm.serializeAddress(json, "STAKING_ADMIN", address(actors.admin.STAKING_ADMIN));
-        vm.serializeAddress(json, "STAKING_NODES_OPERATOR", address(actors.ops.STAKING_NODES_OPERATOR)); // Assuming STAKING_NODES_ADMIN is a typo and should be STAKING_NODES_OPERATOR or another existing role in the context provided
-        vm.serializeAddress(json, "VALIDATOR_MANAGER", address(actors.ops.VALIDATOR_MANAGER));
-        vm.serializeAddress(json, "FEE_RECEIVER", address(actors.admin.FEE_RECEIVER));
-        vm.serializeAddress(json, "PAUSE_ADMIN", address(actors.ops.PAUSE_ADMIN));
-        vm.serializeAddress(json, "UNPAUSE_ADMIN", address(actors.admin.UNPAUSE_ADMIN));
-        vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address(actors.ops.LSD_RESTAKING_MANAGER));
-        vm.serializeAddress(json, "STAKING_NODE_CREATOR", address(actors.ops.STAKING_NODE_CREATOR));
-        vm.serializeAddress(json, "ORACLE_ADMIN", address(actors.admin.ORACLE_ADMIN));
-        vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPPER", address(actors.eoa.DEPOSIT_BOOTSTRAPPER));
-        vm.serializeAddress(json, "ynlsd", address(deployment.ynlsd));
-        vm.serializeAddress(json, "lsdStakingNodeImplementation", address(deployment.lsdStakingNodeImplementation));
-        vm.serializeAddress(json, "yieldNestOracle", address(deployment.yieldNestOracle));
-        vm.writeJson(finalJson, getDeploymentFile());
-    }
+    // function saveynLSDDeployment(ynLSDDeployment memory deployment) public {
+    //     string memory json = "ynLSDDeployment";
+    //     ActorAddresses.Actors memory actors = getActors();
+    //     string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address(actors.eoa.DEFAULT_SIGNER));
+    //     // actors
+    //     vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address(actors.admin.PROXY_ADMIN_OWNER));
+    //     vm.serializeAddress(json, "ADMIN", address(actors.admin.ADMIN));
+    //     vm.serializeAddress(json, "STAKING_ADMIN", address(actors.admin.STAKING_ADMIN));
+    //     vm.serializeAddress(json, "STAKING_NODES_OPERATOR", address(actors.ops.STAKING_NODES_OPERATOR)); // Assuming STAKING_NODES_ADMIN is a typo and should be STAKING_NODES_OPERATOR or another existing role in the context provided
+    //     vm.serializeAddress(json, "VALIDATOR_MANAGER", address(actors.ops.VALIDATOR_MANAGER));
+    //     vm.serializeAddress(json, "FEE_RECEIVER", address(actors.admin.FEE_RECEIVER));
+    //     vm.serializeAddress(json, "PAUSE_ADMIN", address(actors.ops.PAUSE_ADMIN));
+    //     vm.serializeAddress(json, "UNPAUSE_ADMIN", address(actors.admin.UNPAUSE_ADMIN));
+    //     vm.serializeAddress(json, "LSD_RESTAKING_MANAGER", address(actors.ops.LSD_RESTAKING_MANAGER));
+    //     vm.serializeAddress(json, "STAKING_NODE_CREATOR", address(actors.ops.STAKING_NODE_CREATOR));
+    //     vm.serializeAddress(json, "ORACLE_ADMIN", address(actors.admin.ORACLE_ADMIN));
+    //     vm.serializeAddress(json, "DEPOSIT_BOOTSTRAPPER", address(actors.eoa.DEPOSIT_BOOTSTRAPPER));
+    //     vm.serializeAddress(json, "ynlsd", address(deployment.ynlsd));
+    //     vm.serializeAddress(json, "lsdStakingNodeImplementation", address(deployment.lsdStakingNodeImplementation));
+    //     vm.writeJson(finalJson, getDeploymentFile());
+    // }
 
     function serializeActors(string memory json) public {
         ActorAddresses.Actors memory actors = getActors();
@@ -126,16 +122,15 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, "POOLED_DEPOSITS_OWNER", address(actors.ops.POOLED_DEPOSITS_OWNER));
     }
 
-    function loadynLSDDeployment() public view returns (ynLSDDeployment memory) {
-        string memory deploymentFile = getDeploymentFile();
-        string memory jsonContent = vm.readFile(deploymentFile);
-        ynLSDDeployment memory deployment;
-        deployment.ynlsd = ynLSD(payable(jsonContent.readAddress(".ynlsd")));
-        deployment.lsdStakingNodeImplementation = LSDStakingNode(payable(jsonContent.readAddress(".lsdStakingNodeImplementation")));
-        deployment.yieldNestOracle = YieldNestOracle(payable(jsonContent.readAddress(".yieldNestOracle")));
+    // function loadynLSDDeployment() public view returns (ynLSDDeployment memory) {
+    //     string memory deploymentFile = getDeploymentFile();
+    //     string memory jsonContent = vm.readFile(deploymentFile);
+    //     ynLSDDeployment memory deployment;
+    //     deployment.ynlsd = ynLSD(payable(jsonContent.readAddress(".ynlsd")));
+    //     deployment.lsdStakingNodeImplementation = LSDStakingNode(payable(jsonContent.readAddress(".lsdStakingNodeImplementation")));
 
-        return deployment;
-    }
+    //     return deployment;
+    // }
 
     function serializeProxyElements(string memory json, string memory name, address proxy) public {
         address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(proxy);
