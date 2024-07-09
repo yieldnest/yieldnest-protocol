@@ -39,9 +39,10 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		vm.deal(address(consensusLayerReceiver), 3 ether);
 
 		// set invalid fee receiver
-		vm.prank(actors.admin.REWARDS_ADMIN);
+
 		address nonPayableAddress = address(new NonPayableContract());
 		address payable payableAddress = payable(nonPayableAddress);
+		vm.prank(actors.admin.REWARDS_ADMIN);
 		rewardsDistributor.setFeesReceiver(payableAddress);
 
 		// process rewards
