@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity 0.8.24;
 
-import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
+import {ynEigenIntegrationBaseTest} from "test/integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {IStrategyManager}	from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
@@ -9,86 +9,94 @@ import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPaus
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
+import {IwstETH} from "src/external/lido/IwstETH.sol";
 
-// contract skipLSDStakingNodeTest is IntegrationBaseTest {
 
-// 	ILSDStakingNode lsdStakingNode;
+contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
-// 	function setUp() public override {
-// 		super.setUp();
-// 		vm.prank(actors.ops.STAKING_NODE_CREATOR);
-// 		lsdStakingNode = ynlsd.createLSDStakingNode();
-// 	}
+	ITokenStakingNode tokenStakingNode;
+
+	function setUp() public override {
+		super.setUp();
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
+		tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
+	}
 	
-// 	// function testYnLSDView() public {
-// 	// 	IynLSD _ynlsd = lsdStakingNode.ynLSD();
-// 	// 	assertEq(address(_ynlsd), address(ynlsd));
-// 	// }
+	function testNodeIdView() public {
+		uint256 _nodeId = tokenStakingNode.nodeId();
+		assertEq(_nodeId, 0);
+	}
 
-// 	function testNodeIdView() public {
-// 		uint256 _nodeId = lsdStakingNode.nodeId();
-// 		assertEq(_nodeId, 0);
-// 	}
+	function testImplementationView() public {
+		address _implementation = tokenStakingNode.implementation();
+		vm.prank(actors.ops.STAKING_NODE_CREATOR);
+		tokenStakingNodesManager.createTokenStakingNode();
+		ITokenStakingNode _newTokenStakingNode = tokenStakingNodesManager.nodes(0);
+		assertEq(_implementation, address(_newTokenStakingNode.implementation()));
+	}
 
-// 	function testImplementationView() public {
-// 		address _implementation = lsdStakingNode.implementation();
-// 		vm.prank(actors.ops.STAKING_NODE_CREATOR);
-// 		ynlsd.createLSDStakingNode();
-// 		ILSDStakingNode _lsdStakingNode = ynlsd.nodes(0);
-// 		assertEq(_implementation, address(_lsdStakingNode.implementation()));
-// 	}
+	function testDepositAssetsToEigenlayerSuccess() public {
+		// 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_wstETH(address(this), 10 ether);
+		wstETH.approve(address(ynEigenToken), balance);
+		ynEigenToken.deposit(wstETH, balance, address(this));
 
-// 	function testDepositAssetsToEigenlayerSuccess() public {
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
-// 		stETH.approve(address(ynlsd), balance);
-// 		ynlsd.deposit(stETH, balance, address(this));
+		// 2. Deposit assets to Eigenlayer by Token Staking Node
+        IPausable pausableStrategyManager = IPausable(address(strategyManager));
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
+        vm.startPrank(unpauser);
+        pausableStrategyManager.unpause(0);
+        vm.stopPrank();
 
-// 		// 2. Deposit assets to Eigenlayer by LSD ReStaking Manager
-//         IPausable pausableStrategyManager = IPausable(address(strategyManager));
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
-//         vm.startPrank(unpauser);
-//         pausableStrategyManager.unpause(0);
-//         vm.stopPrank();
-
-// 		IERC20[] memory assets = new IERC20[](1);
-// 		assets[0] = stETH;
-// 		uint256[] memory amounts = new uint256[](1);
-// 		amounts[0] = 1 ether;
-// 		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-// 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-// 		(, uint256[] memory deposits) = strategyManager.getDeposits(address(lsdStakingNode));
-// 		assertGt(deposits[0], 1);
-// 	}
-
-// 	function testDepositAssetsToEigenlayerFail() public {
-
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
-// 		stETH.approve(address(ynlsd), balance);
-// 		ynlsd.deposit(stETH, balance, address(this));
-
-// 		// 2. Deposit should fail when paused
-//         IStrategyManager strategyManager = ynlsd.strategyManager();
-//         vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
-//         IPausable(address(strategyManager)).pause(1);
-// 		IERC20[] memory assets = new IERC20[](1);
-// 		assets[0] = stETH;
-// 		uint256[] memory amounts = new uint256[](1);
-// 		amounts[0] = balance;
-// 		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-// 		vm.expectRevert("Pausable: index is paused");
-// 		lsdStakingNode.depositAssetsToEigenlayer(assets, amounts);
-// 	}
-// }
+		IERC20[] memory assets = new IERC20[](1);
+		assets[0] = wstETH;
+		uint256[] memory amounts = new uint256[](1);
+		amounts[0] = 1 ether;
+        uint256 nodeId = tokenStakingNode.nodeId();
+		vm.prank(actors.ops.STRATEGY_CONTROLLER);
+		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+		(, uint256[] memory deposits) = strategyManager.getDeposits(address(tokenStakingNode));
 
 
-// contract LSDStakingNodeDelegate is IntegrationBaseTest {
+		uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
+		uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
+		assertTrue(
+            compareWithThreshold(expectedBalance, amounts[0], 2),
+            "Staked asset balance does not match expected deposits"
+        );
+
+		uint256 strategyUserUnderlyingView = eigenStrategyManager.strategies(assets[0]).userUnderlyingView(address(tokenStakingNode));
+		assertTrue(compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, 2), "Strategy user underlying view does not match expected stETH amount within threshold");
+	}
+
+	// function testDepositAssetsToEigenlayerFail() public {
+	// 	// 1. Obtain stETH and Deposit assets to ynEigen by User
+    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
+    //     IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+    //     uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
+	// 	stETH.approve(address(ynEigenToken), balance);
+	// 	ynEigenToken.deposit(stETH, balance, address(this));
+
+	// 	// 2. Deposit should fail when paused
+    //     IStrategyManager strategyManager = ynEigenToken.strategyManager();
+    //     vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
+    //     IPausable(address(strategyManager)).pause(1);
+	// 	IERC20[] memory assets = new IERC20[](1);
+	// 	assets[0] = stETH;
+	// 	uint256[] memory amounts = new uint256[](1);
+	// 	amounts[0] = balance;
+	// 	vm.prank(actors.ops.TOKEN_STAKING_NODE_MANAGER);
+	// 	vm.expectRevert("Pausable: index is paused");
+	// 	tokenStakingNode.depositAssetsToEigenlayer(assets, amounts);
+	// }
+}
+
+
+// contract TokenStakingNodeDelegate is IntegrationBaseTest {
 // 	function testLSDStakingNodeDelegate() public {
 //         vm.prank(actors.ops.STAKING_NODE_CREATOR);
 //         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
