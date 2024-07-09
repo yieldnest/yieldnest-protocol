@@ -15,6 +15,9 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
+import "forge-std/console.sol";
+
+
 /** @title EigenStrategyManager
  *  @dev This contract handles the strategy management for ynEigen asset allocations.
  */
@@ -48,7 +51,7 @@ contract EigenStrategyManager is
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IwstETH public constant wstETH = IwstETH(0x7f39C581f595B53C5CC47f706bDE9B7F4aeaDe64);
+    IwstETH public constant wstETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     IERC4626 public constant woETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
 
     //--------------------------------------------------------------------------------------
@@ -146,6 +149,7 @@ contract EigenStrategyManager is
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
 
+            console.log("Depositing asset:", address(depositAsset), "Amount:", depositAmount);
             // Transfer each asset to the node
             depositAsset.transfer(address(node), depositAmount);
         }
