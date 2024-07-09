@@ -341,6 +341,67 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
     }
 }
 
+contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
+
+    function testRetrieveAssetsNotEigenStrategyManager() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        uint256 amount = 1000;
+
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNodesManager.createTokenStakingNode();
+
+        IERC20[] memory assets = new IERC20[](1);
+        uint256[] memory amounts = new uint256[](1);
+        assets[0] = asset;
+        amounts[0] = amount;
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.NotStrategyManager.selector, address(this)));
+        ynEigenToken.retrieveAssets(assets, amounts);
+    }
+
+    // function testRetrieveAssetsUnsupportedAsset() public {
+    //     // come back to this
+    // }
+
+    // function testRetrieveTransferExceedsBalance() public {
+    //     IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+    //     uint256 amount = 1000;
+
+    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
+    //     ynlsd.createTokenStakingNode();
+
+    //     ITokenStakingNode tokenStakingNode = ynlsd.nodes(0);
+
+    //     vm.startPrank(address(tokenStakingNode));
+    //     vm.expectRevert();
+    //     ynlsd.retrieveAsset(0, asset, amount);
+    //     vm.stopPrank();
+    // }
+
+    // function testRetrieveAssetsSuccess() public {
+    //     IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+    //     uint256 amount = 64 ether;
+
+    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
+    //     ynlsd.createTokenStakingNode();
+
+    //     ITokenStakingNode tokenStakingNode = ynlsd.nodes(0);
+    //     vm.deal(address(tokenStakingNode), 1000);
+
+    //     // 1. Obtain stETH and Deposit assets to ynLSD by User
+    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
+    //     uint256 balance = testAssetUtils.get_stETH(address(this), amount);
+    //     assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
+       
+    //     asset.approve(address(ynlsd), balance);
+    //     ynlsd.deposit(asset, balance, address(this));
+
+    //     vm.startPrank(address(tokenStakingNode));
+    //     asset.approve(address(ynlsd), 32 ether);
+    //     ynlsd.retrieveAsset(0, asset, balance);
+    //     vm.stopPrank();
+    // }
+}
+
 contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
 
     function testYnEigendonationToZeroShareAttackResistance() public {
