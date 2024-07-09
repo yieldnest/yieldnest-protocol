@@ -33,7 +33,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     //--------------------------------------------------------------------------------------
 
     IynETH public ynETH;
-    bool private _paused;
+    bool public paused;
 
     // Initializer with Init struct and roles
     struct Init {
@@ -55,7 +55,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         _grantRole(UNPAUSER_ROLE, init.admin);
 
         ynETH = init.ynETH;
-        _paused = false;
+        paused = false;
     }
 
     receive() external payable {
@@ -103,7 +103,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
 
     /// @notice Checks if the contract is not paused.
     modifier whenNotPaused() {
-        if (_paused) {
+        if (paused) {
             revert ContractPaused();
         }
         _;
@@ -115,12 +115,12 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
 
     /// @notice Pauses the contract, preventing certain actions.
     function pause() external onlyRole(PAUSER_ROLE) {
-        _paused = true;
+        paused = true;
     }
 
     /// @notice Unpauses the contract, allowing certain actions.
     function unpause() external onlyRole(UNPAUSER_ROLE) {
-        _paused = false;
+        paused = false;
     }
 }
 
