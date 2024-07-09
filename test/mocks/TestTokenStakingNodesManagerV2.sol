@@ -8,7 +8,7 @@ import {TestTokenStakingNodeV2} from "test/mocks/TestTokenStakingNodeV2.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 
 contract TestTokenStakingNodesManagerV2 is TokenStakingNodesManager {
-    function initializeLSDStakingNode(ITokenStakingNode node, uint256 nodeId) internal {
+    function initializeTokenStakingNode(ITokenStakingNode node, uint256 nodeId) internal override {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
