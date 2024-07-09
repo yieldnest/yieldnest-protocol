@@ -10,9 +10,6 @@ import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPau
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
 
-import "forge-std/console.sol";
-
-
 contract ynEigenTest is ynEigenIntegrationBaseTest {
 
     function testDepositwstETHSuccessWithOneDeposit() public {
@@ -151,13 +148,8 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(tokenStakingNode)));
         
-        uint256 expectedBalance = balanceInStrategyForNode; // balanceInStrategyForNode * assetRate / 1e18;
-
-        console.log("Total Assets Before Deposit:", totalAssetsBeforeDeposit);
-        console.log("Total Assets After Deposit:", totalAssetsAfterDeposit);
-        console.log("Expected Balance:", expectedBalance);
-        console.log("Balance in Strategy for Node:", balanceInStrategyForNode);
-        console.log("Asset Rate:", assetRate);
+        // expectedBalance is the same as in the strategy because 1 stETH = 1 ETH. 
+        uint256 expectedBalance = balanceInStrategyForNode;
 
         // Assert that totalAssets reflects the deposit
         assertEq(
@@ -358,48 +350,54 @@ contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
         ynEigenToken.retrieveAssets(assets, amounts);
     }
 
-    // function testRetrieveAssetsUnsupportedAsset() public {
-    //     // come back to this
-    // }
+    function testRetrieveAssetsUnsupportedAsset() public {
+        // come back to this
+    }
 
-    // function testRetrieveTransferExceedsBalance() public {
-    //     IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-    //     uint256 amount = 1000;
+    function testRetrieveTransferExceedsBalance() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        uint256 amount = 1000;
 
-    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
-    //     ynlsd.createTokenStakingNode();
+        vm.startPrank(address(eigenStrategyManager));
+        IERC20[] memory assets = new IERC20[](1);
+        uint256[] memory amounts = new uint256[](1);
+        assets[0] = asset;
+        amounts[0] = amount;
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.InsufficientAssetBalance.selector, asset, 0, amount));
+        ynEigenToken.retrieveAssets(assets, amounts);
+        vm.stopPrank();
+    }
 
-    //     ITokenStakingNode tokenStakingNode = ynlsd.nodes(0);
+    function testRetrieveAssetsSuccess() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 amount = 64 ether;
 
-    //     vm.startPrank(address(tokenStakingNode));
-    //     vm.expectRevert();
-    //     ynlsd.retrieveAsset(0, asset, amount);
-    //     vm.stopPrank();
-    // }
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNodesManager.createTokenStakingNode();
 
-    // function testRetrieveAssetsSuccess() public {
-    //     IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-    //     uint256 amount = 64 ether;
+        ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.nodes(0);
+        vm.deal(address(tokenStakingNode), 1000);
 
-    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
-    //     ynlsd.createTokenStakingNode();
-
-    //     ITokenStakingNode tokenStakingNode = ynlsd.nodes(0);
-    //     vm.deal(address(tokenStakingNode), 1000);
-
-    //     // 1. Obtain stETH and Deposit assets to ynLSD by User
-    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
-    //     uint256 balance = testAssetUtils.get_stETH(address(this), amount);
-    //     assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
+        // 1. Obtain stETH and Deposit assets to ynEigenToken by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
+        assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
        
-    //     asset.approve(address(ynlsd), balance);
-    //     ynlsd.deposit(asset, balance, address(this));
+        asset.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(asset, balance, address(this));
 
-    //     vm.startPrank(address(tokenStakingNode));
-    //     asset.approve(address(ynlsd), 32 ether);
-    //     ynlsd.retrieveAsset(0, asset, balance);
-    //     vm.stopPrank();
-    // }
+        vm.startPrank(address(eigenStrategyManager));
+        asset.approve(address(ynEigenToken), 32 ether);
+        IERC20[] memory assets = new IERC20[](1);
+        uint256[] memory amounts = new uint256[](1);
+        assets[0] = asset;
+        amounts[0] = amount;
+        ynEigenToken.retrieveAssets(assets, amounts);
+        vm.stopPrank();
+
+        uint256 strategyManagerBalance = asset.balanceOf(address(eigenStrategyManager));
+        assertEq(strategyManagerBalance, amount, "Strategy manager does not have the correct balance of the token");
+    }
 }
 
 contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
