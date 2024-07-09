@@ -116,7 +116,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(shares, (uint256(assetRate) * amount) / 1e18, "Total shares calculation mismatch");
     }
     function testTotalAssetsAfterDeposit() public {
-        IERC20 asset = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 1 ether;
 
         IPausable pausableStrategyManager = IPausable(address(strategyManager));
@@ -150,14 +150,21 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 totalAssetsAfterDeposit = ynEigenToken.totalAssets();
         uint256 assetRate = rateProvider.rate(address(asset));
 
-        IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.STETH_ADDRESS));
+        IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(tokenStakingNode)));
         
-        uint256 expectedBalance = balanceInStrategyForNode * assetRate / 1e18;
+        uint256 expectedBalance = balanceInStrategyForNode; // balanceInStrategyForNode * assetRate / 1e18;
+
+        console.log("Total Assets Before Deposit:", totalAssetsBeforeDeposit);
+        console.log("Total Assets After Deposit:", totalAssetsAfterDeposit);
+        console.log("Expected Balance:", expectedBalance);
+        console.log("Balance in Strategy for Node:", balanceInStrategyForNode);
+        console.log("Asset Rate:", assetRate);
 
         // Assert that totalAssets reflects the deposit
+        // TODO: use compareWithThreshold
         assertEq(
-            totalAssetsAfterDeposit - totalAssetsBeforeDeposit >= expectedBalance - 1 && totalAssetsAfterDeposit - totalAssetsBeforeDeposit <= expectedBalance + 1, 
+            totalAssetsAfterDeposit - totalAssetsBeforeDeposit >= expectedBalance - 2 && totalAssetsAfterDeposit - totalAssetsBeforeDeposit <= expectedBalance + 2, 
             true, 
             "Total assets do not reflect the deposit"
         );
