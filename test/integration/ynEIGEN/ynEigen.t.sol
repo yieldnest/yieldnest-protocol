@@ -164,7 +164,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         // Assert that totalAssets reflects the deposit
         // TODO: use compareWithThreshold
         assertEq(
-            totalAssetsAfterDeposit - totalAssetsBeforeDeposit >= expectedBalance - 2 && totalAssetsAfterDeposit - totalAssetsBeforeDeposit <= expectedBalance + 2, 
+            compareWithThreshold(totalAssetsAfterDeposit - totalAssetsBeforeDeposit, expectedBalance, 2),
             true, 
             "Total assets do not reflect the deposit"
         );
