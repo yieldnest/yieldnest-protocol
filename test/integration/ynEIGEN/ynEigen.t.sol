@@ -162,7 +162,6 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         console.log("Asset Rate:", assetRate);
 
         // Assert that totalAssets reflects the deposit
-        // TODO: use compareWithThreshold
         assertEq(
             compareWithThreshold(totalAssetsAfterDeposit - totalAssetsBeforeDeposit, expectedBalance, 2),
             true, 
@@ -192,7 +191,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 ethAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
         assertEq(ethAmount, expectedETHAmount, "convertToEth does not match expected value");
     }
-
+}
 // contract ynLSDAdminTest is IntegrationBaseTest {
 
 //     function testCreateLSDStakingNode() public {
@@ -380,196 +379,194 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
 // }
 
-// contract ynLSDTransferPauseTest is IntegrationBaseTest {
+contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
 
-//     function testTransferFailsForNonWhitelistedAddresses() public {
-//         // Arrange
-//         uint256 transferAmount = 1 ether;
-//         address nonWhitelistedAddress = address(4); // An arbitrary address not in the whitelist
-//         address recipient = address(5); // An arbitrary recipient address
+    function testTransferFailsForNonWhitelistedAddresses() public {
+        // Arrange
+        uint256 transferAmount = 1 ether;
+        address nonWhitelistedAddress = address(4); // An arbitrary address not in the whitelist
+        address recipient = address(5); // An arbitrary recipient address
 
-//         // Act & Assert
-//         // Ensure transfer from a non-whitelisted address reverts
-//         vm.expectRevert(ynBase.TransfersPaused.selector);
-//         vm.prank(nonWhitelistedAddress);
-//         yneth.transfer(recipient, transferAmount);
-//     }
+        // Act & Assert
+        // Ensure transfer from a non-whitelisted address reverts
+        vm.expectRevert(ynBase.TransfersPaused.selector);
+        vm.prank(nonWhitelistedAddress);
+        ynEigenToken.transfer(recipient, transferAmount);
+    }
 
-//     function testTransferSucceedsForWhitelistedAddress() public {
-//         // Arrange
-//         uint256 depositAmount = 1 ether;
-//         address whitelistedAddress = actors.eoa.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
-//         address recipient = address(6); // An arbitrary recipient address
+    function testTransferSucceedsForWhitelistedAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address whitelistedAddress = actors.eoa.DEFAULT_SIGNER; // Using the pre-defined whitelisted address from setup
+        address recipient = address(6); // An arbitrary recipient address
 
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
-//         stETH.approve(address(ynlsd), balance);
-//         ynlsd.deposit(stETH, balance, whitelistedAddress); 
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
+        wstETH.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(wstETH, balance, whitelistedAddress); 
 
-//         uint256 transferAmount = ynlsd.balanceOf(whitelistedAddress);
+        uint256 transferAmount = ynEigenToken.balanceOf(whitelistedAddress);
 
-//         // Act
-//         address[] memory whitelist = new address[](1);
-//         whitelist[0] = whitelistedAddress;
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.addToPauseWhitelist(whitelist); // Whitelisting the address
-//         vm.prank(whitelistedAddress);
-//         ynlsd.transfer(recipient, transferAmount);
+        // Act
+        address[] memory whitelist = new address[](1);
+        whitelist[0] = whitelistedAddress;
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.addToPauseWhitelist(whitelist); // Whitelisting the address
+        vm.prank(whitelistedAddress);
+        ynEigenToken.transfer(recipient, transferAmount);
 
-//         // Assert
-//         uint256 recipientBalance = ynlsd.balanceOf(recipient);
-//         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for whitelisted address");
-//     }
+        // Assert
+        uint256 recipientBalance = ynEigenToken.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for whitelisted address");
+    }
 
-//     function testAddToPauseWhitelist() public {
-//         // Arrange
-//         address[] memory addressesToWhitelist = new address[](2);
-//         addressesToWhitelist[0] = address(1);
-//         addressesToWhitelist[1] = address(2);
+    function testAddToPauseWhitelist() public {
+        // Arrange
+        address[] memory addressesToWhitelist = new address[](2);
+        addressesToWhitelist[0] = address(1);
+        addressesToWhitelist[1] = address(2);
 
-//         // Act
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.addToPauseWhitelist(addressesToWhitelist);
+        // Act
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.addToPauseWhitelist(addressesToWhitelist);
 
-//         // Assert
-//         assertTrue(ynlsd.pauseWhiteList(addressesToWhitelist[0]), "Address 1 should be whitelisted");
-//         assertTrue(ynlsd.pauseWhiteList(addressesToWhitelist[1]), "Address 2 should be whitelisted");
-//     }
+        // Assert
+        assertTrue(ynEigenToken.pauseWhiteList(addressesToWhitelist[0]), "Address 1 should be whitelisted");
+        assertTrue(ynEigenToken.pauseWhiteList(addressesToWhitelist[1]), "Address 2 should be whitelisted");
+    }
 
-//     function testTransferSucceedsForNewlyWhitelistedAddress() public {
-//         // Arrange
-//         uint256 depositAmount = 1 ether;
-//         address newWhitelistedAddress = vm.addr(7); // Using a new address for whitelisting
-//         address recipient = address(8); // An arbitrary recipient address
+    function testTransferSucceedsForNewlyWhitelistedAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address newWhitelistedAddress = vm.addr(7); // Using a new address for whitelisting
+        address recipient = address(8); // An arbitrary recipient address
 
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
 
-//         stETH.approve(address(ynlsd), balance);
-//         ynlsd.deposit(stETH, balance, newWhitelistedAddress);
+        wstETH.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(wstETH, balance, newWhitelistedAddress);
 
-//         address[] memory whitelistAddresses = new address[](1);
-//         whitelistAddresses[0] = newWhitelistedAddress;
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
+        address[] memory whitelistAddresses = new address[](1);
+        whitelistAddresses[0] = newWhitelistedAddress;
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.addToPauseWhitelist(whitelistAddresses); // Whitelisting the new address
 
-//         uint256 transferAmount = ynlsd.balanceOf(newWhitelistedAddress);
+        uint256 transferAmount = ynEigenToken.balanceOf(newWhitelistedAddress);
 
-//         // Act
-//         vm.prank(newWhitelistedAddress);
-//         ynlsd.transfer(recipient, transferAmount);
+        // Act
+        vm.prank(newWhitelistedAddress);
+        ynEigenToken.transfer(recipient, transferAmount);
 
-//         // Assert
-//         uint256 recipientBalance = ynlsd.balanceOf(recipient);
-//         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for newly whitelisted address");
-//     }
+        // Assert
+        uint256 recipientBalance = ynEigenToken.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for newly whitelisted address");
+    }
+    function testTransferEnabledForAnyAddress() public {
+        // Arrange
+        uint256 depositAmount = 1 ether;
+        address arbitraryAddress = vm.addr(9999); // Using an arbitrary address
+        address recipient = address(10000); // An arbitrary recipient address
 
-//     function testTransferEnabledForAnyAddress() public {
-//         // Arrange
-//         uint256 depositAmount = 1 ether;
-//         address arbitraryAddress = vm.addr(9999); // Using an arbitrary address
-//         address recipient = address(10000); // An arbitrary recipient address
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
+        wstETH.approve(address(ynEigenToken), balance);
+        ynEigenToken.deposit(wstETH, balance, arbitraryAddress);
 
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
-//         stETH.approve(address(ynlsd), balance);
-//         ynlsd.deposit(stETH, balance, arbitraryAddress);
+        uint256 transferAmount = ynEigenToken.balanceOf(arbitraryAddress);
 
-//         uint256 transferAmount = ynlsd.balanceOf(arbitraryAddress);
-
-//         // Act
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.unpauseTransfers(); // Unpausing transfers for all
+        // Act
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.unpauseTransfers(); // Unpausing transfers for all
         
-//         vm.prank(arbitraryAddress);
-//         ynlsd.transfer(recipient, transferAmount);
+        vm.prank(arbitraryAddress);
+        ynEigenToken.transfer(recipient, transferAmount);
 
-//         // Assert
-//         uint256 recipientBalance = ynlsd.balanceOf(recipient);
-//         assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
-//     }
+        // Assert
+        uint256 recipientBalance = ynEigenToken.balanceOf(recipient);
+        assertEq(recipientBalance, transferAmount, "Transfer did not succeed for any address after enabling transfers");
+    }
 
-//     function testRemoveInitialWhitelistedAddress() public {
-//         // Arrange
-//         address[] memory whitelistAddresses = new address[](1);
-//         whitelistAddresses[0] = actors.eoa.DEFAULT_SIGNER; // EOA address to be removed from whitelist
+    function testRemoveInitialWhitelistedAddress() public {
+        // Arrange
+        address[] memory whitelistAddresses = new address[](1);
+        whitelistAddresses[0] = actors.eoa.DEFAULT_SIGNER; // EOA address to be removed from whitelist
 
-//         // Act
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
+        // Act
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.removeFromPauseWhitelist(whitelistAddresses); // Removing the EOA address from whitelist
 
-//         // Assert
-//         bool isWhitelisted = ynlsd.pauseWhiteList(actors.eoa.DEFAULT_SIGNER);
-//         assertFalse(isWhitelisted, "EOA address was not removed from whitelist");
-//     }
+        // Assert
+        bool isWhitelisted = ynEigenToken.pauseWhiteList(actors.eoa.DEFAULT_SIGNER);
+        assertFalse(isWhitelisted, "EOA address was not removed from whitelist");
+    }
 
-//     function testRemoveMultipleNewWhitelistAddresses() public {
-//         // Arrange
-//         address[] memory newWhitelistAddresses = new address[](2);
-//         newWhitelistAddresses[0] = address(20000); // First new whitelist address
-//         newWhitelistAddresses[1] = address(20001); // Second new whitelist address
+    function testRemoveMultipleNewWhitelistAddresses() public {
+        // Arrange
+        address[] memory newWhitelistAddresses = new address[](2);
+        newWhitelistAddresses[0] = address(20000); // First new whitelist address
+        newWhitelistAddresses[1] = address(20001); // Second new whitelist address
 
-//         // Adding addresses to whitelist first
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.addToPauseWhitelist(newWhitelistAddresses);
+        // Adding addresses to whitelist first
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.addToPauseWhitelist(newWhitelistAddresses);
 
-//         // Act
-//         vm.prank(actors.admin.UNPAUSE_ADMIN);
-//         ynlsd.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
+        // Act
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.removeFromPauseWhitelist(newWhitelistAddresses); // Removing the new whitelist addresses
 
-//         // Assert
-//         bool isFirstAddressWhitelisted = ynlsd.pauseWhiteList(newWhitelistAddresses[0]);
-//         bool isSecondAddressWhitelisted = ynlsd.pauseWhiteList(newWhitelistAddresses[1]);
-//         assertFalse(isFirstAddressWhitelisted, "First new whitelist address was not removed");
-//         assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
-//     }
-// }
+        // Assert
+        bool isFirstAddressWhitelisted = ynEigenToken.pauseWhiteList(newWhitelistAddresses[0]);
+        bool isSecondAddressWhitelisted = ynEigenToken.pauseWhiteList(newWhitelistAddresses[1]);
+        assertFalse(isFirstAddressWhitelisted, "First new whitelist address was not removed");
+        assertFalse(isSecondAddressWhitelisted, "Second new whitelist address was not removed");
+    }
+}
 
+contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
 
-// contract ynLSDDonationsTest is IntegrationBaseTest {
+    function testYnEigendonationToZeroShareAttackResistance() public {
 
-//     function testYnLSDdonationToZeroShareAttackResistance() public {
+        uint INITIAL_AMOUNT = 10 ether;
 
-//         uint INITIAL_AMOUNT = 10 ether;
+        address alice = makeAddr("Alice");
+        address bob = makeAddr("Bob");
 
-//         address alice = makeAddr("Alice");
-//         address bob = makeAddr("Bob");
+        IERC20 assetToken = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
 
-//         IERC20 assetToken = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        testAssetUtils.get_wstETH(alice, INITIAL_AMOUNT);
+        testAssetUtils.get_wstETH(bob, INITIAL_AMOUNT);
 
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         testAssetUtils.get_stETH(alice, INITIAL_AMOUNT);
-//         testAssetUtils.get_stETH(bob, INITIAL_AMOUNT);
+        vm.prank(alice);
+        assetToken.approve(address(ynEigenToken), type(uint256).max);
 
-//         vm.prank(alice);
-//         assetToken.approve(address(ynlsd), type(uint256).max);
+        vm.startPrank(bob);
+        assetToken.approve(address(ynEigenToken), type(uint256).max);
 
-//         vm.startPrank(bob);
-//         assetToken.approve(address(ynlsd), type(uint256).max);
+        // Front-running part
+        uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
+        // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 wstETH to the Vault by observing the mempool
+        vm.startPrank(alice);
+        uint256 aliceDepositAmount = 1;
+        uint256 aliceShares = ynEigenToken.deposit(assetToken, aliceDepositAmount, alice);
+        // Since there are bootstrap funds, this has no effect
+        assertEq(compareWithThreshold(aliceShares, 1, 1), true, "Alice's shares should be dust"); 
+        // Try to inflate shares value
+        assetToken.transfer(address(ynEigenToken), bobDepositAmount);
+        vm.stopPrank();
 
-//         // Front-running part
-//         uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
-//         // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 ATK to the Vault by observing the mempool
-//         vm.startPrank(alice);
-//         uint256 aliceDepositAmount = 1;
-//         uint256 aliceShares = ynlsd.deposit(assetToken, aliceDepositAmount, alice);
-//         // Since there are boostrap funds, this has no effect
-//         assertEq(compareWithThreshold(aliceShares, 1, 1), true, "Alice's shares should be dust"); 
-//         // Try to inflate shares value
-//         assetToken.transfer(address(ynlsd), bobDepositAmount);
-//         vm.stopPrank();
+        // Check that Bob did not get 0 share when he deposits
+        vm.prank(bob);
+        uint256 bobShares = ynEigenToken.deposit(assetToken, bobDepositAmount, bob);
 
-//         // Check that Bob did not get 0 share when he deposits
-//         vm.prank(bob);
-//         uint256 bobShares = ynlsd.deposit(assetToken, bobDepositAmount, bob);
-
-//         assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
-//     }   
+        assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
+    }   
 }
