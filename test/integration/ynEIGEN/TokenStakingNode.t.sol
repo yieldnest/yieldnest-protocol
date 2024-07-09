@@ -61,8 +61,11 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
 		(, uint256[] memory deposits) = strategyManager.getDeposits(address(tokenStakingNode));
 
-
-		uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
+        uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
+		assertTrue(
+            compareWithThreshold(deposits[0], expectedStETHAmount, 2),
+            "Strategy user underlying view does not match expected stETH amount within threshold"
+        );
 		uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
 		assertTrue(
             compareWithThreshold(expectedBalance, amounts[0], 2),
@@ -73,26 +76,27 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		assertTrue(compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, 2), "Strategy user underlying view does not match expected stETH amount within threshold");
 	}
 
-	// function testDepositAssetsToEigenlayerFail() public {
-	// 	// 1. Obtain stETH and Deposit assets to ynEigen by User
-    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
-    //     IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-    //     uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
-	// 	stETH.approve(address(ynEigenToken), balance);
-	// 	ynEigenToken.deposit(stETH, balance, address(this));
+	function testDepositAssetsToEigenlayerFail() public {
+		// 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 balance = testAssetUtils.get_wstETH(address(this), 10 ether);
+		wstETH.approve(address(ynEigenToken), balance);
+		ynEigenToken.deposit(wstETH, balance, address(this));
+        uint256 nodeId = tokenStakingNode.nodeId();
 
-	// 	// 2. Deposit should fail when paused
-    //     IStrategyManager strategyManager = ynEigenToken.strategyManager();
-    //     vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
-    //     IPausable(address(strategyManager)).pause(1);
-	// 	IERC20[] memory assets = new IERC20[](1);
-	// 	assets[0] = stETH;
-	// 	uint256[] memory amounts = new uint256[](1);
-	// 	amounts[0] = balance;
-	// 	vm.prank(actors.ops.TOKEN_STAKING_NODE_MANAGER);
-	// 	vm.expectRevert("Pausable: index is paused");
-	// 	tokenStakingNode.depositAssetsToEigenlayer(assets, amounts);
-	// }
+		// 2. Deposit should fail when paused
+        IStrategyManager strategyManager = eigenStrategyManager.strategyManager();
+        vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
+        IPausable(address(strategyManager)).pause(1);
+		IERC20[] memory assets = new IERC20[](1);
+		assets[0] = wstETH;
+		uint256[] memory amounts = new uint256[](1);
+		amounts[0] = balance;
+		vm.prank(actors.ops.STRATEGY_CONTROLLER);
+		vm.expectRevert("Pausable: index is paused");
+		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+	}
 }
 
 
