@@ -10,9 +10,25 @@ import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/c
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    error ZeroAddress();
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     IynEigen public ynEigen;
     IwstETH public wstETH;
     IERC4626 public woETH;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
+
     struct Init {
         address ynEigen;
         address wstETH;
@@ -20,11 +36,19 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         address admin;
     }
 
-    function initialize(Init memory init) public initializer {
+    function initialize(Init memory init) 
+        public 
+        initializer 
+        notZeroAddress(init.ynEigen) 
+        notZeroAddress(init.wstETH) 
+        notZeroAddress(init.woETH) 
+        notZeroAddress(init.admin)
+    {
         ynEigen = IynEigen(init.ynEigen);
         wstETH = IwstETH(init.wstETH);
         woETH = IERC4626(init.woETH);
-        grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
     }
 
     function depositStETH(uint256 amount, address receiver) external {
@@ -43,5 +67,18 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         uint256 woETHShares = woETH.deposit(amount, address(this));
         woETH.approve(address(ynEigen), woETHShares);
         ynEigen.deposit(IERC20(address(oeth)), woETHShares, receiver);
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /// @notice Ensure that the given address is not the zero address.
+    /// @param _address The address to check.
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }
