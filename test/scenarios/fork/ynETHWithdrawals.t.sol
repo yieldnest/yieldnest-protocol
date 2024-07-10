@@ -162,20 +162,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
             assertEq(_request.creationBlock, block.number, "testRequestWithdrawal: E12");
             assertTrue(!_request.processed, "testRequestWithdrawal: E13");
         }
-
-        {
-            uint256 _timestamp = block.timestamp;
-            vm.warp(block.timestamp + ynETHWithdrawalQueueManager.secondsToFinalization());
-            vm.prank(user);
-            // vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, address(ynETHWithdrawalQueueManager).balance, _amount));
-            // fails with above revert reason, but _amount is a little less because of precision loss
-            // ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(address(0));
-            if (ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(address(0)) < _amount) {
-                vm.expectRevert();
-                ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
-            }
-            vm.warp(_timestamp);
-        }
     }
 
     function testProcessPrincipalWithdrawalsForNode() public {
@@ -208,6 +194,20 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(address(yneth).balance, _ynETHBalanceBefore, "testProcessPrincipalWithdrawalsForNode: E2");
         assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _withdrawalAssetsVaultBalanceBefore + withdrawalAmount, "testProcessPrincipalWithdrawalsForNode: E3");
         assertEq(ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(address(0)), _availableRedemptionAssetsBefore + withdrawalAmount, "testProcessPrincipalWithdrawalsForNode: E4");
+    }
+
+    function testClaimWithdrawalInsufficientBalance() public {
+        if (!isHolesky) return;
+
+        testRequestWithdrawal(withdrawalAmount);
+
+        uint256 _timestamp = block.timestamp;
+        vm.warp(block.timestamp + ynETHWithdrawalQueueManager.secondsToFinalization());
+        if (ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(address(0)) < withdrawalAmount) {
+            vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, address(ynETHWithdrawalQueueManager).balance, withdrawalAmount - 91));
+            vm.prank(user);
+            ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
+        }
     }
 
     function testClaimWithdrawal() public {
