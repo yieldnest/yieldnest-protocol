@@ -102,7 +102,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         address stakingAdmin;
         address tokenRestakingManager;
         address tokenStakingNodeCreatorRole;
-        address[] pauseWhitelist;
     }
 
     function initialize(Init calldata init)
@@ -252,16 +251,40 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Retrieves all registered token staking nodes.
+     * @return An array of addresses representing all the token staking nodes.
+     */
     function getAllNodes() public view returns (ITokenStakingNode[] memory) {
         return nodes;
     }
 
+    /**
+     * @notice Gets the total number of registered token staking nodes.
+     * @return The total number of token staking nodes.
+     */
     function nodesLength() public view returns (uint256) {
         return nodes.length;
     }
 
+    /**
+     * @notice Checks if the specified address has the EigenStrategyManager role.
+     * @param caller The address to check.
+     * @return True if the specified address is the EigenStrategyManager, false otherwise.
+     */
     function hasEigenStrategyManagerRole(address caller) public view returns (bool) {
         return caller == address(eigenStrategyManager);
+    }
+
+    /**
+     * @notice Retrieves a staking node by its ID.
+     * @param nodeId The ID of the node to retrieve.
+     * @return ITokenStakingNode The staking node associated with the given ID.
+     * @dev Reverts if the node ID is out of range.
+     */
+    function getNodeById(uint256 nodeId) public view returns (ITokenStakingNode) {
+        require(nodeId < nodes.length, "Node ID out of range");
+        return nodes[nodeId];
     }
 
     //--------------------------------------------------------------------------------------

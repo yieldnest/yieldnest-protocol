@@ -48,8 +48,8 @@ contract EigenStrategyManager is
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IwstETH public constant wstETH = IERC20(0x7f39C581F595B53c5cC47F706BDE9B7F4AEADe64);
-    IERC4626 public constant woETH = IERC20(0xdcee70654261af21c44c093c300ed3bb97b78192);
+    IwstETH public constant wstETH = IwstETH(0x7f39C581f595B53C5CC47f706bDE9B7F4aeaDe64);
+    IERC4626 public constant woETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -83,7 +83,7 @@ contract EigenStrategyManager is
         public
         notZeroAddress(address(init.strategyManager))
         notZeroAddress(address(init.admin))
-        notZeroAddress(address(init.tokenRestakingManager))
+        notZeroAddress(address(init.strategyController))
         initializer {
         __AccessControl_init();
 
@@ -129,7 +129,7 @@ contract EigenStrategyManager is
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
             require(amounts[i] > 0, "Staking amount must be greater than zero");
-            IStrategy strategy = address(strategies[asset]);
+            IStrategy strategy = strategies[asset];
             require(address(strategy) != address(0), "No strategy for asset");
             strategiesForNode[i] = strategies[assets[i]];
         }
@@ -161,8 +161,9 @@ contract EigenStrategyManager is
             depositAmount = wstETH.unwrap(amount); 
         } else if (address(asset) == address(woETH)) {
             // Adjust for woeth
-            depositAsset = woETH.asset(); 
-            depositAmount = woETH.redeem(amount); 
+            depositAsset = IERC20(woETH.asset()); 
+            // calling redeem with receiver and owner as address(this)
+            depositAmount = woETH.redeem(amount, address(this), address(this)); 
         } else {
             // No adjustment needed
             depositAsset = asset;
@@ -186,12 +187,11 @@ contract EigenStrategyManager is
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
         uint256 nodesCount = nodes.length;
         uint256 assetsCount = assets.length;
-        for (uint256 i; i < nodesCount; i++ ) {
-            
-            ITokenStakingNode node = nodes[i];
-            for (uint256 j = 0; j < assetsCount; j++) {
-                
-                IERC20 asset = assets[j];
+        for (uint256 j = 0; j < assetsCount; j++) {      
+
+            IERC20 asset = assets[j];
+            for (uint256 i; i < nodesCount; i++ ) {
+                ITokenStakingNode node = nodes[i];
                 uint256 balanceNode = asset.balanceOf(address(node));
                 stakedBalances[j] += balanceNode;
 
@@ -234,6 +234,14 @@ contract EigenStrategyManager is
         assets[0] = asset;
         uint256[] memory balances = getStakedAssetsBalances(assets);
         stakedBalance = balances[0];
+
+         uint256 balanceNode = asset.balanceOf(address(node));
+        stakedBalances[j] += balanceNode;
+
+        uint256 strategyBalance = toUserAssetAmount(
+            asset,
+            strategies[asset].userUnderlyingView((address(node)))
+        );
     }
 
     //--------------------------------------------------------------------------------------
