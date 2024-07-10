@@ -51,7 +51,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //--------------------------------------------------------------------------------------
 
     bytes32 public constant STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
-    bytes32 public constant TOKEN_RESTAKING_MANAGER_ROLE = keccak256("TOKEN_RESTAKING_MANAGER_ROLE");
+    bytes32 public constant TOKEN_STAKING_NODE_OPERATOR_ROLE = keccak256("TOKEN_STAKING_NODE_OPERATOR_ROLE");
+    bytes32 public constant TOKEN_STAKING_NODES_DELEGATOR_ROLE = keccak256("TOKEN_STAKING_NODES_DELEGATOR_ROLE");
     bytes32 public constant TOKEN_STAKING_NODE_CREATOR_ROLE = keccak256("TOKEN_STAKING_NODE_CREATOR_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
@@ -100,7 +101,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         address pauser;
         address unpauser;
         address stakingAdmin;
-        address tokenRestakingManager;
+        address tokenStakingNodeOperator;
         address tokenStakingNodeCreatorRole;
     }
 
@@ -109,14 +110,14 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         notZeroAddress(address(init.strategyManager))
         notZeroAddress(address(init.admin))
         notZeroAddress(address(init.stakingAdmin))
-        notZeroAddress(address(init.tokenRestakingManager))
+        notZeroAddress(address(init.tokenStakingNodeOperator))
         notZeroAddress(init.tokenStakingNodeCreatorRole)
         initializer {
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
-        _grantRole(TOKEN_RESTAKING_MANAGER_ROLE, init.tokenRestakingManager);
+        _grantRole(TOKEN_STAKING_NODE_OPERATOR_ROLE, init.tokenStakingNodeOperator);
         _grantRole(TOKEN_STAKING_NODE_CREATOR_ROLE, init.tokenStakingNodeCreatorRole);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
@@ -242,8 +243,12 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
-    function hasTokenRestakingManagerRole(address account) external view returns (bool) {
-        return hasRole(TOKEN_RESTAKING_MANAGER_ROLE, account);
+    function hasTokenStakingNodeOperatorRole(address account) external view returns (bool) {
+        return hasRole(TOKEN_STAKING_NODE_OPERATOR_ROLE, account);
+    }
+
+    function hasTokenStakingNodeDelegatorRole(address _address) public view returns (bool) {
+        return hasRole(TOKEN_STAKING_NODES_DELEGATOR_ROLE, _address);
     }
 
     //--------------------------------------------------------------------------------------

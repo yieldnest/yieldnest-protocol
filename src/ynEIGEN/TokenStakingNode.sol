@@ -14,7 +14,12 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 interface ITokenStakingNodeEvents {
-    event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
+    event DepositToEigenlayer(
+        IERC20 indexed asset,
+        IStrategy indexed strategy,
+        uint256 amount,
+        uint256 eigenShares
+    );
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
 }
@@ -24,8 +29,12 @@ interface ITokenStakingNodeEvents {
  * @dev Implements staking node functionality for tokens, enabling token staking, delegation, and rewards management.
  * This contract interacts with the Eigenlayer protocol to deposit assets, delegate staking operations, and manage staking rewards.
  */
-contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUpgradeable, ITokenStakingNodeEvents {
-
+contract TokenStakingNode is
+    ITokenStakingNode,
+    Initializable,
+    ReentrancyGuardUpgradeable,
+    ITokenStakingNodeEvents
+{
     using SafeERC20 for IERC20;
 
     //--------------------------------------------------------------------------------------
@@ -33,8 +42,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //--------------------------------------------------------------------------------------
 
     error ZeroAddress();
-    error NotTokenRestakingManager();
+    error NotTokenStakingNodeOperator();
     error NotStrategyManager();
+    error NotTokenStakingNodeDelegator();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -48,13 +58,16 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //--------------------------------------------------------------------------------------
 
     constructor() {
-       _disableInitializers();
+        _disableInitializers();
     }
 
-    function initialize(Init memory init)
+    function initialize(
+        Init memory init
+    )
         public
         notZeroAddress(address(init.tokenStakingNodesManager))
-        initializer {
+        initializer
+    {
         __ReentrancyGuard_init();
         tokenStakingNodesManager = init.tokenStakingNodesManager;
         nodeId = init.nodeId;
@@ -74,12 +87,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IERC20[] memory assets,
         uint256[] memory amounts,
         IStrategy[] memory strategies
-    )
-        external
-        nonReentrant
-        onlyStrategyManager
-    {
-        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
+    ) external nonReentrant onlyStrategyManager {
+        IStrategyManager strategyManager = tokenStakingNodesManager
+            .strategyManager();
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
@@ -88,11 +98,14 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
             asset.forceApprove(address(strategyManager), amount);
 
-            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            uint256 eigenShares = strategyManager.depositIntoStrategy(
+                IStrategy(strategy),
+                asset,
+                amount
+            );
             emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
         }
     }
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  DELEGATION  --------------------------------------
@@ -106,9 +119,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         address operator,
         ISignatureUtils.SignatureWithExpiry memory signature,
         bytes32 approverSalt
-    ) public virtual onlyTokenRestakingManager {
-
-        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+    ) public virtual onlyDelegator {
+        IDelegationManager delegationManager = tokenStakingNodesManager
+            .delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
 
         emit Delegated(operator, 0);
@@ -117,10 +130,13 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /**
      * @notice Undelegates the staking operation.
      */
-    function undelegate() public override onlyTokenRestakingManager {
-
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-        bytes32[] memory withdrawalRoots = delegationManager.undelegate(address(this));
+    function undelegate() public override onlyDelegator {
+        IDelegationManager delegationManager = IDelegationManager(
+            address(tokenStakingNodesManager.delegationManager())
+        );
+        bytes32[] memory withdrawalRoots = delegationManager.undelegate(
+            address(this)
+        );
 
         emit Undelegated(withdrawalRoots);
     }
@@ -129,23 +145,35 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Recovers assets that were deposited directly
      * @param asset The asset to be recovered
      */
-    function recoverAssets(IERC20 asset) external onlyTokenRestakingManager {
-        asset.safeTransfer(address(tokenStakingNodesManager), asset.balanceOf(address(this)));
+    function recoverAssets(IERC20 asset) external onlyOperator {
+        asset.safeTransfer(
+            address(tokenStakingNodesManager),
+            asset.balanceOf(address(this))
+        );
     }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    modifier onlyTokenRestakingManager() {
-        if (!tokenStakingNodesManager.hasTokenRestakingManagerRole(msg.sender)) {
-            revert NotTokenRestakingManager();
+    modifier onlyOperator() {
+        if (
+            !tokenStakingNodesManager.hasTokenStakingNodeOperatorRole(msg.sender)
+        ) {
+            revert NotTokenStakingNodeOperator();
+        }
+        _;
+    }
+
+    modifier onlyDelegator() {
+        if (!tokenStakingNodesManager.hasTokenStakingNodeDelegatorRole(msg.sender)) {
+            revert NotTokenStakingNodeDelegator();
         }
         _;
     }
 
     modifier onlyStrategyManager() {
-        if(!tokenStakingNodesManager.hasEigenStrategyManagerRole(msg.sender)) {
+        if (!tokenStakingNodesManager.hasEigenStrategyManagerRole(msg.sender)) {
             revert NotStrategyManager();
         }
         _;
@@ -175,7 +203,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
