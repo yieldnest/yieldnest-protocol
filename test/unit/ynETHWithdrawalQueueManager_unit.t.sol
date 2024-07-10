@@ -23,6 +23,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     address withdrawalQueueAdmin = address(0x76543);
     address user = address(0x123456);
     address feeReceiver = address(0xabc);
+    address redemptionAssetWithdrawer = address(0xdef);
     ynETHRedemptionAssetsVault redemptionAssetsVault;
 
     function setUp() public {
@@ -41,6 +42,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
             symbol: "ynETHW",
             redeemableAsset: redeemableAsset,
             redemptionAssetsVault: IRedemptionAssetsVault((address(redemptionAssetsVault))),
+            redemptionAssetWithdrawer: redemptionAssetWithdrawer,
             admin: admin,
             withdrawalQueueAdmin: withdrawalQueueAdmin,
             withdrawalFee: 10000, // 1%
