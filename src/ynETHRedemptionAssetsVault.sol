@@ -9,7 +9,7 @@ import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol"
 import {ETH_ASSET, YNETH_UNIT} from "src/Constants.sol";
 
 
-contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable {
+contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -83,7 +83,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     /// @param to The recipient address of the assets.
     /// @param amount The amount of assets to transfer.
     /// @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
-    function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
+    function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused nonReentrant {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) {
             revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
@@ -99,7 +99,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     /// @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
     /// @param amount The amount of ETH to withdraw and process.
     /// @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
-    function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused {
+    function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused nonReentrant {
         ynETH.processWithdrawnETH{ value: amount }();
         emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);
     }
