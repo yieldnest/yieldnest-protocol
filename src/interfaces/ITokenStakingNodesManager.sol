@@ -13,7 +13,8 @@ interface ITokenStakingNodesManager {
     function registerTokenStakingNodeImplementationContract(address _implementationContract) external;
     function upgradeTokenStakingNodeImplementation(address _implementationContract) external;
     function setMaxNodeCount(uint256 _maxNodeCount) external;
-    function hasTokenRestakingManagerRole(address account) external view returns (bool);
+    function hasTokenStakingNodeOperatorRole(address account) external view returns (bool);
+    function hasTokenStakingNodeDelegatorRole(address account) external view returns (bool);
 
     function delegationManager() external view returns (IDelegationManager);
     function strategyManager() external view returns (IStrategyManager);
