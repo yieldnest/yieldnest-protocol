@@ -9,7 +9,6 @@ interface IWithdrawalQueueManager {
         uint256 feeAtRequestTime;
         uint256 redemptionRateAtRequestTime;
         uint256 creationTimestamp;
-        uint256 creationBlock;
         bool processed;
     }
 

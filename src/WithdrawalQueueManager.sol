@@ -42,6 +42,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     error AmountExceedsSurplus(uint256 requestedAmount, uint256 availableSurplus);
     error AmountMustBeGreaterThanZero();
     error FeePercentageExceedsLimit();
+    error ArrayLengthMismatch(uint256 length1, uint256 length2);
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -135,7 +136,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             feeAtRequestTime: withdrawalFee,
             redemptionRateAtRequestTime: currentRate,
             creationTimestamp: block.timestamp,
-            creationBlock: block.number,
             processed: false
         });
 
@@ -195,6 +195,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
      * @param tokenIds An array of token IDs representing the withdrawal requests to be claimed.
      */
     function claimWithdrawals(uint256[] calldata tokenIds, address[] calldata receivers) external {
+
+        if (tokenIds.length != receivers.length) {
+            revert ArrayLengthMismatch(tokenIds.length, receivers.length);
+        }
         for (uint256 i = 0; i < tokenIds.length; i++) {
             claimWithdrawal(tokenIds[i], receivers[i]);
         }
