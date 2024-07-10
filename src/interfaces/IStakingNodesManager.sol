@@ -8,6 +8,8 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+
 
 interface IStakingNodesManager {
 
@@ -51,6 +53,8 @@ interface IStakingNodesManager {
     function processPrincipalWithdrawals(
         WithdrawalAction[] memory actions
     ) external;
+
+    function redemptionAssetsVault() external returns (IRedemptionAssetsVault);
 }
 
 

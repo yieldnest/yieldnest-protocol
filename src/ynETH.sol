@@ -265,7 +265,13 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     /// @notice Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
     /// @dev This function can only be called by the Staking Nodes Manager.
     /// It increases the total deposited in the pool by the amount of ETH sent with the call.
-    function processWithdrawnETH() public payable onlyStakingNodesManager {
+    function processWithdrawnETH() public payable {
+
+        // ETH can be returned either by the stakinNodesManager or by the redemptionAssetsVault
+        if (!(msg.sender == address(stakingNodesManager)
+            || msg.sender == (address(stakingNodesManager.redemptionAssetsVault())))) {
+
+        }
         totalDepositedInPool += msg.value;
 
         emit WithdrawnETHProcessed(msg.value, totalDepositedInPool);
