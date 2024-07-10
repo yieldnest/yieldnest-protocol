@@ -98,7 +98,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(withdrawalRequest.feeAtRequestTime, manager.withdrawalFee(), "Stored fee should match current withdrawal fee");
         assertEq(withdrawalRequest.redemptionRateAtRequestTime, redemptionAssetsVault.redemptionRate(), "Stored redemption rate should match current redemption rate");
         assertEq(withdrawalRequest.creationTimestamp, block.timestamp, "Stored creation timestamp should match current block timestamp");
-        assertEq(withdrawalRequest.creationBlock, block.number, "Stored creation block should match current block number");
         assertEq(withdrawalRequest.processed, false, "Stored processed status should be false");
 
         uint256 userBalance = manager.balanceOf(user);
@@ -110,7 +109,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         redeemableAsset.approve(address(manager), amount);
         vm.prank(user);
         manager.requestWithdrawal(amount);
-        uint256 creationBlock = block.number;
         uint256 tokenId = 0;
         uint256 redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
@@ -132,7 +130,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "Withdrawal fee at request time should match the current withdrawal fee");
         assertEq(request.redemptionRateAtRequestTime, redemptionRateAtRequestTime, "Redemption rate at request time should match the current redemption rate");
         assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "Creation timestamp should match the timestamp when withdrawal was requested");
-        assertEq(request.creationBlock, creationBlock, "Creation block should match the block number when withdrawal was requested");
         assertEq(request.processed, true, "Processed status should be true after claiming");
 
        (uint256 expectedNetEthAmount, uint256 expectedFeeAmount) = calculateNetEthAndFee(amount, request.redemptionRateAtRequestTime, request.feeAtRequestTime);
