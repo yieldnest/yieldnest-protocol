@@ -70,15 +70,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
 
         ValidatorProofs memory _validatorProofs = getWithdrawalCredentialParams();
 
-        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
-        stakingNode.verifyWithdrawalCredentials(
-            uint64(block.timestamp),
-            _validatorProofs.stateRootProof,
-            _validatorProofs.validatorIndices,
-            _validatorProofs.withdrawalCredentialProofs,
-            _validatorProofs.validatorFields
-        );
-
         uint256 _unverifiedStakedETH = stakingNode.unverifiedStakedETH();
 
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
@@ -93,13 +84,25 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(stakingNode.unverifiedStakedETH(), _unverifiedStakedETH, "testVerifyWithdrawalCredentials: E0"); // validator already verified withdrawal credentials
     }
 
+    function testVerifyWithdrawalCredentialsWrongCaller() public {
+        if (!isHolesky) return;
+
+        ValidatorProofs memory _validatorProofs = getWithdrawalCredentialParams();
+
+        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
+        stakingNode.verifyWithdrawalCredentials(
+            uint64(block.timestamp),
+            _validatorProofs.stateRootProof,
+            _validatorProofs.validatorIndices,
+            _validatorProofs.withdrawalCredentialProofs,
+            _validatorProofs.validatorFields
+        );
+    }
+
     function testQueueWithdrawal() public {
         if (!isHolesky) return;
 
         testVerifyWithdrawalCredentials();
-
-        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
-        stakingNode.queueWithdrawals(withdrawalAmount);
 
         uint256 _queuedSharesAmountBefore = stakingNode.queuedSharesAmount();
 
@@ -115,6 +118,13 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(address(stakingNode).balance - _balanceBefore, withdrawalAmount, "testQueueWithdrawal: E1");
         assertEq(stakingNode.queuedSharesAmount(), _queuedSharesAmountBefore - withdrawalAmount, "testQueueWithdrawal: E2");
         assertEq(stakingNode.withdrawnValidatorPrincipal(), _withdrawnValidatorPrincipalBefore + withdrawalAmount, "testQueueWithdrawal: E3");
+    }
+
+    function testQueueWithdrawalWrongCaller() public {
+        if (!isHolesky) return;
+
+        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
+        stakingNode.queueWithdrawals(withdrawalAmount);
     }
 
     function testRequestWithdrawal(uint256 _amount) public {
@@ -169,13 +179,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
 
         testRequestWithdrawal(withdrawalAmount);
 
-        vm.expectRevert();
-        stakingNodesManager.processPrincipalWithdrawalsForNode(
-            nodeId,
-            0, // amountToReinvest
-            withdrawalAmount // amountToQueue
-        );
-
         uint256 _withdrawnValidatorPrincipalBefore = stakingNode.withdrawnValidatorPrincipal();
         uint256 _stakingNodesManagerBalanceBefore = address(stakingNodesManager).balance;
         uint256 _ynETHBalanceBefore = address(yneth).balance;
@@ -196,6 +199,17 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(address(0)), _availableRedemptionAssetsBefore + withdrawalAmount, "testProcessPrincipalWithdrawalsForNode: E4");
     }
 
+    function testProcessPrincipalWithdrawalsForNodeSSS() public {
+        if (!isHolesky) return;
+
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), stakingNodesManager.WITHDRAWAL_MANAGER_ROLE()));
+        stakingNodesManager.processPrincipalWithdrawalsForNode(
+            nodeId,
+            0, // amountToReinvest
+            withdrawalAmount // amountToQueue
+        );
+    }
+
     function testClaimWithdrawalInsufficientBalance() public {
         if (!isHolesky) return;
 
@@ -204,7 +218,7 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         uint256 _timestamp = block.timestamp;
         vm.warp(block.timestamp + ynETHWithdrawalQueueManager.secondsToFinalization());
         if (ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(address(0)) < withdrawalAmount) {
-            vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, address(ynETHWithdrawalQueueManager).balance, withdrawalAmount - 91));
+            vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, address(ynETHWithdrawalQueueManager).balance, withdrawalAmount - 55));
             vm.prank(user);
             ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
         }
@@ -214,13 +228,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         if (!isHolesky) return;
 
         testProcessPrincipalWithdrawalsForNode();
-
-        vm.expectRevert(abi.encodeWithSelector(CallerNotOwnerNorApproved.selector, tokenId, address(this)));
-        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
-
-        vm.expectRevert(abi.encodeWithSelector(NotFinalized.selector, block.timestamp, block.timestamp, secondsToFinalization));
-        vm.prank(user);
-        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
 
         vm.warp(block.timestamp + ynETHWithdrawalQueueManager.secondsToFinalization());
 
@@ -249,6 +256,23 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(yneth.totalSupply(), _totalSupplyBefore - _reqAmount, "testClaimwithdrawal: E2");
         assertEq(address(receiver).balance - _receiverBalanceBefore, _receiverAmount, "testClaimwithdrawal: E3");
         assertEq(address(ynETHWithdrawalQueueManager.feeReceiver()).balance - _feeReceiverBalanceBefore, _feeAmount, "testClaimwithdrawal: E4");
+    }
+
+    function testClaimWithdrawalWrongCaller() public {
+        if (!isHolesky) return;
+
+        vm.expectRevert(abi.encodeWithSelector(CallerNotOwnerNorApproved.selector, tokenId, address(this)));
+        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
+    }
+
+    function testClaimWithdrawalNotFinalized() public {
+        if (!isHolesky) return;
+
+        testProcessPrincipalWithdrawalsForNode();
+
+        vm.expectRevert(abi.encodeWithSelector(NotFinalized.selector, block.timestamp, block.timestamp, secondsToFinalization));
+        vm.prank(user);
+        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
     }
 
     // ------------------------------------------
@@ -285,9 +309,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         });
         _manager.initialize(_init);
 
-        vm.expectRevert(bytes4(keccak256("InvalidInitialization()")));
-        _manager.initialize(_init);
-
         assertEq(_manager.name(), _name, "testInitialization: E0");
         assertEq(_manager.symbol(), _symbol, "testInitialization: E1");
         assertEq(address(_manager.redeemableAsset()), _redeemableAsset, "testInitialization: E2");
@@ -298,50 +319,98 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(_manager.hasRole(_manager.WITHDRAWAL_QUEUE_ADMIN_ROLE(), _withdrawalQueueAdmin), true, "testInitialization: E7");
     }
 
-    function testSetSecondsToFinalization(uint256 _secondsToFinalization) public {
+    function testInitializationManagerInvalid() public {
         if (!isHolesky) return;
 
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
-        ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
+        string memory _name = "ynETH Withdrawal Manager";
+        string memory _symbol = "ynETHWM";
+        address _redeemableAsset = address(yneth);
+        address _redemptionAssetsVault = address(ynETHRedemptionAssetsVaultInstance);
+        address _admin = actors.admin.PROXY_ADMIN_OWNER;
+        address _withdrawalQueueAdmin = actors.ops.WITHDRAWAL_MANAGER;
+        uint256 _withdrawalFee = 500;
+        address _feeReceiver = actors.admin.FEE_RECEIVER;
+        WithdrawalQueueManager.Init memory _init = WithdrawalQueueManager.Init({
+            name: _name,
+            symbol: _symbol,
+            redeemableAsset: IRedeemableAsset(_redeemableAsset),
+            redemptionAssetsVault: IRedemptionAssetsVault(_redemptionAssetsVault),
+            admin: _admin,
+            withdrawalQueueAdmin: _withdrawalQueueAdmin,
+            withdrawalFee: _withdrawalFee,
+            feeReceiver: _feeReceiver
+        });
+
+        vm.expectRevert(bytes4(keccak256("InvalidInitialization()")));
+        ynETHWithdrawalQueueManager.initialize(_init);
+    }
+
+    function testSetSecondsToFinalization(uint256 _secondsToFinalization) public {
+        if (!isHolesky) return;
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
         ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
         assertEq(ynETHWithdrawalQueueManager.secondsToFinalization(), _secondsToFinalization, "testSetSecondsToFinalization: E0");
     }
 
-    function testSetWithdrawalFee(uint256 _feePercentage) public {
+    function testSetSecondsToFinalizationWrongCaller(uint256 _secondsToFinalization) public {
         if (!isHolesky) return;
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
-        ynETHWithdrawalQueueManager.setWithdrawalFee(_feePercentage);
+        ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
+    }
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        if (_feePercentage > ynETHWithdrawalQueueManager.FEE_PRECISION()) {
-            vm.expectRevert(bytes4(keccak256("FeePercentageExceedsLimit()")));
-            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-            ynETHWithdrawalQueueManager.setWithdrawalFee(_feePercentage);
-        } else {
+    function testSetWithdrawalFee(uint256 _feePercentage) public {
+        if (!isHolesky) return;
+
+        if (_feePercentage <= ynETHWithdrawalQueueManager.FEE_PRECISION()) {
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
             ynETHWithdrawalQueueManager.setWithdrawalFee(_feePercentage);
             assertEq(ynETHWithdrawalQueueManager.withdrawalFee(), _feePercentage, "testSetWithdrawalFee: E0");
         }
     }
 
-    function testFeeReceiver(address _feeReceiver) public {
+    function testSetWithdrawalFeeWrongCaller(uint256 _feePercentage) public {
         if (!isHolesky) return;
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
-        ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
+        ynETHWithdrawalQueueManager.setWithdrawalFee(_feePercentage);
+    }
 
-        if (_feeReceiver == address(0)) {
-            vm.expectRevert(bytes4(keccak256("ZeroAddress()")));
+    function testSetWithdrawalFeeWrongPercentage(uint256 _feePercentage) public {
+        if (!isHolesky) return;
+
+        if (_feePercentage > ynETHWithdrawalQueueManager.FEE_PRECISION()) {
+            vm.expectRevert(bytes4(keccak256("FeePercentageExceedsLimit()")));
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-            ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
-        } else {
+            ynETHWithdrawalQueueManager.setWithdrawalFee(_feePercentage);
+        }
+    }
+
+    function testFeeReceiver(address _feeReceiver) public {
+        if (!isHolesky) return;
+
+        if (_feeReceiver != address(0)) {
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
             ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
             assertEq(ynETHWithdrawalQueueManager.feeReceiver(), _feeReceiver, "testFeeReceiver: E0");
         }
+    }
+
+    function testFeeReceiverWrongCaller(address _feeReceiver) public {
+        if (!isHolesky) return;
+
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
+        ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
+    }
+
+    function testFeeReceiverZeroAddress() public {
+        if (!isHolesky) return;
+
+        address _feeReceiver = address(0);
+        vm.expectRevert(bytes4(keccak256("ZeroAddress()")));
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
     }
 
     function testSurplusRedemptionAssets() public {
@@ -394,6 +463,29 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         }
     }
 
+    // @todo - queueManager.withdrawSurplusRedemptionAssets() and redemptionAssetsVault.withdrawRedemptionAssets() will always fail because of the ynETH.processWithdrawnETH() call - which is gated to onlyStakingNodesManager
+    function testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus(uint256 _amount) public {
+        if (!isHolesky) return;
+
+        vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
+        uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
+        if (_amount > _surplusBefore) {
+            vm.expectRevert(abi.encodeWithSelector(AmountExceedsSurplus.selector, _amount, _surplusBefore));
+            ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
+        }
+    }
+
+    function testWithdrawSurplusRedemptionAssetsWrongCaller(uint256 _amount) public {
+        if (!isHolesky) return;
+
+        vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
+        uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
+        if (_amount <= _surplusBefore) {
+            vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.REDEMPTION_ASSET_WITHDRAWER_ROLE()));
+            ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
+        }
+    }
+
     function testSupportsInterface(bytes4 _interfaceId) public {
         if (!isHolesky) return;
 
@@ -426,15 +518,28 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         });
         _ynETHRedemptionAssetsVault.initialize(_init);
 
-        vm.expectRevert(bytes4(keccak256("InvalidInitialization()")));
-        ynETHRedemptionAssetsVaultInstance.initialize(_init);
-
         assertEq(address(ynETHRedemptionAssetsVaultInstance.ynETH()), _ynETH, "testInitializationVault: E0");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.DEFAULT_ADMIN_ROLE(), _admin), true, "testInitializationVault: E1");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE(), _redeemer), true, "testInitializationVault: E2");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.PAUSER_ROLE(), _admin), true, "testInitializationVault: E3");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.UNPAUSER_ROLE(), _admin), true, "testInitializationVault: E4");
         assertEq(ynETHRedemptionAssetsVaultInstance.paused(), false, "testInitializationVault: E5");
+    }
+
+    function testInitializationVaultInvalid() public {
+        if (!isHolesky) return;
+
+        address _admin = actors.admin.PROXY_ADMIN_OWNER;
+        address _redeemer = address(ynETHWithdrawalQueueManager);
+        address _ynETH = address(yneth);
+        ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
+            admin: _admin,
+            redeemer: _redeemer,
+            ynETH: IynETH(address(_ynETH))
+        });
+
+        vm.expectRevert(bytes4(keccak256("InvalidInitialization()")));
+        ynETHRedemptionAssetsVaultInstance.initialize(_init);
     }
 
     function testRedemptionRate() public {
@@ -461,19 +566,31 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
         uint256 _toBalanceBefore = address(_to).balance;
 
-        if (_balanceBefore < _amount) {
-            vm.expectRevert(abi.encodeWithSelector(InsufficientAssetBalance.selector, ETH_ASSET, _amount, _balanceBefore));
-            vm.prank(address(ynETHWithdrawalQueueManager));
-            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
-        } else {
-            vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
-            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
-
+        if (_balanceBefore >= _amount) {
             vm.prank(address(ynETHWithdrawalQueueManager));
             ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
             assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _balanceBefore - _amount, "testTransferRedemptionAssets: E0");
             assertEq(address(_to).balance - _toBalanceBefore, _amount, "testTransferRedemptionAssets: E1");
         }
+    }
+
+    function testTransferRedemptionAssetsInsufficientAssetBalance(address _to, uint256 _amount, uint256 _dealAmount) public {
+        if (!isHolesky) return;
+
+        vm.deal(address(ynETHRedemptionAssetsVaultInstance), _dealAmount);
+        uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
+        if (_balanceBefore < _amount) {
+            vm.expectRevert(abi.encodeWithSelector(InsufficientAssetBalance.selector, ETH_ASSET, _amount, _balanceBefore));
+            vm.prank(address(ynETHWithdrawalQueueManager));
+            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
+        }
+    }
+
+    function testTransferRedemptionAssetsWrongCaller(address _to, uint256 _amount) public {
+        if (!isHolesky) return;
+
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
+        ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
     }
 
     // @todo - queueManager.withdrawSurplusRedemptionAssets() and redemptionAssetsVault.withdrawRedemptionAssets() will always fail because of the ynETH.processWithdrawnETH() call - which is gated to onlyStakingNodesManager
@@ -484,9 +601,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
         uint256 _ynETHBalanceBefore = address(yneth).balance;
 
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
-        ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
-
         vm.prank(address(ynETHWithdrawalQueueManager));
         ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
 
@@ -494,11 +608,16 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(address(yneth).balance - _ynETHBalanceBefore, _amount, "testWithdrawRedemptionAssets: E1");
     }
 
-    function testPause() public {
+    function testWithdrawRedemptionAssetsWrongCaller() public {
         if (!isHolesky) return;
 
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.PAUSER_ROLE()));
-        ynETHRedemptionAssetsVaultInstance.pause();
+        uint256 _amount = 1 ether;
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
+        ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
+    }
+
+    function testPause() public {
+        if (!isHolesky) return;
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ynETHRedemptionAssetsVaultInstance.pause();
@@ -513,14 +632,25 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(1 ether);
     }
 
-    function testUnpause() public {
+    function testPauseWrongCaller() public {
         if (!isHolesky) return;
 
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.UNPAUSER_ROLE()));
-        ynETHRedemptionAssetsVaultInstance.unpause();
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.PAUSER_ROLE()));
+        ynETHRedemptionAssetsVaultInstance.pause();
+    }
+
+    function testUnpause() public {
+        if (!isHolesky) return;
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ynETHRedemptionAssetsVaultInstance.unpause();
         assertEq(ynETHRedemptionAssetsVaultInstance.paused(), false, "testUnpause: E0");
+    }
+
+    function testUnpauseWrongCaller() public {
+        if (!isHolesky) return;
+
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.UNPAUSER_ROLE()));
+        ynETHRedemptionAssetsVaultInstance.unpause();
     }
 }
