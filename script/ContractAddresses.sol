@@ -28,6 +28,7 @@ contract ContractAddresses {
         address WSTETH_ADDRESS;
         address OETH_ADDRESS;
         address WOETH_ADDRESS;
+        address OETH_ZAPPER_ADDRESS;
     }
 
     struct LSDStrategies {
@@ -81,7 +82,8 @@ contract ContractAddresses {
                 STETH_ADDRESS: 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84,
                 WSTETH_ADDRESS: 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
                 OETH_ADDRESS: 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3,
-                WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192
+                WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192,
+                OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66
             }),
             lsdStrategies: LSDStrategies({
                 RETH_STRATEGY_ADDRESS: 0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2,
@@ -120,7 +122,8 @@ contract ContractAddresses {
                 STETH_ADDRESS: 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034, // source: https://docs.lido.fi/deployed-contracts/holesky/
                 WSTETH_ADDRESS: 0x8d09a4502Cc8Cf1547aD300E066060D043f6982D, // source: https://docs.lido.fi/deployed-contracts/holesky/
                 OETH_ADDRESS: 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3, // TODO: fix, placeholder until available
-                WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192 // TODO: fix, placeholder until available
+                WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192, // TODO: fix, placeholder until available
+                OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66 // TODO: fix, placeholder until available
             }),
             lsdStrategies: LSDStrategies({
                 RETH_STRATEGY_ADDRESS: 0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0,

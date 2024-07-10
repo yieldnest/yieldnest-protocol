@@ -66,7 +66,7 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         oeth.approve(address(woETH), amount);
         uint256 woETHShares = woETH.deposit(amount, address(this));
         woETH.approve(address(ynEigen), woETHShares);
-        ynEigen.deposit(IERC20(address(oeth)), woETHShares, receiver);
+        ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
     }
 
     //--------------------------------------------------------------------------------------
