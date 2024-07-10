@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 interface IEigenStrategyManager {
@@ -9,5 +10,7 @@ interface IEigenStrategyManager {
         IERC20[] calldata assets
     ) external view returns (uint256[] memory stakedBalances);
 
-    function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance);
+    function getStakedAssetBalance(IERC20 asset) external view returns (uint256 stakedBalance);
+
+    function strategies(IERC20 asset) external view returns (IStrategy);
 }

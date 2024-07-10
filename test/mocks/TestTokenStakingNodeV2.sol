@@ -2,8 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
+import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 
-contract TestLSDStakingNodeV2 is LSDStakingNode {
+contract TestTokenStakingNodeV2 is TokenStakingNode {
 
     uint public valueToBeInitialized;
 

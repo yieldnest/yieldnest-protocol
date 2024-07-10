@@ -29,11 +29,7 @@ interface IAssetRegistryEvents {
 /** @title AssetRegistry.sol
  *  @dev This contract handles the strategy management for ynEigen asset allocations.
  */
- contract AssetRegistry is AccessControlUpgradeable, ReentrancyGuardUpgradeable, IAssetRegistryEvents {
-
-    struct AssetData {
-        bool active;
-    }
+ contract AssetRegistry is IAssetRegistry, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IAssetRegistryEvents {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -64,7 +60,7 @@ interface IAssetRegistryEvents {
      /// @notice List of supported ERC20 asset contracts.
     IERC20[] public assets;
 
-    mapping(address => AssetData) public assetData;
+    mapping(IERC20 => AssetData) public _assetData;
 
     bool public actionsPaused;
 
@@ -109,7 +105,7 @@ interface IAssetRegistryEvents {
             if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
             }
-            assetData[address(init.assets[i])] = AssetData({
+            _assetData[init.assets[i]] = AssetData({
                 active: true
             });
         }
@@ -125,47 +121,43 @@ interface IAssetRegistryEvents {
 
     /**
      * @notice Adds a new asset to the system.
-     * @dev Adds an asset to the assetData mapping and sets it as active. This function can only be called by the strategy manager.
+     * @dev Adds an asset to the _assetData mapping and sets it as active. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be added.
      * @param initialBalance The initial balance of the asset to be set in the system.
      */
     function addAsset(IERC20 asset, uint256 initialBalance) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
-        address assetAddress = address(asset);
-        require(!assetData[assetAddress].active, "Asset already active");
+        require(!_assetData[asset].active, "Asset already active");
 
         assets.push(asset);
 
-        assetData[assetAddress] = AssetData({
+        _assetData[asset] = AssetData({
             active: true
         });
 
-        emit AssetAdded(asset, initialBalance);
+        emit AssetAdded(address(asset));
     }
 
     /**
      * @notice Disables an existing asset in the system.
-     * @dev Sets an asset as inactive in the assetData mapping. This function can only be called by the strategy manager.
+     * @dev Sets an asset as inactive in the _assetData mapping. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be disabled.
      */
     function disableAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
-        address assetAddress = address(asset);
-        require(assetData[assetAddress].active, "Asset already inactive");
+        require(_assetData[asset].active, "Asset already inactive");
 
-        assetData[assetAddress].active = false;
+        _assetData[asset].active = false;
 
-        emit AssetDeactivated(asset);
+        emit AssetDeactivated(address(asset));
     }
 
     /**
      * @notice Deletes an asset from the system entirely.
-     * @dev Removes an asset from the assetData mapping and the assets array. This function can only be called by the strategy manager.
+     * @dev Removes an asset from the _assetData mapping and the assets array. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be deleted.
      */
     function deleteAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
-        address assetAddress = address(asset);
-
-        if (!assetData[assetAddress].active) {
-            revert AssetNotActiveOrNonexistent(assetAddress);
+        if (!_assetData[asset].active) {
+            revert AssetNotActiveOrNonexistent(address(asset));
         }
 
         uint256 balanceInPool = asset.balanceOf(address(this));
@@ -175,7 +167,7 @@ interface IAssetRegistryEvents {
 
         uint256 strategyBalance = eigenStrategyManager.getStakedAssetBalance(asset);
         if (strategyBalance != 0) {
-            revert AssetBalanceNonZeroInStrategyManager(AssetBalanceNonZeroInStrategyManager);
+            revert AssetBalanceNonZeroInStrategyManager(strategyBalance);
         }
 
         // Remove asset from the assets array
@@ -186,9 +178,9 @@ interface IAssetRegistryEvents {
         assets.pop();
 
         // Remove asset from the mapping
-        delete assetData[assetAddress];
+        delete _assetData[asset];
 
-        emit AssetDeleted(asset, assetIndex);
+        emit AssetDeleted(address(asset), assetIndex);
     }
 
     /**
@@ -198,7 +190,7 @@ interface IAssetRegistryEvents {
      */
     function findAssetIndex(IERC20 asset) internal view returns (uint256) {
         for (uint256 i = 0; i < assets.length; i++) {
-            if (address(assets[i]) == address(asset)) {
+            if (assets[i] == asset) {
                 return i;
             }
         }
@@ -301,7 +293,11 @@ interface IAssetRegistryEvents {
      * @dev Returns true if the asset is active.
      */
     function assetIsSupported(IERC20 asset) public returns (bool) {
-        return assetData[address(asset)].active;
+        return _assetData[asset].active;
+    }
+
+    function assetData(IERC20 asset) public view returns (AssetData memory) {
+         return _assetData[asset];
     }
 
     //--------------------------------------------------------------------------------------

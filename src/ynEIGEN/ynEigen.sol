@@ -37,7 +37,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 assetsCount, uint256 stakedAssetsCount);
-    error AssetRetrievalLengthMismatch(uint256 assetsCount, uint256 amountsCount, uint256 destinationsCount);
+    error AssetRetrievalLengthMismatch(uint256 assetsCount, uint256 amountsCount);
     error NotStrategyManager(address msgSender);
     error InsufficientAssetBalance(IERC20 asset, uint256 balance, uint256 requestedAmount);
 
@@ -63,7 +63,6 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     struct Init {
         string name;
         string symbol;
-        IERC20[] assets;
         IAssetRegistry assetRegistry;
         address admin;
         address pauser;
@@ -83,15 +82,6 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
-
-        for (uint256 i = 0; i < init.assets.length; i++) {
-            if (address(init.assets[i]) == address(0)) {
-                revert ZeroAddress();
-            }
-            assets[address(init.assets[i])] = Asset({
-                balance: 0
-            });
-        }
 
         assetRegistry = init.assetRegistry;
 
@@ -229,7 +219,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     function assetBalances(IERC20[] memory assetsArray) public view returns (uint256[] memory balances) {
         balances = new uint256[](assetsArray.length);
         for (uint256 i = 0; i < assetsArray.length; i++) {
-            balances[i] = assets[address(assetsArray[i]).balance];
+            balances[i] = assets[address(assetsArray[i])].balance;
         }
     }
 
@@ -256,18 +246,19 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
         for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
             IERC20 asset = assetsToRetrieve[i];
-            Asset memory retrievedAssetData = assets[address(asset)];
-            if (!retrievedAssetData.active) {
+            IAssetRegistry.AssetData memory assetData = assetRegistry.assetData(asset);
+            if (!assetData.active) {
                 revert UnsupportedAsset(asset);
             }
 
-            if (amounts[i] > retrievedAssetData.balance) {
-                revert InsufficientAssetBalance(asset, retrievedAssetData.balance, amounts[i]);
+            Asset memory assetState = assets[address(asset)];
+            if (amounts[i] > assetState.balance) {
+                revert InsufficientAssetBalance(asset, assetState.balance, amounts[i]);
             }
 
             assets[address(asset)].balance -= amounts[i];
             IERC20(asset).safeTransfer(strategyManagerAddress, amounts[i]);
-            emit AssetRetrieved(assets[i], amounts[i], strategyManagerAddress);
+            emit AssetRetrieved(asset, amounts[i], strategyManagerAddress);
         }
     }
 
