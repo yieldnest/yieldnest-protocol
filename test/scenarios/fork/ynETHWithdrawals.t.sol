@@ -96,12 +96,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
     function testQueueWithdrawal() public {
         if (!isHolesky) return;
 
-        // uint256 _amount = withdrawalAmount;
-        // fuzzing here will fail on too many inputs rejected
-        // vm.assume(_amount > 1e9); // _amount > 1 gwei
-        // vm.assume(_amount % 1e9 == 0); // _amount must be a whole Gwei amount
-        // vm.assume(_amount <= uint256(IEigenPodManager(stakingNodesManager.eigenPodManager()).podOwnerShares(address(stakingNode))));
-
         testVerifyWithdrawalCredentials();
 
         vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
@@ -377,28 +371,28 @@ contract ynETHWithdrawals is StakingNodeTestBase {
     }
 
     // @todo - queueManager.withdrawSurplusRedemptionAssets() and redemptionAssetsVault.withdrawRedemptionAssets() will always fail because of the ynETH.processWithdrawnETH() call - which is gated to onlyStakingNodesManager
-    // function testWithdrawSurplusRedemptionAssets(uint256 _amount) public {
-    //     if (!isHolesky) return;
+    function testWithdrawSurplusRedemptionAssets(uint256 _amount) public {
+        if (!isHolesky) return;
 
-    //     vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
-    //     uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
-    //     uint256 _vaultBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
-    //     uint256 _ynETHBalanceBefore = address(yneth).balance;
+        vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
+        uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
+        uint256 _vaultBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
+        uint256 _ynETHBalanceBefore = address(yneth).balance;
 
-    //     if (_amount > _surplusBefore) {
-    //         vm.expectRevert(abi.encodeWithSelector(AmountExceedsSurplus.selector, _amount, _surplusBefore));
-    //         ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
-    //     } else {
-    //         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.REDEMPTION_ASSET_WITHDRAWER_ROLE()));
-    //         ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
+        if (_amount > _surplusBefore) {
+            vm.expectRevert(abi.encodeWithSelector(AmountExceedsSurplus.selector, _amount, _surplusBefore));
+            ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
+        } else {
+            vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.REDEMPTION_ASSET_WITHDRAWER_ROLE()));
+            ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
 
-    //         vm.prank(user);
-    //         ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
-    //         assertEq(ynETHWithdrawalQueueManager.surplusRedemptionAssets(), _surplusBefore - _amount, "testWithdrawSurplusRedemptionAssets: E0");
-    //         assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _vaultBalanceBefore - _amount, "testWithdrawSurplusRedemptionAssets: E1");
-    //         assertEq(address(yneth).balance - _ynETHBalanceBefore, _amount, "testWithdrawSurplusRedemptionAssets: E2");
-    //     }
-    // }
+            vm.prank(user);
+            ynETHWithdrawalQueueManager.withdrawSurplusRedemptionAssets(_amount);
+            assertEq(ynETHWithdrawalQueueManager.surplusRedemptionAssets(), _surplusBefore - _amount, "testWithdrawSurplusRedemptionAssets: E0");
+            assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _vaultBalanceBefore - _amount, "testWithdrawSurplusRedemptionAssets: E1");
+            assertEq(address(yneth).balance - _ynETHBalanceBefore, _amount, "testWithdrawSurplusRedemptionAssets: E2");
+        }
+    }
 
     function testSupportsInterface(bytes4 _interfaceId) public {
         if (!isHolesky) return;
@@ -482,22 +476,23 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         }
     }
 
-    // function testWithdrawRedemptionAssets(uint256 _amount) public {
-    //     if (!isHolesky) return;
+    // @todo - queueManager.withdrawSurplusRedemptionAssets() and redemptionAssetsVault.withdrawRedemptionAssets() will always fail because of the ynETH.processWithdrawnETH() call - which is gated to onlyStakingNodesManager
+    function testWithdrawRedemptionAssets(uint256 _amount) public {
+        if (!isHolesky) return;
 
-    //     vm.deal(address(ynETHRedemptionAssetsVaultInstance), _amount);
-    //     uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
-    //     uint256 _ynETHBalanceBefore = address(yneth).balance;
+        vm.deal(address(ynETHRedemptionAssetsVaultInstance), _amount);
+        uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
+        uint256 _ynETHBalanceBefore = address(yneth).balance;
 
-    //     vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
-    //     ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
+        ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
 
-    //     vm.prank(address(ynETHWithdrawalQueueManager));
-    //     ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
+        vm.prank(address(ynETHWithdrawalQueueManager));
+        ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
 
-    //     assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _balanceBefore - _amount, "testWithdrawRedemptionAssets: E0");
-    //     assertEq(address(yneth).balance - _ynETHBalanceBefore, _amount, "testWithdrawRedemptionAssets: E1");
-    // }
+        assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _balanceBefore - _amount, "testWithdrawRedemptionAssets: E0");
+        assertEq(address(yneth).balance - _ynETHBalanceBefore, _amount, "testWithdrawRedemptionAssets: E1");
+    }
 
     function testPause() public {
         if (!isHolesky) return;
@@ -529,16 +524,3 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         assertEq(ynETHRedemptionAssetsVaultInstance.paused(), false, "testUnpause: E0");
     }
 }
-
-// BEFORE
-// | File                                           | % Lines          | % Statements     | % Branches    | % Funcs        |
-// | src/StakingNode.sol                            | 8.65% (9/104)    | 9.15% (14/153)   | 0.00% (0/26)  | 18.52% (5/27)  |
-// | src/StakingNodesManager.sol                    | 8.40% (10/119)   | 11.03% (16/145)  | 2.78% (1/36)  | 15.38% (4/26)  |
-// | src/WithdrawalQueueManager.sol                 | 11.76% (8/68)    | 9.68% (9/93)     | 0.00% (0/22)  | 11.11% (2/18)  |
-// | src/ynETHRedemptionAssetsVault.sol             | 33.33% (8/24)    | 33.33% (9/27)    | 12.50% (1/8)  | 22.22% (2/9)   |
-
-// AFTER
-// | src/StakingNode.sol                            | 94.23% (98/104)    | 94.12% (144/153)   | 65.38% (17/26)   | 100.00% (27/27)  |
-// | src/StakingNodesManager.sol                    | 94.12% (112/119)   | 95.17% (138/145)   | 69.44% (25/36)   | 100.00% (26/26)  |
-// | src/WithdrawalQueueManager.sol                 | 88.24% (60/68)     | 89.25% (83/93)     | 77.27% (17/22)   | 77.78% (14/18)   |
-// | src/ynETHRedemptionAssetsVault.sol             | 83.33% (20/24)     | 85.19% (23/27)     | 75.00% (6/8)     | 100.00% (9/9)    |
