@@ -11,15 +11,12 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ynViewer} from "src/ynViewer.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
-import {RewardsReceiver} from "src/RewardsReceiver.sol";
-import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
@@ -37,7 +34,7 @@ import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
-
+import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 
 contract ynEigenIntegrationBaseTest is Test, Utils {
 
@@ -53,12 +50,6 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     ContractAddresses.ChainAddresses public chainAddresses;
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
-    ynViewer public viewer;
-
-    // Rewards
-    RewardsReceiver public executionLayerReceiver;
-    RewardsReceiver public consensusLayerReceiver;
-    RewardsDistributor public rewardsDistributor;
 
     // Staking
     TokenStakingNodesManager public tokenStakingNodesManager;
@@ -68,6 +59,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     ynEigen public ynEigenToken;
     AssetRegistry public assetRegistry;
     LSDRateProvider public rateProvider;
+    ynEigenDepositAdapter public ynEigenDepositAdapterInstance;
 
     // Strategy
     EigenStrategyManager eigenStrategyManager;
@@ -93,6 +85,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         setupTokenStakingNodesManager();
         setupYnEigen();
         setupEigenStrategyManagerAndAssetRegistry();
+        setupYnEigenDepositAdapter();
     }
 
     function setupYnEigenProxies() public {
@@ -101,18 +94,21 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         TransparentUpgradeableProxy tokenStakingNodesManagerProxy;
         TransparentUpgradeableProxy assetRegistryProxy;
         TransparentUpgradeableProxy rateProviderProxy;
+        TransparentUpgradeableProxy ynEigenDepositAdapterProxy;
 
         ynEigenToken = new ynEigen();
         eigenStrategyManager = new EigenStrategyManager();
         tokenStakingNodesManager = new TokenStakingNodesManager();
         assetRegistry = new AssetRegistry();
         rateProvider = new LSDRateProvider();
+        ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
 
         ynEigenProxy = new TransparentUpgradeableProxy(address(ynEigenToken), actors.admin.PROXY_ADMIN_OWNER, "");
         eigenStrategyManagerProxy = new TransparentUpgradeableProxy(address(eigenStrategyManager), actors.admin.PROXY_ADMIN_OWNER, "");
         tokenStakingNodesManagerProxy = new TransparentUpgradeableProxy(address(tokenStakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
         assetRegistryProxy = new TransparentUpgradeableProxy(address(assetRegistry), actors.admin.PROXY_ADMIN_OWNER, "");
         rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
+        ynEigenDepositAdapterProxy = new TransparentUpgradeableProxy(address(ynEigenDepositAdapterInstance), actors.admin.PROXY_ADMIN_OWNER, "");
 
         // Wrapping proxies with their respective interfaces
         ynEigenToken = ynEigen(payable(ynEigenProxy));
@@ -120,6 +116,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodesManager = TokenStakingNodesManager(payable(tokenStakingNodesManagerProxy));
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
         rateProvider = LSDRateProvider(payable(rateProviderProxy));
+        ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(ynEigenDepositAdapterProxy));
 
         // Re-deploying ynEigen and creating its proxy again
         ynEigenToken = new ynEigen();
@@ -145,6 +142,11 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         rateProvider = new LSDRateProvider();
         rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
         rateProvider = LSDRateProvider(payable(rateProviderProxy));
+
+        // Re-deploying ynEigenDepositAdapter and creating its proxy again
+        ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
+        ynEigenDepositAdapterProxy = new TransparentUpgradeableProxy(address(ynEigenDepositAdapterInstance), actors.admin.PROXY_ADMIN_OWNER, "");
+        ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(ynEigenDepositAdapterProxy));
     }
 
     function setupUtils() public {
@@ -245,5 +247,16 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         });
         assetRegistry.initialize(assetRegistryInit);
     }
+
+        function setupYnEigenDepositAdapter() public {
+            ynEigenDepositAdapter.Init memory ynEigenDepositAdapterInit = ynEigenDepositAdapter.Init({
+                ynEigen: address(ynEigenToken),
+                wstETH: chainAddresses.lsd.WSTETH_ADDRESS,
+                woETH: chainAddresses.lsd.WOETH_ADDRESS,
+                admin: actors.admin.ADMIN
+            });
+            vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+            ynEigenDepositAdapterInstance.initialize(ynEigenDepositAdapterInit);
+        }
 }
 
