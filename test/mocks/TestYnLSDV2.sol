@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {ynLSD} from "src/ynLSD.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
