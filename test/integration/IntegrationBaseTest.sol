@@ -84,6 +84,7 @@ contract IntegrationBaseTest is Test, Utils {
         setupRewardsDistributor();
         setupStakingNodesManager();
         setupYnETH();
+        setupUtils();
     }
 
     function setupYnETHPoxies() public {
