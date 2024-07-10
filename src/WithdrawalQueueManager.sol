@@ -19,6 +19,7 @@ interface IWithdrawalQueueManagerEvents {
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
+    event SecondsToFinalizationUpdated(uint256 previousValue, uint256 newValue);
 }
 
 /**
@@ -43,6 +44,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     error AmountMustBeGreaterThanZero();
     error FeePercentageExceedsLimit();
     error ArrayLengthMismatch(uint256 length1, uint256 length2);
+    error SecondsToFinalizationExceedsLimit(uint256 value);
     
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -59,6 +61,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //--------------------------------------------------------------------------------------
 
     uint256 constant public FEE_PRECISION = 1000000;
+    uint256 constant public MAX_SECONDS_TO_FINALIZATION = 3600 * 24 * 28; // 4 weeks
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -211,6 +214,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //--------------------------------------------------------------------------------------
 
     function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
+        if (_secondsToFinalization > MAX_SECONDS_TO_FINALIZATION) {
+            revert SecondsToFinalizationExceedsLimit(_secondsToFinalization);
+        }
+        emit SecondsToFinalizationUpdated(secondsToFinalization, _secondsToFinalization);
         secondsToFinalization = _secondsToFinalization;
     }
 
