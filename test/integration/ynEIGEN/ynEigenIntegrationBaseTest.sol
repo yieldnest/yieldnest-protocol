@@ -220,11 +220,11 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         EigenStrategyManager.Init memory eigenStrategyManagerInit = EigenStrategyManager.Init({
             assets: assets,
             strategies: strategies,
-            ynEigen: IynEigen(address(0)),
-            strategyManager: IStrategyManager(address(0)),
-            delegationManager: IDelegationManager(address(0)),
+            ynEigen: IynEigen(address(ynEigenToken)),
+            strategyManager: IStrategyManager(address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS)),
+            delegationManager: IDelegationManager(address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS)),
             admin: actors.admin.ADMIN,
-            strategyController: address(0),
+            strategyController: actors.ops.STRATEGY_CONTROLLER,
             unpauser: actors.admin.UNPAUSE_ADMIN,
             pauser: actors.ops.PAUSE_ADMIN
         });

@@ -25,6 +25,7 @@ contract ActorAddresses {
         address POOLED_DEPOSITS_OWNER;
         address PAUSE_ADMIN;
         address REFERRAL_PUBLISHER;
+        address STRATEGY_CONTROLLER;
     }
 
     struct Wallets {
@@ -32,6 +33,7 @@ contract ActorAddresses {
         address YNDelegator;
         address YNDev;
         address YNValidatorService;
+        address YNStrategyController;
     }
 
     struct Actors {
@@ -45,45 +47,52 @@ contract ActorAddresses {
 
     constructor() {
 
-        Wallets memory holeskyWallets = Wallets({
-            YNSecurityCouncil: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-            YNDelegator: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-            YNDev: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-            YNValidatorService: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
-        });
+        {
+            Wallets memory holeskyWallets = Wallets({
+                YNSecurityCouncil: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
+                YNDelegator: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
+                YNDev: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
+                YNValidatorService: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
+                // TODO: replace with concrete deployment
+                YNStrategyController: 0x1234567890123456789012345678901234567890 
+            });
 
-        actors[17000] = Actors({
-            eoa: EOAActors({
-                DEFAULT_SIGNER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
-                DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
-            }),
-            admin: AdminActors({
-                ADMIN: holeskyWallets.YNSecurityCouncil,
-                STAKING_ADMIN: holeskyWallets.YNSecurityCouncil,
-                PROXY_ADMIN_OWNER: holeskyWallets.YNSecurityCouncil,
-                REWARDS_ADMIN: holeskyWallets.YNSecurityCouncil,
-                FEE_RECEIVER: holeskyWallets.YNSecurityCouncil,
-                ORACLE_ADMIN: holeskyWallets.YNSecurityCouncil,
-                STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
-                UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil
-            }),
-            ops: OpsActors({
-                STAKING_NODES_OPERATOR: holeskyWallets.YNDev,
-                VALIDATOR_MANAGER: holeskyWallets.YNValidatorService,
-                LSD_RESTAKING_MANAGER: holeskyWallets.YNDev,
-                STAKING_NODE_CREATOR: holeskyWallets.YNDev,
-                POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
-                PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
-                REFERRAL_PUBLISHER: holeskyWallets.YNDev
-            }),
-            wallets: holeskyWallets
-        });
+            actors[17000] = Actors({
+                eoa: EOAActors({
+                    DEFAULT_SIGNER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+                    DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
+                }),
+                admin: AdminActors({
+                    ADMIN: holeskyWallets.YNSecurityCouncil,
+                    STAKING_ADMIN: holeskyWallets.YNSecurityCouncil,
+                    PROXY_ADMIN_OWNER: holeskyWallets.YNSecurityCouncil,
+                    REWARDS_ADMIN: holeskyWallets.YNSecurityCouncil,
+                    FEE_RECEIVER: holeskyWallets.YNSecurityCouncil,
+                    ORACLE_ADMIN: holeskyWallets.YNSecurityCouncil,
+                    STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
+                    UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil
+                }),
+                ops: OpsActors({
+                    STAKING_NODES_OPERATOR: holeskyWallets.YNDev,
+                    VALIDATOR_MANAGER: holeskyWallets.YNValidatorService,
+                    LSD_RESTAKING_MANAGER: holeskyWallets.YNDev,
+                    STAKING_NODE_CREATOR: holeskyWallets.YNDev,
+                    POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
+                    PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
+                    REFERRAL_PUBLISHER: holeskyWallets.YNDev,
+                    STRATEGY_CONTROLLER: holeskyWallets.YNStrategyController
+                }),
+                wallets: holeskyWallets
+            });
+        }
 
         Wallets memory mainnetWallets = Wallets({
             YNSecurityCouncil: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975,
             YNDelegator: 0xDF51B7843817F76220C0970eF58Ba726630028eF,
             YNDev: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
-            YNValidatorService: 0x8e20eAf121154B69B7b880FA6c617c0175c4dE2e
+            YNValidatorService: 0x8e20eAf121154B69B7b880FA6c617c0175c4dE2e,
+            // TODO: replace with concrete deployment
+            YNStrategyController: 0x1234567890123456789012345678901234567890 
         });
 
         actors[1] = Actors({
@@ -108,7 +117,8 @@ contract ActorAddresses {
                 STAKING_NODE_CREATOR: mainnetWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
-                REFERRAL_PUBLISHER: mainnetWallets.YNDev
+                REFERRAL_PUBLISHER: mainnetWallets.YNDev,
+                STRATEGY_CONTROLLER: mainnetWallets.YNStrategyController
             }),
             wallets: mainnetWallets
         });
