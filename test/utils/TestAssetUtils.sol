@@ -8,6 +8,8 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import "forge-std/console.sol";
 
 
+
+
 contract TestAssetUtils is Test {
     function get_stETH(address receiver, uint256 amount) public returns (uint256 balance) {
         ContractAddresses contractAddresses = new ContractAddresses();
@@ -46,6 +48,23 @@ contract TestAssetUtils is Test {
         wsteth.transfer(receiver, amount);
 
         return amount;
+    }
 
+    function get_OETH(address receiver, uint256 amount) public returns (uint256) {
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
+        IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
+
+        // Simulate obtaining OETH by wrapping ETH
+        uint256 ethToDeposit = amount; // Assuming 1 ETH = 1 OETH for simplicity
+        vm.deal(address(this), ethToDeposit);
+        (bool success, ) = address(chainAddresses.lsd.OETH_ZAPPER_ADDRESS).call{value: ethToDeposit}("");
+        require(success, "ETH transfer failed");
+
+        require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
+        oeth.transfer(receiver, amount);
+
+        return amount;
     }
 }
