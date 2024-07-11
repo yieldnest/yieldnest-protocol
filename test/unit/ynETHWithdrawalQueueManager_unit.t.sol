@@ -1,32 +1,37 @@
 // SPDX-License-Identifier: BSD-3-Clause
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
-import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
-import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
-import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
-import {MockRedeemableYnETH} from "test/unit/mocks/MockRedeemableYnETH.sol";
-import { ynETHRedemptionAssetsVault } from "src/ynETHRedemptionAssetsVault.sol";
-import { IRedemptionAssetsVault } from "src/interfaces/IRedemptionAssetsVault.sol";
-import { IynETH } from "src/interfaces/IynETH.sol";
+import {IRedemptionAssetsVault} from "../../src/interfaces/IRedemptionAssetsVault.sol";
+import {IynETH} from "../../src/interfaces/IynETH.sol";
 
-import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {WithdrawalQueueManager, IWithdrawalQueueManager} from "../../src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "../../src/ynETHRedemptionAssetsVault.sol";
+
+import {MockRedeemableYnETH} from "./mocks/MockRedeemableYnETH.sol";
+
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
+import "forge-std/Test.sol";
 
 contract ynETHWithdrawalQueueManagerTest is Test {
-    WithdrawalQueueManager manager;
-    MockRedeemableYnETH redeemableAsset;
-    address admin = address(0x65432);
-    address withdrawalQueueAdmin = address(0x76543);
-    address user = address(0x123456);
-    address feeReceiver = address(0xabc);
-    address redemptionAssetWithdrawer = address(0xdef);
-    ynETHRedemptionAssetsVault redemptionAssetsVault;
+
+    address public admin = address(0x65432);
+    address public withdrawalQueueAdmin = address(0x76543);
+    address public user = address(0x123456);
+    address public feeReceiver = address(0xabc);
+    address public redemptionAssetWithdrawer = address(0xdef);
+
+    WithdrawalQueueManager public manager;
+    MockRedeemableYnETH public redeemableAsset;
+    ynETHRedemptionAssetsVault public redemptionAssetsVault;
+
+    // ============================================================================================
+    // Setup
+    // ============================================================================================
 
     function setUp() public {
+
         redeemableAsset = new MockRedeemableYnETH();
 
         ynETHRedemptionAssetsVault redemptionAssetsVaultImplementation = new ynETHRedemptionAssetsVault();
@@ -65,11 +70,10 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         });
         redemptionAssetsVault.initialize(vaultInit);
 
-
         vm.prank(withdrawalQueueAdmin);
         manager.setSecondsToFinalization(3 * 24 * 3600); // 3 days to finalize
 
-        uint256 initialMintAmount = 10000 ether;
+        uint256 initialMintAmount = 1_000_000 ether;
         redeemableAsset.mint(user, initialMintAmount);
 
         // rate is 1:1
@@ -88,60 +92,117 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         return (netEthAmount, feeAmount);
     }
 
-    function testRequestWithdrawal() public {
-        uint256 amount = 1 ether;
-        vm.prank(user);
-        redeemableAsset.approve(address(manager), amount);
-        vm.prank(user);
-        manager.requestWithdrawal(amount);
-        IWithdrawalQueueManager.WithdrawalRequest memory withdrawalRequest = manager.withdrawalRequest(0);
-        assertEq(withdrawalRequest.amount, amount, "Stored amount should match requested amount");
+    // ============================================================================================
+    // withdrawalQueueManager.requestWithdrawal
+    // ============================================================================================
 
-        assertEq(withdrawalRequest.feeAtRequestTime, manager.withdrawalFee(), "Stored fee should match current withdrawal fee");
-        assertEq(withdrawalRequest.redemptionRateAtRequestTime, redemptionAssetsVault.redemptionRate(), "Stored redemption rate should match current redemption rate");
-        assertEq(withdrawalRequest.creationTimestamp, block.timestamp, "Stored creation timestamp should match current block timestamp");
-        assertEq(withdrawalRequest.processed, false, "Stored processed status should be false");
+    function testRequestWithdrawal(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount < 10_000 ether);
 
-        uint256 userBalance = manager.balanceOf(user);
-        assertEq(userBalance, 1, "User should have 1 NFT representing the withdrawal request");
+        uint256 _pendingRequestedRedemptionAmountBefore = manager.pendingRequestedRedemptionAmount();
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), _amount);
+        manager.requestWithdrawal(_amount);
+        vm.stopPrank();
+
+        IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = manager.withdrawalRequest(0);
+        assertEq(_withdrawalRequest.amount, _amount, "testRequestWithdrawal: E0");
+        assertEq(_withdrawalRequest.feeAtRequestTime, manager.withdrawalFee(), "testRequestWithdrawal: E1");
+        assertEq(_withdrawalRequest.redemptionRateAtRequestTime, redemptionAssetsVault.redemptionRate(), "testRequestWithdrawal: E2");
+        assertEq(_withdrawalRequest.creationTimestamp, block.timestamp, "testRequestWithdrawal: E3");
+        assertEq(_withdrawalRequest.processed, false, "testRequestWithdrawal: E4");
+        assertEq(manager.balanceOf(user), 1, "testRequestWithdrawal: E5");
+        assertEq(manager.pendingRequestedRedemptionAmount(), _pendingRequestedRedemptionAmountBefore + _amount, "testRequestWithdrawal: E6");
     }
-    function testClaimWithdrawal() public {
-        uint256 amount = 1 ether;
+
+    function testRequestWithdrawalWithZeroAmount() public {
+        uint256 amount = 0;
         vm.prank(user);
         redeemableAsset.approve(address(manager), amount);
         vm.prank(user);
+        vm.expectRevert(WithdrawalQueueManager.AmountMustBeGreaterThanZero.selector);
         manager.requestWithdrawal(amount);
-        uint256 tokenId = 0;
-        uint256 redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
+    }
 
+    function testRequestWithdrawalWithMaxUintAmount() public {
+        uint256 maxUintAmount = type(uint256).max;
+        vm.prank(user);
+        redeemableAsset.approve(address(manager), maxUintAmount);
+        uint256 userBalance = redeemableAsset.balanceOf(user);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, userBalance, maxUintAmount));
+        manager.requestWithdrawal(maxUintAmount);
+    }
 
-        // Fast forward time to pass the finalization period
+    function testRequestWithdrawalWithInsufficientApproval() public {
+        uint256 amount = 10 ether;
+        uint256 approvedAmount = 1 ether; // Less than the requested amount
+        vm.prank(user);
+        redeemableAsset.approve(address(manager), approvedAmount);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(manager), approvedAmount, amount));
+        manager.requestWithdrawal(amount);
+    }
+
+    function testRequestWithdrawalWithExactZeroApproval() public {
+        uint256 amount = 10 ether;
+        vm.prank(user);
+        redeemableAsset.approve(address(manager), 0);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(manager), 0, amount));
+        manager.requestWithdrawal(amount);
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.claimWithdrawal
+    // ============================================================================================
+
+    function testClaimWithdrawal(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount < 10_000 ether);
+
+        console.log("0redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
+
+        vm.deal(address(redemptionAssetsVault), _amount);
+
+        console.log("1redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), _amount);
+        manager.requestWithdrawal(_amount);
+        vm.stopPrank();
+
+        console.log("2redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
+
+        // uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
+
         vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
 
-        // Send exact Ether to vault
-        (bool success, ) = address(redemptionAssetsVault).call{value: amount}("");
-        require(success, "Ether transfer failed");
+        console.log("3redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
 
+        uint256 _userBalanceBefore = user.balance;
+        uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
+        uint256 tokenId = 0;
         vm.prank(user);
         manager.claimWithdrawal(tokenId, user);
+
+        console.log("4redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
+        console.log("userClaimedAmount:", user.balance - _userBalanceBefore);
+        console.log("vaultBalance:", _vaultBalanceBefore - address(redemptionAssetsVault).balance);
+        console.log("amount:", _amount);
+
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
-        bool processed = request.processed;
-        assertTrue(processed, "Withdrawal should be marked as processed");
+        assertTrue(request.processed, "testClaimWithdrawal: E0");
+        assertEq(request.amount, _amount, "testClaimWithdrawal: E1");
+        assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testClaimWithdrawal: E2");
+        assertEq(request.redemptionRateAtRequestTime, redemptionAssetsVault.redemptionRate(), "testClaimWithdrawal: E3");
+        assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "testClaimWithdrawal: E4");
 
-        assertEq(request.amount, amount, "Withdrawal amount should match the requested amount");
-        assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "Withdrawal fee at request time should match the current withdrawal fee");
-        assertEq(request.redemptionRateAtRequestTime, redemptionRateAtRequestTime, "Redemption rate at request time should match the current redemption rate");
-        assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "Creation timestamp should match the timestamp when withdrawal was requested");
-        assertEq(request.processed, true, "Processed status should be true after claiming");
-
-       (uint256 expectedNetEthAmount, uint256 expectedFeeAmount) = calculateNetEthAndFee(amount, request.redemptionRateAtRequestTime, request.feeAtRequestTime);
-
-        uint256 userEthBalance = user.balance;
-        uint256 managerTokenBalance = redeemableAsset.balanceOf(address(manager));
-        assertEq(userEthBalance, expectedNetEthAmount, "User ETH balance should match the net ETH amount after withdrawal");
-        assertEq(managerTokenBalance, 0, "Manager's token balance should be 0 after burn");
-        uint256 feeReceiverBalance = feeReceiver.balance;
-        assertEq(feeReceiverBalance, expectedFeeAmount, "Fee amount in feeReceiver should match the expected fee amount");
+        uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
+        uint256 expectedNetEthAmount = (_amount * request.redemptionRateAtRequestTime) / 1e18 - expectedFeeAmount;
+        assertEq(user.balance, expectedNetEthAmount, "testClaimWithdrawal: E5");
+        assertEq(redeemableAsset.balanceOf(address(manager)), 0, "testClaimWithdrawal: E6");
+        assertEq(feeReceiver.balance, expectedFeeAmount, "testClaimWithdrawal: E7");
     }
 
     function testClaimWithdrawalRevertsWhenInsufficientVaultBalance() public {
@@ -184,49 +245,11 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.claimWithdrawal(tokenId, user);
     }
 
-    function testRequestWithdrawalWithZeroAmount() public {
-        uint256 amount = 0;
-        vm.prank(user);
-        redeemableAsset.approve(address(manager), amount);
-        vm.prank(user);
-        vm.expectRevert(WithdrawalQueueManager.AmountMustBeGreaterThanZero.selector);
-        manager.requestWithdrawal(amount);
-    }
-
     function testClaimWithdrawalForNonExistentTokenId() public {
         uint256 nonExistentTokenId = 9999; // Assuming this tokenId does not exist
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, nonExistentTokenId, user));
         manager.claimWithdrawal(nonExistentTokenId, user);
-    }
-
-    function testRequestWithdrawalWithMaxUintAmount() public {
-        uint256 maxUintAmount = type(uint256).max;
-        vm.prank(user);
-        redeemableAsset.approve(address(manager), maxUintAmount);
-        uint256 userBalance = redeemableAsset.balanceOf(user);
-        vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, user, userBalance, maxUintAmount));
-        manager.requestWithdrawal(maxUintAmount);
-    }
-
-    function testRequestWithdrawalWithInsufficientApproval() public {
-        uint256 amount = 10 ether;
-        uint256 approvedAmount = 1 ether; // Less than the requested amount
-        vm.prank(user);
-        redeemableAsset.approve(address(manager), approvedAmount);
-        vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(manager), approvedAmount, amount));
-        manager.requestWithdrawal(amount);
-    }
-
-    function testRequestWithdrawalWithExactZeroApproval() public {
-        uint256 amount = 10 ether;
-        vm.prank(user);
-        redeemableAsset.approve(address(manager), 0);
-        vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(manager), 0, amount));
-        manager.requestWithdrawal(amount);
     }
 
     function testClaimWithdrawalForAlreadyProcessedWithdrawal() public {
