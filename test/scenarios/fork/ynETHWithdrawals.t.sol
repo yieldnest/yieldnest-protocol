@@ -372,14 +372,14 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
     }
 
-    function testSetSecondsToFinalizationSecondsToFinalizationExceedsLimit(uint256 _secondsToFinalization) public {
+    function testSetSecondsToFinalizationSecondsToFinalizationExceedsLimit() public {
         if (!isHolesky) return;
 
-        uint256 _secondsToFinalization = ynETHWithdrawalQueueManager.MAX_SECONDS_TO_FINALIZATION() + 1;
+        uint256 tooManySecondsToFinalization = ynETHWithdrawalQueueManager.MAX_SECONDS_TO_FINALIZATION() + 1;
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        vm.expectRevert(abi.encodeWithSelector(SecondsToFinalizationExceedsLimit.selector, _secondsToFinalization));
-        ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
+        vm.expectRevert(abi.encodeWithSelector(SecondsToFinalizationExceedsLimit.selector, tooManySecondsToFinalization));
+        ynETHWithdrawalQueueManager.setSecondsToFinalization(tooManySecondsToFinalization);
     }
 
     function testSetWithdrawalFee(uint256 _feePercentage) public {
