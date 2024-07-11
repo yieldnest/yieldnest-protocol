@@ -45,7 +45,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     error FeePercentageExceedsLimit();
     error ArrayLengthMismatch(uint256 length1, uint256 length2);
     error SecondsToFinalizationExceedsLimit(uint256 value);
-    
+    error WithdrawalRequestDoesNotExist(uint256 tokenId);
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -161,6 +162,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         }
 
         WithdrawalRequest memory request = withdrawalRequests[tokenId];
+        if (!withdrawalRequestExists(request)) {
+            revert WithdrawalRequestDoesNotExist(tokenId);
+        }
 
         if (request.processed) {
             revert WithdrawalAlreadyProcessed(tokenId);
@@ -306,8 +310,12 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
      */
     function withdrawalRequestIsFinalized(uint256 index) public view returns (bool) {
         WithdrawalRequest memory request = withdrawalRequests[index];
+        if (!withdrawalRequestExists(request)) {
+            revert WithdrawalRequestDoesNotExist(index);
+        }
         return isFinalized(request);
     }
+
 
     /**
      * @notice Checks if a withdrawal request is finalized.
@@ -316,7 +324,11 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
      * @param request The withdrawal request to check.
      * @return True if the request is finalized, false otherwise.
      */
-    function isFinalized(WithdrawalRequest memory request) public view returns (bool) {
+    function isFinalized(WithdrawalRequest memory request)
+        public 
+        view
+        returns (bool) {
+
         return block.timestamp >= request.creationTimestamp + secondsToFinalization;
     }
 
@@ -331,10 +343,23 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
      */
     function withdrawalRequest(uint256 tokenId) public view returns (WithdrawalRequest memory request) {
         request = withdrawalRequests[tokenId];
+        if (!withdrawalRequestExists(request)) {
+            revert WithdrawalRequestDoesNotExist(tokenId);
+        }
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /**
+     * @notice Checks if a withdrawal request exists.
+     * @param request The withdrawal request to check.
+     * @return True if the request exists, false otherwise.
+     * @dev Reverts with WithdrawalRequestDoesNotExist if the request does not exist.
+     */
+    function withdrawalRequestExists(WithdrawalRequest memory request) internal view returns (bool) {
+        return request.creationTimestamp > 0;
     }
 
     //--------------------------------------------------------------------------------------
