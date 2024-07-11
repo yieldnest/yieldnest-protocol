@@ -136,7 +136,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         }
     }
 
-    function setupForVerifyAndProcessWithdrawals(uint256 nodeId, string memory path) public {
+    function setupForVerifyAndProcessWithdrawals(uint256 /* nodeId */, string memory path) public {
 
         setJSON(path);
 
@@ -218,12 +218,6 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         assertEq(address(yneth).balance, expectedYnETHBalance, "YnETH balance integrity check failed after withdrawals");
         assertEq(yneth.totalDepositedInPool(), expectedYnETHBalance, "Total Deposited in Pool integrity check failed after withdrawals");
 	}
-
-    function runStakingNodeInvariants(uint256 nodeId) public {
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-        uint256 unverifiedStakedETH = stakingNodeInstance.getUnverifiedStakedETH();
-        int256 shares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-    }
 
     function completeQueuedWithdrawals(IStakingNode stakingNodeInstance, uint256 withdrawalAmount) public {
 
