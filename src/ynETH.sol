@@ -38,6 +38,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error NotRewardsDistributor();
     error InsufficientBalance();
     error TransferFailed();
+    error CallerNotAuthorized(address caller);
 
 
     //--------------------------------------------------------------------------------------
@@ -270,7 +271,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         // ETH can be returned either by the stakinNodesManager or by the redemptionAssetsVault
         if (!(msg.sender == address(stakingNodesManager)
             || msg.sender == (address(stakingNodesManager.redemptionAssetsVault())))) {
-
+            revert CallerNotAuthorized(msg.sender);
         }
         totalDepositedInPool += msg.value;
 
