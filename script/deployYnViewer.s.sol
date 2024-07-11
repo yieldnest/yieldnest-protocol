@@ -21,12 +21,15 @@ contract DeployYnViewer is BaseScript {
         ContractAddresses.ChainAddresses memory _chainAddresses = _contractAddresses.getChainAddresses(block.chainid);
         ActorAddresses.Actors memory _actors = getActors();
 
-        privateKey == 0 ? vm.envUint("PRIVATE_KEY") : privateKey;
+        privateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(privateKey);
 
         address _viewerImplementation = address(new ynViewer(_chainAddresses.yn.YNETH_ADDRESS, _chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS));
         viewer = ynViewer(address(new TransparentUpgradeableProxy(_viewerImplementation, _actors.admin.PROXY_ADMIN_OWNER, "")));
 
         vm.stopBroadcast();
+
+        console.log("ynViewer proxy deployed at: ", address(viewer));
+        console.log("ynViewer implementation deployed at: ", _viewerImplementation);
     }
 }
