@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
-import {ynEigen} from "src/ynEigen/ynEigen.sol";
 import {stdJson} from "lib/forge-std/src/StdJson.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
