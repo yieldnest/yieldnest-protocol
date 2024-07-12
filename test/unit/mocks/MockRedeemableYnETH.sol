@@ -15,6 +15,12 @@ contract MockRedeemableYnETH is IRedeemableAsset, ERC20Burnable {
     constructor() ERC20("Mock Redeemable Asset", "MRA") {
     }
 
+    receive() external payable {}
+
+    function processWithdrawnETH() external payable override {
+        return;
+    }
+
     function mint(address receiver, uint256 amount) external {
         _mint(receiver, amount);
     }

@@ -16,6 +16,8 @@ import "forge-std/Test.sol";
 
 contract ynETHWithdrawalQueueManagerTest is Test {
 
+    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
+
     address public admin = address(0x65432);
     address public withdrawalQueueAdmin = address(0x76543);
     address public user = address(0x123456);
@@ -161,24 +163,16 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     function testClaimWithdrawal(uint256 _amount) public {
         vm.assume(_amount > 0 && _amount < 10_000 ether);
 
-        console.log("0redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
-
         vm.deal(address(redemptionAssetsVault), _amount);
-
-        console.log("1redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
 
         vm.startPrank(user);
         redeemableAsset.approve(address(manager), _amount);
         manager.requestWithdrawal(_amount);
         vm.stopPrank();
 
-        console.log("2redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
-
-        // uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
+        uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
         vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
-
-        console.log("3redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
 
         uint256 _userBalanceBefore = user.balance;
         uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
@@ -186,16 +180,11 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         manager.claimWithdrawal(tokenId, user);
 
-        console.log("4redemptionAssetsVault.redemptionRate():", redemptionAssetsVault.redemptionRate());
-        console.log("userClaimedAmount:", user.balance - _userBalanceBefore);
-        console.log("vaultBalance:", _vaultBalanceBefore - address(redemptionAssetsVault).balance);
-        console.log("amount:", _amount);
-
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertTrue(request.processed, "testClaimWithdrawal: E0");
         assertEq(request.amount, _amount, "testClaimWithdrawal: E1");
         assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testClaimWithdrawal: E2");
-        assertEq(request.redemptionRateAtRequestTime, redemptionAssetsVault.redemptionRate(), "testClaimWithdrawal: E3");
+        assertEq(request.redemptionRateAtRequestTime, _redemptionRateAtRequestTime, "testClaimWithdrawal: E3");
         assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "testClaimWithdrawal: E4");
 
         uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
@@ -203,6 +192,10 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(user.balance, expectedNetEthAmount, "testClaimWithdrawal: E5");
         assertEq(redeemableAsset.balanceOf(address(manager)), 0, "testClaimWithdrawal: E6");
         assertEq(feeReceiver.balance, expectedFeeAmount, "testClaimWithdrawal: E7");
+        assertApproxEqAbs(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, 1000, "testClaimWithdrawal: E8");
+        assertEq(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, "testClaimWithdrawal: E8");
+        assertEq(manager.balanceOf(user), 0, "testClaimWithdrawal: E9");
+        assertEq(user.balance - _userBalanceBefore, expectedNetEthAmount, "testClaimWithdrawal: E10");
     }
 
     function testClaimWithdrawalRevertsWhenInsufficientVaultBalance() public {
@@ -231,7 +224,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.claimWithdrawal(0, user);
     }
 
-    function testFailClaimWithdrawalNotFinalized() public {
+    function testClaimWithdrawalNotFinalized() public {
         uint256 amount = 1 ether;
         vm.prank(user);
         redeemableAsset.approve(address(manager), amount);
@@ -240,8 +233,8 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 tokenId = 0; // Assuming tokenId starts from 0 after the first request
 
         // Attempt to claim before time is up
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, block.timestamp, block.timestamp, manager.secondsToFinalization()));
         vm.prank(user);
-        vm.expectRevert(WithdrawalQueueManager.NotFinalized.selector);
         manager.claimWithdrawal(tokenId, user);
     }
 
@@ -275,12 +268,12 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.claimWithdrawal(tokenId, user);
 
         // Attempt to claim the withdrawal again to ensure it cannot be processed twice
-        vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, tokenId, user));
+        vm.prank(user);
         manager.claimWithdrawal(tokenId, user);
     }
     
-    function testWithdrawalOfNotNFTOwner() public {
+    function testtestClaimWithdrawalNotOwner() public {
         uint256 tokenId = 1; // Assuming this tokenId exists and is owned by another user
         address notOwner = vm.addr(9999); // An arbitrary address that is not the owner
         
@@ -288,5 +281,321 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(notOwner);
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, tokenId, notOwner));
         manager.claimWithdrawal(tokenId, notOwner);
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.claimWithdrawals
+    // ============================================================================================
+
+    function testclaimWithdrawals(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount < 10_000 ether);
+
+        vm.deal(address(redemptionAssetsVault), _amount);
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), _amount);
+        manager.requestWithdrawal(_amount);
+        vm.stopPrank();
+
+        uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
+
+        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+
+        uint256 _userBalanceBefore = user.balance;
+        uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
+        uint256 tokenId = 0;
+        uint256[] memory tokenIds = new uint256[](1);
+        address[] memory receivers = new address[](1);
+        tokenIds[0] = tokenId;
+        receivers[0] = user;
+
+        vm.prank(user);
+        manager.claimWithdrawals(tokenIds, receivers);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
+        assertTrue(request.processed, "testclaimWithdrawals: E0");
+        assertEq(request.amount, _amount, "testclaimWithdrawals: E1");
+        assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testclaimWithdrawals: E2");
+        assertEq(request.redemptionRateAtRequestTime, _redemptionRateAtRequestTime, "testclaimWithdrawals: E3");
+        assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "testclaimWithdrawals: E4");
+
+        uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
+        uint256 expectedNetEthAmount = (_amount * request.redemptionRateAtRequestTime) / 1e18 - expectedFeeAmount;
+        assertEq(user.balance, expectedNetEthAmount, "testclaimWithdrawals: E5");
+        assertEq(redeemableAsset.balanceOf(address(manager)), 0, "testclaimWithdrawals: E6");
+        assertEq(feeReceiver.balance, expectedFeeAmount, "testclaimWithdrawals: E7");
+        assertApproxEqAbs(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, 1000, "testclaimWithdrawals: E8");
+        assertEq(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, "testclaimWithdrawals: E8");
+        assertEq(manager.balanceOf(user), 0, "testclaimWithdrawals: E9");
+        assertEq(user.balance - _userBalanceBefore, expectedNetEthAmount, "testclaimWithdrawals: E10");
+    }
+
+    function testclaimWithdrawalsArrayLengthMismatch() public {
+        uint256[] memory tokenIds = new uint256[](1);
+        address[] memory receivers = new address[](2);
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.ArrayLengthMismatch.selector, tokenIds.length, receivers.length));
+        manager.claimWithdrawals(tokenIds, receivers);
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.surplusRedemptionAssets
+    // ============================================================================================
+
+    function testSurplusRedemptionAssets() public {
+        assertEq(redemptionAssetsVault.availableRedemptionAssets(), 0, "testSurplusRedemptionAssets: E0");
+        assertEq(manager.pendingRequestedRedemptionAmount(), 0, "testSurplusRedemptionAssets: E1");
+        assertEq(manager.surplusRedemptionAssets(), 0, "testSurplusRedemptionAssets: E2");
+
+        vm.deal(address(redemptionAssetsVault), 100 ether);
+        assertEq(redemptionAssetsVault.availableRedemptionAssets(), 100 ether, "testSurplusRedemptionAssets: E3");
+        assertEq(manager.pendingRequestedRedemptionAmount(), 0, "testSurplusRedemptionAssets: E4");
+        assertEq(manager.surplusRedemptionAssets(), 100 ether, "testSurplusRedemptionAssets: E5");
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.surplusRedemptionAssets
+    // ============================================================================================
+
+    function testDeficitRedemptionAssets() public {
+        assertEq(redemptionAssetsVault.availableRedemptionAssets(), 0, "testDeficitRedemptionAssets: E0");
+        assertEq(manager.pendingRequestedRedemptionAmount(), 0, "testDeficitRedemptionAssets: E1");
+        assertEq(manager.deficitRedemptionAssets(), 0, "testDeficitRedemptionAssets: E2");
+
+        vm.deal(address(redemptionAssetsVault), 100 ether);
+        assertEq(redemptionAssetsVault.availableRedemptionAssets(), 100 ether, "testDeficitRedemptionAssets: E3");
+        assertEq(manager.pendingRequestedRedemptionAmount(), 0, "testDeficitRedemptionAssets: E4");
+        assertEq(manager.deficitRedemptionAssets(), 0, "testDeficitRedemptionAssets: E5");
+
+        uint256 amount = 50 ether;
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        manager.requestWithdrawal(amount);
+        vm.stopPrank();
+        assertEq(manager.pendingRequestedRedemptionAmount(), amount, "testDeficitRedemptionAssets: E6");
+        assertEq(manager.deficitRedemptionAssets(), 0, "testDeficitRedemptionAssets: E7");
+
+        amount = 100 ether;
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        manager.requestWithdrawal(amount);
+        vm.stopPrank();
+
+        assertEq(manager.pendingRequestedRedemptionAmount(), 150 ether, "testDeficitRedemptionAssets: E8");
+        assertEq(manager.deficitRedemptionAssets(), 50 ether, "testDeficitRedemptionAssets: E9");
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.withdrawSurplusRedemptionAssets
+    // ============================================================================================
+
+    function testWithdrawSurplusRedemptionAssets() public {
+        uint256 amount = 100 ether;
+        vm.deal(address(redemptionAssetsVault), amount);
+        assertEq(manager.surplusRedemptionAssets(), amount, "testWithdrawSurplusRedemptionAssets: E0");
+
+        uint256 _ynethBalanceBefore = address(redeemableAsset).balance;
+
+        vm.prank(redemptionAssetWithdrawer);
+        manager.withdrawSurplusRedemptionAssets(amount);
+
+        assertEq(manager.surplusRedemptionAssets(), 0, "testWithdrawSurplusRedemptionAssets: E1");
+        assertEq(address(redeemableAsset).balance - _ynethBalanceBefore, amount, "testWithdrawSurplusRedemptionAssets: E2");
+    }
+
+    function testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus() public {
+        uint256 amount = 100 ether;
+        vm.deal(address(redemptionAssetsVault), amount);
+        assertEq(manager.surplusRedemptionAssets(), amount, "testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus: E0");
+
+        uint256 _ynethBalanceBefore = address(redeemableAsset).balance;
+
+        uint256 amountExceedingSurplus = amount + 1;
+        vm.prank(redemptionAssetWithdrawer);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.AmountExceedsSurplus.selector, amountExceedingSurplus, amount));
+        manager.withdrawSurplusRedemptionAssets(amountExceedingSurplus);
+
+        assertEq(manager.surplusRedemptionAssets(), amount, "testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus: E1");
+        assertEq(address(redeemableAsset).balance - _ynethBalanceBefore, 0, "testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus: E2");
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.withdrawalRequestIsFinalized / withdrawalQueueManager.isFinalized
+    // ============================================================================================
+
+    function testWithdrawalRequestIsFinalized() public {
+        uint256 amount = 100 ether;
+        vm.deal(address(redemptionAssetsVault), amount);
+        assertEq(manager.surplusRedemptionAssets(), amount, "testWithdrawalRequestIsFinalized: E0");
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        manager.requestWithdrawal(amount);
+        vm.stopPrank();
+
+        uint256 tokenId = 0;
+        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
+        assertEq(manager.withdrawalRequestIsFinalized(tokenId), false, "testWithdrawalRequestIsFinalized: E1");
+        assertEq(manager.isFinalized(request), false, "testWithdrawalRequestIsFinalized: E1");
+
+        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+        assertEq(manager.withdrawalRequestIsFinalized(tokenId), true, "testWithdrawalRequestIsFinalized: E3");
+        assertEq(manager.isFinalized(request), true, "testWithdrawalRequestIsFinalized: E4");
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.withdrawalRequest
+    // ============================================================================================
+
+    function testWithdrawalRequest() public {
+        uint256 amount = 100 ether;
+        vm.deal(address(redemptionAssetsVault), amount);
+        assertEq(manager.surplusRedemptionAssets(), amount, "testWithdrawalRequest: E0");
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        manager.requestWithdrawal(amount);
+        vm.stopPrank();
+
+        uint256 tokenId = 0;
+        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
+        assertEq(request.amount, amount, "testWithdrawalRequest: E1");
+        assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testWithdrawalRequest: E2");
+        assertEq(request.redemptionRateAtRequestTime, redemptionAssetsVault.redemptionRate(), "testWithdrawalRequest: E3");
+        assertEq(request.creationTimestamp, block.timestamp, "testWithdrawalRequest: E4");
+        assertEq(request.processed, false, "testWithdrawalRequest: E5");
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.supportsInterface
+    // ============================================================================================
+
+    function testSupportsInterface() public {
+        bytes4 interfaceId = 0x80ac58cd; // IERC721
+        assertEq(manager.supportsInterface(interfaceId), true, "testSupportsInterface: E0");
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.setSecondsToFinalization
+    // ============================================================================================
+
+    function testSetSecondsToFinalization(uint256 _seconds) public {
+        vm.assume(_seconds <= manager.MAX_SECONDS_TO_FINALIZATION());
+
+        assertEq(manager.secondsToFinalization(), 3 * 24 * 3600, "testSetSecondsToFinalization: E0"); // from setUp
+
+        vm.prank(withdrawalQueueAdmin);
+        manager.setSecondsToFinalization(_seconds);
+
+        assertEq(manager.secondsToFinalization(), _seconds, "testSetSecondsToFinalization: E1");
+    }
+
+    function testSetSecondsToFinalizationSecondsToFinalizationExceedsLimit() public {
+        uint256 _seconds = manager.MAX_SECONDS_TO_FINALIZATION() + 1;
+        vm.prank(withdrawalQueueAdmin);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.SecondsToFinalizationExceedsLimit.selector, _seconds));
+        manager.setSecondsToFinalization(_seconds);
+    }
+
+    function testSetSecondsToFinalizationWrongCaller() public {
+        uint256 _seconds = 1;
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), manager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
+        manager.setSecondsToFinalization(_seconds);
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.setWithdrawalFee
+    // ============================================================================================
+
+    function testSetWithdrawalFee(uint256 _feePercentage) public {
+        vm.assume(_feePercentage <= manager.FEE_PRECISION());
+
+        assertEq(manager.withdrawalFee(), 10000, "testSetWithdrawalFee: E0"); // from setUp
+
+        vm.prank(withdrawalQueueAdmin);
+        manager.setWithdrawalFee(_feePercentage);
+
+        assertEq(manager.withdrawalFee(), _feePercentage, "testSetWithdrawalFee: E1");
+    }
+
+    function testSetWithdrawalFeeFeePercentageExceedsLimit() public {
+        uint256 _feePercentage = manager.FEE_PRECISION() + 1;
+        vm.prank(withdrawalQueueAdmin);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.FeePercentageExceedsLimit.selector));
+        manager.setWithdrawalFee(_feePercentage);
+    }
+
+    function testSetWithdrawalFeeWrongCaller() public {
+        uint256 _feePercentage = 1;
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), manager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
+        manager.setWithdrawalFee(_feePercentage);
+    }
+
+    // ============================================================================================
+    // withdrawalQueueManager.setFeeReceiver
+    // ============================================================================================
+
+    function testSetFeeReceiver() public {
+        address newFeeReceiver = vm.addr(9999);
+        assertEq(manager.feeReceiver(), feeReceiver, "testSetFeeReceiver: E0"); // from setUp
+
+        vm.prank(withdrawalQueueAdmin);
+        manager.setFeeReceiver(newFeeReceiver);
+
+        assertEq(manager.feeReceiver(), newFeeReceiver, "testSetFeeReceiver: E1");
+    }
+
+    function testSetFeeReceiverZeroAddress() public {
+        address zeroAddress = address(0);
+        vm.prank(withdrawalQueueAdmin);
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.ZeroAddress.selector));
+        manager.setFeeReceiver(zeroAddress);
+    }
+
+    function testSetFeeReceiverWrongCaller() public {
+        address newFeeReceiver = vm.addr(9999);
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), manager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
+        manager.setFeeReceiver(newFeeReceiver);
+    }
+
+    // ============================================================================================
+    // ynETHRedemptionAssetsVault.pause
+    // ============================================================================================
+
+    function testPause() public {
+        assertEq(redemptionAssetsVault.paused(), false, "testPause: E0");
+
+        vm.prank(admin);
+        redemptionAssetsVault.pause();
+
+        assertEq(redemptionAssetsVault.paused(), true, "testPause: E1");
+
+        vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.ContractPaused.selector));
+        vm.prank(address(manager));
+        redemptionAssetsVault.transferRedemptionAssets(user, 1 ether);
+
+        vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.ContractPaused.selector));
+        vm.prank(address(manager));
+        redemptionAssetsVault.withdrawRedemptionAssets(1 ether);
+    }
+
+    function testPauseWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), redemptionAssetsVault.PAUSER_ROLE()));
+        redemptionAssetsVault.pause();
+    }
+
+    function testUnpause() public {
+        vm.prank(admin);
+        redemptionAssetsVault.pause();
+        assertEq(redemptionAssetsVault.paused(), true, "testUnpause: E0");
+
+        vm.prank(admin);
+        redemptionAssetsVault.unpause();
+        assertEq(redemptionAssetsVault.paused(), false, "testUnpause: E1");
+    }
+
+    function testUnpauseWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), redemptionAssetsVault.UNPAUSER_ROLE()));
+        redemptionAssetsVault.unpause();
     }
 }
