@@ -278,6 +278,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit WithdrawnETHProcessed(msg.value, totalDepositedInPool);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  PAUSING  -----------------------------------------
+    //--------------------------------------------------------------------------------------
+
     /// @notice Pauses ETH deposits.
     /// @dev Can only be called by an account with the PAUSER_ROLE.
     function pauseDeposits() external onlyRole(PAUSER_ROLE) {
