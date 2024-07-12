@@ -222,6 +222,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         );
 
         for (uint256 i = 0; i < validatorIndices.length; i++) {
+            // If the validator is already exited, the effectiveBalanceGwei is 0.
+            // if the validator has not been exited, the effectiveBalanceGwei is whatever is staked
+            // (usually 32ETH in the absence of slasing)
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
@@ -340,7 +343,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         if (withdrawalAmount > DEFAULT_VALIDATOR_STAKE) {
             amountToQueue = DEFAULT_VALIDATOR_STAKE;
         } else {
-            amountToQueue = DEFAULT_VALIDATOR_STAKE;
+            amountToQueue = withdrawalAmount;
         }
 
         return _calculateSharesDelta(amountToQueue, previouslyRestakedAmount);
@@ -360,7 +363,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
 
-    /// @dev Queues a withdrawal for processing.
+    /// @dev Queues a validator Principal withdrawal for processing.
     ///      DelegationManager calls EigenPodManager.decreasesShares which
     ///      decreases the `podOwner`'s shares by `shares`, down to a minimum of zero.
     /// @param sharesAmount to be queued for withdrawals
@@ -373,10 +376,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         IDelegationManager.QueuedWithdrawalParams[] memory params = new IDelegationManager.QueuedWithdrawalParams[](1);
         IStrategy[] memory strategies = new IStrategy[](1);
+
+        // Assumption: 1 Share of beaconChainETHStrategy = 1 ETH.
         uint256[] memory shares = new uint256[](1);
 
         strategies[0] = beaconChainETHStrategy;
         shares[0] = sharesAmount;
+        // The delegationManager requires the withdrawer == msg.sender (the StakingNode in this case).
         params[0] = IDelegationManager.QueuedWithdrawalParams({
             strategies: strategies,
             shares: shares,
@@ -384,6 +390,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         });
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
+        
+        // After running queueWithdrawals, eigenPodManager.podOwnerShares(address(this)) decreases by `sharesAmount`.
+        // Therefore queuedSharesAmount increase by `sharesAmount`.
 
         queuedSharesAmount += sharesAmount;
         emit QueuedWithdrawals(sharesAmount, fullWithdrawalRoots);
@@ -393,7 +402,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     ///      Withdrawals can only be completed if
     ///      max(delegationManager.minWithdrawalDelayBlocks(), delegationManager.strategyWithdrawalDelayBlocks(beaconChainETHStrategy))
     ///      number of blocks have passed since witdrawal was queued.
-    /// @param withdrawals The Withdrawals to complete.
+    /// @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the 
+    ///                    the withdrawal created as part of the queueWithdrawals call.
     /// @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
     ///       with the Slasher, which currently does nothing. As of M2, this parameter
     ///       has no bearing on anything and can be ignored

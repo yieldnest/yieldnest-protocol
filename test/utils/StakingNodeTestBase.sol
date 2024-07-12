@@ -220,7 +220,6 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 	}
 
     function completeQueuedWithdrawals(IStakingNode stakingNodeInstance, uint256 withdrawalAmount) public {
-
         uint256 nonce = delegationManager.cumulativeWithdrawalsQueued(address(stakingNodeInstance)) - 1;
 
         IStrategy[] memory strategies = new IStrategy[](1);
@@ -244,6 +243,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         uint256[] memory middlewareTimesIndexes = new uint256[](1);
         middlewareTimesIndexes[0] = 0; // value is not used, as per EigenLayer docs
 
+        // Advance time so the withdrawal can be completed
         vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
