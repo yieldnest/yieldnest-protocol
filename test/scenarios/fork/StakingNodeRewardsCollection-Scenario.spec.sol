@@ -73,10 +73,18 @@ contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
 
         uint256 partialRewardsAmount;
 
+        // Every 4-5 days consensus layer rewards are emitted to the Withdrawal Address of validator by the Ethereum Protocol.
+        // The Withdrawal Address is the EigenPod.
+        // To collect these consesus layer rewards, one needs to prove their existence to eigenlayer for *EACH* rewards emission.
+        // The logic path for this proof is the same one used for proving Full Principal Withdrawals.
+        
+        // First step is to verify the Partial Withdrawal (for rewards).
         {
-            // Validator proven
+            // Validator proven for rewards collection.
             // 1692473
             // 0x80500c11e542327646b5a08a952288241b11f6ea0c185f41afa79dad03b21defe213054ab71770651f3f293dd2e4b9c7
+            // https://holesky.beaconcha.in/validator/80500c11e542327646b5a08a952288241b11f6ea0c185f41afa79dad03b21defe213054ab71770651f3f293dd2e4b9c7
+
 
             setupForVerifyAndProcessWithdrawals(state.nodeId, "test/data/holesky_withdrawal_proof_1972138.json");
             uint64 oracleTimestamp = uint64(block.timestamp);
@@ -94,6 +102,8 @@ contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
             partialRewardsAmount = params.withdrawalFields[0].getWithdrawalAmountGwei() * ONE_GWEI;
         }
 
+        // After the proof is accepted an Eigenlayer Delayed Withdrawal is created.
+        // This is configured to be processed in 4 hours.
         assertEq(
             sumTotalDelayedWithdrawalsForUser(address(state.stakingNodeInstance)),
             state.totalDelayedWitdrawalsBefore + partialRewardsAmount,
@@ -102,10 +112,13 @@ contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
+        // Advance time to be able to claim Delayed Withdrawals.
         vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
 
+        // Claiming delayed Withdrawals is a permisionless function.
         delayedWithdrawalRouter.claimDelayedWithdrawals(address(state.stakingNodeInstance), type(uint256).max);
 
+        // After this step, the ETH is sent to the StakingNode contract that owns said EigenPod.
         assertEq(
             address(state.stakingNodeInstance).balance,
             state.stakingNodeETHBalance + state.totalDelayedWitdrawalsBefore + partialRewardsAmount,
