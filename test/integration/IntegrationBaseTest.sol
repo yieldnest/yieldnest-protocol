@@ -28,6 +28,10 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 
 contract IntegrationBaseTest is Test, Utils {
 
@@ -57,6 +61,10 @@ contract IntegrationBaseTest is Test, Utils {
     // Assets
     ynETH public yneth;
     ynLSD public ynlsd;
+
+    // Withdrawals
+    WithdrawalQueueManager public ynETHWithdrawalQueueManager;
+    ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
 
     // Oracles
     YieldNestOracle public yieldNestOracle;
@@ -89,6 +97,7 @@ contract IntegrationBaseTest is Test, Utils {
         setupStakingNodesManager();
         setupYnETH();
         setupYieldNestOracleAndYnLSD();
+        setupWithdrawalQueueManager();
     }
 
     function setupYnETHPoxies() public {
@@ -290,5 +299,45 @@ contract IntegrationBaseTest is Test, Utils {
         vm.prank(actors.admin.STAKING_ADMIN);
         ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
-}
 
+    function setupWithdrawalQueueManager() public {
+
+        TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+            address(new ynETHRedemptionAssetsVault()),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
+
+        _proxy = new TransparentUpgradeableProxy(
+            address(new WithdrawalQueueManager()),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
+
+        ynETHRedemptionAssetsVault.Init memory _vaultInit = ynETHRedemptionAssetsVault.Init({
+            admin: actors.admin.PROXY_ADMIN_OWNER,
+            redeemer: address(ynETHWithdrawalQueueManager),
+            ynETH: IynETH(address(yneth))
+        });
+        ynETHRedemptionAssetsVaultInstance.initialize(_vaultInit);
+
+        WithdrawalQueueManager.Init memory _managerInit = WithdrawalQueueManager.Init({
+            name: "ynETH Withdrawal Manager",
+            symbol: "ynETHWM",
+            redeemableAsset: IRedeemableAsset(address(yneth)),
+            redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
+            admin: actors.admin.PROXY_ADMIN_OWNER,
+            withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+            redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+            withdrawalFee: 500, // 0.05%
+            feeReceiver: actors.admin.FEE_RECEIVER
+        });
+        ynETHWithdrawalQueueManager.initialize(_managerInit);
+
+        vm.startPrank(actors.admin.ADMIN);
+        yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
+        vm.stopPrank();
+    }
+}
