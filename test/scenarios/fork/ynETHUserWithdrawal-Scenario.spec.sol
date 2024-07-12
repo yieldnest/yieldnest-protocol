@@ -77,6 +77,19 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             previousYnETHBalance: address(yneth).balance
         });
 
+
+
+       // This test handles the following Validator:
+        // 1692468
+        // 0xa5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+        // https://holesky.beaconcha.in/validator/a5d87f6440fbac9a0f40f192f618e24512572c5b54dbdb51960772ea9b3e9dc985a5703f2e837da9bc08c28e4f633984
+
+        // The principal of this validator (32 ETH) is now stored in the eigenPod of the StakingNode with `nodeId`.
+        // This means that the effectiveBalanceGwei in the proof submitted to eigenlayer of this validator is 0.
+
+        // Verifies the withdrawal credentials for the validator.
+        // This proves the validator's withdrawal address is set to be the eigenPod of the StakingNode with `nodeId`.
+
         {
             // verifyWithdrawalCredentials
             setupForVerifyWithdrawalCredentials(state.nodeId, "test/data/holesky_wc_proof_1916455.json");
@@ -91,18 +104,30 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             );
         }
 
+        // After proving the validator, Eigenlayer acnkowledges its existence and credits shares to the Owner
+        // of the eigenPod (which is the StakingNode) based the effectiveBalanceGwei of the validator.
+
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
         
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+
+        // To kickstart the withdrawal of the principal of the validator which now resides in the eigenPod,
+        // queueWithdrawals is executed for a desired withdrawalAmount. 
         state.stakingNodeInstance.queueWithdrawals(state.withdrawalAmount);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
+        // After delegationManager.minWithdrawalDelayBlocks(), withdrawals can now be completed.
         completeQueuedWithdrawals(state.stakingNodeInstance, state.withdrawalAmount);
+
+        // After Withdrawals are completed, the ETH principal now resides in the StakingNode contract
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         uint256 ethEquivalent = yneth.previewRedeem(userRequestedAmountYnETH);
+
+        // This next step involves withdrawing the prinicipal from the StakingNode instance and distributing that
+        // for reinvesmtent or to the withdrawal assets vault to fulfil the users' withdrawal requests.
 
         uint256 tokenId;
         {
