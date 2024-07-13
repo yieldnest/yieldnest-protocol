@@ -10,26 +10,123 @@ import {ynETH} from "../../src/ynETH.sol";
 import {ynBase} from "../../src/ynBase.sol";
 import {WithdrawalQueueManager} from "../../src/WithdrawalQueueManager.sol";
 
-import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+import {IntegrationBaseTest, IStakingNodesManager, IRewardsDistributor} from "./IntegrationBaseTest.sol";
 
 import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
     error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
+    error InvalidInitialization();
 
     address public user = address(420);
     address public receiver = address(69);
 
-    // ============================================================================================
-    // ynETH.initialize
-    // ============================================================================================
+    function testInitializeSetup() public {
+        assertEq(yneth.name(), "ynETH", "testInitialize: E0");
+        assertEq(yneth.symbol(), "ynETH", "testInitialize: E1");
+        assertEq(yneth.hasRole(yneth.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN), true, "testInitialize: E2");
+        assertEq(yneth.hasRole(yneth.PAUSER_ROLE(), actors.ops.PAUSE_ADMIN), true, "testInitialize: E3");
+        assertEq(yneth.hasRole(yneth.UNPAUSER_ROLE(), actors.admin.UNPAUSE_ADMIN), true, "testInitialize: E4");
+        assertEq(address(yneth.stakingNodesManager()), address(stakingNodesManager), "testInitialize: E5");
+        assertEq(address(yneth.rewardsDistributor()), address(rewardsDistributor), "testInitialize: E6");
+    }
 
-    // @todo
+    function testInitializeInvalidInitialization() public {
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+        ynETH.Init memory _init = ynETH.Init({
+            admin: actors.admin.ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            pauseWhitelist: pauseWhitelist
+        });
 
-    // ============================================================================================
-    // ynETH.depositETH
-    // ============================================================================================
+        vm.expectRevert(InvalidInitialization.selector);
+        yneth.initialize(_init);
+    }
+
+    function testInitializeAdminZeroAddress() public {
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+        ynETH.Init memory _init = ynETH.Init({
+            admin: address(0),
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            pauseWhitelist: pauseWhitelist
+        });
+
+        vm.expectRevert(ynETH.ZeroAddress.selector);
+        yneth.initialize(_init);
+    }
+
+    function testInitializePauserZeroAddress() public {
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+        ynETH.Init memory _init = ynETH.Init({
+            admin: actors.admin.ADMIN,
+            pauser: address(0),
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            pauseWhitelist: pauseWhitelist
+        });
+
+        vm.expectRevert(ynETH.ZeroAddress.selector);
+        yneth.initialize(_init);
+    }
+
+    function testInitializeUnpauserZeroAddress() public {
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+        ynETH.Init memory _init = ynETH.Init({
+            admin: actors.admin.ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: address(0),
+            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            pauseWhitelist: pauseWhitelist
+        });
+
+        vm.expectRevert(ynETH.ZeroAddress.selector);
+        yneth.initialize(_init);
+    }
+
+    function testInitializeStakingNodesManagerZeroAddress() public {
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+        ynETH.Init memory _init = ynETH.Init({
+            admin: actors.admin.ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            stakingNodesManager: IStakingNodesManager(address(0)),
+            rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
+            pauseWhitelist: pauseWhitelist
+        });
+
+        vm.expectRevert(ynETH.ZeroAddress.selector);
+        yneth.initialize(_init);
+    }
+
+    function testInitializeRewardsDistributorZeroAddress() public {
+        address[] memory pauseWhitelist = new address[](1);
+        pauseWhitelist[0] = actors.eoa.DEFAULT_SIGNER;
+        ynETH.Init memory _init = ynETH.Init({
+            admin: actors.admin.ADMIN,
+            pauser: actors.ops.PAUSE_ADMIN,
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            stakingNodesManager: IStakingNodesManager(address(stakingNodesManager)),
+            rewardsDistributor: IRewardsDistributor(address(0)),
+            pauseWhitelist: pauseWhitelist
+        });
+
+        vm.expectRevert(ynETH.ZeroAddress.selector);
+        yneth.initialize(_init);
+    }
 
     function testDepositETH(uint256 _amount) public {
         vm.assume(_amount > 0 && _amount <= 10_000 ether);
@@ -73,10 +170,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.depositETH{value: 0}(user);
     }
 
-    // ============================================================================================
-    // ynETH.burn
-    // ============================================================================================
-
     function testBurn(uint256 _amount) public {
         vm.assume(_amount > 0 && _amount <= 10_000 ether);
 
@@ -103,78 +196,143 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         yneth.burn(1 ether);
     }
 
-    // ============================================================================================
-    // ynETH.receiveRewards
-    // ============================================================================================
+    function testReceiveRewards(uint256 _depositAmount, uint256 _rewardAmount) public {
+        vm.assume(_depositAmount > 0 ether && _depositAmount <= 10_000 ether);
+        vm.assume(_rewardAmount > 0 ether && _rewardAmount <= 10_000 ether);
 
-    // @todo
+        uint256 _totalAssetsBefore = yneth.totalAssets();
+        uint256 _totalSupplyBefore = yneth.totalSupply();
+        uint256 _totalDepositedInPool = yneth.totalDepositedInPool();
 
-    // ============================================================================================
-    // ynETH.withdrawETH
-    // ============================================================================================
+        vm.deal(user, _depositAmount);
+        vm.prank(user);
+        yneth.depositETH{value: _depositAmount}(user);
+        
+        assertEq(yneth.totalAssets(), _totalAssetsBefore + _depositAmount, "testReceiveRewards: E0");
+        assertEq(yneth.totalSupply(), _totalSupplyBefore + _depositAmount, "testReceiveRewards: E1");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPool + _depositAmount, "testReceiveRewards: E2");
 
-    // @todo
+        _totalAssetsBefore = yneth.totalAssets();
+        _totalSupplyBefore = yneth.totalSupply();
+        _totalDepositedInPool = yneth.totalDepositedInPool();
 
-    // ============================================================================================
-    // ynETH.processWithdrawnETH
-    // ============================================================================================
+        vm.deal(address(rewardsDistributor), _rewardAmount);
+        vm.prank(address(rewardsDistributor));
+        yneth.receiveRewards{value: _rewardAmount}();
 
-    // @todo
-
-    // ============================================================================================
-    // ynETH.pauseDeposits
-    // ============================================================================================
-
-    // @todo
-
-    // ============================================================================================
-    // ynETH.unpauseDeposits
-    // ============================================================================================
-
-    // @todo
-
-    // ============================================================================================
-    // ynETH.addToPauseWhitelist
-    // ============================================================================================
-
-    // @todo
-
-    // ============================================================================================
-    // ynETH.removeFromPauseWhitelist
-    // ============================================================================================
-
-    // @todo
-
-    // ============================================================================================
-    // ynETH.pauseWhiteList
-    // ============================================================================================
-
-    // @todo
-
-    // ============================================================================================
-    // random
-    // ============================================================================================
-
-    function testPauseDepositETH() public {
-        // Arrange
-        vm.prank(actors.ops.PAUSE_ADMIN);
-        yneth.pauseDeposits();
-
-        // Act & Assert
-        bool pauseState = yneth.depositsPaused();
-        assertTrue(pauseState, "Deposit ETH should be paused");
+        assertEq(yneth.totalAssets(), _totalAssetsBefore + _rewardAmount, "testReceiveRewards: E3");
+        assertEq(yneth.totalSupply(), _totalSupplyBefore, "testReceiveRewards: E4");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPool + _rewardAmount, "testReceiveRewards: E5");
     }
 
-    function testUnpauseDepositETH() public {
-        // Arrange
+    function testReceiveRewardsNotRewardsDistributor() public {
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector, address(this));
+        vm.expectRevert(encodedError);
+        yneth.receiveRewards();
+    }
+
+    function testWithdrawETH(uint256 _amount) public {
+        vm.assume(_amount > 0 ether && _amount <= 10_000 ether);
+
+        uint256 _totalAssetsBefore = yneth.totalAssets();
+        uint256 _totalDepositedInPoolBefore = yneth.totalDepositedInPool();
+
+        vm.deal(user, _amount);
+        vm.prank(user);
+        yneth.depositETH{value: _amount}(user);
+
+        assertEq(yneth.totalAssets(), _totalAssetsBefore + _amount, "testWithdrawETH: E0");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPoolBefore + _amount, "testWithdrawETH: E1");
+
+        _totalAssetsBefore = yneth.totalAssets();
+        _totalDepositedInPoolBefore = yneth.totalDepositedInPool();
+
+        vm.prank(address(stakingNodesManager));
+        yneth.withdrawETH(_amount);
+
+        assertEq(yneth.totalAssets(), _totalAssetsBefore - _amount, "testWithdrawETH: E2");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPoolBefore - _amount, "testWithdrawETH: E3");
+    }
+
+    function testWithdrawETHWrongCaller() public {
+        address arbitraryCaller = address(0x456);
+        vm.deal(arbitraryCaller, 100 ether);
+        vm.prank(arbitraryCaller);
+        vm.expectRevert(abi.encodeWithSelector(ynETH.CallerNotStakingNodeManager.selector, address(stakingNodesManager), arbitraryCaller));
+        yneth.withdrawETH(1 ether);
+    }
+
+    function testWithdrawETHInsufficientBalance() public {
+        vm.expectRevert(abi.encodeWithSelector(ynETH.InsufficientBalance.selector));
+        vm.prank(address(stakingNodesManager));
+        yneth.withdrawETH(1);
+    }
+
+    function testProcessWithdrawnETH(uint256 _amount) public {
+        uint256 _totalAssetsBefore = yneth.totalAssets();
+        uint256 _totalDepositedInPoolBefore = yneth.totalDepositedInPool();
+
+        vm.deal(address(stakingNodesManager), _amount);
+        vm.prank(address(stakingNodesManager));
+        yneth.processWithdrawnETH{value: _amount}();
+
+        assertEq(yneth.totalAssets(), _totalAssetsBefore + _amount, "testProcessWithdrawnETH: E0");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPoolBefore + _amount, "testProcessWithdrawnETH: E1");
+    }
+
+    function testProcessWithdrawnETHVault(uint256 _amount) public {
+        uint256 _totalAssetsBefore = yneth.totalAssets();
+        uint256 _totalDepositedInPoolBefore = yneth.totalDepositedInPool();
+
+        vm.deal(address(stakingNodesManager.redemptionAssetsVault()), _amount);
+        vm.prank(address(stakingNodesManager.redemptionAssetsVault()));
+        yneth.processWithdrawnETH{value: _amount}();
+
+        assertEq(yneth.totalAssets(), _totalAssetsBefore + _amount, "testProcessWithdrawnETH: E0");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPoolBefore + _amount, "testProcessWithdrawnETH: E1");
+    }
+
+    function testProcessWithdrawnETHWrongCaller() public {
+        address arbitraryCaller = address(0x456);
+        vm.deal(arbitraryCaller, 100 ether);
+        vm.prank(arbitraryCaller);
+        vm.expectRevert(abi.encodeWithSelector(ynETH.CallerNotAuthorized.selector, arbitraryCaller));
+        yneth.processWithdrawnETH{value: 1 ether}();
+    }
+
+    function testPauseDeposits() public {
         vm.prank(actors.ops.PAUSE_ADMIN);
         yneth.pauseDeposits();
+        assertTrue(yneth.depositsPaused(), "testPauseDepositETH: E0");
+
+        vm.deal(user, 1 ether);
+        vm.expectRevert(ynETH.Paused.selector);
+        vm.prank(user);
+        yneth.depositETH{value: 1 ether}(user);
+    }
+
+    function testPauseDepositsWrongCaller() public {
+        address arbitraryCaller = address(0x456);
+        vm.prank(arbitraryCaller);
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), yneth.PAUSER_ROLE()));
+        yneth.pauseDeposits();
+    }
+
+    function testUnpauseDeposits() public {
+
+        testPauseDeposits();
+
         vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.unpauseDeposits();
 
-        // Act & Assert
-        bool pauseState = yneth.depositsPaused();
-        assertFalse(pauseState, "Deposit ETH should be unpaused");
+        assertFalse(yneth.depositsPaused(), "testUnpauseDeposits: E0");
+    }
+
+    function testUnpauseDepositsWrongCaller() public {
+        address arbitraryCaller = address(0x456);
+        vm.prank(arbitraryCaller);
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), yneth.UNPAUSER_ROLE()));
+        yneth.unpauseDeposits();
     }
 
     function testPreviewDeposit() public {
@@ -324,33 +482,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         assertEq(finalFeeReceiverBalance, initialFeeReceiverBalance + expectedFees, "Incorrect feeReceiver balance after rewards distribution");
     }
 
-    function testPauseDepositETHFunctionality() public {
-        // Arrange
-        vm.prank(actors.ops.PAUSE_ADMIN);
-        yneth.pauseDeposits();
-
-        // Act & Assert
-        bool pauseState = yneth.depositsPaused();
-        assertTrue(pauseState, "Deposit ETH should be paused after setting pause state to true");
-
-        // Trying to deposit ETH while paused
-        uint256 depositAmount = 1 ether;
-        vm.expectRevert(ynETH.Paused.selector);
-        yneth.depositETH{value: depositAmount}(address(this));
-
-        // Unpause and try depositing again
-        vm.prank(actors.admin.UNPAUSE_ADMIN);
-        yneth.unpauseDeposits();
-        pauseState = yneth.depositsPaused();
-
-        assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
-
-        // Deposit should succeed now
-        yneth.depositETH{value: depositAmount}(address(this));
-        uint256 ynETHBalance = yneth.balanceOf(address(this));
-        assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
-    }
-
     function testTransferFailsForNonWhitelistedAddresses() public {
         // Arrange
         uint256 transferAmount = 1 ether;
@@ -456,20 +587,6 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         bytes memory encodedError = abi.encodeWithSelector(ynETH.ZeroETH.selector);
         vm.expectRevert(encodedError);
         yneth.depositETH{value: 0}(address(this));
-    }
-
-    function testReceiveRewardsWithBadRewardsDistributor() public {
-        bytes memory encodedError = abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector, address(this));
-        vm.expectRevert(encodedError);
-        yneth.receiveRewards();
-    }
-
-    function testWithdrawETHWithZeroBalance() public {
-        bytes memory encodedError = abi.encodeWithSelector(ynETH.InsufficientBalance.selector);
-        vm.startPrank(address(stakingNodesManager));
-        vm.expectRevert(encodedError);
-        yneth.withdrawETH(1);
-        vm.stopPrank();
     } 
 }
 
@@ -490,23 +607,6 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         // Assert
         assertEq(totalAssetsAfterFirstDeposit, initialTotalAssets + depositAmount1, "Total assets should increase by the first deposit amount");
         assertEq(totalAssetsAfterSecondDeposit, initialTotalAssets + depositAmount1 + depositAmount2, "Total assets should increase by the sum of both deposit amounts");
-    }
-
-    function testFuzzTotalAssetsWithRewards(uint256 depositAmount, uint256 rewardAmount) public {
-        // Arrange
-        vm.assume(depositAmount > 0 ether && depositAmount <= 10000 ether);
-        vm.assume(rewardAmount > 0 ether && rewardAmount <= 10000 ether);
-        yneth.depositETH{value: depositAmount}(address(this));
-        uint256 totalAssetsAfterDeposit = yneth.totalAssets();
-
-        // Act
-        vm.deal(address(rewardsDistributor), rewardAmount);
-        vm.startPrank(address(rewardsDistributor));
-        yneth.receiveRewards{value: rewardAmount}();
-        uint256 totalAssetsAfterRewards = yneth.totalAssets();
-
-        // Assert
-        assertEq(totalAssetsAfterRewards, totalAssetsAfterDeposit + rewardAmount, "Total assets should increase by the reward amount");
     }
 
     function skiptestFuzzTotalAssetsWithRewardsInEigenPods(uint256 depositAmount, uint256 rewardAmount, uint256 stakingNodeCount) public {
@@ -537,98 +637,3 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         assertEq(totalAssetsAfterRewards, depositAmount, "Total assets should increase by the reward amount in eigenPods");
     }
 }
-
-contract ETHOperations is IntegrationBaseTest {
-    function testProcessWithdrawnETH() public {
-        uint256 initialPoolBalance = yneth.totalDepositedInPool();
-        uint256 withdrawnAmount = 10 ether;
-
-        // Simulate the Staking Nodes Manager sending ETH back
-        vm.deal(address(stakingNodesManager), withdrawnAmount);
-        vm.prank(address(stakingNodesManager));
-        yneth.processWithdrawnETH{value: withdrawnAmount}();
-
-        uint256 newPoolBalance = yneth.totalDepositedInPool();
-        assertEq(newPoolBalance, initialPoolBalance + withdrawnAmount, "Pool balance should increase by the withdrawn amount");
-    }
-
-    function testProcessWithdrawnETHWithVault() public {
-        uint256 initialPoolBalance = yneth.totalDepositedInPool();
-        uint256 withdrawnAmount = 10 ether;
-
-        // Simulate the Withdrawal Assets Vault sending ETH back
-        vm.deal(address(stakingNodesManager.redemptionAssetsVault()), withdrawnAmount);
-        vm.prank(address(stakingNodesManager.redemptionAssetsVault()));
-        yneth.processWithdrawnETH{value: withdrawnAmount}();
-
-        uint256 newPoolBalance = yneth.totalDepositedInPool();
-        assertEq(newPoolBalance, initialPoolBalance + withdrawnAmount, "Pool balance should increase by the withdrawn amount from the vault");
-    }
-
-    function testProcessRewards() public {
-        uint256 initialPoolBalance = yneth.totalDepositedInPool();
-        uint256 rewardAmount = 5 ether;
-
-        // Simulate the Rewards Distributor sending ETH as rewards
-        vm.deal(address(rewardsDistributor), rewardAmount);
-        vm.startPrank(address(rewardsDistributor));
-        yneth.receiveRewards{value: rewardAmount}();
-        vm.stopPrank();
-
-        uint256 newPoolBalance = yneth.totalDepositedInPool();
-        assertEq(newPoolBalance, initialPoolBalance + rewardAmount, "Pool balance should increase by the reward amount");
-    }
-
-    function testWithdrawETH() public {
-        uint256 initialPoolBalance = yneth.totalDepositedInPool();
-        uint256 withdrawalAmount = 2 ether;
-
-        vm.deal(address(this), withdrawalAmount * 10);
-
-        uint256 depositAmount = withdrawalAmount * 10;
-        yneth.depositETH{value: depositAmount}(address(this));
-
-        // Perform the withdrawal
-        vm.prank(address(stakingNodesManager));
-        yneth.withdrawETH(withdrawalAmount);
-
-        uint256 newPoolBalance = yneth.totalDepositedInPool();
-        assertEq(newPoolBalance, initialPoolBalance + depositAmount - withdrawalAmount, "Pool balance should decrease by the withdrawal amount");
-    }
-
-    function testUnauthorizedWithdrawETH() public {
-        uint256 withdrawalAmount = 2 ether;
-
-        // Attempt to perform the withdrawal by an unauthorized address
-        address arbitraryCaller = address(0x456);
-        vm.deal(arbitraryCaller, 100 ether);
-        vm.prank(arbitraryCaller); // An arbitrary unauthorized address
-        vm.expectRevert(abi.encodeWithSelector(ynETH.CallerNotStakingNodeManager.selector, address(stakingNodesManager), arbitraryCaller));
-        yneth.withdrawETH(withdrawalAmount);
-    }
-
-    function testUnauthorizedProcessWithdrawnETH() public {
-        uint256 withdrawnAmount = 10 ether;
-
-        // Attempt to simulate the Staking Nodes Manager sending ETH back by an unauthorized address
-        address arbitraryCaller = address(0x456);
-        vm.deal(arbitraryCaller, 100 ether);
-        vm.prank(arbitraryCaller); // An arbitrary unauthorized address
-        vm.expectRevert( abi.encodeWithSelector(ynETH.CallerNotAuthorized.selector, arbitraryCaller));
-        yneth.processWithdrawnETH{value: withdrawnAmount}();
-    }
-
-    function testUnauthorizedReceiveRewards() public {
-        uint256 rewardAmount = 5 ether;
-
-        address arbitraryCaller = address(0x456);
-        vm.deal(arbitraryCaller, 100 ether);
-        vm.prank(arbitraryCaller); // An arbitrary unauthorized address
-        vm.expectRevert( abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector, arbitraryCaller));
-        yneth.receiveRewards{value: rewardAmount}();
-    }
-}
-
-// BEFORE
-// | File                                           | % Lines           | % Statements       | % Branches       | % Funcs          |
-// | src/ynETH.sol                                  | 83.61% (51/61)    | 79.73% (59/74)     | 80.00% (16/20)   | 73.68% (14/19)   |
