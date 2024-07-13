@@ -224,11 +224,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         for (uint256 i = 0; i < validatorIndices.length; i++) {
             // If the validator is already exited, the effectiveBalanceGwei is 0.
             // if the validator has not been exited, the effectiveBalanceGwei is whatever is staked
-            // (usually 32ETH in the absence of slasing)
+            // (32ETH in the absence of slasing, and less than that if slashed)
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
             emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
-            unverifiedStakedETH -= effectiveBalanceGwei * ONE_GWEI;
+
+            if (effectiveBalanceGwei > 0) {
+                // If the effectiveBalanceGwei is not 0, then the full stake of the validator
+                // is verified as part of this process and shares are credited to this StakingNode instance.
+                // effectiveBalanceGwei *may* be less than DEFAULT_VALIDATOR_STAKE if the validator was slashed.
+                unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
+            }
         }
     }
 
@@ -305,20 +311,20 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 oracleTimestamp
             );
 
-            // Check if the withdrawal is a full withdrawal
+            // Check if the withdrawal is a full withdrawal, to decide if to update unverifiedStakedETH
             if (withdrawalProofs[i].getWithdrawalEpoch() >= validatorFields[i].getWithdrawableEpoch()) {
                 // Retrieve validator info using the pubkey hash
                 IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyHashToInfo(validatorFields[i].getPubkeyHash());
                 
-                // Calculate the change in shares due to the full withdrawal
-                int256 deltaShares = calculateFullWithdrawalDeltaShares(
-                    withdrawalFields[i].getWithdrawalAmountGwei() * ONE_GWEI,
-                    validatorInfo.restakedBalanceGwei * ONE_GWEI
-                );
-                
-                // Update the unverified staked ETH by subtracting the deltaShares
-                unverifiedStakedETH = _int256ToUint256Min0(int256(unverifiedStakedETH) - deltaShares);
+                if (validatorInfo.restakedBalanceGwei == 0) {
+                    // If restakedBalanceGwei is 0, then the validator stake has not been verified before for this validator.
+                    // Update the unverified staked ETH by subtracting the DEFAULT_VALIDATOR_STAKE
+                    // validatorFields[i].getWithdrawalAmountGwei() *may* be less than DEFAULT_VALIDATOR_STAKE
+                    // if the validator was slashed.
+                    unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
+                }
             }
+            // For partial withdrawals, sharesDeltaGwei = 0, no change in shares occurs, and no principal is verified
         }
 
         // Call the EigenPod to verify and process the withdrawals
@@ -331,37 +337,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             withdrawalFields
         );
     }
-
-    /**
-     * @dev Calculates the change in shares due to a full withdrawal.
-     * @param withdrawalAmount The amount of ETH being withdrawn.
-     * @param previouslyRestakedAmount The amount of ETH that was previously restaked.
-     * @return The change in shares as an int256, which could be negative if the withdrawal amount exceeds the previously restaked amount.
-     */
-    function calculateFullWithdrawalDeltaShares(uint256 withdrawalAmount, uint256 previouslyRestakedAmount) internal returns (int256) {
-        uint256 amountToQueue;
-        if (withdrawalAmount > DEFAULT_VALIDATOR_STAKE) {
-            amountToQueue = DEFAULT_VALIDATOR_STAKE;
-        } else {
-            amountToQueue = withdrawalAmount;
-        }
-
-        return _calculateSharesDelta(amountToQueue, previouslyRestakedAmount);
-    }
-    /**
-     * @dev Converts an int256 to uint256. Returns 0 if the input is negative.
-     * @param x The int256 value to convert.
-     * @return uint256 The converted value, or 0 if the input is negative.
-     */
-    function _int256ToUint256Min0(int256 x) internal view returns (uint256) {
-        if (x < 0) return 0;
-        return uint256(x);
-    }
-
-    function _calculateSharesDelta(uint256 newAmount, uint256 previousAmount) internal pure returns (int256) {
-        return int256(newAmount) - int256(previousAmount);
-    }
-
 
     /// @dev Queues a validator Principal withdrawal for processing.
     ///      DelegationManager calls EigenPodManager.decreasesShares which
