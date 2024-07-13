@@ -125,6 +125,8 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
 
         uint256 netRewards = totalRewards - fees;
         if (netRewards > 0) {
+            // NOTE: Having the permisionless processRewards able to send rewards to ynETH
+            // opens up ynETH to donation attack for a non boostrapped system.
             ynETH.receiveRewards{value: netRewards}();
         }
 
