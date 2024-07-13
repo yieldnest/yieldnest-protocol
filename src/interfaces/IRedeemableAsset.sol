@@ -5,4 +5,5 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 interface IRedeemableAsset is IERC20Metadata {
     function burn(uint256 amount) external;
+    function processWithdrawnETH() external payable;
 }
