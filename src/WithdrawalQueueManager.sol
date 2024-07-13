@@ -10,6 +10,8 @@ import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/c
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 
 import "forge-std/console.sol";
 
@@ -30,6 +32,7 @@ interface IWithdrawalQueueManagerEvents {
  */
 
 contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+    using SafeERC20 for IRedeemableAsset;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -129,11 +132,11 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //--------------------------------------------------------------------------------------
 
     function requestWithdrawal(uint256 amount) external nonReentrant returns (uint256 tokenId) {
-        if (amount <= 0) {
+        if (amount == 0) {
             revert AmountMustBeGreaterThanZero();
         }
         
-        redeemableAsset.transferFrom(msg.sender, address(this), amount);
+        redeemableAsset.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 currentRate = redemptionAssetsVault.redemptionRate();
         tokenId = _tokenIdCounter++;
@@ -181,16 +184,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
 
-
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
-        uint256 netUnitOfAccountAmount = unitOfAccountAmount - feeAmount;
 
         uint256 currentBalance = redemptionAssetsVault.availableRedemptionAssets();
         if (currentBalance < unitOfAccountAmount) {
             revert InsufficientBalance(currentBalance, unitOfAccountAmount);
         }
 
-        redemptionAssetsVault.transferRedemptionAssets(receiver, netUnitOfAccountAmount);
+        // transfer Net Amount =  unitOfAccountAmount - feeAmount to the receiver
+        redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount);
         
         if (feeAmount > 0) {
             redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount);
@@ -260,7 +262,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
     /// @param amount The amount from which the fee should be calculated.
     /// @return fee The calculated fee.
-    function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public view returns (uint256) {
+    function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public pure returns (uint256) {
         return (amount * requestWithdrawalFee) / FEE_PRECISION;
     }
 
