@@ -460,9 +460,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         uint256 unverifiedStakedETHAfter = stakingNodeInstance.getUnverifiedStakedETH();
 
-        console.log("Unverified Staked ETH Before", unverifiedStakedETHBefore);
-        console.log("Unverified Staked ETH After", unverifiedStakedETHAfter);
-
         uint256 expectedUnverifiedStakedETHDelta = uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9;
         assertEq(
             unverifiedStakedETHBefore - unverifiedStakedETHAfter,
@@ -508,8 +505,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         uint256 totalSupplyBefore = yneth.totalSupply();
         uint256[] memory stakingNodeBalancesBefore = getAllStakingNodeBalances();
 
-        console.log("getWithdrawalAmountGwei", params.withdrawalFields[0].getWithdrawalAmountGwei());
-
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         stakingNodeInstance.verifyAndProcessWithdrawals(
             oracleTimestamp,
@@ -522,14 +517,9 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
         uint256 stakingNodeBalanceBefore = stakingNodeBalancesBefore[nodeId];
         uint256 stakingNodeBalanceAfter = stakingNodeInstance.getETHBalance();
-        console.log("Staking node balance before verification for node ID", nodeId, ":", stakingNodeBalanceBefore);
-        console.log("Staking node balance after verification for node ID", nodeId, ":", stakingNodeBalanceAfter);
 
         runSystemStateInvariants(totalAssetsBefore, totalSupplyBefore, stakingNodeBalancesBefore);
 
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-
-        console.log("Shares before verification:", uint256(sharesBefore));
-        console.log("Shares after verification:", uint256(sharesAfter));
     }
 }
