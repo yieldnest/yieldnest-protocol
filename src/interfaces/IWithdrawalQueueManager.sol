@@ -14,5 +14,5 @@ interface IWithdrawalQueueManager {
 
     function requestWithdrawal(uint256 amount) external returns (uint256);
     function claimWithdrawal(uint256 tokenId, address receiver) external;
-    function setSecondsToFinalization(uint256 _secondsToFinalization) external;
+    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external;
 }

@@ -150,6 +150,7 @@ contract ScenarioBaseTest is Test, Utils {
             admin: actors.admin.PROXY_ADMIN_OWNER,
             withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
             redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+            requestFinalizer:  actors.ops.REQUEST_FINALIZER,
             withdrawalFee: 500, // 0.05%
             feeReceiver: actors.admin.FEE_RECEIVER
         });
