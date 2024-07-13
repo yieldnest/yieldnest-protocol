@@ -324,7 +324,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                     unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
                 }
             }
-            // For partial withdrawals, sharesDeltaGwei = 0, no change in shares occurs, and no principal is verified
+            // For partial withdrawals, sharesDeltaGwei = 0, no change in shares occurs, and no principal is verified.
         }
 
         // Call the EigenPod to verify and process the withdrawals

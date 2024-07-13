@@ -56,10 +56,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
             vm.deal(user, 10_000 ether);
 
             setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
-
-            secondsToFinalization = 1 days;
-            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-            ynETHWithdrawalQueueManager.setSecondsToFinalization(secondsToFinalization);
         }
     }
 
@@ -232,7 +228,7 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         }
     }
 
-    function testClaimWithdrawal() public {
+    function testClaimWithdrawalOnHolesky() public {
         if (!isHolesky) return;
 
         testProcessPrincipalWithdrawalsForNode();
@@ -353,33 +349,6 @@ contract ynETHWithdrawals is StakingNodeTestBase {
 
         vm.expectRevert(bytes4(keccak256("InvalidInitialization()")));
         ynETHWithdrawalQueueManager.initialize(_init);
-    }
-
-    function testSetSecondsToFinalization(uint256 _secondsToFinalization) public {
-        if (!isHolesky) return;
-
-        vm.assume(_secondsToFinalization < ynETHWithdrawalQueueManager.MAX_SECONDS_TO_FINALIZATION());
-
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
-        assertEq(ynETHWithdrawalQueueManager.secondsToFinalization(), _secondsToFinalization, "testSetSecondsToFinalization: E0");
-    }
-
-    function testSetSecondsToFinalizationWrongCaller(uint256 _secondsToFinalization) public {
-        if (!isHolesky) return;
-
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
-        ynETHWithdrawalQueueManager.setSecondsToFinalization(_secondsToFinalization);
-    }
-
-    function testSetSecondsToFinalizationSecondsToFinalizationExceedsLimit() public {
-        if (!isHolesky) return;
-
-        uint256 tooManySecondsToFinalization = ynETHWithdrawalQueueManager.MAX_SECONDS_TO_FINALIZATION() + 1;
-
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        vm.expectRevert(abi.encodeWithSelector(SecondsToFinalizationExceedsLimit.selector, tooManySecondsToFinalization));
-        ynETHWithdrawalQueueManager.setSecondsToFinalization(tooManySecondsToFinalization);
     }
 
     function testSetWithdrawalFee(uint256 _feePercentage) public {

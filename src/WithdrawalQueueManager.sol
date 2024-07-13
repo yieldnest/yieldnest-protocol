@@ -60,6 +60,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     /// @dev Role identifier for accounts authorized to withdraw surplus redemption assets.
     bytes32 public constant REDEMPTION_ASSET_WITHDRAWER_ROLE = keccak256("REDEMPTION_ASSET_WITHDRAWER_ROLE");
 
+    /// @dev Role identifier for accounts authorized to finalize withdrawal requests.
+    bytes32 public constant REQUEST_FINALIZER_ROLE = keccak256("REQUEST_FINALIZER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -81,9 +84,12 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     uint256 public secondsToFinalization;
     uint256 public withdrawalFee;
     address public feeReceiver;
+    address public requestFinalizer;
 
     /// pending requested redemption amount in redemption unit of account
     uint256 public pendingRequestedRedemptionAmount;
+
+    uint256 public lastFinalizedIndex;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -103,6 +109,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         address redemptionAssetWithdrawer;
         uint256 withdrawalFee;
         address feeReceiver;
+        address requestFinalizer;
 
     }
 
@@ -113,6 +120,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         notZeroAddress(address(init.redemptionAssetsVault))
         notZeroAddress(address(init.withdrawalQueueAdmin))
         notZeroAddress(address(init.feeReceiver))
+        notZeroAddress(address(init.requestFinalizer))
     
         initializer {
         __ERC721_init(init.name, init.symbol);
@@ -122,6 +130,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
         _grantRole(REDEMPTION_ASSET_WITHDRAWER_ROLE, init.redemptionAssetWithdrawer);
+        _grantRole(REQUEST_FINALIZER_ROLE, init.requestFinalizer);
 
         withdrawalFee = init.withdrawalFee;
         feeReceiver = init.feeReceiver;
@@ -173,7 +182,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             revert WithdrawalAlreadyProcessed(tokenId);
         }
 
-        if (!isFinalized(request)) {
+        if (!withdrawalRequestIsFinalized(tokenId)) {
             revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
         }
 
@@ -183,6 +192,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
 
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
+
 
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
 
@@ -218,14 +228,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //--------------------------------------------------------------------------------------
     //----------------------------------  ADMIN  -------------------------------------------
     //--------------------------------------------------------------------------------------
-
-    function setSecondsToFinalization(uint256 _secondsToFinalization) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
-        if (_secondsToFinalization > MAX_SECONDS_TO_FINALIZATION) {
-            revert SecondsToFinalizationExceedsLimit(_secondsToFinalization);
-        }
-        emit SecondsToFinalizationUpdated(secondsToFinalization, _secondsToFinalization);
-        secondsToFinalization = _secondsToFinalization;
-    }
 
     /// @notice Sets the withdrawal fee percentage.
     /// @param feePercentage The fee percentage in basis points.
@@ -311,27 +313,17 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
      * @return True if the request is finalized, false otherwise.
      */
     function withdrawalRequestIsFinalized(uint256 index) public view returns (bool) {
-        WithdrawalRequest memory request = withdrawalRequests[index];
-        if (!withdrawalRequestExists(request)) {
-            revert WithdrawalRequestDoesNotExist(index);
-        }
-        return isFinalized(request);
+        return index < lastFinalizedIndex;
     }
 
-
     /**
-     * @notice Checks if a withdrawal request is finalized.
-     *  A request is finalized if secondsToFinalization time has passed since 
-     *  the withdrawal request was created.        
-     * @param request The withdrawal request to check.
-     * @return True if the request is finalized, false otherwise.
+     * @notice Marks all requests whose index is less than lastFinalizedIndex as finalized.
+     * @param _lastFinalizedIndex The index up to which withdrawal requests are considered finalized.
+     * @dev A lastFinalizedIndex = 0 means no requests are processed. lastFinalizedIndex = 2 means
+            requests 0 and 1 are processed.
      */
-    function isFinalized(WithdrawalRequest memory request)
-        public 
-        view
-        returns (bool) {
-
-        return block.timestamp >= request.creationTimestamp + secondsToFinalization;
+    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external onlyRole(REQUEST_FINALIZER_ROLE) {
+        lastFinalizedIndex = _lastFinalizedIndex;
     }
 
     //--------------------------------------------------------------------------------------
