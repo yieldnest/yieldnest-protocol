@@ -550,6 +550,8 @@ contract StakingNodesManager is
             totalETHDeposited += nodes[i].getETHBalance();
         }
 
+        // NOTE: Counting the availableRedemptionAssets towards totalDeposited
+        //  opens up ynETH to donation attack for a non boostrapped system.
         if (address(redemptionAssetsVault) != address(0)) {
             totalETHDeposited += redemptionAssetsVault.availableRedemptionAssets();
         }
