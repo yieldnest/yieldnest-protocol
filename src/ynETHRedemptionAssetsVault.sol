@@ -62,27 +62,35 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     //----------------------------------  REDEMPTION  --------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Accepts incoming ETH deposits.
+    /** 
+     * @notice Accepts incoming ETH deposits.
+     */
     receive() external payable {
         emit AssetsDeposited(msg.sender, ETH_ASSET, msg.value);
     }
 
-    /// @notice Calculates the current redemption rate of ynETH to ETH.
-    /// @return The current redemption rate as a uint256.
+    /** 
+     * @notice Calculates the current redemption rate of ynETH to ETH.
+     * @return The current redemption rate as a uint256.
+     */
     function redemptionRate() public view returns (uint256) {
         return ynETH.previewRedeem(YNETH_UNIT);
     }
 
-    /// @notice Returns the total amount of ETH available for redemption.
-    /// @return The available ETH balance as a uint256.
+    /** 
+     * @notice Returns the total amount of ETH available for redemption.
+     * @return The available ETH balance as a uint256.
+     */
     function availableRedemptionAssets() public view returns (uint256) {
         return address(this).balance;
     }
 
-    /// @notice Transfers a specified amount of redemption assets to a given address.
-    /// @param to The recipient address of the assets.
-    /// @param amount The amount of assets to transfer.
-    /// @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
+    /** 
+     * @notice Transfers a specified amount of redemption assets to a given address.
+     * @param to The recipient address of the assets.
+     * @param amount The amount of assets to transfer.
+     * @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
+     */
     function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused nonReentrant {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) {
@@ -96,9 +104,11 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         emit AssetTransferred(ETH_ASSET, msg.sender, to, amount);
     }
 
-    /// @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
-    /// @param amount The amount of ETH to withdraw and process.
-    /// @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
+    /** 
+     * @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
+     * @param amount The amount of ETH to withdraw and process.
+     * @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
+     */
     function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused nonReentrant {
         ynETH.processWithdrawnETH{ value: amount }();
         emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);
@@ -108,8 +118,10 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /** 
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();
@@ -117,7 +129,9 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         _;
     }
 
-    /// @notice Checks if the contract is not paused.
+    /** 
+     * @notice Checks if the contract is not paused.
+     */
     modifier whenNotPaused() {
         if (paused) {
             revert ContractPaused();
@@ -129,14 +143,17 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     //----------------------------------  PAUSE FUNCTIONS  ---------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Pauses the contract, preventing certain actions.
+    /** 
+     * @notice Pauses the contract, preventing certain actions.
+     */
     function pause() external onlyRole(PAUSER_ROLE) {
         paused = true;
     }
 
-    /// @notice Unpauses the contract, allowing certain actions.
+    /** 
+     * @notice Unpauses the contract, allowing certain actions.
+     */
     function unpause() external onlyRole(UNPAUSER_ROLE) {
         paused = false;
     }
-}
 
