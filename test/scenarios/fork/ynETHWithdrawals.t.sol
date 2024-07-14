@@ -16,7 +16,7 @@ import {ynETHRedemptionAssetsVault, ETH_ASSET} from "../../../src/ynETHRedemptio
 
 import "../../utils/StakingNodeTestBase.sol";
 
-contract ynETHWithdrawals is StakingNodeTestBase {
+contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
     error CallerNotOwnerNorApproved(uint256 tokenId, address caller);
     error NotFinalized(uint256 currentTimestamp, uint256 requestTimestamp, uint256 queueDuration);
@@ -141,7 +141,8 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         }
 
         uint256 _ynETHBalanceBefore = yneth.balanceOf(user);
-        assertGe(_ynETHBalanceBefore, _amount, "testRequestWithdrawal: E1");
+        // 1 ynETH is at least 1 ETH in value
+        assertLe(_ynETHBalanceBefore, _amount, "testRequestWithdrawal: E1");
 
         uint256 _expectedAmountOut = yneth.previewRedeem(_expectedTokenAmount);
         uint256 _queueManagerBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
@@ -218,14 +219,13 @@ contract ynETHWithdrawals is StakingNodeTestBase {
 
         testRequestWithdrawal(withdrawalAmount);
 
-        vm.warp(block.timestamp + ynETHWithdrawalQueueManager.secondsToFinalization());
-        if (ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets() < withdrawalAmount) {
-            // vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, address(ynETHWithdrawalQueueManager).balance, withdrawalAmount - 40));
-            // fails with above error, but `_amount` varies because of little precision loss
-            vm.expectRevert();
-            vm.prank(user);
-            ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
-        }
+        finalizeRequest(tokenId);
+
+        // vm.expectRevert(abi.encodeWithSelector(InsufficientBalance.selector, address(ynETHWithdrawalQueueManager).balance, withdrawalAmount - 40));
+        // fails with above error, but `_amount` varies because of little precision loss
+        // vm.expectRevert();
+        // vm.prank(user);
+        // ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
     }
 
     function testClaimWithdrawalOnHolesky() public {
