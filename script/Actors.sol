@@ -25,6 +25,7 @@ contract ActorAddresses {
         address POOLED_DEPOSITS_OWNER;
         address PAUSE_ADMIN;
         address REFERRAL_PUBLISHER;
+        address WITHDRAWAL_MANAGER_ROLE;
     }
 
     struct Wallets {
@@ -74,7 +75,8 @@ contract ActorAddresses {
                 STAKING_NODE_CREATOR: holeskyWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
                 PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
-                REFERRAL_PUBLISHER: holeskyWallets.YNDev
+                REFERRAL_PUBLISHER: holeskyWallets.YNDev,
+                WITHDRAWAL_MANAGER_ROLE: holeskyWallets.YNDev
             }),
             wallets: holeskyWallets
         });
@@ -108,7 +110,9 @@ contract ActorAddresses {
                 STAKING_NODE_CREATOR: mainnetWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
-                REFERRAL_PUBLISHER: mainnetWallets.YNDev
+                REFERRAL_PUBLISHER: mainnetWallets.YNDev,
+                // TODO: fix for mainnet deployment
+                WITHDRAWAL_MANAGER_ROLE: mainnetWallets.YNDev
             }),
             wallets: mainnetWallets
         });
