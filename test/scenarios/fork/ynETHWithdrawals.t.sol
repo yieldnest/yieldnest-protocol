@@ -299,6 +299,7 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         address _redemptionAssetsVault = address(ynETHRedemptionAssetsVaultInstance);
         address _admin = actors.admin.PROXY_ADMIN_OWNER;
         address _withdrawalQueueAdmin = actors.ops.WITHDRAWAL_MANAGER;
+        address _requestFinalizer = actors.ops.REQUEST_FINALIZER;
         uint256 _withdrawalFee = 500;
         address _feeReceiver = actors.admin.FEE_RECEIVER;
         WithdrawalQueueManager.Init memory _init = WithdrawalQueueManager.Init({
@@ -309,6 +310,7 @@ contract ynETHWithdrawals is StakingNodeTestBase {
             admin: _admin,
             withdrawalQueueAdmin: _withdrawalQueueAdmin,
             redemptionAssetWithdrawer: _withdrawalQueueAdmin,
+            requestFinalizer: _requestFinalizer,
             withdrawalFee: _withdrawalFee,
             feeReceiver: _feeReceiver
         });
@@ -333,6 +335,7 @@ contract ynETHWithdrawals is StakingNodeTestBase {
         address _redemptionAssetsVault = address(ynETHRedemptionAssetsVaultInstance);
         address _admin = actors.admin.PROXY_ADMIN_OWNER;
         address _withdrawalQueueAdmin = actors.ops.WITHDRAWAL_MANAGER;
+        address _requestFinalizer = actors.ops.REQUEST_FINALIZER;
         uint256 _withdrawalFee = 500;
         address _feeReceiver = actors.admin.FEE_RECEIVER;
         WithdrawalQueueManager.Init memory _init = WithdrawalQueueManager.Init({
@@ -343,6 +346,7 @@ contract ynETHWithdrawals is StakingNodeTestBase {
             admin: _admin,
             withdrawalQueueAdmin: _withdrawalQueueAdmin,
             redemptionAssetWithdrawer: _withdrawalQueueAdmin,
+            requestFinalizer: _requestFinalizer,
             withdrawalFee: _withdrawalFee,
             feeReceiver: _feeReceiver
         });

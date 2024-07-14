@@ -270,4 +270,9 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
             totalDelayedWithdrawals += delayedWithdrawals[j].amount;
         }
     }
+
+    function finalizeRequest(uint256 tokenId) public {
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);
+    }
 }
