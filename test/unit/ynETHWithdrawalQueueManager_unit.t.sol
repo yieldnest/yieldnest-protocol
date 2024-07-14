@@ -582,6 +582,50 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.finalizeRequestsUpToIndex(requestIndex);
     }
 
+    function testFinalizeRequestsNotAdvanced() public {
+        uint256 initialFinalizedIndex = manager.lastFinalizedIndex();
+        uint256 requestIndex = initialFinalizedIndex; // Same as the last finalized index to trigger IndexNotAdvanced error
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                WithdrawalQueueManager.IndexNotAdvanced.selector, 
+                requestIndex, 
+                initialFinalizedIndex
+            )
+        );
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+    }
+
+    function testFinalizeRequestsUpToIndexWithPreExistingRequest() public {
+        // Setup: Create a pre-existing request
+        uint256 amount = 1 ether;
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
+        vm.stopPrank();
+
+        // Attempt to finalize up to the request index including the pre-existing request
+        uint256 requestIndex = tokenId + 1; // Index 0 is the pre-existing request
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+
+        // Check if the pre-existing request is finalized
+        bool isFinalized = manager.withdrawalRequestIsFinalized(0);
+        assertTrue(isFinalized, "Pre-existing request should be finalized");
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                WithdrawalQueueManager.IndexNotAdvanced.selector, 
+                requestIndex, 
+                requestIndex
+            )
+        );
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+    }
+
+
     // ============================================================================================
     // ynETHRedemptionAssetsVault.pause
     // ============================================================================================
