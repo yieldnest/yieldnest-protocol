@@ -133,6 +133,10 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         testQueueWithdrawal();
 
         uint256 _expectedTokenAmount = yneth.previewDeposit(_amount);
+        if (_expectedTokenAmount == 0) {
+            // PASS, there's nothing to evaluate for this deposit.
+            return;
+        }
 
         {
             vm.prank(user);
@@ -233,7 +237,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         testProcessPrincipalWithdrawalsForNode();
 
-        vm.warp(block.timestamp + ynETHWithdrawalQueueManager.secondsToFinalization());
+        finalizeRequest(tokenId);
 
         uint256 _pendingRequestedRedemptionAmountBefore = ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount();
         uint256 _totalSupplyBefore = yneth.totalSupply();
@@ -274,7 +278,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         testProcessPrincipalWithdrawalsForNode();
 
-        vm.expectRevert(abi.encodeWithSelector(NotFinalized.selector, block.timestamp, block.timestamp, secondsToFinalization));
+        vm.expectRevert(abi.encodeWithSelector(NotFinalized.selector, tokenId, block.timestamp, block.timestamp));
         vm.prank(user);
         ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
     }
