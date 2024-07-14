@@ -93,6 +93,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         IRedemptionAssetsVault redemptionAssetsVault;
         address admin;
         address withdrawalQueueAdmin;
+        address redemptionAssetWithdrawer;
         uint256 withdrawalFee;
         address feeReceiver;
 
@@ -113,6 +114,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
 
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(WITHDRAWAL_QUEUE_ADMIN_ROLE, init.withdrawalQueueAdmin);
+        _grantRole(REDEMPTION_ASSET_WITHDRAWER_ROLE, init.redemptionAssetWithdrawer);
 
         withdrawalFee = init.withdrawalFee;
         feeReceiver = init.feeReceiver;

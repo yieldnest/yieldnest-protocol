@@ -149,6 +149,7 @@ contract ScenarioBaseTest is Test, Utils {
             redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
             admin: actors.admin.PROXY_ADMIN_OWNER,
             withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+            redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
             withdrawalFee: 500, // 0.05%
             feeReceiver: actors.admin.FEE_RECEIVER
         });
