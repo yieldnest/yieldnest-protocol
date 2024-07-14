@@ -520,9 +520,6 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
             params.withdrawalFields
         );
 
-        uint256 stakingNodeBalanceBefore = stakingNodeBalancesBefore[nodeId];
-        uint256 stakingNodeBalanceAfter = stakingNodeInstance.getETHBalance();
-
         runSystemStateInvariants(totalAssetsBefore, totalSupplyBefore, stakingNodeBalancesBefore);
 
         int256 sharesAfter = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
