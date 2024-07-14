@@ -347,7 +347,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
     }
 
     function testReceiveRewardsWithBadRewardsDistributor() public {
-        bytes memory encodedError = abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector);
+        bytes memory encodedError = abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector, address(this));
         vm.expectRevert(encodedError);
         yneth.receiveRewards();
     }
@@ -424,5 +424,95 @@ contract ynETHTotalAssetsTest is IntegrationBaseTest {
         uint256 totalAssetsAfterRewards = yneth.totalAssets();
         assertEq(totalAssetsAfterRewards, depositAmount, "Total assets should increase by the reward amount in eigenPods");
     }
+}
 
+contract ETHOperations is IntegrationBaseTest {
+    function testProcessWithdrawnETH() public {
+        uint256 initialPoolBalance = yneth.totalDepositedInPool();
+        uint256 withdrawnAmount = 10 ether;
+
+        // Simulate the Staking Nodes Manager sending ETH back
+        vm.deal(address(stakingNodesManager), withdrawnAmount);
+        vm.prank(address(stakingNodesManager));
+        yneth.processWithdrawnETH{value: withdrawnAmount}();
+
+        uint256 newPoolBalance = yneth.totalDepositedInPool();
+        assertEq(newPoolBalance, initialPoolBalance + withdrawnAmount, "Pool balance should increase by the withdrawn amount");
+    }
+
+    function testProcessWithdrawnETHWithVault() public {
+        uint256 initialPoolBalance = yneth.totalDepositedInPool();
+        uint256 withdrawnAmount = 10 ether;
+
+        // Simulate the Withdrawal Assets Vault sending ETH back
+        vm.deal(address(stakingNodesManager.redemptionAssetsVault()), withdrawnAmount);
+        vm.prank(address(stakingNodesManager.redemptionAssetsVault()));
+        yneth.processWithdrawnETH{value: withdrawnAmount}();
+
+        uint256 newPoolBalance = yneth.totalDepositedInPool();
+        assertEq(newPoolBalance, initialPoolBalance + withdrawnAmount, "Pool balance should increase by the withdrawn amount from the vault");
+    }
+
+    function testProcessRewards() public {
+        uint256 initialPoolBalance = yneth.totalDepositedInPool();
+        uint256 rewardAmount = 5 ether;
+
+        // Simulate the Rewards Distributor sending ETH as rewards
+        vm.deal(address(rewardsDistributor), rewardAmount);
+        vm.startPrank(address(rewardsDistributor));
+        yneth.receiveRewards{value: rewardAmount}();
+        vm.stopPrank();
+
+        uint256 newPoolBalance = yneth.totalDepositedInPool();
+        assertEq(newPoolBalance, initialPoolBalance + rewardAmount, "Pool balance should increase by the reward amount");
+    }
+
+    function testWithdrawETH() public {
+        uint256 initialPoolBalance = yneth.totalDepositedInPool();
+        uint256 withdrawalAmount = 2 ether;
+
+        vm.deal(address(this), withdrawalAmount * 10);
+
+        uint256 depositAmount = withdrawalAmount * 10;
+        yneth.depositETH{value: depositAmount}(address(this));
+
+        // Perform the withdrawal
+        vm.prank(address(stakingNodesManager));
+        yneth.withdrawETH(withdrawalAmount);
+
+        uint256 newPoolBalance = yneth.totalDepositedInPool();
+        assertEq(newPoolBalance, initialPoolBalance + depositAmount - withdrawalAmount, "Pool balance should decrease by the withdrawal amount");
+    }
+
+    function testUnauthorizedWithdrawETH() public {
+        uint256 withdrawalAmount = 2 ether;
+
+        // Attempt to perform the withdrawal by an unauthorized address
+        address arbitraryCaller = address(0x456);
+        vm.deal(arbitraryCaller, 100 ether);
+        vm.prank(arbitraryCaller); // An arbitrary unauthorized address
+        vm.expectRevert(abi.encodeWithSelector(ynETH.CallerNotStakingNodeManager.selector, address(stakingNodesManager), arbitraryCaller));
+        yneth.withdrawETH(withdrawalAmount);
+    }
+
+    function testUnauthorizedProcessWithdrawnETH() public {
+        uint256 withdrawnAmount = 10 ether;
+
+        // Attempt to simulate the Staking Nodes Manager sending ETH back by an unauthorized address
+        address arbitraryCaller = address(0x456);
+        vm.deal(arbitraryCaller, 100 ether);
+        vm.prank(arbitraryCaller); // An arbitrary unauthorized address
+        vm.expectRevert( abi.encodeWithSelector(ynETH.CallerNotAuthorized.selector, arbitraryCaller));
+        yneth.processWithdrawnETH{value: withdrawnAmount}();
+    }
+
+    function testUnauthorizedReceiveRewards() public {
+        uint256 rewardAmount = 5 ether;
+
+        address arbitraryCaller = address(0x456);
+        vm.deal(arbitraryCaller, 100 ether);
+        vm.prank(arbitraryCaller); // An arbitrary unauthorized address
+        vm.expectRevert( abi.encodeWithSelector(ynETH.NotRewardsDistributor.selector, arbitraryCaller));
+        yneth.receiveRewards{value: rewardAmount}();
+    }
 }

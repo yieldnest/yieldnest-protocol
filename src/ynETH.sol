@@ -35,7 +35,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error ZeroETH();
     error NoDirectETHDeposit();
     error CallerNotStakingNodeManager(address expected, address provided);
-    error NotRewardsDistributor();
+    error NotRewardsDistributor(address caller);
     error InsufficientBalance();
     error TransferFailed();
     error CallerNotAuthorized(address caller);
@@ -232,7 +232,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     /// Reverts if called by any address other than the rewards distributor.
     function receiveRewards() external payable {
         if (msg.sender != address(rewardsDistributor)) {
-            revert NotRewardsDistributor();
+            revert NotRewardsDistributor(msg.sender);
         }
         totalDepositedInPool += msg.value;
 
@@ -319,3 +319,4 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         _;
     }
 }
+
