@@ -440,6 +440,11 @@ contract StakingNodesManager is
         // for the next version while keeping the previous initializers.
     }
 
+    /**
+     * @notice Registers a new implementation contract for staking nodes by creating a new upgradeable beacon.
+     * @dev This function can only be called by an account with the STAKING_ADMIN_ROLE. It will fail if a beacon implementation already exists.
+     * @param _implementationContract The address of the new implementation contract for staking nodes.
+     */
     function registerStakingNodeImplementationContract(address _implementationContract)
         public
         onlyRole(STAKING_ADMIN_ROLE)
@@ -454,6 +459,11 @@ contract StakingNodesManager is
         emit RegisteredStakingNodeImplementationContract(address(upgradeableBeacon), _implementationContract);
     }
 
+    /**
+     * @notice Upgrades the staking node implementation to a new contract.
+     * @dev This function can only be called by an account with the STAKING_ADMIN_ROLE. It will fail if no beacon implementation exists.
+     * @param _implementationContract The address of the new implementation contract for staking nodes.
+     */
     function upgradeStakingNodeImplementation(address _implementationContract)
         public
         onlyRole(STAKING_ADMIN_ROLE)
@@ -465,16 +475,18 @@ contract StakingNodesManager is
 
         uint256 nodeCount = nodes.length;
 
-        // reinitialize all nodes
+        // Reinitialize all nodes
         for (uint256 i = 0; i < nodeCount; i++) {
             initializeStakingNode(nodes[i], nodeCount);
         }
 
         emit UpgradedStakingNodeImplementationContract(_implementationContract, nodeCount);
     }
-
-    /// @notice Sets the maximum number of staking nodes allowed
-    /// @param _maxNodeCount The maximum number of staking nodes
+    
+    /**
+     * @notice Sets the maximum number of staking nodes allowed
+     * @param _maxNodeCount The maximum number of staking nodes
+     */
     function setMaxNodeCount(uint256 _maxNodeCount) public onlyRole(STAKING_ADMIN_ROLE) {
         maxNodeCount = _maxNodeCount;
         emit MaxNodeCountUpdated(_maxNodeCount);

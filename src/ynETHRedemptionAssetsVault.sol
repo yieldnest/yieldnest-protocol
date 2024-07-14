@@ -156,4 +156,4 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     function unpause() external onlyRole(UNPAUSER_ROLE) {
         paused = false;
     }
-
+}
