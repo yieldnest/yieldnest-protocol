@@ -145,8 +145,10 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
     //----------------------------------  SETTERS  -----------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Sets the fees receiver wallet for the protocol.
-    /// @param newReceiver The new fees receiver wallet.
+    /**
+     * @notice Sets the fees receiver wallet for the protocol.
+     * @param newReceiver The new fees receiver wallet.
+     */
     function setFeesReceiver(address payable newReceiver)
         external
         onlyRole(REWARDS_ADMIN_ROLE)
@@ -156,8 +158,10 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
         emit FeeReceiverSet(newReceiver);
     }
 
-    /// @notice Sets the fees basis points for the protocol.
-    /// @param newFeesBasisPoints The new fees basis points.
+    /**
+     * @notice Sets the fees basis points for the protocol.
+     * @param newFeesBasisPoints The new fees basis points.
+     */
     function setFeesBasisPoints(uint16 newFeesBasisPoints)
         external
         onlyRole(REWARDS_ADMIN_ROLE)
@@ -167,18 +171,19 @@ contract RewardsDistributor is AccessControlUpgradeable, RewardsDistributorEvent
         emit FeesBasisPointsSet(newFeesBasisPoints);
     }
 
+    /**
+     * @notice Ensures that the contract's balance remains unchanged after the execution of a function.
+     */
     modifier assertBalanceUnchanged() {
         uint256 before = address(this).balance;
         _;
         assert(address(this).balance == before);
     }
 
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  MODIFIERS  ---------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensures that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();

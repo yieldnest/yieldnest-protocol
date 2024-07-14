@@ -61,7 +61,9 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Configuration for contract initialization.
+    /**
+     * @notice Configuration for contract initialization.
+     */
     struct Init {
         address admin;
         address pauser;
@@ -75,9 +77,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
          _disableInitializers();
     }
 
-
-    /// @notice Initializes the contract.
-    /// @dev MUST be called during the contract upgrade to set up the proxies state.
+    /**
+     * @notice Initializes the contract.
+     * @dev MUST be called during the contract upgrade to set up the proxies state.
+     */
     function initialize(Init memory init)
         external
         notZeroAddress(init.admin)
@@ -133,22 +136,28 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit Deposit(msg.sender, receiver, assets, shares, totalDepositedInPool);
     }
 
-    /// @notice Calculates the amount of shares to be minted for a given deposit.
-    /// @param assets The amount of assets to be deposited.
-    /// @return The amount of shares to be minted.
+    /**
+     * @notice Calculates the amount of shares to be minted for a given deposit.
+     * @param assets The amount of assets to be deposited.
+     * @return The amount of shares to be minted.
+     */
     function previewDeposit(uint256 assets) public view virtual returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /// @notice Converts a given amount of assets to shares.
-    /// @param assets The amount of assets to be converted.
-    /// @return shares The equivalent amount of shares.
+    /**
+     * @notice Converts a given amount of assets to shares.
+     * @param assets The amount of assets to be converted.
+     * @return shares The equivalent amount of shares.
+     */
     function convertToShares(uint256 assets) public view returns (uint256 shares) {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
-    /// @notice Converts from ynETH to ETH using the current exchange rate.
-    /// The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
+    /**
+     * @notice Converts from ynETH to ETH using the current exchange rate.
+     * The exchange rate is given by the total supply of ynETH and total ETH controlled by the protocol.
+     */
     function _convertToShares(uint256 ethAmount, Math.Rounding rounding) internal view returns (uint256) {
         // 1:1 exchange rate on the first stake.
         // Use totalSupply to see if this is the boostrap call, not totalAssets
@@ -169,21 +178,27 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //----------------------------------  WITHDRAWALS --------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Calculates the amount of assets that would be redeemed for a given amount of shares at current block
-    /// @param shares The amount of shares to redeem.
-    /// @return assets The equivalent amount of assets.
+    /**
+     * @notice Calculates the amount of assets that would be redeemed for a given amount of shares at current block
+     * @param shares The amount of shares to redeem.
+     * @return assets The equivalent amount of assets.
+     */
     function previewRedeem(uint256 shares) external view returns (uint256 assets) {
        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
-    /// @notice Converts a given amount of shares to assets at current block
-    /// @param shares The amount of shares to convert.
-    /// @return assets The equivalent amount of assets.
+    /**
+     * @notice Converts a given amount of shares to assets at current block
+     * @param shares The amount of shares to convert.
+     * @return assets The equivalent amount of assets.
+     */
     function convertToAssets(uint256 shares) external view returns (uint256 assets) {
        return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
-    /// @dev Internal implementation of {convertToAssets}.
+    /**
+     * @dev Internal implementation of {convertToAssets}.
+     */
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
 
         uint256 supply = totalSupply();
@@ -204,9 +219,11 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //----------------------------------  ASSETS -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Calculates the total assets controlled by the protocol.
-    /// @dev This includes both the ETH deposited in the pool awaiting processing and the ETH already sent to validators on the beacon chain.
-    /// @return total The total amount of ETH in wei.
+    /**
+     * @notice Calculates the total assets controlled by the protocol.
+     * @dev This includes both the ETH deposited in the pool awaiting processing and the ETH already sent to validators on the beacon chain.
+     * @return total The total amount of ETH in wei.
+     */
     function totalAssets() public view returns (uint256) {
         uint256 total = 0;
         // Allocated ETH for deposits pending to be processed.
@@ -216,8 +233,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         return total;
     }
 
-    /// @notice Returns the total amount of ETH deposited across all validators.
-    /// @return totalDeposited The total amount of ETH deposited in all validators.
+    /**
+     * @notice Returns the total amount of ETH deposited across all validators.
+     * @return totalDeposited The total amount of ETH deposited in all validators.
+     */
     function totalDeposited() internal view returns (uint256) {
 
         return stakingNodesManager.totalDeposited();
@@ -227,9 +246,11 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //----------------------------------  STAKING/UNSTAKING and REWARDS  -------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Receives rewards in ETH and adds them to the total deposited in the pool.
-    /// @dev Only the rewards distributor contract can call this function.
-    /// Reverts if called by any address other than the rewards distributor.
+    /**
+     * @dev Receives rewards in ETH and adds them to the total deposited in the pool.
+     * Only the rewards distributor contract can call this function.
+     * Reverts if called by any address other than the rewards distributor.
+     */
     function receiveRewards() external payable {
         if (msg.sender != address(rewardsDistributor)) {
             revert NotRewardsDistributor(msg.sender);
@@ -239,9 +260,11 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit RewardsReceived(msg.value, totalDepositedInPool);
     }
 
-    /// @notice Withdraws a specified amount of ETH from the pool to the Staking Nodes Manager.
-    /// @dev This function can only be called by the Staking Nodes Manager.
-    /// @param ethAmount The amount of ETH to withdraw in wei.
+    /**
+     * @dev Withdraws a specified amount of ETH from the pool to the Staking Nodes Manager.
+     * This function can only be called by the Staking Nodes Manager.
+     * @param ethAmount The amount of ETH to withdraw in wei.
+     */
     function withdrawETH(uint256 ethAmount) public onlyStakingNodesManager override {
         uint256 currentTotalDepositedInPool = totalDepositedInPool;
 
@@ -263,12 +286,14 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         emit ETHWithdrawn(ethAmount, newTotalDepositedInPool);
     }
 
-    /// @notice Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
-    /// @dev This function can only be called by the Staking Nodes Manager.
-    /// It increases the total deposited in the pool by the amount of ETH sent with the call.
+    /**
+     * @dev Processes ETH that has been withdrawn from the staking nodes and adds it to the pool.
+     * This function can only be called by the Staking Nodes Manager.
+     * It increases the total deposited in the pool by the amount of ETH sent with the call.
+     */
     function processWithdrawnETH() public payable {
 
-        // ETH can be returned either by the stakinNodesManager or by the redemptionAssetsVault
+        // ETH can be returned either by the stakingNodesManager or by the redemptionAssetsVault
         if (!(msg.sender == address(stakingNodesManager)
             || msg.sender == (address(stakingNodesManager.redemptionAssetsVault())))) {
             revert CallerNotAuthorized(msg.sender);
@@ -282,15 +307,19 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //----------------------------------  PAUSING  -----------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Pauses ETH deposits.
-    /// @dev Can only be called by an account with the PAUSER_ROLE.
+    /**
+     * @notice Pauses ETH deposits.
+     * @dev Can only be called by an account with the PAUSER_ROLE.
+     */
     function pauseDeposits() external onlyRole(PAUSER_ROLE) {
         depositsPaused = true;
         emit DepositETHPausedUpdated(depositsPaused);
     }
 
-    /// @notice Unpauses ETH deposits.
-    /// @dev Can only be called by an account with the UNPAUSER_ROLE.
+    /**
+     * @notice Unpauses ETH deposits.
+     * @dev Can only be called by an account with the UNPAUSER_ROLE.
+     */
     function unpauseDeposits() external onlyRole(UNPAUSER_ROLE) {
         depositsPaused = false;
         emit DepositETHPausedUpdated(depositsPaused);
@@ -300,6 +329,9 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     //----------------------------------  MODIFIERS   ---------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @dev Ensures that the function is only called by the Staking Nodes Manager.
+     */
     modifier onlyStakingNodesManager() {
         if (msg.sender != address(stakingNodesManager)) {
             revert CallerNotStakingNodeManager(
@@ -310,8 +342,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         _;
     }
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();

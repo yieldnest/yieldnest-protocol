@@ -73,19 +73,31 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /// @notice The asset that can be redeemed through withdrawal requests.
     IRedeemableAsset public redeemableAsset;
+
+    /// @notice The vault where redemption assets are stored.
     IRedemptionAssetsVault public redemptionAssetsVault;
 
+    /// @notice Counter for tracking the next token ID to be assigned.
     uint256 public _tokenIdCounter;
 
+    /// @notice Mapping of token IDs to their corresponding withdrawal requests.
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
 
+    /// @notice The required duration in seconds between a withdrawal request and when it can be finalized.
     uint256 public secondsToFinalization;
+
+    /// @notice The fee percentage charged on withdrawals.
     uint256 public withdrawalFee;
+
+    /// @notice The address where withdrawal fees are sent.
     address public feeReceiver;
+
+    /// @notice The address authorized to finalize withdrawal requests.
     address public requestFinalizer;
 
-    /// pending requested redemption amount in redemption unit of account
+    /// @notice pending requested redemption amount in redemption unit of account
     uint256 public pendingRequestedRedemptionAmount;
 
     uint256 public lastFinalizedIndex;
@@ -139,6 +151,13 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Requests a withdrawal of a specified amount of redeemable assets.
+     * @dev Transfers the specified amount of redeemable assets from the sender to this contract, creates a withdrawal request,
+     *      and mints a token representing this request. Emits a WithdrawalRequested event upon success.
+     * @param amount The amount of redeemable assets to withdraw.
+     * @return tokenId The token ID associated with the withdrawal request.
+     */
     function requestWithdrawal(uint256 amount) external nonReentrant returns (uint256 tokenId) {
         if (amount == 0) {
             revert AmountMustBeGreaterThanZero();
@@ -167,6 +186,13 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  CLAIMS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Claims a withdrawal by transferring the requested assets to the specified receiver, less any applicable fees.
+     * @dev This function burns the token representing the withdrawal request and transfers the net amount after fees to the receiver.
+     *      It also transfers the fee to the fee receiver.
+     * @param tokenId The ID of the token representing the withdrawal request.
+     * @param receiver The address to which the net amount of the withdrawal will be sent.
+     */
     function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
         if (_ownerOf(tokenId) != msg.sender && _getApproved(tokenId) != msg.sender) {
             revert CallerNotOwnerNorApproved(tokenId, msg.sender);
@@ -192,7 +218,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         _burn(tokenId);
         redeemableAsset.burn(request.amount);
 
-
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
 
         uint256 currentBalance = redemptionAssetsVault.availableRedemptionAssets();
@@ -200,7 +225,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             revert InsufficientBalance(currentBalance, unitOfAccountAmount);
         }
 
-        // transfer Net Amount =  unitOfAccountAmount - feeAmount to the receiver
+        // Transfer net amount (unitOfAccountAmount - feeAmount) to the receiver
         redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount);
         
         if (feeAmount > 0) {
@@ -228,8 +253,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  ADMIN  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Sets the withdrawal fee percentage.
-    /// @param feePercentage The fee percentage in basis points.
+    /**
+     * @notice Sets the withdrawal fee percentage.
+     * @param feePercentage The fee percentage in basis points.
+     */
     function setWithdrawalFee(uint256 feePercentage) external onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
         if (feePercentage > FEE_PRECISION) {
             revert FeePercentageExceedsLimit();
@@ -238,8 +265,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         emit WithdrawalFeeUpdated(feePercentage);
     }
 
-    /// @notice Sets the address where withdrawal fees are sent.
-    /// @param _feeReceiver The address that will receive the withdrawal fees.
+    /**
+     * @notice Sets the address where withdrawal fees are sent.
+     * @param _feeReceiver The address that will receive the withdrawal fees.
+     */
     function setFeeReceiver(
         address _feeReceiver
         ) external notZeroAddress(_feeReceiver) onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
@@ -252,6 +281,12 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  COMPUTATIONS  ------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Calculates the redemption amount based on the provided amount and the redemption rate at the time of request.
+     * @param amount The amount of the redeemable asset.
+     * @param redemptionRateAtRequestTime The redemption rate at the time the request was made, expressed in the same unit of decimals as the redeemable asset.
+     * @return The calculated redemption amount, adjusted for the decimal places of the redeemable asset.
+     */
     function calculateRedemptionAmount(
         uint256 amount,
         uint256 redemptionRateAtRequestTime
@@ -259,10 +294,12 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         return amount * redemptionRateAtRequestTime / (10 ** redeemableAsset.decimals());
     }
 
-
-    /// @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
-    /// @param amount The amount from which the fee should be calculated.
-    /// @return fee The calculated fee.
+    /**
+     * @notice Calculates the withdrawal fee based on the amount and the current fee percentage.
+     * @param amount The amount from which the fee should be calculated.
+     * @param requestWithdrawalFee The current fee percentage in basis points.
+     * @return fee The calculated fee.
+     */
     function calculateFee(uint256 amount, uint256 requestWithdrawalFee) public pure returns (uint256) {
         return (amount * requestWithdrawalFee) / FEE_PRECISION;
     }
@@ -271,8 +308,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  REDEMPTION ASSETS  -------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
-    /// @return surplus The amount of surplus redemption assets in the unit of account.
+    /** 
+     * @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
+     * @return surplus The amount of surplus redemption assets in the unit of account.
+     */
     function surplusRedemptionAssets() public view returns (uint256) {
         uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
         if (availableAmount > pendingRequestedRedemptionAmount) {
@@ -282,8 +321,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         return 0;
     }
 
-    /// @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
-    /// @return deficit The amount of deficit redemption assets in the unit of account.
+    /** 
+     * @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
+     * @return deficit The amount of deficit redemption assets in the unit of account.
+     */
     function deficitRedemptionAssets() public view returns (uint256) {
         uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
         if (pendingRequestedRedemptionAmount > availableAmount) {
@@ -293,7 +334,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         return 0;
     }
 
-    /// @notice Withdraws surplus redemption assets to a specified address.
+    /** 
+     * @notice Withdraws surplus redemption assets to a specified address.
+     */
     function withdrawSurplusRedemptionAssets(uint256 amount) external onlyRole(REDEMPTION_ASSET_WITHDRAWER_ROLE) {
         uint256 surplus = surplusRedemptionAssets();
         if (amount > surplus) {
@@ -301,7 +344,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         }
         redemptionAssetsVault.withdrawRedemptionAssets(amount);
     }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  FINALITY  ----------------------------------------
     //--------------------------------------------------------------------------------------
@@ -367,8 +409,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();

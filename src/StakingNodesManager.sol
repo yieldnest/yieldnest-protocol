@@ -19,9 +19,6 @@ import {IynETH} from "src/interfaces/IynETH.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 
 
-import "forge-std/console.sol";
-
-
 interface StakingNodesManagerEvents {
     event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
     event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot, bytes withdrawalCredentials);
@@ -244,6 +241,11 @@ contract StakingNodesManager is
     //----------------------------------  VALIDATOR REGISTRATION  --------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Registers new validators to the system.
+     * @dev This function can only be called by an account with the `VALIDATOR_MANAGER_ROLE`.
+     * @param newValidators An array of `ValidatorData` containing the data of the validators to be registered.
+     */
     function registerValidators(
         ValidatorData[] calldata newValidators
     ) public onlyRole(VALIDATOR_MANAGER_ROLE) nonReentrant {
@@ -474,8 +476,10 @@ contract StakingNodesManager is
         emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, msg.value);
     }
 
-    /// @notice Processes an array of principal withdrawals.
-    /// @param actions Array of WithdrawalAction containing details for each withdrawal.
+    /**
+     * @notice Processes an array of principal withdrawals.
+     * @param actions Array of WithdrawalAction containing details for each withdrawal.
+     */
     function processPrincipalWithdrawals(
         WithdrawalAction[] memory actions
     ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
@@ -484,8 +488,10 @@ contract StakingNodesManager is
         }
     }
 
-    /// @notice Processes principal withdrawals for a single node, specifying how much goes back into ynETH and how much goes to the withdrawal queue.
-    /// @param action The WithdrawalAction containing details for the withdrawal.
+    /**
+     * @notice Processes principal withdrawals for a single node, specifying how much goes back into ynETH and how much goes to the withdrawal queue.
+     * @param action The WithdrawalAction containing details for the withdrawal.
+     */
     function _processPrincipalWithdrawalForNode(WithdrawalAction memory action) internal {
         uint256 nodeId = action.nodeId;
         uint256 amountToReinvest = action.amountToReinvest;
@@ -563,8 +569,10 @@ contract StakingNodesManager is
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();

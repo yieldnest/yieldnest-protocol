@@ -17,8 +17,6 @@ import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {ONE_GWEI, DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
-import "forge-std/console.sol";
-
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
@@ -79,22 +77,26 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     IEigenPod public eigenPod;
     uint256 public nodeId;
 
-    /// @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
+    /** @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode */
     uint256 private _unused_former_allocatedETH;
 
-    /// @dev Accounts for withdrawn ETH balance
+    /** @dev Accounts for withdrawn ETH balance */
     uint256 public withdrawnValidatorPrincipal;
 
-    /// @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
-    /// that is not yet verified with verifyWithdrawalCredentials.
-    /// Increases when calling allocateETH, and decreases when verifying with verifyWithdrawalCredentials
+    /** 
+     * @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
+     * that is not yet verified with verifyWithdrawalCredentials.
+     * Increases when calling allocateETH, and decreases when verifying with verifyWithdrawalCredentials
+     */
     uint256 public unverifiedStakedETH;
 
-    /// @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
-    /// Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals.
+    /** 
+     * @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
+     * Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals.
+     */
     uint256 public queuedSharesAmount;
 
-    /// @dev Allows only a whitelisted address to configure the contract
+    /** @dev Allows only a whitelisted address to configure the contract */
     modifier onlyOperator() {
         if(!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesOperator();
         _;
@@ -198,14 +200,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
-
-    /// @dev Validates the withdrawal credentials for a withdrawal
-    /// This activates the activation of the staked funds within EigenLayer
-    /// @param oracleTimestamp The timestamp of the oracle that signed the block
-    /// @param stateRootProof The state root proof
-    /// @param validatorIndices The indices of the validators
-    /// @param validatorFieldsProofs The validator fields proofs
-    /// @param validatorFields The validator fields
+    
+    /**
+     * @dev Validates the withdrawal credentials for a withdrawal.
+     * This activates the activation of the staked funds within EigenLayer.
+     * @param oracleTimestamp The timestamp of the oracle that signed the block.
+     * @param stateRootProof The state root proof.
+     * @param validatorIndices The indices of the validators.
+     * @param validatorFieldsProofs The validator fields proofs.
+     * @param validatorFields The validator fields.
+     */
     function verifyWithdrawalCredentials(
         uint64 oracleTimestamp,
         BeaconChainProofs.StateRootProof calldata stateRootProof,
@@ -342,11 +346,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         );
     }
 
-    /// @dev Queues a validator Principal withdrawal for processing.
-    ///      DelegationManager calls EigenPodManager.decreasesShares which
-    ///      decreases the `podOwner`'s shares by `shares`, down to a minimum of zero.
-    /// @param sharesAmount to be queued for withdrawals
-    /// @return fullWithdrawalRoots An array of keccak256 hashes of each Witdrawal created
+    /**
+     * @dev Queues a validator Principal withdrawal for processing. DelegationManager calls EigenPodManager.decreasesShares
+     * which decreases the `podOwner`'s shares by `shares`, down to a minimum of zero.
+     * @param sharesAmount The amount of shares to be queued for withdrawals.
+     * @return fullWithdrawalRoots An array of keccak256 hashes of each withdrawal created.
+     */
     function queueWithdrawals(
         uint256 sharesAmount
     ) external onlyOperator returns (bytes32[] memory fullWithdrawalRoots) {
@@ -377,15 +382,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         emit QueuedWithdrawals(sharesAmount, fullWithdrawalRoots);
     }
 
-    /// @dev Triggers the completion o particular queued withdrawals.
-    ///      Withdrawals can only be completed if
-    ///      max(delegationManager.minWithdrawalDelayBlocks(), delegationManager.strategyWithdrawalDelayBlocks(beaconChainETHStrategy))
-    ///      number of blocks have passed since witdrawal was queued.
-    /// @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the 
-    ///                    the withdrawal created as part of the queueWithdrawals call.
-    /// @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
-    ///       with the Slasher, which currently does nothing. As of M2, this parameter
-    ///       has no bearing on anything and can be ignored
+    /**
+     * @dev Triggers the completion of particular queued withdrawals.
+     *      Withdrawals can only be completed if
+     *      max(delegationManager.minWithdrawalDelayBlocks(), delegationManager.strategyWithdrawalDelayBlocks(beaconChainETHStrategy))
+     *      number of blocks have passed since withdrawal was queued.
+     * @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the 
+     *                    the withdrawal created as part of the queueWithdrawals call.
+     * @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
+     *       with the Slasher, which currently does nothing. As of M2, this parameter
+     *       has no bearing on anything and can be ignored
+     */
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         uint256[] memory middlewareTimesIndexes
@@ -444,7 +451,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  ETH BALANCE ACCOUNTING  --------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @dev Record total staked ETH for this StakingNode
+    /**
+     * @dev Record total staked ETH for this StakingNode
+     */
     function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
         emit AllocatedStakedETH(unverifiedStakedETH, amount);
 
@@ -491,14 +500,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         
     }
 
-    /// @notice Retrieves the amount of unverified staked ETH held by this StakingNode.
-    /// @return The amount of unverified staked ETH in wei.
+    /**
+     * @notice Retrieves the amount of unverified staked ETH held by this StakingNode.
+     * @return The amount of unverified staked ETH in wei.
+     */
     function getUnverifiedStakedETH() public view returns (uint256) {
         return unverifiedStakedETH;
     }
 
-    /// @notice Retrieves the amount of shares currently queued for withdrawal.
-    /// @return The amount of queued shares.
+    /**
+     * @notice Retrieves the amount of shares currently queued for withdrawal.
+     * @return The amount of queued shares.
+     */
     function getQueuedSharesAmount() public view returns (uint256) {
         return queuedSharesAmount;
     }
@@ -530,8 +543,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return beacon.implementation();
     }
 
-    /// @notice Retrieve the version number of the highest/newest initialize
-    ///         function that was executed.
+    /**
+     * @notice Retrieve the version number of the highest/newest initialize
+     *         function that was executed.
+     */
     function getInitializedVersion() external view returns (uint64) {
         return _getInitializedVersion();
     }
@@ -540,8 +555,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();
