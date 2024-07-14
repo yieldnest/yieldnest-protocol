@@ -29,6 +29,7 @@ interface StakingNodeEvents {
      event AllocatedStakedETH(uint256 currentUnverifiedStakedETH, uint256 newAmount);
      event DeallocatedStakedETH(uint256 amount, uint256 currentWithdrawnValidatorPrincipal);
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
+     event VerifyWithdrawalCredentialsCompleted(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
      event WithdrawalProcessed(
         uint40 indexed validatorIndex,
         uint256 effectiveBalance,
@@ -60,7 +61,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error NotStakingNodesManager();
     error NotStakingNodesDelegator();
     error NoBalanceToProcess();
-    error MismatchInExpectedETHBalanceAfterWithdrawals();
+    error MismatchInExpectedETHBalanceAfterWithdrawals(uint256 actualWithdrawalAmount, uint256 totalWithdrawalAmount);
     error TransferFailed();
     error InsufficientWithdrawnValidatorPrincipal(uint256 amount, uint256 withdrawnValidatorPrincipal);
 
@@ -227,13 +228,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // (32ETH in the absence of slasing, and less than that if slashed)
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
-            emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
-
+            emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
+            
             if (effectiveBalanceGwei > 0) {
                 // If the effectiveBalanceGwei is not 0, then the full stake of the validator
                 // is verified as part of this process and shares are credited to this StakingNode instance.
                 // effectiveBalanceGwei *may* be less than DEFAULT_VALIDATOR_STAKE if the validator was slashed.
                 unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
+
+                emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
             }
         }
     }
@@ -424,7 +427,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
         if (actualWithdrawalAmount != totalWithdrawalAmount) {
-            revert MismatchInExpectedETHBalanceAfterWithdrawals();
+            revert MismatchInExpectedETHBalanceAfterWithdrawals(actualWithdrawalAmount, totalWithdrawalAmount);
         }
 
         // Shares are no longer queued

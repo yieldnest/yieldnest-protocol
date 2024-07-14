@@ -522,6 +522,67 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     }
 
     // ============================================================================================
+    // ynETHRedemptionAssetsVault.finalizeRequestsUpToIndex
+    // ============================================================================================
+
+    function testFinalizeRequestsUpToIndexSuccessfullyForMultipleRequests(uint256 _amount, uint256 requestIncrease) public {
+
+        vm.assume(_amount > 0 && _amount < 10_000 ether);
+        vm.assume(requestIncrease >= 0 && requestIncrease < 1000 ether);
+        uint256 requestIndex = 5;
+
+        uint256[] memory requestedAmounts = new uint256[](requestIndex);
+        for (uint256 i = 0; i < requestIndex; i++) {
+            requestedAmounts[i] = _amount + requestIncrease * i;
+        }
+
+        // requesting withdrawals to the vault
+        for (uint256 i = 0; i < requestIndex; i++) {
+            vm.startPrank(user);
+            redeemableAsset.approve(address(manager), requestedAmounts[i]);
+            uint256 tokenId = manager.requestWithdrawal(requestedAmounts[i]);
+            vm.stopPrank();
+
+            vm.deal(address(redemptionAssetsVault), requestedAmounts[i]);
+        }
+        
+        // Finalize requests up to the specified index
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+
+        // Check if the requests up to the specified index are finalized
+        for (uint256 i = 0; i < requestIndex; i++) {
+            bool isFinalized = manager.withdrawalRequestIsFinalized(i);
+            assertTrue(isFinalized, string.concat("Request ", vm.toString(i), " should be finalized"));
+        }
+    }
+
+    function testFinalizeRequestsUpToIndexWrongCaller() public {
+        uint256 requestIndex = 3;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AccessControlUnauthorizedAccount.selector,
+                address(this),
+                manager.REQUEST_FINALIZER_ROLE()
+                )
+        );
+        manager.finalizeRequestsUpToIndex(requestIndex);
+    }
+
+    function testFinalizeRequestsUpToIndexWithInvalidIndex() public {
+        uint256 requestIndex = 999; // Assuming an index that is out of bounds
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                WithdrawalQueueManager.IndexExceedsTokenCount.selector, 
+                requestIndex, 
+                manager._tokenIdCounter()
+            )
+        );
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+    }
+
+    // ============================================================================================
     // ynETHRedemptionAssetsVault.pause
     // ============================================================================================
 

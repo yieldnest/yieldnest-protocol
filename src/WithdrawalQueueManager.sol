@@ -18,6 +18,7 @@ interface IWithdrawalQueueManagerEvents {
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
     event SecondsToFinalizationUpdated(uint256 previousValue, uint256 newValue);
+    event RequestsFinalized(uint256 newFinalizedIndex, uint256 previousFinalizedIndex);
 }
 
 /**
@@ -45,6 +46,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     error ArrayLengthMismatch(uint256 length1, uint256 length2);
     error SecondsToFinalizationExceedsLimit(uint256 value);
     error WithdrawalRequestDoesNotExist(uint256 tokenId);
+    error IndexExceedsTokenCount(uint256 index, uint256 tokenCount);
+    error IndexNotAdvanced(uint256 newIndex, uint256 currentIndex);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -319,6 +322,14 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
             requests 0 and 1 are processed.
      */
     function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external onlyRole(REQUEST_FINALIZER_ROLE) {
+        if (_lastFinalizedIndex > _tokenIdCounter) {
+            revert IndexExceedsTokenCount(_lastFinalizedIndex, _tokenIdCounter);
+        }
+        if (_lastFinalizedIndex <= lastFinalizedIndex) {
+            revert IndexNotAdvanced(_lastFinalizedIndex, lastFinalizedIndex);
+        }
+        emit RequestsFinalized(_lastFinalizedIndex, lastFinalizedIndex);
+
         lastFinalizedIndex = _lastFinalizedIndex;
     }
 
