@@ -42,6 +42,13 @@ interface ITransparentUpgradeableProxy {
 contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
 
     string DEFAULT_PROOFS_PATH = "lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json";
+
+    struct VerifyWithdrawalCredentialsCallParams {
+        uint64 oracleTimestamp;
+        ValidatorProofs validatorProofs;
+        IStakingNode stakingNodeInstance;
+    }
+
     struct ValidatorProofs {
         BeaconChainProofs.StateRootProof stateRootProof;
         uint40[] validatorIndices;
@@ -570,7 +577,9 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         ); 
     }
 
-    function verifyWithdrawalCredentialsSuccesfullyForProofFile(string memory path) public {
+    function setupVerifyWithdrawalCredentialsForProofFileForForeignValidator(
+        string memory path
+    ) public returns(VerifyWithdrawalCredentialsCallParams memory params) {
 
         setJSON(path);
 
@@ -646,6 +655,24 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
         }
 
+
+        params.oracleTimestamp = oracleTimestamp;
+        params.stakingNodeInstance = stakingNodeInstance;
+        params.validatorProofs = validatorProofs;
+    }
+    
+
+    function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
+        if (block.chainid != 1) {
+            return; // Skip test if not on Ethereum Mainnet
+        }
+        VerifyWithdrawalCredentialsCallParams memory params
+            = setupVerifyWithdrawalCredentialsForProofFileForForeignValidator("test/data/ValidatorFieldsProof_1293592_8746783.json");
+
+        uint64 oracleTimestamp = params.oracleTimestamp;
+        IStakingNode stakingNodeInstance = params.stakingNodeInstance;
+        ValidatorProofs memory validatorProofs = params.validatorProofs;
+
         uint256 stakingNodeETHBalanceBeforeVerification = stakingNodeInstance.getETHBalance();
         uint256 ynETHTotalAssetsBeforeVerification = yneth.totalAssets();
 
@@ -665,20 +692,47 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         assertEq(stakingNodeETHBalanceBeforeVerification, stakingNodeInstance.getETHBalance(), "Staking node ETH balance should not change after verification");
         assertEq(ynETHTotalAssetsBeforeVerification, yneth.totalAssets(), "Total assets should not change after verification");
     }
-    
-
-    function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
-        if (block.chainid != 1) {
-            return; // Skip test if not on Ethereum Mainnet
-        }
-        verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8746783.json");
-    }
 
     function testVerifyWithdrawalCredentialsSuccesfully_1ETH() public {
         if (block.chainid != 1) {
             return; // Skip test if not on Ethereum Mainnet
         }
-        verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8654000.json");
+
+        // Validator index tested: 1293592
+        //
+        // Note that this validator has 2 deposits performed in sequence: https://beaconcha.in/validator/1293592#deposits
+        // for 1 ETH and 31 ETH respectively.
+        // Which is NOT the case with YieldNest Validators, which are always allocated with 32 ETH from the get go.
+        // This effectively emulates a slashing-like situation where the balance goes to 1 ETH
+        // And the totalAssets of the protocol should now *decrease* accordingly by 31 ETH.
+
+        uint256 expectedDecreaseAmount = 31 ether;
+
+        VerifyWithdrawalCredentialsCallParams memory params
+            = setupVerifyWithdrawalCredentialsForProofFileForForeignValidator("test/data/ValidatorFieldsProof_1293592_8654000.json");
+
+        uint64 oracleTimestamp = params.oracleTimestamp;
+        IStakingNode stakingNodeInstance = params.stakingNodeInstance;
+        ValidatorProofs memory validatorProofs = params.validatorProofs;
+
+        uint256 stakingNodeETHBalanceBeforeVerification = stakingNodeInstance.getETHBalance();
+        uint256 ynETHTotalAssetsBeforeVerification = yneth.totalAssets();
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        stakingNodeInstance.verifyWithdrawalCredentials(
+            oracleTimestamp,
+            validatorProofs.stateRootProof,
+            validatorProofs.validatorIndices,
+            validatorProofs.withdrawalCredentialProofs,
+            validatorProofs.validatorFields
+        );
+        
+        int256 expectedShares = int256(uint256(BeaconChainProofs.getEffectiveBalanceGwei(validatorProofs.validatorFields[0])) * 1e9);
+        int256 actualShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        assertEq(actualShares, expectedShares, "Staking node shares do not match expected shares");
+
+        assertEq(stakingNodeETHBalanceBeforeVerification - expectedDecreaseAmount, stakingNodeInstance.getETHBalance(), "Staking node ETH balance should not change after verification");
+        assertEq(ynETHTotalAssetsBeforeVerification - expectedDecreaseAmount, yneth.totalAssets(), "Total assets should not change after verification");
     }
 
     function skiptestVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
