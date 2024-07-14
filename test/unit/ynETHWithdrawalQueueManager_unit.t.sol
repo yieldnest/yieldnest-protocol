@@ -23,6 +23,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     address public user = address(0x123456);
     address public feeReceiver = address(0xabc);
     address public redemptionAssetWithdrawer = address(0xdef);
+    address public requestFinalizer = address(0xabdef1234567);
 
     WithdrawalQueueManager public manager;
     MockRedeemableYnETH public redeemableAsset;
@@ -52,6 +53,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
             redemptionAssetWithdrawer: redemptionAssetWithdrawer,
             admin: admin,
             withdrawalQueueAdmin: withdrawalQueueAdmin,
+            requestFinalizer: requestFinalizer,
             withdrawalFee: 10000, // 1%
             feeReceiver: feeReceiver
         });
@@ -72,14 +74,16 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         });
         redemptionAssetsVault.initialize(vaultInit);
 
-        vm.prank(withdrawalQueueAdmin);
-        manager.setSecondsToFinalization(3 * 24 * 3600); // 3 days to finalize
-
         uint256 initialMintAmount = 1_000_000 ether;
         redeemableAsset.mint(user, initialMintAmount);
 
         // rate is 1:1
         redeemableAsset.setTotalAssets(initialMintAmount);
+    }
+
+    function finalizeRequest(uint256 tokenId) internal {
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(tokenId + 1);
     }
 
     function calculateNetEthAndFee(
@@ -160,23 +164,22 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     // withdrawalQueueManager.claimWithdrawal
     // ============================================================================================
 
-    function testClaimWithdrawal(uint256 _amount) public {
+    function testClaimWithdrawalSuccesfully(uint256 _amount) public {
         vm.assume(_amount > 0 && _amount < 10_000 ether);
 
         vm.deal(address(redemptionAssetsVault), _amount);
 
         vm.startPrank(user);
         redeemableAsset.approve(address(manager), _amount);
-        manager.requestWithdrawal(_amount);
+        uint256 tokenId = manager.requestWithdrawal(_amount);
         vm.stopPrank();
 
         uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
-        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+        finalizeRequest(tokenId);
 
         uint256 _userBalanceBefore = user.balance;
         uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
-        uint256 tokenId = 0;
         vm.prank(user);
         manager.claimWithdrawal(tokenId, user);
 
@@ -185,7 +188,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(request.amount, _amount, "testClaimWithdrawal: E1");
         assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testClaimWithdrawal: E2");
         assertEq(request.redemptionRateAtRequestTime, _redemptionRateAtRequestTime, "testClaimWithdrawal: E3");
-        assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "testClaimWithdrawal: E4");
 
         uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
         uint256 expectedNetEthAmount = (_amount * request.redemptionRateAtRequestTime) / 1e18 - expectedFeeAmount;
@@ -203,10 +205,9 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         redeemableAsset.approve(address(manager), amount);
         vm.prank(user);
-        manager.requestWithdrawal(amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
 
-        // Fast forward time to pass the finalization period
-        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+        finalizeRequest(tokenId);
 
         // Ensure vault has insufficient balance
         uint256 insufficientAmount = amount - 1;
@@ -229,11 +230,10 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         redeemableAsset.approve(address(manager), amount);
         vm.prank(user);
-        manager.requestWithdrawal(amount);
-        uint256 tokenId = 0; // Assuming tokenId starts from 0 after the first request
+        uint256 tokenId = manager.requestWithdrawal(amount);
 
         // Attempt to claim before time is up
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, block.timestamp, block.timestamp, manager.secondsToFinalization()));
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, tokenId, block.timestamp, block.timestamp));
         vm.prank(user);
         manager.claimWithdrawal(tokenId, user);
     }
@@ -246,7 +246,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     }
 
     function testClaimWithdrawalForAlreadyProcessedWithdrawal() public {
-        uint256 tokenId = 0; // Assuming this tokenId is unprocessed
         uint256 amount = 10 ether; // Example amount to process withdrawal
         uint256 availableRedemptionAmount = 100 ether;
 
@@ -254,10 +253,9 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         redeemableAsset.approve(address(manager), amount);
         vm.prank(user);
-        manager.requestWithdrawal(amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
 
-        // Fast forward time to pass the finalization period
-        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+        finalizeRequest(tokenId);
 
         // Send exact Ether to vault
         (bool success, ) = address(redemptionAssetsVault).call{value: availableRedemptionAmount}("");
@@ -294,16 +292,15 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         vm.startPrank(user);
         redeemableAsset.approve(address(manager), _amount);
-        manager.requestWithdrawal(_amount);
+        uint256 tokenId = manager.requestWithdrawal(_amount);
         vm.stopPrank();
 
         uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
-        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+        finalizeRequest(tokenId);
 
         uint256 _userBalanceBefore = user.balance;
         uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
-        uint256 tokenId = 0;
         uint256[] memory tokenIds = new uint256[](1);
         address[] memory receivers = new address[](1);
         tokenIds[0] = tokenId;
@@ -317,7 +314,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(request.amount, _amount, "testclaimWithdrawals: E1");
         assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testclaimWithdrawals: E2");
         assertEq(request.redemptionRateAtRequestTime, _redemptionRateAtRequestTime, "testclaimWithdrawals: E3");
-        assertEq(request.creationTimestamp, block.timestamp - manager.secondsToFinalization() - 1, "testclaimWithdrawals: E4");
 
         uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
         uint256 expectedNetEthAmount = (_amount * request.redemptionRateAtRequestTime) / 1e18 - expectedFeeAmount;
@@ -430,17 +426,13 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         vm.startPrank(user);
         redeemableAsset.approve(address(manager), amount);
-        manager.requestWithdrawal(amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
         vm.stopPrank();
 
-        uint256 tokenId = 0;
-        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertEq(manager.withdrawalRequestIsFinalized(tokenId), false, "testWithdrawalRequestIsFinalized: E1");
-        assertEq(manager.isFinalized(request), false, "testWithdrawalRequestIsFinalized: E1");
 
-        vm.warp(block.timestamp + manager.secondsToFinalization() + 1);
+        finalizeRequest(tokenId);
         assertEq(manager.withdrawalRequestIsFinalized(tokenId), true, "testWithdrawalRequestIsFinalized: E3");
-        assertEq(manager.isFinalized(request), true, "testWithdrawalRequestIsFinalized: E4");
     }
 
     // ============================================================================================
@@ -454,10 +446,9 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         vm.startPrank(user);
         redeemableAsset.approve(address(manager), amount);
-        manager.requestWithdrawal(amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
         vm.stopPrank();
 
-        uint256 tokenId = 0;
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertEq(request.amount, amount, "testWithdrawalRequest: E1");
         assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testWithdrawalRequest: E2");
@@ -473,34 +464,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     function testSupportsInterface() public {
         bytes4 interfaceId = 0x80ac58cd; // IERC721
         assertEq(manager.supportsInterface(interfaceId), true, "testSupportsInterface: E0");
-    }
-
-    // ============================================================================================
-    // withdrawalQueueManager.setSecondsToFinalization
-    // ============================================================================================
-
-    function testSetSecondsToFinalization(uint256 _seconds) public {
-        vm.assume(_seconds <= manager.MAX_SECONDS_TO_FINALIZATION());
-
-        assertEq(manager.secondsToFinalization(), 3 * 24 * 3600, "testSetSecondsToFinalization: E0"); // from setUp
-
-        vm.prank(withdrawalQueueAdmin);
-        manager.setSecondsToFinalization(_seconds);
-
-        assertEq(manager.secondsToFinalization(), _seconds, "testSetSecondsToFinalization: E1");
-    }
-
-    function testSetSecondsToFinalizationSecondsToFinalizationExceedsLimit() public {
-        uint256 _seconds = manager.MAX_SECONDS_TO_FINALIZATION() + 1;
-        vm.prank(withdrawalQueueAdmin);
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.SecondsToFinalizationExceedsLimit.selector, _seconds));
-        manager.setSecondsToFinalization(_seconds);
-    }
-
-    function testSetSecondsToFinalizationWrongCaller() public {
-        uint256 _seconds = 1;
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), manager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
-        manager.setSecondsToFinalization(_seconds);
     }
 
     // ============================================================================================

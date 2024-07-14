@@ -12,10 +12,6 @@ import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-
-import "forge-std/console.sol";
-
-
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
     event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
@@ -38,7 +34,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error NotFinalized(uint256 currentTimestamp, uint256 requestTimestamp, uint256 queueDuration);
+    error NotFinalized(uint256 tokenId, uint256 currentTimestamp, uint256 requestTimestamp);
     error ZeroAddress();
     error WithdrawalAlreadyProcessed(uint256 tokenId);
     error InsufficientBalance(uint256 currentBalance, uint256 requestedBalance);
@@ -183,7 +179,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         }
 
         if (!withdrawalRequestIsFinalized(tokenId)) {
-            revert NotFinalized(block.timestamp, request.creationTimestamp, secondsToFinalization);
+            revert NotFinalized(tokenId, block.timestamp, request.creationTimestamp);
         }
 
         withdrawalRequests[tokenId].processed = true;

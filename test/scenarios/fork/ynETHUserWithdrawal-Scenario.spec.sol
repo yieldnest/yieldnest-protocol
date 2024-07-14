@@ -164,9 +164,9 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             state.previousYnETHBalance
         );
 
-        // Advance time to simulate the delay required for withdrawals to be processed
-        uint256 secondsToFinalization = ynETHWithdrawalQueueManager.secondsToFinalization();
-        vm.warp(block.timestamp + secondsToFinalization + 1); // Adjust time as per the specific requirements of the scenario
+        // Mark witdrawals as finalized up to tokenId index
+        finalizeRequest(tokenId);
+
         uint256 userEthBalanceBefore = receivalAddress.balance;
         uint256 ynETHRedemptionAssetsVaultBalanceBefore = ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets();
 
