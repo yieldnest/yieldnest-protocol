@@ -1,47 +1,159 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
-import {ynETH} from "src/ynETH.sol";
-import {ynBase} from "src/ynBase.sol";
-import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IEigenPod} from "@eigenlayer-contracts/interfaces/IEigenPod.sol";
+
+import {IStakingNode} from "../../src/interfaces/IStakingNode.sol";
+
+import {ynETH} from "../../src/ynETH.sol";
+import {ynBase} from "../../src/ynBase.sol";
+import {WithdrawalQueueManager} from "../../src/WithdrawalQueueManager.sol";
+
+import {IntegrationBaseTest} from "./IntegrationBaseTest.sol";
+
+import "forge-std/console.sol";
 
 contract ynETHIntegrationTest is IntegrationBaseTest {
 
-    function testDepositETH() public {
+    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
 
-        emit log_named_uint("Block number at deposit test", block.number);
+    address public user = address(420);
+    address public receiver = address(69);
 
-        uint256 depositAmount = 1 ether;
-        vm.deal(address(this), depositAmount);
-        // Arrange
-        uint256 initialETHBalance = address(this).balance;
+    // ============================================================================================
+    // ynETH.initialize
+    // ============================================================================================
 
-        yneth.depositETH{value: depositAmount}(address(this));
+    // @todo
 
-        // Assert
-        uint256 finalETHBalance = address(this).balance;
-        uint256 ynETHBalance = yneth.balanceOf(address(this));
-        uint256 expectedETHBalance = initialETHBalance - depositAmount;
+    // ============================================================================================
+    // ynETH.depositETH
+    // ============================================================================================
 
-        assertEq(finalETHBalance, expectedETHBalance, "ETH was not correctly deducted from sender");
-        assertGt(ynETHBalance, 0, "ynETH balance should be greater than 0 after deposit");
+    function testDepositETH(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount <= 10_000 ether);
+
+        vm.deal(user, _amount);
+
+        uint256 _userBalanceBefore = address(user).balance;
+        uint256 _recieverBalanceBefore = yneth.balanceOf(receiver);
+        uint256 _expectedAmountOut = yneth.previewDeposit(_amount);
+        uint256 _expectedAmountOut2 = yneth.convertToShares(_amount);
+        uint256 _totalAssetsBefore = yneth.totalAssets();
+        uint256 _totalSupplyBefore = yneth.totalSupply();
+        uint256 _totalDepositedInPoolBefore = yneth.totalDepositedInPool();
+
+        vm.prank(user);
+        uint256 _amountOut = yneth.depositETH{value: _amount}(receiver);
+
+        assertEq(address(user).balance, _userBalanceBefore - _amount, "testDepositETH: E0");
+        assertEq(yneth.balanceOf(receiver), _recieverBalanceBefore + _amount, "testDepositETH: E1");
+        assertEq(_amountOut, _expectedAmountOut, "testDepositETH: E2");
+        assertEq(yneth.totalAssets(), _totalAssetsBefore + _amount, "testDepositETH: E3");
+        assertEq(yneth.totalSupply(), _totalSupplyBefore + _amountOut, "testDepositETH: E4");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPoolBefore + _amount, "testDepositETH: E5");
+        assertEq(_expectedAmountOut, _expectedAmountOut2, "testDepositETH: E6");
     }
 
-    function testDepositETHWhenPaused() public {
-        // Arrange
+    function testDepositETHWhenPaused(uint256 _amount) public {
+
         vm.prank(actors.ops.PAUSE_ADMIN);
         yneth.pauseDeposits();
 
-        uint256 depositAmount = 1 ether;
-        vm.deal(address(this), depositAmount);
+        vm.deal(user, _amount);
 
-        // Act & Assert
         vm.expectRevert(ynETH.Paused.selector);
-        yneth.depositETH{value: depositAmount}(address(this));
+        vm.prank(user);
+        yneth.depositETH{value: _amount}(user);
     }
+
+    function testDepositETHZeroETH() public {
+        vm.expectRevert(ynETH.ZeroETH.selector);
+        yneth.depositETH{value: 0}(user);
+    }
+
+    // ============================================================================================
+    // ynETH.burn
+    // ============================================================================================
+
+    function testBurn(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount <= 10_000 ether);
+
+        vm.deal(address(ynETHWithdrawalQueueManager), _amount);
+        vm.prank(address(ynETHWithdrawalQueueManager));
+        yneth.depositETH{value: _amount}(address(ynETHWithdrawalQueueManager));
+
+        uint256 _userBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
+        uint256 _totalSupplyBefore = yneth.totalSupply();
+        uint256 _totalAssetsBefore = yneth.totalAssets();
+        uint256 _totalDepositedInPoolBefore = yneth.totalDepositedInPool();
+
+        vm.prank(address(ynETHWithdrawalQueueManager));
+        yneth.burn(_amount);
+
+        assertEq(yneth.balanceOf(address(ynETHWithdrawalQueueManager)), _userBalanceBefore - _amount, "testBurn: E0");
+        assertEq(yneth.totalSupply(), _totalSupplyBefore - _amount, "testBurn: E1");
+        assertEq(yneth.totalAssets(), _totalAssetsBefore, "testBurn: E2");
+        assertEq(yneth.totalDepositedInPool(), _totalDepositedInPoolBefore, "testBurn: E3");
+    }
+
+    function testBurnWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), yneth.BURNER_ROLE()));
+        yneth.burn(1 ether);
+    }
+
+    // ============================================================================================
+    // ynETH.receiveRewards
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.withdrawETH
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.processWithdrawnETH
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.pauseDeposits
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.unpauseDeposits
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.addToPauseWhitelist
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.removeFromPauseWhitelist
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // ynETH.pauseWhiteList
+    // ============================================================================================
+
+    // @todo
+
+    // ============================================================================================
+    // random
+    // ============================================================================================
 
     function testPauseDepositETH() public {
         // Arrange
@@ -516,3 +628,7 @@ contract ETHOperations is IntegrationBaseTest {
         yneth.receiveRewards{value: rewardAmount}();
     }
 }
+
+// BEFORE
+// | File                                           | % Lines           | % Statements       | % Branches       | % Funcs          |
+// | src/ynETH.sol                                  | 83.61% (51/61)    | 79.73% (59/74)     | 80.00% (16/20)   | 73.68% (14/19)   |
