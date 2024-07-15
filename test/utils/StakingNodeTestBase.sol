@@ -246,10 +246,10 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         // Advance time so the withdrawal can be completed
         vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
-        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
+        vm.expectRevert(bytes4(keccak256("NotStakingNodesWithdrawer()")));
         stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
 
-        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         stakingNodeInstance.completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
     }
 

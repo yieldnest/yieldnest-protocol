@@ -28,6 +28,7 @@ contract ActorAddresses {
         address WITHDRAWAL_MANAGER;
         address REDEMPTION_ASSET_WITHDRAWER;
         address REQUEST_FINALIZER;
+        address STAKING_NODES_WITHDRAWER;
     }
 
     struct Wallets {
@@ -80,7 +81,8 @@ contract ActorAddresses {
                 REFERRAL_PUBLISHER: holeskyWallets.YNDev,
                 WITHDRAWAL_MANAGER: holeskyWallets.YNDev,
                 REDEMPTION_ASSET_WITHDRAWER: holeskyWallets.YNDev,
-                REQUEST_FINALIZER: holeskyWallets.YNDev
+                REQUEST_FINALIZER: holeskyWallets.YNDev,
+                STAKING_NODES_WITHDRAWER: holeskyWallets.YNDev
             }),
             wallets: holeskyWallets
         });
@@ -120,7 +122,9 @@ contract ActorAddresses {
                 // TODO: fix for mainnet deployment
                 REDEMPTION_ASSET_WITHDRAWER: mainnetWallets.YNDev,
                 // TODO: fix for mainnet deployment
-                REQUEST_FINALIZER: mainnetWallets.YNDev
+                REQUEST_FINALIZER: mainnetWallets.YNDev,
+                // TODO: fix for mainnet deployment
+                STAKING_NODES_WITHDRAWER: mainnetWallets.YNDev
             }),
             wallets: mainnetWallets
         });

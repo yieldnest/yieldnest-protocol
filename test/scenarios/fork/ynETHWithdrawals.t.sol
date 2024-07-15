@@ -104,7 +104,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         uint256 _queuedSharesAmountBefore = stakingNode.queuedSharesAmount();
 
-        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         stakingNode.queueWithdrawals(withdrawalAmount);
 
         assertEq(stakingNode.queuedSharesAmount(), _queuedSharesAmountBefore + withdrawalAmount, "testQueueWithdrawal: E0");
@@ -121,7 +121,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     function testQueueWithdrawalWrongCaller() public {
         if (!isHolesky) return;
 
-        vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
+        vm.expectRevert(bytes4(keccak256("NotStakingNodesWithdrawer()")));
         stakingNode.queueWithdrawals(withdrawalAmount);
     }
 

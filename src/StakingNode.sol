@@ -62,6 +62,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error MismatchInExpectedETHBalanceAfterWithdrawals(uint256 actualWithdrawalAmount, uint256 totalWithdrawalAmount);
     error TransferFailed();
     error InsufficientWithdrawnValidatorPrincipal(uint256 amount, uint256 withdrawnValidatorPrincipal);
+    error NotStakingNodesWithdrawer();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -109,6 +110,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     modifier onlyStakingNodesManager() {
         if(msg.sender != address(stakingNodesManager)) revert NotStakingNodesManager();
+        _;
+    }
+
+    modifier onlyStakingNodesWithdrawer() {
+        if (!stakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert NotStakingNodesWithdrawer();
         _;
     }
 
@@ -354,7 +360,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function queueWithdrawals(
         uint256 sharesAmount
-    ) external onlyOperator returns (bytes32[] memory fullWithdrawalRoots) {
+    ) external onlyStakingNodesWithdrawer returns (bytes32[] memory fullWithdrawalRoots) {
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
@@ -396,7 +402,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         uint256[] memory middlewareTimesIndexes
-        ) external onlyOperator {
+        ) external onlyStakingNodesWithdrawer {
 
         uint256 totalWithdrawalAmount = 0;
 

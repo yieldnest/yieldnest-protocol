@@ -158,7 +158,8 @@ contract ScenarioBaseTest is Test, Utils {
 
         StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
             redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-            withdrawalManager: actors.ops.WITHDRAWAL_MANAGER
+            withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
+            stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
         });
         
         vm.prank(actors.admin.ADMIN);

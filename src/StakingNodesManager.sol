@@ -85,6 +85,9 @@ contract StakingNodesManager is
     /// @notice Role is able to manage withdrawals
     bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
 
+    /// @notice Role is able to manage specific withdrawals for staking nodes
+    bytes32 public constant STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -164,6 +167,7 @@ contract StakingNodesManager is
     struct Init2 {
         IRedemptionAssetsVault redemptionAssetsVault;
         address withdrawalManager;
+        address stakingNodesWithdrawer;
     }
     
     function initialize(Init calldata init)
@@ -225,12 +229,14 @@ contract StakingNodesManager is
         external
         notZeroAddress(address(init.redemptionAssetsVault))
         notZeroAddress(init.withdrawalManager)
+        notZeroAddress(address(init.stakingNodesWithdrawer))
         reinitializer(2)
         onlyRole(DEFAULT_ADMIN_ROLE) {
         
         // TODO: review role access here for what can execute this
         redemptionAssetsVault = init.redemptionAssetsVault;
         _grantRole(WITHDRAWAL_MANAGER_ROLE, init.withdrawalManager);
+        _grantRole(STAKING_NODES_WITHDRAWER_ROLE, init.stakingNodesWithdrawer);
     }
 
     receive() external payable {
@@ -617,6 +623,15 @@ contract StakingNodesManager is
      */
     function isStakingNodesDelegator(address _address) public view returns (bool) {
         return hasRole(STAKING_NODES_DELEGATOR_ROLE, _address);
+    }
+
+    /**
+     * @notice Checks if the given address has the STAKING_NODES_WITHDRAWER_ROLE.
+     * @param _address The address to check.
+     * @return True if the address has the STAKING_NODES_WITHDRAWER_ROLE, false otherwise.
+     */
+    function isStakingNodesWithdrawer(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_WITHDRAWER_ROLE, _address);
     }
 
     /**
