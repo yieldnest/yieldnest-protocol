@@ -9,6 +9,13 @@ import "forge-std/console.sol";
 
 
 
+interface IRocketPoolDepositPool {
+    function deposit() external payable;
+}
+
+interface RETHToken {
+    function getExchangeRate() external view returns (uint256);
+}
 
 contract TestAssetUtils is Test {
     function get_stETH(address receiver, uint256 amount) public returns (uint256 balance) {
@@ -64,6 +71,40 @@ contract TestAssetUtils is Test {
 
         require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
         oeth.transfer(receiver, amount);
+
+        return amount;
+    }
+
+    function get_rETHByDeposit(address receiver, uint256 amount) public returns (uint256) {
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
+        address rocketPoolDepositPool = 0xDD3f50F8A6CafbE9b31a427582963f465E745AF8;
+        IRocketPoolDepositPool depositPool = IRocketPoolDepositPool(rocketPoolDepositPool);
+
+        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+
+        uint256 rETHExchangeRate = RETHToken(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
+        uint256 ethRequired = amount * 1e18 / rETHExchangeRate + 1 ether;
+        vm.deal(address(this), ethRequired);
+        // NOTE: only works if pool is not at max capacity (it may be)
+        depositPool.deposit{value: ethRequired}();
+
+        require(rETH.balanceOf(address(this)) >= amount, "Insufficient rETH balance after deposit");
+        rETH.transfer(receiver, amount);
+
+        return amount;
+    }
+
+    function get_rETH(address receiver, uint256 amount) public returns (uint256) {
+
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
+        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        address rethWhale = 0xCc9EE9483f662091a1de4795249E24aC0aC2630f;
+        vm.prank(rethWhale);
+        rETH.transfer(receiver, amount);
 
         return amount;
     }
