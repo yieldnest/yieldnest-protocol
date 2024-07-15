@@ -33,6 +33,11 @@ contract EigenStrategyManager is
     //--------------------------------------------------------------------------------------
 
     error ZeroAddress();
+    error InvalidNodeId(uint256 nodeId);
+    error InvalidStakingAmount(uint256 amount);
+    error StrategyNotFound(address asset);
+    error LengthMismatch(uint256 length1, uint256 length2);
+    
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -125,17 +130,25 @@ contract EigenStrategyManager is
         IERC20[] calldata assets,
         uint256[] calldata amounts
     ) external onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
-        require(assets.length == amounts.length, "Assets and amounts length mismatch");
+        if (assets.length != amounts.length) {
+            revert LengthMismatch(assets.length, amounts.length);
+        }
 
         ITokenStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
-        require(address(node) != address(0), "Invalid node ID");
+        if (address(node) == address(0)) {
+            revert InvalidNodeId(nodeId);
+        }
 
         IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
-            require(amounts[i] > 0, "Staking amount must be greater than zero");
+            if (amounts[i] <= 0) {
+                revert InvalidStakingAmount(amounts[i]);
+            }
             IStrategy strategy = strategies[asset];
-            require(address(strategy) != address(0), "No strategy for asset");
+            if (address(strategy) == address(0)) {
+                revert StrategyNotFound(address(asset));
+            }
             strategiesForNode[i] = strategies[assets[i]];
         }
         // Transfer assets to node
