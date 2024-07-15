@@ -81,7 +81,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /** @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode */
     uint256 private _unused_former_allocatedETH;
 
-    /** @dev Accounts for withdrawn ETH balance */
+    /** @dev Accounts for withdrawn ETH balance that can be withdrawn by the StakingNodesManager contract */
     uint256 public withdrawnValidatorPrincipal;
 
     /** 
