@@ -45,6 +45,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
     error TooManyStakingNodes(uint256 maxNodeCount);
+    error NodeIdOutOfRange(uint256 nodeId);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -287,7 +288,9 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
      * @dev Reverts if the node ID is out of range.
      */
     function getNodeById(uint256 nodeId) public view returns (ITokenStakingNode) {
-        require(nodeId < nodes.length, "Node ID out of range");
+        if (nodeId >= nodes.length) {
+            revert NodeIdOutOfRange(nodeId);
+        }
         return nodes[nodeId];
     }
 
