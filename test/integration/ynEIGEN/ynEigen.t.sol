@@ -30,6 +30,25 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
+
+    function testDepositRETHSuccess() public {
+        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        uint256 amount = 10 ether;
+
+        uint256 initialSupply = ynEigenToken.totalSupply();
+
+        // 1. Obtain rETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        address prankedUser = address(0x456);
+        uint256 balance = testAssetUtils.get_rETH(prankedUser, amount);
+
+        vm.prank(prankedUser);
+        rETH.approve(address(ynEigenToken), balance);
+        vm.prank(prankedUser);
+        ynEigenToken.deposit(rETH, balance, prankedUser);
+
+        assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply after deposit");
+    }
     
     function testDepositwstETHSuccessWithMultipleDeposits() public {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
