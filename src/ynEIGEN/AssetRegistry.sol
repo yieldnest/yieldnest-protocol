@@ -44,6 +44,8 @@ interface IAssetRegistryEvents {
     error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 length1, uint256 length2);
+    error AssetAlreadyActive(address asset);
+    error AssetAlreadyInactive(address asset);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -101,7 +103,8 @@ interface IAssetRegistryEvents {
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
-        for (uint256 i = 0; i < init.assets.length; i++) {
+        uint256 assetsLength = init.assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
             if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
             }
@@ -126,7 +129,9 @@ interface IAssetRegistryEvents {
      * @param asset The address of the ERC20 token to be added.
      */
     function addAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
-        require(!_assetData[asset].active, "Asset already active");
+        if (_assetData[asset].active) {
+            revert AssetAlreadyActive(address(asset));
+        }
 
         assets.push(asset);
 
@@ -143,7 +148,9 @@ interface IAssetRegistryEvents {
      * @param asset The address of the ERC20 token to be disabled.
      */
     function disableAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
-        require(_assetData[asset].active, "Asset already inactive");
+        if (!_assetData[asset].active) {
+            revert AssetAlreadyInactive(address(asset));
+        }
 
         _assetData[asset].active = false;
 
