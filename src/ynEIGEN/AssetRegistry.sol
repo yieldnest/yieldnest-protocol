@@ -128,7 +128,11 @@ interface IAssetRegistryEvents {
      * @dev Adds an asset to the _assetData mapping and sets it as active. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be added.
      */
-    function addAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
+    function addAsset(IERC20 asset)
+    public
+    onlyRole(ASSET_MANAGER_ROLE)
+    notZeroAddress(address(asset))
+    whenNotPaused {
         if (_assetData[asset].active) {
             revert AssetAlreadyActive(address(asset));
         }
@@ -147,7 +151,11 @@ interface IAssetRegistryEvents {
      * @dev Sets an asset as inactive in the _assetData mapping. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be disabled.
      */
-    function disableAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
+    function disableAsset(IERC20 asset)
+    public
+    onlyRole(ASSET_MANAGER_ROLE)
+    notZeroAddress(address(asset))
+    whenNotPaused {
         if (!_assetData[asset].active) {
             revert AssetAlreadyInactive(address(asset));
         }
@@ -162,7 +170,11 @@ interface IAssetRegistryEvents {
      * @dev Removes an asset from the _assetData mapping and the assets array. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be deleted.
      */
-    function deleteAsset(IERC20 asset) public onlyRole(ASSET_MANAGER_ROLE) whenNotPaused {
+    function deleteAsset(IERC20 asset)
+    public
+    onlyRole(ASSET_MANAGER_ROLE)
+    notZeroAddress(address(asset))
+    whenNotPaused {
         if (!_assetData[asset].active) {
             revert AssetNotActiveOrNonexistent(address(asset));
         }
