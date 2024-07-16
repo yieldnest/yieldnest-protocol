@@ -133,7 +133,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 1 ether;
 
-        IPausable pausableStrategyManager = IPausable(address(strategyManager));
+        IPausable pausableStrategyManager = IPausable(address(eigenLayer.strategyManager));
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 

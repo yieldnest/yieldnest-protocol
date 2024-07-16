@@ -6,6 +6,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
 
 import "forge-std/console.sol";
 
@@ -141,6 +142,23 @@ contract TestAssetUtils is Test {
         address rethWhale = 0xCc9EE9483f662091a1de4795249E24aC0aC2630f;
         vm.prank(rethWhale);
         rETH.transfer(receiver, amount);
+
+        return amount;
+    }
+
+    function get_sfrxETH(address receiver, uint256 amount) public returns (uint256) {
+
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+
+        uint256 rate = sfrxETH.balanceOf(address(this)) * 1e18 / sfrxETH.totalSupply();
+
+        IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138);
+        uint256 ethToDeposit = amount * 1e18 / rate;
+        frxMinter.submitAndDeposit{value: ethToDeposit}(address(this));
+
+        uint256 sfrxETHBalance = sfrxETH.balanceOf(address(this));
+        require(sfrxETHBalance >= amount, "Insufficient sfrxETH balance after deposit");
+        sfrxETH.transfer(receiver, amount);
 
         return amount;
     }

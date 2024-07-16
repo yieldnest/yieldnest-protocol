@@ -47,7 +47,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		ynEigenToken.deposit(wstETH, balance, address(this));
 
 		// 2. Deposit assets to Eigenlayer by Token Staking Node
-        IPausable pausableStrategyManager = IPausable(address(strategyManager));
+        IPausable pausableStrategyManager = IPausable(address(eigenLayer.strategyManager));
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
         vm.startPrank(unpauser);
@@ -61,7 +61,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         uint256 nodeId = tokenStakingNode.nodeId();
 		vm.prank(actors.ops.STRATEGY_CONTROLLER);
 		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-		(, uint256[] memory deposits) = strategyManager.getDeposits(address(tokenStakingNode));
+		(, uint256[] memory deposits) = eigenLayer.strategyManager.getDeposits(address(tokenStakingNode));
 
         uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
 
