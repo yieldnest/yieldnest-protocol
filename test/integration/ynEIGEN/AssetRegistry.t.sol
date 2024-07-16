@@ -22,12 +22,9 @@ import "forge-std/console.sol";
 contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     function testTotalAssetsWithFuzzedDeposits(uint256 wstethAmount, uint256 woethAmount, uint256 rethAmount) public {
         vm.assume(
-            wstethAmount < 100 ether && 
-            wstethAmount > 10 wei && 
-            woethAmount < 100 ether && 
-            woethAmount > 10 wei && 
-            rethAmount < 100 ether && 
-            rethAmount > 10 wei
+            wstethAmount < 100 ether && wstethAmount >= 1 wei &&
+            woethAmount < 100 ether && woethAmount >= 1 wei &&
+            rethAmount < 100 ether && rethAmount >= 1 wei
         );
 
         TestAssetUtils testAssetUtils = new TestAssetUtils();
@@ -80,6 +77,8 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Assert total assets
         assertEq(totalAssets, expectedTotalAssets, "Total assets should match expected value based on deposited amounts and rates");
+
+        assertEq(ynEigenToken.totalAssets(), totalAssets, "ynEigen.totalAssets should be equal to totalAssets from the registry");
     }
 
     function testGetAllAssetBalances() public {
