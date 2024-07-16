@@ -12,6 +12,8 @@ import {ynBase} from "src/ynBase.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IwstETH } from "src/external/lido/IwstETH.sol";
+import {IstETH} from "src/external/lido/IstETH.sol";
+
 
 import "forge-std/console.sol";
 
@@ -52,7 +54,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
             depositAsset(chainAddresses.lsd.RETH_ADDRESS, rethAmount, prankedUserRETH);
         }
 
-        uint256 wstethRate = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).getPooledEthByShares(1e18);
+        uint256 wstethRate = IstETH(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18);
         uint256 woethRate = IERC4626(chainAddresses.lsd.WOETH_ADDRESS).previewRedeem(1e18);
         uint256 rethRate = IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
 
@@ -83,7 +85,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // End of the Selection
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS); // Using wstETH as the asset
-        uint256 realRate = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).getPooledEthByShares(1e18); // Fetching the rate using LidoToken interface
+        uint256 realRate = IstETH(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18); // Fetching the rate using LidoToken interface
         uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
         uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
