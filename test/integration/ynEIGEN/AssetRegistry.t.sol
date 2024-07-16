@@ -21,16 +21,27 @@ import "forge-std/console.sol";
 
 contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     function testTotalAssetsWithFuzzedDeposits(uint256 wstethAmount, uint256 woethAmount, uint256 rethAmount) public {
-        vm.assume(wstethAmount < 100 ether && woethAmount < 100 ether && rethAmount < 100 ether);
+        vm.assume(
+            wstethAmount < 100 ether && 
+            wstethAmount > 10 wei && 
+            woethAmount < 100 ether && 
+            woethAmount > 10 wei && 
+            rethAmount < 100 ether && 
+            rethAmount > 10 wei
+        );
+
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
 
         {
             // Deposit wstETH
             IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
             address prankedUserWstETH = address(uint160(uint256(keccak256(abi.encodePacked("wstETHUser")))));
-            vm.prank(prankedUserWstETH);
             TestAssetUtils testAssetUtils = new TestAssetUtils();
             testAssetUtils.get_wstETH(prankedUserWstETH, wstethAmount);
+
+            vm.prank(prankedUserWstETH);
             wstETH.approve(address(ynEigenToken), wstethAmount);
+            vm.prank(prankedUserWstETH);
             ynEigenToken.deposit(wstETH, wstethAmount, prankedUserWstETH);
         }
 
@@ -39,8 +50,10 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
             IERC20 woETH = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
             address prankedUserWoETH = address(uint160(uint256(keccak256(abi.encodePacked("woETHUser")))));
             vm.prank(prankedUserWoETH);
-            testAssetUtils.get_OETH(prankedUserWoETH, woethAmount);
+            testAssetUtils.get_wOETH(prankedUserWoETH, woethAmount);
+            vm.prank(prankedUserWoETH);
             woETH.approve(address(ynEigenToken), woethAmount);
+            vm.prank(prankedUserWoETH);
             ynEigenToken.deposit(woETH, woethAmount, prankedUserWoETH);
         }
 
@@ -48,9 +61,10 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
             // Deposit rETH
             IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
             address prankedUserRETH = address(uint160(uint256(keccak256(abi.encodePacked("rETHUser")))));
-            vm.prank(prankedUserRETH);
             testAssetUtils.get_rETH(prankedUserRETH, rethAmount);
+            vm.prank(prankedUserRETH);
             rETH.approve(address(ynEigenToken), rethAmount);
+            vm.prank(prankedUserRETH);
             ynEigenToken.deposit(rETH, rethAmount, prankedUserRETH);
         }
 

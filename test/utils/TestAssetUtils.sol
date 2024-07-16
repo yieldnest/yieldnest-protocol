@@ -83,7 +83,7 @@ contract TestAssetUtils is Test {
         IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
         // Calculate the amount of OETH to mint using convertToAssets from the wOETH contract
         uint256 oethToMint = woeth.convertToAssets(amount) + 1 ether; // add some extra
-        uint256 obtainedOETH = get_OETH(receiver, oethToMint);
+        uint256 obtainedOETH = get_OETH(address(this), oethToMint);
 
         // Approve the wOETH contract to take the OETH
         oeth.approve(address(woeth), obtainedOETH);
