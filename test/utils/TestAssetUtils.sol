@@ -5,9 +5,9 @@ import {Test} from "lib/forge-std/src/Test.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+
 import "forge-std/console.sol";
-
-
 
 interface IRocketPoolDepositPool {
     function deposit() external payable;
@@ -71,6 +71,30 @@ contract TestAssetUtils is Test {
 
         require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
         oeth.transfer(receiver, amount);
+
+        return amount;
+    }
+
+    function get_wOETH(address receiver, uint256 amount) public returns (uint256) {
+        ContractAddresses contractAddresses = new ContractAddresses();
+        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
+        IERC4626 woeth = IERC4626(chainAddresses.lsd.WOETH_ADDRESS);
+        IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
+        // Calculate the amount of OETH to mint using convertToAssets from the wOETH contract
+        uint256 oethToMint = woeth.convertToAssets(amount) + 1 ether; // add some extra
+        uint256 obtainedOETH = get_OETH(receiver, oethToMint);
+
+        // Approve the wOETH contract to take the OETH
+        oeth.approve(address(woeth), obtainedOETH);
+
+        // Wrap the OETH into wOETH
+        woeth.deposit(obtainedOETH, address(this));
+
+        // Transfer the wrapped OETH (wOETH) to the receiver
+        uint256 wOETHBalance = woeth.balanceOf(address(this));
+        require(wOETHBalance >= amount, "Insufficient wOETH balance after wrapping");
+        woeth.transfer(receiver, amount);
 
         return amount;
     }
