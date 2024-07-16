@@ -30,7 +30,11 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         testAssetUtils = new TestAssetUtils();
     }
     
-    function testTotalAssetsWithFuzzedDeposits(uint256 wstethAmount, uint256 woethAmount, uint256 rethAmount) public {
+    function testTotalAssetsWithFuzzedDeposits(
+        uint256 wstethAmount,
+        uint256 woethAmount,
+        uint256 rethAmount
+        ) public {
         vm.assume(
             wstethAmount < 100 ether && wstethAmount >= 1 wei &&
             woethAmount < 100 ether && woethAmount >= 1 wei &&
@@ -70,14 +74,56 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(ynEigenToken.totalAssets(), totalAssets, "ynEigen.totalAssets should be equal to totalAssets from the registry");
     }
 
-    function testGetAllAssetBalancesWithoutDeposits() public {
+    function testGetAllAssetBalancesWithoutDeposits(
+        uint256 wstethAmount,
+        uint256 woethAmount,
+        uint256 rethAmount
+        ) public {
+        vm.assume(
+            wstethAmount < 100 ether && wstethAmount >= 1 wei &&
+            woethAmount < 100 ether && woethAmount >= 1 wei &&
+            rethAmount < 100 ether && rethAmount >= 1 wei
+        );
+
+        {
+            address prankedUserWstETH = address(uint160(uint256(keccak256(abi.encodePacked("wstETHUser")))));
+            depositAsset(chainAddresses.lsd.WSTETH_ADDRESS, wstethAmount, prankedUserWstETH);
+        }
+
+        {
+            // Deposit woETH using utility function
+            address prankedUserWoETH = address(uint160(uint256(keccak256(abi.encodePacked("woETHUser")))));
+            depositAsset(chainAddresses.lsd.WOETH_ADDRESS, woethAmount, prankedUserWoETH);
+        }
+
+        {
+            // Deposit rETH using utility function
+            address prankedUserRETH = address(uint160(uint256(keccak256(abi.encodePacked("rETHUser")))));
+            depositAsset(chainAddresses.lsd.RETH_ADDRESS, rethAmount, prankedUserRETH);
+        }
+
         uint256[] memory balances = assetRegistry.getAllAssetBalances();
+        IERC20[] memory assets = assetRegistry.getAssets();
+        assertEq(balances.length, assets.length, "Balances and assets arrays should have the same length");
+        uint256[] memory expectedBalances = new uint256[](assets.length);
+        for (uint i = 0; i < assets.length; i++) {
+            address assetAddress = address(assets[i]);
+            if (assetAddress == chainAddresses.lsd.WSTETH_ADDRESS) {
+                expectedBalances[i] = wstethAmount;
+            } else if (assetAddress == chainAddresses.lsd.WOETH_ADDRESS) {
+                expectedBalances[i] = woethAmount;
+            } else if (assetAddress == chainAddresses.lsd.RETH_ADDRESS) {
+                expectedBalances[i] = rethAmount;
+            } else {
+                expectedBalances[i] = 0; // Default to 0 for any other assets
+            }
+        }
+
+        for (uint i = 0; i < assets.length; i++) {
+            assertEq(balances[i], expectedBalances[i], "Deposited amount does not match the expected balance for the asset");
+        }
 
         assertEq(balances.length, assets.length, "Balances array length should match the assets array length");
-
-        for (uint i = 0; i < balances.length; i++) {
-            assertEq(balances[i], 0, "Asset balance does not match expected value");
-        }
     }
 
     function testWstETHConvertToUnitOfAccountFuzz(uint256 amount) public {
@@ -85,7 +131,39 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // End of the Selection
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS); // Using wstETH as the asset
-        uint256 realRate = IstETH(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18); // Fetching the rate using LidoToken interface
+        uint256 realRate = IstETH(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18);
+        uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
+    function testsfrxETHConvertToUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        // End of the Selection
+        IERC20 asset = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS); // Using wstETH as the asset
+        address FRAX_ASSET = chainAddresses.lsd.SFRXETH_ADDRESS;
+        uint256 realRate = IERC4626(FRAX_ASSET).totalAssets() * 1e18 / IERC20(FRAX_ASSET).totalSupply();
+        uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
+    function testrETHConvertToUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS); // Using rETH as the asset
+        uint256 realRate = IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
+        uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
+    function testWoETHConvertToUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        IERC20 asset = IERC20(chainAddresses.lsd.WOETH_ADDRESS); // Using woETH as the asset
+        uint256 realRate = IERC4626(chainAddresses.lsd.WOETH_ADDRESS).previewRedeem(1e18);
         uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
         uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
