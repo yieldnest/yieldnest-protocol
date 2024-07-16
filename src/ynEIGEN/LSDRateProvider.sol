@@ -66,7 +66,7 @@ contract LSDRateProvider is Initializable {
             return IstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
         }
         if (_asset == FRAX_ASSET) {
-            return IERC20(FRAX_ASSET).balanceOf(address(this)) * UNIT / IERC20(FRAX_ASSET).totalSupply();
+            return IERC4626(FRAX_ASSET).totalAssets() * UNIT / IERC20(FRAX_ASSET).totalSupply();
         }
         if (_asset == WOETH_ASSET) {
             return IERC4626(WOETH_ASSET).previewRedeem(UNIT);

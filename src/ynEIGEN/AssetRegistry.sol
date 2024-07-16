@@ -268,6 +268,15 @@ interface IAssetRegistryEvents {
     }
 
     /**
+     * @notice Retrieves the list of all assets managed by the contract.
+     * @dev Returns an array of addresses representing the ERC20 tokens considered as assets.
+     * @return An array of ERC20 token addresses.
+     */
+    function getAssets() public view returns (IERC20[] memory) {
+        return assets;
+    }
+
+    /**
      * @notice Converts the amount of a given asset to its equivalent value in the unit of account of the vault.
      * @dev This function takes into account the decimal places of the asset to ensure accurate conversion.
      * @param asset The ERC20 token to be converted to the unit of account.
