@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IstETH} from "src/external/lido/IstETH.sol";
 
 
 interface CoinbaseToken {
@@ -63,7 +63,7 @@ contract LSDRateProvider is Initializable {
 
     function rate(address _asset) external view returns (uint256) {
         if (_asset == LIDO_ASSET) {
-            return IwstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
+            return IstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
         }
         if (_asset == FRAX_ASSET) {
             return IERC20(FRAX_ASSET).balanceOf(address(this)) * UNIT / IERC20(FRAX_ASSET).totalSupply();
