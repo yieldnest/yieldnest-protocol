@@ -27,7 +27,6 @@ contract TestAssetUtils is Test {
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
     }
 
-
     function get_Asset(address asset, address receiver, uint256 amount) public returns (uint256 balance) {
 
         if (asset == chainAddresses.lsd.STETH_ADDRESS) {
@@ -138,10 +137,6 @@ contract TestAssetUtils is Test {
     }
 
     function get_rETH(address receiver, uint256 amount) public returns (uint256) {
-
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-
         IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         address rethWhale = 0xCc9EE9483f662091a1de4795249E24aC0aC2630f;
         vm.prank(rethWhale);
