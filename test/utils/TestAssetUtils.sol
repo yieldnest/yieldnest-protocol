@@ -18,9 +18,34 @@ interface RETHToken {
 }
 
 contract TestAssetUtils is Test {
+
+    ContractAddresses.ChainAddresses chainAddresses;
+    ContractAddresses contractAddresses;
+
+    constructor() {
+        contractAddresses = new ContractAddresses();
+        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+    }
+
+
+    function get_Asset(address asset, address receiver, uint256 amount) public returns (uint256 balance) {
+
+        if (asset == chainAddresses.lsd.STETH_ADDRESS) {
+            return get_stETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.WSTETH_ADDRESS) {
+            return get_wstETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.OETH_ADDRESS) {
+            return get_OETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.WOETH_ADDRESS) {
+            return get_wOETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.RETH_ADDRESS) {
+            return get_rETH(receiver, amount);
+        } else {
+            revert("Unsupported asset type");
+        }
+    }
+
     function get_stETH(address receiver, uint256 amount) public returns (uint256 balance) {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         address stETH_Whale = block.chainid == 1 
             ? 0x93c4b944D05dfe6df7645A86cd2206016c51564D 
@@ -36,8 +61,6 @@ contract TestAssetUtils is Test {
     }
 
     function get_wstETH(address receiver, uint256 amount) public returns (uint256) {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         IwstETH wsteth = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
 
@@ -58,8 +81,6 @@ contract TestAssetUtils is Test {
     }
 
     function get_OETH(address receiver, uint256 amount) public returns (uint256) {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
 
@@ -76,8 +97,6 @@ contract TestAssetUtils is Test {
     }
 
     function get_wOETH(address receiver, uint256 amount) public returns (uint256) {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         IERC4626 woeth = IERC4626(chainAddresses.lsd.WOETH_ADDRESS);
         IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
@@ -100,8 +119,6 @@ contract TestAssetUtils is Test {
     }
 
     function get_rETHByDeposit(address receiver, uint256 amount) public returns (uint256) {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         address rocketPoolDepositPool = 0xDD3f50F8A6CafbE9b31a427582963f465E745AF8;
         IRocketPoolDepositPool depositPool = IRocketPoolDepositPool(rocketPoolDepositPool);

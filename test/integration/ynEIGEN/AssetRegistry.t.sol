@@ -81,25 +81,21 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(ynEigenToken.totalAssets(), totalAssets, "ynEigen.totalAssets should be equal to totalAssets from the registry");
     }
 
-    function testGetAllAssetBalances() public {
-        uint256[] memory expectedBalances = new uint256[](2);
-        expectedBalances[0] = 500000; // Example balance for asset 1
-        expectedBalances[1] = 500000; // Example balance for asset 2
+    function testGetAllAssetBalancesWithoutDeposits() public {
         uint256[] memory balances = assetRegistry.getAllAssetBalances();
         for (uint i = 0; i < balances.length; i++) {
-            assertEq(balances[i], expectedBalances[i], "Asset balance does not match expected value");
+            assertEq(balances[i], 0, "Asset balance does not match expected value");
         }
     }
 
-    function testConvertToUnitOfAccountFuzz(uint256 amount) public {
+    function testWstETHConvertToUnitOfAccountFuzz(uint256 amount) public {
         vm.assume(amount < 1000000 ether);
+
         // End of the Selection
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS); // Using wstETH as the asset
         uint256 realRate = LidoToken(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18); // Fetching the rate using LidoToken interface
         uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
         uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
-        console.log("Expected Converted Amount:", expectedConvertedAmount);
-        console.log("Actual Converted Amount:", convertedAmount);
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
     }
 
