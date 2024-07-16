@@ -19,4 +19,6 @@ interface IwstETH is IERC20 {
     function stEthPerToken() external view returns (uint256);
 
     function stETH() external view returns (address);
+
+    function getPooledEthByShares(uint256 _shares) external view returns (uint256);
 }

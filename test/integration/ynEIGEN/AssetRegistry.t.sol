@@ -9,10 +9,11 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
-import { LidoToken } from "src/ynEIGEN/LSDRateProvider.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {IrETH} from "src/external/rocketpool/IrETH.sol";
+import { IwstETH } from "src/external/lido/IwstETH.sol";
 
 import "forge-std/console.sol";
-
 
 /**
  * @dev Work in progress (WIP) for generating NatSpec comments for the AssetRegistryTest contract.
@@ -51,9 +52,9 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
             depositAsset(chainAddresses.lsd.RETH_ADDRESS, rethAmount, prankedUserRETH);
         }
 
-        uint256 wstethRate = rateProvider.rate(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 woethRate = rateProvider.rate(chainAddresses.lsd.WOETH_ADDRESS);
-        uint256 rethRate = rateProvider.rate(chainAddresses.lsd.RETH_ADDRESS);
+        uint256 wstethRate = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).getPooledEthByShares(1e18);
+        uint256 woethRate = IERC4626(chainAddresses.lsd.WOETH_ADDRESS).previewRedeem(1e18);
+        uint256 rethRate = IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
 
         // Calculate expected total assets
         uint256 expectedTotalAssets = (wstethAmount * wstethRate / 1e18) + (woethAmount * woethRate / 1e18) + (rethAmount * rethRate / 1e18);
@@ -69,6 +70,9 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
     function testGetAllAssetBalancesWithoutDeposits() public {
         uint256[] memory balances = assetRegistry.getAllAssetBalances();
+
+        assertEq(balances.length, assets.length, "Balances array length should match the assets array length");
+
         for (uint i = 0; i < balances.length; i++) {
             assertEq(balances[i], 0, "Asset balance does not match expected value");
         }
@@ -79,7 +83,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // End of the Selection
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS); // Using wstETH as the asset
-        uint256 realRate = LidoToken(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18); // Fetching the rate using LidoToken interface
+        uint256 realRate = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).getPooledEthByShares(1e18); // Fetching the rate using LidoToken interface
         uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
         uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");

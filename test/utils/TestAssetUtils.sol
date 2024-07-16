@@ -7,15 +7,12 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
+import {IrETH} from "src/external/rocketpool/IrETH.sol";
 
 import "forge-std/console.sol";
 
 interface IRocketPoolDepositPool {
     function deposit() external payable;
-}
-
-interface RETHToken {
-    function getExchangeRate() external view returns (uint256);
 }
 
 contract TestAssetUtils is Test {
@@ -125,7 +122,7 @@ contract TestAssetUtils is Test {
 
         IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
 
-        uint256 rETHExchangeRate = RETHToken(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
+        uint256 rETHExchangeRate = IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
         uint256 ethRequired = amount * 1e18 / rETHExchangeRate + 1 ether;
         vm.deal(address(this), ethRequired);
         // NOTE: only works if pool is not at max capacity (it may be)
