@@ -20,10 +20,52 @@ import "forge-std/console.sol";
  */
 
 contract AssetRegistryTest is ynEigenIntegrationBaseTest {
-    function testTotalAssets() public {
-        uint256 expectedTotalAssets = 1000000; // Example expected total assets
+    function testTotalAssetsWithFuzzedDeposits(uint256 wstethAmount, uint256 woethAmount, uint256 rethAmount) public {
+        vm.assume(wstethAmount < 100 ether && woethAmount < 100 ether && rethAmount < 100 ether);
+
+        {
+            // Deposit wstETH
+            IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+            address prankedUserWstETH = address(uint160(uint256(keccak256(abi.encodePacked("wstETHUser")))));
+            vm.prank(prankedUserWstETH);
+            TestAssetUtils testAssetUtils = new TestAssetUtils();
+            testAssetUtils.get_wstETH(prankedUserWstETH, wstethAmount);
+            wstETH.approve(address(ynEigenToken), wstethAmount);
+            ynEigenToken.deposit(wstETH, wstethAmount, prankedUserWstETH);
+        }
+
+        {
+            // Deposit woETH
+            IERC20 woETH = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+            address prankedUserWoETH = address(uint160(uint256(keccak256(abi.encodePacked("woETHUser")))));
+            vm.prank(prankedUserWoETH);
+            testAssetUtils.get_OETH(prankedUserWoETH, woethAmount);
+            woETH.approve(address(ynEigenToken), woethAmount);
+            ynEigenToken.deposit(woETH, woethAmount, prankedUserWoETH);
+        }
+
+        {
+            // Deposit rETH
+            IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+            address prankedUserRETH = address(uint160(uint256(keccak256(abi.encodePacked("rETHUser")))));
+            vm.prank(prankedUserRETH);
+            testAssetUtils.get_rETH(prankedUserRETH, rethAmount);
+            rETH.approve(address(ynEigenToken), rethAmount);
+            ynEigenToken.deposit(rETH, rethAmount, prankedUserRETH);
+        }
+
+        uint256 wstethRate = rateProvider.rate(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 woethRate = rateProvider.rate(chainAddresses.lsd.WOETH_ADDRESS);
+        uint256 rethRate = rateProvider.rate(chainAddresses.lsd.RETH_ADDRESS);
+
+        // Calculate expected total assets
+        uint256 expectedTotalAssets = (wstethAmount * wstethRate / 1e18) + (woethAmount * woethRate / 1e18) + (rethAmount * rethRate / 1e18);
+
+        // Fetch total assets from the registry
         uint256 totalAssets = assetRegistry.totalAssets();
-        assertEq(totalAssets, expectedTotalAssets, "Total assets should match expected value");
+
+        // Assert total assets
+        assertEq(totalAssets, expectedTotalAssets, "Total assets should match expected value based on deposited amounts and rates");
     }
 
     function testGetAllAssetBalances() public {
