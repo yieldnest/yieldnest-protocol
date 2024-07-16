@@ -13,7 +13,7 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IwstETH } from "src/external/lido/IwstETH.sol";
 import {IstETH} from "src/external/lido/IstETH.sol";
-
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import "forge-std/console.sol";
 
@@ -180,6 +180,18 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.unpauseActions();
         assertFalse(assetRegistry.actionsPaused(), "Actions should be unpaused");
     }
+
+    function testPauseActionsWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), assetRegistry.PAUSER_ROLE()));
+        assetRegistry.pauseActions();
+    }
+
+    function testUnpauseActionsWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), assetRegistry.UNPAUSER_ROLE()));
+        assetRegistry.unpauseActions();
+    }
+
+    // Utility functions
 
     function depositAsset(address assetAddress, uint256 amount, address user) internal {
         IERC20 asset = IERC20(assetAddress);
