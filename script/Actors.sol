@@ -15,6 +15,7 @@ contract ActorAddresses {
         address ORACLE_ADMIN;
         address STAKING_NODES_DELEGATOR;
         address UNPAUSE_ADMIN;
+        address ASSET_MANAGER;
     }
 
     struct OpsActors {
@@ -74,7 +75,8 @@ contract ActorAddresses {
                     FEE_RECEIVER: holeskyWallets.YNSecurityCouncil,
                     ORACLE_ADMIN: holeskyWallets.YNSecurityCouncil,
                     STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
-                    UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil
+                    UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
+                    ASSET_MANAGER: holeskyWallets.YNSecurityCouncil
                 }),
                 ops: OpsActors({
                     STAKING_NODES_OPERATOR: holeskyWallets.YNDev,
@@ -115,7 +117,8 @@ contract ActorAddresses {
                 FEE_RECEIVER: mainnetWallets.YNSecurityCouncil,
                 ORACLE_ADMIN: mainnetWallets.YNSecurityCouncil,
                 STAKING_NODES_DELEGATOR: mainnetWallets.YNDelegator,
-                UNPAUSE_ADMIN: mainnetWallets.YNSecurityCouncil
+                UNPAUSE_ADMIN: mainnetWallets.YNSecurityCouncil,
+                ASSET_MANAGER: mainnetWallets.YNSecurityCouncil
             }),
             ops: OpsActors({
                 STAKING_NODES_OPERATOR:mainnetWallets.YNDev,
