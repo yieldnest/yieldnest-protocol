@@ -149,11 +149,13 @@ contract TestAssetUtils is Test {
     function get_sfrxETH(address receiver, uint256 amount) public returns (uint256) {
 
         IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        IERC4626 sfrxETHVault = IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        uint256 rate = sfrxETH.balanceOf(address(this)) * 1e18 / sfrxETH.totalSupply();
+        uint256 rate = sfrxETHVault.totalAssets() * 1e18 / sfrxETHVault.totalSupply();
 
         IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138);
-        uint256 ethToDeposit = amount * 1e18 / rate;
+        uint256 ethToDeposit = amount * 1e18 / rate + 1 ether;
+        vm.deal(address(this), ethToDeposit);
         frxMinter.submitAndDeposit{value: ethToDeposit}(address(this));
 
         uint256 sfrxETHBalance = sfrxETH.balanceOf(address(this));
