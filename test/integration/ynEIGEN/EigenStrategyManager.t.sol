@@ -12,33 +12,65 @@ import {ynBase} from "src/ynBase.sol";
 
 contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
-    function testStakeAssetsToNodeSuccess() public {
-        // Setup: Create a token staking node and prepare assets
+    TestAssetUtils testAssetUtils;
+    address[10] public depositors;
+
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+        for (uint i = 0; i < 10; i++) {
+            depositors[i] = address(uint160(uint256(keccak256(abi.encodePacked("depositor", i)))));
+        }
+    }
+
+    function testStakeAssetsToNodeSuccessFuzz(
+        uint256 wstethAmount,
+        uint256 woethAmount,
+        uint256 rethAmount
+    ) public {
+
+        vm.assume(
+            wstethAmount < 100 ether && wstethAmount >= 2 wei &&
+            woethAmount < 100 ether && woethAmount >= 2 wei &&
+            rethAmount < 100 ether && rethAmount >= 2 wei
+        );
+
+        // Setup: Create a token staking node and prepare assetsToDeposit
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNodesManager.createTokenStakingNode();
         ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.nodes(0);
 
-        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 stakeAmount = 50 ether;
+        uint256 assetCount = 3;
 
-        // User obtains wstETH and approves ynEigenToken for staking
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
-        uint256 obtainedAmount = testAssetUtils.get_wstETH(address(this), stakeAmount);
-        asset.approve(address(ynEigenToken), obtainedAmount);
+        // Call with arrays and from controller
+        IERC20[] memory assetsToDeposit = new IERC20[](assetCount);
+        assetsToDeposit[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        assetsToDeposit[1] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+        assetsToDeposit[2] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
 
-        // Depositor deposits the staked assets to the node
-        ynEigenToken.deposit(asset, obtainedAmount, address(tokenStakingNode));
+
+        uint256[] memory amounts = new uint256[](assetCount);
+        amounts[0] = wstethAmount;
+        amounts[1] = woethAmount;
+        amounts[2] = rethAmount;
+
+        for (uint256 i = 0; i < assetCount; i++) {
+            address prankedUser= depositors[i];
+            testAssetUtils.depositAsset(ynEigenToken, address(assetsToDeposit[i]), amounts[i], prankedUser);
+        }
 
         uint256 nodeId = tokenStakingNode.nodeId();
-        // Call with arrays and from controller
-        IERC20[] memory assets = new IERC20[](1);
-        uint256[] memory amounts = new uint256[](1);
-        assets[0] = asset;
-        amounts[0] = obtainedAmount;
-        uint256 initialBalance = asset.balanceOf(address(ynEigenToken));
+        uint256[] memory initialBalances = new uint256[](assetsToDeposit.length);
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            initialBalances[i] = assetsToDeposit[i].balanceOf(address(ynEigenToken));
+        }
+
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-        uint256 finalBalance = asset.balanceOf(address(ynEigenToken));
-        assertEq(initialBalance - finalBalance, obtainedAmount, "Balance of ynEigen did not decrease by the staked amount");
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assetsToDeposit, amounts);
+
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            uint256 initialBalance = initialBalances[i];
+            uint256 finalBalance = assetsToDeposit[i].balanceOf(address(ynEigenToken));
+            assertEq(initialBalance - finalBalance, amounts[i], "Balance of ynEigen did not decrease by the staked amount for asset");
+        }
     }
 }
