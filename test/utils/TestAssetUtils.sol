@@ -8,6 +8,7 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
+import { IynEigen } from "src/interfaces/IynEigen.sol";
 
 import "forge-std/console.sol";
 
@@ -158,5 +159,14 @@ contract TestAssetUtils is Test {
         sfrxETH.transfer(receiver, amount);
 
         return amount;
+    }
+
+    function depositAsset(IynEigen ynEigenToken, address assetAddress, uint256 amount, address user) public {
+        IERC20 asset = IERC20(assetAddress);
+        get_Asset(assetAddress, user, amount);
+        vm.prank(user);
+        asset.approve(address(ynEigenToken), amount);
+        vm.prank(user);
+        ynEigenToken.deposit(asset, amount, user);
     }
 }
