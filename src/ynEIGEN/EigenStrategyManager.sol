@@ -17,12 +17,18 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 
 import "forge-std/console.sol";
 
+interface IEigenStrategyManagerEvents {
+    event StrategyAdded(address indexed asset, address indexed strategy);
+    event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
+    event DepositedToEigenlayer(IERC20[] depositAssets, uint256[] depositAmounts, IStrategy[] strategiesForNode);
+}
 
 /** @title EigenStrategyManager
  *  @dev This contract handles the strategy management for ynEigen asset allocations.
  */
 contract EigenStrategyManager is 
         IEigenStrategyManager,
+        IEigenStrategyManagerEvents,
         Initializable,
         AccessControlUpgradeable,
         ReentrancyGuardUpgradeable
@@ -37,6 +43,9 @@ contract EigenStrategyManager is
     error InvalidStakingAmount(uint256 amount);
     error StrategyNotFound(address asset);
     error LengthMismatch(uint256 length1, uint256 length2);
+    error AssetAlreadyExists(address asset);
+    error NoStrategyDefinedForAsset(address asset);
+    error StrategyAlreadySetForAsset(address asset);
     
 
     //--------------------------------------------------------------------------------------
@@ -51,6 +60,9 @@ contract EigenStrategyManager is
 
     /// @notice Controls the strategy actions
     bytes32 public constant STRATEGY_CONTROLLER_ROLE = keccak256("STRATEGY_CONTROLLER_ROLE");
+
+    /// @notice Role allowed to manage strategies
+    bytes32 public constant STRATEGY_ADMIN_ROLE = keccak256("STRATEGY_ADMIN_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -86,6 +98,7 @@ contract EigenStrategyManager is
         address strategyController;
         address unpauser;
         address pauser;
+        address strategyAdmin;
     }
 
     function initialize(Init calldata init)
@@ -100,12 +113,17 @@ contract EigenStrategyManager is
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
         _grantRole(STRATEGY_CONTROLLER_ROLE, init.strategyController);
+        _grantRole(STRATEGY_ADMIN_ROLE, init.strategyAdmin);
 
         for (uint256 i = 0; i < init.assets.length; i++) {
             if (address(init.assets[i]) == address(0) || address(init.strategies[i]) == address(0)) {
                 revert ZeroAddress();
             }
+            if (strategies[init.assets[i]] != IStrategy(address(0))) {
+                revert AssetAlreadyExists(address(init.assets[i]));
+            }
             strategies[init.assets[i]] = init.strategies[i];
+            emit StrategyAdded(address(init.assets[i]), address(init.strategies[i]));
         }
 
         ynEigen = init.ynEigen;
@@ -142,7 +160,7 @@ contract EigenStrategyManager is
         IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
-            if (amounts[i] <= 0) {
+            if (amounts[i] == 0) {
                 revert InvalidStakingAmount(amounts[i]);
             }
             IStrategy strategy = strategies[asset];
@@ -162,12 +180,15 @@ contract EigenStrategyManager is
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
 
-            console.log("Depositing asset:", address(depositAsset), "Amount:", depositAmount);
             // Transfer each asset to the node
             depositAsset.transfer(address(node), depositAmount);
         }
 
+        emit StakedAssetsToNode(nodeId, assets, amounts);
+
         node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
+
+        emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
     }
 
     function toEigenLayerDeposit(
@@ -188,6 +209,28 @@ contract EigenStrategyManager is
             depositAsset = asset;
             depositAmount = amount;
         }   
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ADMIN  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Adds a new strategy for a specific asset.
+     * @param asset The asset for which the strategy is to be added.
+     * @param strategy The strategy contract address to be associated with the asset.
+     */
+    function addStrategy(IERC20 asset, IStrategy strategy)
+        external
+        onlyRole(STRATEGY_ADMIN_ROLE)
+        notZeroAddress(address(asset))
+        notZeroAddress(address(strategy)) {
+        if (address(strategies[asset]) != address(0)){
+            revert StrategyAlreadySetForAsset(address(asset));
+        }
+
+        strategies[asset] = strategy;
+        emit StrategyAdded(address(asset), address(strategy));
     }
 
     //--------------------------------------------------------------------------------------
@@ -250,24 +293,40 @@ contract EigenStrategyManager is
      * @return stakedBalance The total staked balance of the specified asset.
      */
     function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
+        if (address(strategies[asset]) == address(0)) {
+            revert NoStrategyDefinedForAsset(address(asset));
+        }
+
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
         uint256 nodesCount = nodes.length;
         for (uint256 i; i < nodesCount; i++ ) {
             ITokenStakingNode node = nodes[i];
-            stakedBalance += getStakedAssetBalanceForNode(asset, node);
+            stakedBalance += _getStakedAssetBalanceForNode(asset, node);
         }
     }
 
     /**
      * @notice Retrieves the staked balance of a specific asset for a given node.
      * @param asset The ERC20 token for which the staked balance is to be retrieved.
-     * @param node The specific node for which the staked balance is to be retrieved.
+     * @param nodeId The specific nodeId for which the staked balance is to be retrieved.
      * @return stakedBalance The staked balance of the specified asset for the given node.
      */
     function getStakedAssetBalanceForNode(
         IERC20 asset,
+        uint256 nodeId
+    ) internal view returns (uint256 stakedBalance) {
+        if (address(strategies[asset]) == address(0)) {
+            revert NoStrategyDefinedForAsset(address(asset));
+        }
+
+        ITokenStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
+        return _getStakedAssetBalanceForNode(asset, node);
+    }
+
+    function _getStakedAssetBalanceForNode(
+        IERC20 asset,
         ITokenStakingNode node
-    ) public view returns (uint256 stakedBalance) {
+    ) internal view returns (uint256 stakedBalance) {
         uint256 balanceNode = asset.balanceOf(address(node));
         stakedBalance += balanceNode;
 

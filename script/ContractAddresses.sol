@@ -29,6 +29,7 @@ contract ContractAddresses {
         address OETH_ADDRESS;
         address WOETH_ADDRESS;
         address OETH_ZAPPER_ADDRESS;
+        address SWELL_ADDRESS;
     }
 
     struct LSDStrategies {
@@ -36,6 +37,7 @@ contract ContractAddresses {
         address STETH_STRATEGY_ADDRESS;
         address OETH_STRATEGY_ADDRESS;
         address SFRXETH_STRATEGY_ADDRESS;
+        address SWELL_STRATEGY_ADDRESS;
     }
 
     struct EthereumAddresses {
@@ -83,13 +85,15 @@ contract ContractAddresses {
                 WSTETH_ADDRESS: 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0,
                 OETH_ADDRESS: 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3,
                 WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192,
-                OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66
+                OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66,
+                SWELL_ADDRESS: 0xf951E335afb289353dc249e82926178EaC7DEd78
             }),
             lsdStrategies: LSDStrategies({
                 RETH_STRATEGY_ADDRESS: 0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2,
                 STETH_STRATEGY_ADDRESS: 0x93c4b944D05dfe6df7645A86cd2206016c51564D,
                 OETH_STRATEGY_ADDRESS: 0xa4C637e0F704745D182e4D38cAb7E7485321d059,
-                SFRXETH_STRATEGY_ADDRESS: 0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6
+                SFRXETH_STRATEGY_ADDRESS: 0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6,
+                SWELL_STRATEGY_ADDRESS: 0x0Fe4F44beE93503346A3Ac9EE5A26b130a5796d6
             }),
             yn: YieldNestAddresses({
                 YNETH_ADDRESS: 0x09db87A538BD693E9d08544577d5cCfAA6373A48,
@@ -123,13 +127,15 @@ contract ContractAddresses {
                 WSTETH_ADDRESS: 0x8d09a4502Cc8Cf1547aD300E066060D043f6982D, // source: https://docs.lido.fi/deployed-contracts/holesky/
                 OETH_ADDRESS: 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3, // TODO: fix, placeholder until available
                 WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192, // TODO: fix, placeholder until available
-                OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66 // TODO: fix, placeholder until available
+                OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66, // TODO: fix, placeholder until available
+                SWELL_ADDRESS: 0xf951E335afb289353dc249e82926178EaC7DEd78 // TODO: fix, placeholder until available
             }),
             lsdStrategies: LSDStrategies({
                 RETH_STRATEGY_ADDRESS: 0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0,
                 STETH_STRATEGY_ADDRESS: 0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3,
                 OETH_STRATEGY_ADDRESS: 0xa4C637e0F704745D182e4D38cAb7E7485321d059, // TODO: fix, placeholder until available
-                SFRXETH_STRATEGY_ADDRESS: 0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c
+                SFRXETH_STRATEGY_ADDRESS: 0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c,
+                SWELL_STRATEGY_ADDRESS: 0x0Fe4F44beE93503346A3Ac9EE5A26b130a5796d6 // TODO: fix, placeholder until available
             }),
             yn: YieldNestAddresses({
                 YNETH_ADDRESS: 0xd9029669BC74878BCB5BE58c259ed0A277C5c16E,

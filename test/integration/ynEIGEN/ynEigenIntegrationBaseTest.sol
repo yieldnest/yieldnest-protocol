@@ -65,10 +65,17 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     EigenStrategyManager eigenStrategyManager;
 
     // Eigen
-    IEigenPodManager public eigenPodManager;
-    IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
-    IStrategyManager public strategyManager;
+    struct EigenLayer {
+        IEigenPodManager eigenPodManager;
+        IDelegationManager delegationManager;
+        IDelayedWithdrawalRouter delayedWithdrawalRouter;
+        IStrategyManager strategyManager;
+    }
+
+    EigenLayer public eigenLayer;
+
+    // LSD
+    IERC20[] public assets;
 
 
     function setUp() public virtual {
@@ -155,12 +162,10 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     }
 
     function setupEigenLayer() public {
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
-        strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
-        eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
-        delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
-        strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        eigenLayer.delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+        eigenLayer.strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        eigenLayer.eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
+        eigenLayer.delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
     }
 
     function setupYnEigen() public {
@@ -185,8 +190,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodeImplementation = new TokenStakingNode();
 
         TokenStakingNodesManager.Init memory tokenStakingNodesManagerInit = TokenStakingNodesManager.Init({
-            strategyManager: strategyManager,
-            delegationManager: delegationManager,
+            strategyManager: eigenLayer.strategyManager,
+            delegationManager: eigenLayer.delegationManager,
             eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
             maxNodeCount: 10,
             admin: actors.admin.ADMIN,
@@ -204,25 +209,34 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     }
 
     function setupEigenStrategyManagerAndAssetRegistry() public {
-        IERC20[] memory assets = new IERC20[](3);
-        IStrategy[] memory strategies = new IStrategy[](3);
+        IERC20[] memory lsdAssets = new IERC20[](4);
+        IStrategy[] memory strategies = new IStrategy[](4);
 
         // stETH
-        // We acccept deposits in wstETH, and deploy to the stETH strategy
-        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        // We accept deposits in wstETH, and deploy to the stETH strategy
+        lsdAssets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
 
         // rETH
-        assets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        lsdAssets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         strategies[1] = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
 
         // oETH
         // We accept deposits in woETH, and deploy to the oETH strategy
-        assets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+        lsdAssets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
         strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
 
+        // sfrxETH
+        // We accept deposits in wsfrxETH, and deploy to the sfrxETH strategy
+        lsdAssets[3] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        strategies[3] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+
+        for (uint i = 0; i < lsdAssets.length; i++) {
+            assets.push(lsdAssets[i]);
+        }
+
         EigenStrategyManager.Init memory eigenStrategyManagerInit = EigenStrategyManager.Init({
-            assets: assets,
+            assets: lsdAssets,
             strategies: strategies,
             ynEigen: IynEigen(address(ynEigenToken)),
             strategyManager: IStrategyManager(address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS)),
@@ -231,19 +245,21 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             admin: actors.admin.ADMIN,
             strategyController: actors.ops.STRATEGY_CONTROLLER,
             unpauser: actors.admin.UNPAUSE_ADMIN,
-            pauser: actors.ops.PAUSE_ADMIN
+            pauser: actors.ops.PAUSE_ADMIN,
+            strategyAdmin: actors.admin.EIGEN_STRATEGY_ADMIN
         });
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         eigenStrategyManager.initialize(eigenStrategyManagerInit);
 
         AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
-            assets: assets,
+            assets: lsdAssets,
             rateProvider: IRateProvider(address(rateProvider)),
             eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
             ynEigen: IynEigen(address(ynEigenToken)),
             admin: actors.admin.ADMIN,
             pauser: actors.ops.PAUSE_ADMIN,
-            unpauser: actors.admin.UNPAUSE_ADMIN
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            assetManagerRole: actors.admin.ASSET_MANAGER
         });
         assetRegistry.initialize(assetRegistryInit);
     }

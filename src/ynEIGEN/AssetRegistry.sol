@@ -45,7 +45,7 @@ interface IAssetRegistryEvents {
     error ZeroAddress();
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyActive(address asset);
-    error AssetAlreadyInactive(address asset);
+    error NoStrategyDefinedForAsset(IERC20 asset);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -87,6 +87,7 @@ interface IAssetRegistryEvents {
         address admin;
         address pauser;
         address unpauser;
+        address assetManagerRole;
     }
 
     function initialize(Init calldata init)
@@ -102,11 +103,15 @@ interface IAssetRegistryEvents {
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
-
+        _grantRole(ASSET_MANAGER_ROLE, init.assetManagerRole);
+        
         uint256 assetsLength = init.assets.length;
         for (uint256 i = 0; i < assetsLength; i++) {
             if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
+            }
+            if (_assetData[init.assets[i]].active) {
+                revert AssetAlreadyActive(address(init.assets[i]));
             }
             assets.push(init.assets[i]);
             _assetData[init.assets[i]] = AssetData({
@@ -137,6 +142,11 @@ interface IAssetRegistryEvents {
             revert AssetAlreadyActive(address(asset));
         }
 
+        IStrategy strategy = eigenStrategyManager.strategies(asset);
+        if (address(strategy) == address(0)) {
+            revert NoStrategyDefinedForAsset(asset);
+        }
+
         assets.push(asset);
 
         _assetData[asset] = AssetData({
@@ -157,7 +167,7 @@ interface IAssetRegistryEvents {
     notZeroAddress(address(asset))
     whenNotPaused {
         if (!_assetData[asset].active) {
-            revert AssetAlreadyInactive(address(asset));
+            revert AssetNotActiveOrNonexistent(address(asset));
         }
 
         _assetData[asset].active = false;
@@ -166,7 +176,8 @@ interface IAssetRegistryEvents {
     }
 
     /**
-     * @notice Deletes an asset from the system entirely.
+     * @notice Deletes an asset from the system entirely. Asset can only be deleted of no balance exists in the system.
+     *         By that, no amount of that asset exists the ynEigen Pool or deposited in the EigenLayer strategy.
      * @dev Removes an asset from the _assetData mapping and the assets array. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be deleted.
      */
@@ -179,7 +190,7 @@ interface IAssetRegistryEvents {
             revert AssetNotActiveOrNonexistent(address(asset));
         }
 
-        uint256 balanceInPool = asset.balanceOf(address(this));
+        uint256 balanceInPool = ynEigen.assetBalance(asset);
         if (balanceInPool != 0) {
             revert AssetBalanceNonZeroInPool(balanceInPool);
         }
@@ -208,7 +219,8 @@ interface IAssetRegistryEvents {
      * @return uint256 The index of the asset.
      */
     function findAssetIndex(IERC20 asset) internal view returns (uint256) {
-        for (uint256 i = 0; i < assets.length; i++) {
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
             if (assets[i] == asset) {
                 return i;
             }
@@ -231,7 +243,8 @@ interface IAssetRegistryEvents {
 
         uint256[] memory depositedBalances = getAllAssetBalances();
 
-        for (uint256 i = 0; i < assets.length; i++) {
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
             uint256 balanceInUnitOfAccount = convertToUnitOfAccount(assets[i], depositedBalances[i]);
             total += balanceInUnitOfAccount;
         }
@@ -265,6 +278,15 @@ interface IAssetRegistryEvents {
         for (uint256 i = 0; i < assetsCount; i++) {
             assetBalances[i] += stakedAssetBalances[i];
         }
+    }
+
+    /**
+     * @notice Retrieves the list of all assets managed by the contract.
+     * @dev Returns an array of addresses representing the ERC20 tokens considered as assets.
+     * @return An array of ERC20 token addresses.
+     */
+    function getAssets() public view returns (IERC20[] memory) {
+        return assets;
     }
 
     /**
