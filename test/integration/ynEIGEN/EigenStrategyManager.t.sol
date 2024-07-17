@@ -134,4 +134,52 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         assertEq(address(eigenStrategyManager.strategies(IERC20(rethAsset))), expectedStrategyForRETH, "Incorrect strategy for RETH");
         assertEq(address(eigenStrategyManager.strategies(IERC20(sfrxethAsset))), expectedStrategyForSFRXETH, "Incorrect strategy for SFRXETH");
     }
+
+    function testAddStrategySuccess() public {
+        vm.prank(address(0x1)); // Assuming address(0x1) has STRATEGY_ADMIN_ROLE
+        IERC20 newAsset = IERC20(address(0x123)); // Example new asset address
+        IStrategy newStrategy = IStrategy(address(0x456)); // Example new strategy address
+
+        // Initially, there should be no strategy set for newAsset
+        assertEq(address(eigenStrategyManager.strategies(newAsset)), address(0), "Strategy already set for new asset");
+
+        // Add strategy for newAsset
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(newAsset, newStrategy);
+
+        // Verify that the strategy has been set
+        assertEq(address(eigenStrategyManager.strategies(newAsset)), address(newStrategy), "Strategy not set correctly");
+    }
+
+    function testAddStrategyFailureAlreadySet() public {
+        IERC20 existingAsset = IERC20(address(0x123)); // Example existing asset address
+        IStrategy existingStrategy = IStrategy(address(0x456)); // Example existing strategy address
+
+        // Setup: Add a strategy initially
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(existingAsset, existingStrategy);
+
+
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        // Attempt to add the same strategy again should fail
+        vm.expectRevert(abi.encodeWithSelector(EigenStrategyManager.StrategyAlreadySetForAsset.selector, address(existingAsset)));
+        eigenStrategyManager.addStrategy(existingAsset, existingStrategy);
+    }
+
+    function testAddStrategyFailureZeroAsset() public {
+        IStrategy newStrategy = IStrategy(address(0x456)); // Example new strategy address
+
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        // Test with zero address for asset
+        vm.expectRevert(abi.encodeWithSelector(EigenStrategyManager.ZeroAddress.selector));
+        eigenStrategyManager.addStrategy(IERC20(address(0)), newStrategy);
+    }
+
+    function testAddStrategyFailureZeroStrategy() public {
+        IERC20 newAsset = IERC20(address(0x123)); // Example new asset address
+
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(EigenStrategyManager.ZeroAddress.selector));
+        eigenStrategyManager.addStrategy(newAsset, IStrategy(address(0)));
+    }
 }
