@@ -46,6 +46,7 @@ interface IAssetRegistryEvents {
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyActive(address asset);
     error AssetAlreadyInactive(address asset);
+    error AssetAlreadyExists(address asset);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -107,6 +108,9 @@ interface IAssetRegistryEvents {
         for (uint256 i = 0; i < assetsLength; i++) {
             if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
+            }
+            if (_assetData[init.assets[i]].active) {
+                revert AssetAlreadyExists(address(init.assets[i]));
             }
             assets.push(init.assets[i]);
             _assetData[init.assets[i]] = AssetData({
@@ -208,7 +212,8 @@ interface IAssetRegistryEvents {
      * @return uint256 The index of the asset.
      */
     function findAssetIndex(IERC20 asset) internal view returns (uint256) {
-        for (uint256 i = 0; i < assets.length; i++) {
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
             if (assets[i] == asset) {
                 return i;
             }
@@ -231,7 +236,8 @@ interface IAssetRegistryEvents {
 
         uint256[] memory depositedBalances = getAllAssetBalances();
 
-        for (uint256 i = 0; i < assets.length; i++) {
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
             uint256 balanceInUnitOfAccount = convertToUnitOfAccount(assets[i], depositedBalances[i]);
             total += balanceInUnitOfAccount;
         }

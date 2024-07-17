@@ -191,6 +191,17 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.unpauseActions();
     }
 
+    function testGetAssets() public {
+        IERC20[] memory registeredAssets = assetRegistry.getAssets();
+        uint256 numAssets = registeredAssets.length;
+        assertEq(numAssets, assets.length, "There should be at least one registered asset");
+
+        for (uint i = 0; i < numAssets; i++) {
+            address assetAddress = address(registeredAssets[i]);
+            assertEq(assetAddress, address(assets[i]));
+        }
+    }
+
     // Utility functions
 
     function depositAsset(address assetAddress, uint256 amount, address user) internal {
