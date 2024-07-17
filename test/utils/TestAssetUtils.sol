@@ -38,6 +38,8 @@ contract TestAssetUtils is Test {
             return get_wOETH(receiver, amount);
         } else if (asset == chainAddresses.lsd.RETH_ADDRESS) {
             return get_rETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.SFRXETH_ADDRESS) {
+            return get_sfrxETH(receiver, amount);
         } else {
             revert("Unsupported asset type");
         }
