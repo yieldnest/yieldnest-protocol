@@ -94,18 +94,6 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
         tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(newImplementation);
     }
 
-    function testRegisterTokenStakingNodeImplementationAlreadyExists() public {
-        // address initialImplementation = address(new TestTokenStakingNodeV2());
-        // vm.startPrank(actors.STAKING_ADMIN);
-        // ynEigenToken.registerTokenStakingNodeImplementationContract(initialImplementation);
-
-        // // vm.expectRevert("ynEigenToken: Implementation already exists");
-
-        // ynEigenToken.registerTokenStakingNodeImplementationContract(initialImplementation);
-        // vm.stopPrank();
-        // TODO: Come back to this
-    }
-
     function testSetMaxNodeCount() public {
         uint256 maxNodeCount = 10;
         vm.prank(actors.admin.STAKING_ADMIN);
