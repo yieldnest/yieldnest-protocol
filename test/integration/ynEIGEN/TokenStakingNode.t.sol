@@ -116,10 +116,13 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
 
+        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty)))));
+
         // register as operator
+        vm.prank(operatorAddress);
         delegationManager.registerAsOperator(
             IDelegationManager.OperatorDetails({
-                earningsReceiver: address(this),
+                earningsReceiver: operatorAddress,
                 delegationApprover: address(0),
                 stakerOptOutWindowBlocks: 1
             }), 
@@ -130,51 +133,56 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 		bytes32 approverSalt;
 
 		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.delegate(address(this), signature, approverSalt);
+        tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
+        address delegatedTo = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(delegatedTo, operatorAddress, "Delegation did not occur as expected.");
     }
 
-//     function testLSDStakingNodeUndelegate() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
-//         IDelegationManager delegationManager = ynlsd.delegationManager();
-//         IPausable pauseDelegationManager = IPausable(address(delegationManager));
+    function testTokenStakingNodeUndelegate() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
         
-//         // Unpause delegation manager to allow delegation
-//         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-//         pauseDelegationManager.unpause(0);
+        // Unpause delegation manager to allow delegation
+        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
 
-//         // Register as operator and delegate
-//         delegationManager.registerAsOperator(
-//             IDelegationManager.OperatorDetails({
-//                 earningsReceiver: address(this),
-//                 delegationApprover: address(0),
-//                 stakerOptOutWindowBlocks: 1
-//             }), 
-//             "ipfs://some-ipfs-hash"
-//         );
+        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty)))));
+
+        // Register as operator and delegate
+        vm.prank(operatorAddress);
+        delegationManager.registerAsOperator(
+            IDelegationManager.OperatorDetails({
+                earningsReceiver: operatorAddress,
+                delegationApprover: address(0),
+                stakerOptOutWindowBlocks: 1
+            }), 
+            "ipfs://some-ipfs-hash"
+        );
 				
-// 				vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-// 				ISignatureUtils.SignatureWithExpiry memory signature;
-// 				bytes32 approverSalt;
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
 
-//         lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
+		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
 
-//         // Attempt to undelegate
-//         vm.expectRevert();
-//         lsdStakingNodeInstance.undelegate();
+        // Attempt to undelegate
+        vm.expectRevert();
+        tokenStakingNodeInstance.undelegate();
 
-//         IStrategyManager strategyManager = ynlsd.strategyManager();
-//         uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(lsdStakingNodeInstance));
-//         assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
+        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
+        uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
+        assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
-//         // Now actually undelegate with the correct role
-//         vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-//         lsdStakingNodeInstance.undelegate();
+        // Now actually undelegate with the correct role
+		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.undelegate();
         
-//         // Verify undelegation
-//         address delegatedAddress = delegationManager.delegatedTo(address(lsdStakingNodeInstance));
-//         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
-//     }
+        // Verify undelegation
+        address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+    }
 
 	// function testRecoverDirectDeposits() public {
 	// 	// setup
