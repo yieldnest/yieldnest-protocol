@@ -154,7 +154,7 @@ contract TestAssetUtils is Test {
         uint256 rate = sfrxETHVault.totalAssets() * 1e18 / sfrxETHVault.totalSupply();
 
         IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138);
-        uint256 ethToDeposit = amount * 1e18 / rate + 1 ether;
+        uint256 ethToDeposit = amount * rate / 1e18 + 1 ether;
         vm.deal(address(this), ethToDeposit);
         frxMinter.submitAndDeposit{value: ethToDeposit}(address(this));
 
