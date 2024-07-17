@@ -10,6 +10,8 @@ import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPau
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
 import "forge-std/console.sol";
+import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 
 contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
@@ -89,18 +91,26 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             assertEq(compareWithThreshold(eigenStrategyManager.getStakedAssetBalance(assetsToDeposit[i]), initialBalance, 3), true, "Staked asset balance does not match initial balance within threshold");
             uint256 userUnderlyingView = eigenStrategyManager.strategies(assetsToDeposit[i]).userUnderlyingView(address(tokenStakingNode));
 
+            uint256 expectedUserUnderlyingView = initialBalance;
             if (address(assetsToDeposit[i]) == chainAddresses.lsd.WSTETH_ADDRESS || address(assetsToDeposit[i]) == chainAddresses.lsd.WOETH_ADDRESS) {
                 uint256 wrappedAssetRate = rateProvider.rate(address(assetsToDeposit[i]));
-                userUnderlyingView = userUnderlyingView * 1e18 / wrappedAssetRate;
+
+                // TODO: come back to this to see why the reverse operation of converting the 
+                // userUnderlyingView to the wrapped asset using the Rate Provider does not give the same result
+
+                //expectedUserUnderlyingView = expectedUserUnderlyingView * wrappedAssetRate / 1e18;
+                //userUnderlyingView = userUnderlyingView * 1e18 / wrappedAssetRate;
+                if (address(assetsToDeposit[i]) == chainAddresses.lsd.WSTETH_ADDRESS) {
+                    IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
+                    userUnderlyingView = wstETH.getWstETHByStETH(userUnderlyingView);
+                } else if (address(assetsToDeposit[i]) == chainAddresses.lsd.WOETH_ADDRESS) {
+                    IERC4626 woETH = IERC4626(chainAddresses.lsd.WOETH_ADDRESS);
+                    userUnderlyingView = woETH.previewDeposit(userUnderlyingView);
+                }
             }
 
-            console.log("Asset Index: ", i);
-            console.log("Initial Balance: ", initialBalance);
-            console.log("User Underlying View: ", userUnderlyingView);
-
-            // TODO: come back to this to see why this treshold is so high
-            uint256 comparisonTreshold = 100;
-            assertEq(compareWithThreshold(initialBalance, userUnderlyingView, comparisonTreshold), true, "Initial balance does not match user underlying view within threshold");
+            uint256 comparisonTreshold = 3;
+            assertEq(compareWithThreshold(expectedUserUnderlyingView, userUnderlyingView, comparisonTreshold), true, "Initial balance does not match user underlying view within threshold");
         }
     }
 }
