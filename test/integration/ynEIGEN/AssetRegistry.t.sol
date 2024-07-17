@@ -309,6 +309,87 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.disableAsset(swellAsset);
     }
 
+    function testDeleteAsset() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Ensure the asset is active before deleting
+        assertTrue(assetRegistry.assetData(swellAsset).active, "Asset should be active before deleting");
+
+        // Delete the asset
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.deleteAsset(swellAsset);
+
+        assertFalse(assetRegistry.assetData(swellAsset).active, "Asset should not be active after deletion");
+
+        // Check if the asset is now deleted
+        IERC20[] memory allAssets = assetRegistry.getAssets();
+        bool assetFound = false;
+        bool assetIsActive = false;
+        for (uint i = 0; i < allAssets.length; i++) {
+            if (address(allAssets[i]) == address(swellAsset)) {
+                assetFound = true;
+                break;
+            }
+        }
+        assertFalse(assetFound, "Asset should not be found after deletion");
+    }
+
+    function testDeleteAssetWithBalanceShouldFail() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Simulate balance in the asset
+        vm.mockCall(address(ynEigenToken), abi.encodeWithSelector(IynEigen.assetBalance.selector, swellAsset), abi.encode(100));
+
+        // Attempt to delete the asset
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetBalanceNonZeroInPool.selector, 100));
+        assetRegistry.deleteAsset(swellAsset);
+    }
+
+    function testDeleteExistingAsset_rETH() public {
+        IERC20 rETHAsset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        IStrategy rETHStrategy = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
+
+        depositAsset(chainAddresses.lsd.RETH_ADDRESS, 100, actors.admin.ASSET_MANAGER);
+
+        // Ensure the asset is active before deleting
+        assertTrue(assetRegistry.assetData(rETHAsset).active, "rETH Asset should be active before deleting");
+
+        // Delete the asset
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetBalanceNonZeroInPool.selector, 100));
+        assetRegistry.deleteAsset(rETHAsset);
+    }
+
+    function testDeleteAssetWithoutPermissionShouldFail() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Try to delete the asset without proper permissions
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), assetRegistry.ASSET_MANAGER_ROLE()));
+        assetRegistry.deleteAsset(swellAsset);
+    }
+
     // Utility functions
 
     function depositAsset(address assetAddress, uint256 amount, address user) internal {
