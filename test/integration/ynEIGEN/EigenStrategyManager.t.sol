@@ -31,6 +31,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         uint256 sfrxethAmount
     ) public {
 
+        // cannot call stakeAssetsToNode with any amount == 0. all must be non-zero.
         vm.assume(
             wstethAmount < 100 ether && wstethAmount >= 2 wei &&
             woethAmount < 100 ether && woethAmount >= 2 wei &&
@@ -38,16 +39,15 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
         );
 
-
-        //  uint256 wstethAmount = 100;
-        // uint256 woethAmount = 100;
-        // uint256 rethAmount = 100;
-        // uint256 sfrxethAmount = 14450;
-
         // Setup: Create a token staking node and prepare assetsToDeposit
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNodesManager.createTokenStakingNode();
         ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.nodes(0);
+
+        // uint256 wstethAmount = 2;
+        // uint256 woethAmount = 2;
+        // uint256 rethAmount = 2;
+        // uint256 sfrxethAmount = 5642858642974091827; // 5.642e18
 
         uint256 assetCount = 4;
 
@@ -73,21 +73,36 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             testAssetUtils.depositAsset(ynEigenToken, address(assetsToDeposit[i]), amounts[i], prankedUser);
         }
 
-        uint256 sfrxETHBalanceInYnEigen = assetsToDeposit[3].balanceOf(address(ynEigenToken));
-
-        uint256 nodeId = tokenStakingNode.nodeId();
         uint256[] memory initialBalances = new uint256[](assetsToDeposit.length);
         for (uint256 i = 0; i < assetsToDeposit.length; i++) {
             initialBalances[i] = assetsToDeposit[i].balanceOf(address(ynEigenToken));
         }
 
-        vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assetsToDeposit, amounts);
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), assetsToDeposit, amounts);
+        vm.stopPrank();
 
         for (uint256 i = 0; i < assetsToDeposit.length; i++) {
             uint256 initialBalance = initialBalances[i];
             uint256 finalBalance = assetsToDeposit[i].balanceOf(address(ynEigenToken));
             assertEq(initialBalance - finalBalance, amounts[i], "Balance of ynEigen did not decrease by the staked amount for asset");
+            assertEq(compareWithThreshold(eigenStrategyManager.getStakedAssetBalance(assetsToDeposit[i]), initialBalance, 3), true, "Staked asset balance does not match initial balance within threshold");
+            uint256 userUnderlyingView = eigenStrategyManager.strategies(assetsToDeposit[i]).userUnderlyingView(address(tokenStakingNode));
+
+            if (address(assetsToDeposit[i]) == chainAddresses.lsd.WSTETH_ADDRESS || address(assetsToDeposit[i]) == chainAddresses.lsd.WOETH_ADDRESS) {
+                uint256 wrappedAssetRate = rateProvider.rate(address(assetsToDeposit[i]));
+                userUnderlyingView = userUnderlyingView * 1e18 / wrappedAssetRate;
+            }
+
+            // console.log("Asset Index: ", i);
+            // console.log("Initial Balance: ", initialBalance);
+            // console.log("User Underlying View: ", userUnderlyingView);
+
+            uint256 comparisonTreshold = 4;
+            if (address(assetsToDeposit[i]) == chainAddresses.lsd.WOETH_ADDRESS) {
+                comparisonTreshold = 1 ether;
+            }
+            assertEq(compareWithThreshold(initialBalance, userUnderlyingView, comparisonTreshold), true, "Initial balance does not match user underlying view within threshold");
         }
     }
 }
