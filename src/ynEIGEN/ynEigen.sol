@@ -226,6 +226,15 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         }
     }
 
+    /**
+     * @notice Retrieves the balance of a specific asset.
+     * @param asset The ERC20 token for which to retrieve the balance.
+     * @return balance The balance of the specified asset.
+     */
+    function assetBalance(IERC20 asset) public view returns (uint256 balance) {
+        balance = assets[address(asset)].balance;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  ASSET ALLOCATION  --------------------------------
     //--------------------------------------------------------------------------------------

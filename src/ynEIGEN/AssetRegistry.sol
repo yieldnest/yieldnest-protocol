@@ -176,7 +176,8 @@ interface IAssetRegistryEvents {
     }
 
     /**
-     * @notice Deletes an asset from the system entirely.
+     * @notice Deletes an asset from the system entirely. Asset can only be deleted of no balance exists in the system.
+     *         By that, no amount of that asset exists the ynEigen Pool or deposited in the EigenLayer strategy.
      * @dev Removes an asset from the _assetData mapping and the assets array. This function can only be called by the strategy manager.
      * @param asset The address of the ERC20 token to be deleted.
      */
@@ -189,7 +190,7 @@ interface IAssetRegistryEvents {
             revert AssetNotActiveOrNonexistent(address(asset));
         }
 
-        uint256 balanceInPool = asset.balanceOf(address(this));
+        uint256 balanceInPool = ynEigen.assetBalance(asset);
         if (balanceInPool != 0) {
             revert AssetBalanceNonZeroInPool(balanceInPool);
         }
