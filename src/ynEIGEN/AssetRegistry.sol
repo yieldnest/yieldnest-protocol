@@ -46,7 +46,6 @@ interface IAssetRegistryEvents {
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyActive(address asset);
     error AssetAlreadyInactive(address asset);
-    error AssetAlreadyExists(address asset);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -112,7 +111,7 @@ interface IAssetRegistryEvents {
                 revert ZeroAddress();
             }
             if (_assetData[init.assets[i]].active) {
-                revert AssetAlreadyExists(address(init.assets[i]));
+                revert AssetAlreadyActive(address(init.assets[i]));
             }
             assets.push(init.assets[i]);
             _assetData[init.assets[i]] = AssetData({
