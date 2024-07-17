@@ -30,7 +30,14 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     constructor() {
         testAssetUtils = new TestAssetUtils();
     }
-    
+
+    function setUp() public override {
+        super.setUp();
+
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNodesManager.createTokenStakingNode();
+    }
+
     function testTotalAssetsWithFuzzedDeposits(
         uint256 wstethAmount,
         uint256 woethAmount,
@@ -204,10 +211,14 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     }
 
     function testAddAsset() public {
+        uint256 totalAssetsBefore = assetRegistry.totalAssets();
 
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
         assertTrue(assetRegistry.assetData(swellAsset).active, "Swell asset should be active after addition");
+
+        uint256 totalAssetsAfter = assetRegistry.totalAssets();
+        assertEq(totalAssetsBefore, totalAssetsAfter, "Total assets count should remain the same after adding an asset");
     }
 
     function testAddDuplicateAsset() public {
@@ -227,6 +238,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.addAsset(IERC20(sfrxETHAddress)); // Attempt to add the same asset again should fail
     }
 
+    
 
     // Utility functions
 

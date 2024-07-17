@@ -245,7 +245,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             admin: actors.admin.ADMIN,
             strategyController: actors.ops.STRATEGY_CONTROLLER,
             unpauser: actors.admin.UNPAUSE_ADMIN,
-            pauser: actors.ops.PAUSE_ADMIN
+            pauser: actors.ops.PAUSE_ADMIN,
+            strategyAdmin: actors.admin.EIGEN_STRATEGY_ADMIN
         });
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         eigenStrategyManager.initialize(eigenStrategyManagerInit);
