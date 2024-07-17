@@ -199,7 +199,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             unpauser: actors.admin.UNPAUSE_ADMIN,
             stakingAdmin: actors.admin.STAKING_ADMIN,
             tokenStakingNodeOperator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
-            tokenStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR
+            tokenStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
+            tokenStakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR
         });
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);

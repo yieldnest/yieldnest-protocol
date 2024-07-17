@@ -104,6 +104,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         address stakingAdmin;
         address tokenStakingNodeOperator;
         address tokenStakingNodeCreatorRole;
+        address tokenStakingNodesDelegator;
     }
 
     function initialize(Init calldata init)
@@ -113,6 +114,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         notZeroAddress(address(init.stakingAdmin))
         notZeroAddress(address(init.tokenStakingNodeOperator))
         notZeroAddress(init.tokenStakingNodeCreatorRole)
+        notZeroAddress(init.tokenStakingNodesDelegator)
         initializer {
         __AccessControl_init();
 
@@ -120,6 +122,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(TOKEN_STAKING_NODE_OPERATOR_ROLE, init.tokenStakingNodeOperator);
         _grantRole(TOKEN_STAKING_NODE_CREATOR_ROLE, init.tokenStakingNodeCreatorRole);
+        _grantRole(TOKEN_STAKING_NODES_DELEGATOR_ROLE, init.tokenStakingNodesDelegator);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
