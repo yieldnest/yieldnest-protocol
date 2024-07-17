@@ -25,7 +25,6 @@ import "forge-std/console.sol";
 contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
     TestAssetUtils testAssetUtils;
-    IERC20 swellAsset = IERC20(0xf951E335afb289353dc249e82926178EaC7DEd78); // Swell asset address
 
     constructor() {
         testAssetUtils = new TestAssetUtils();
@@ -213,15 +212,27 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     function testAddAsset() public {
         uint256 totalAssetsBefore = assetRegistry.totalAssets();
 
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+
         vm.prank(actors.admin.ASSET_MANAGER);
-        assetRegistry.addAsset(swellAsset);
-        assertTrue(assetRegistry.assetData(swellAsset).active, "Swell asset should be active after addition");
+        assetRegistry.addAsset(IERC20(chainAddresses.lsd.SWELL_ADDRESS));
+        assertTrue(assetRegistry.assetData(IERC20(chainAddresses.lsd.SWELL_ADDRESS)).active, "Swell asset should be active after addition");
 
         uint256 totalAssetsAfter = assetRegistry.totalAssets();
         assertEq(totalAssetsBefore, totalAssetsAfter, "Total assets count should remain the same after adding an asset");
     }
 
     function testAddDuplicateAsset() public {
+
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset); // First addition should succeed
 
@@ -237,8 +248,6 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyActive.selector, sfrxETHAddress));
         assetRegistry.addAsset(IERC20(sfrxETHAddress)); // Attempt to add the same asset again should fail
     }
-
-    
 
     // Utility functions
 
