@@ -25,6 +25,7 @@ import "forge-std/console.sol";
 contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
     TestAssetUtils testAssetUtils;
+    IERC20 swellAsset = IERC20(0xf951E335afb289353dc249e82926178EaC7DEd78); // Swell asset address
 
     constructor() {
         testAssetUtils = new TestAssetUtils();
@@ -201,6 +202,31 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
             assertEq(assetAddress, address(assets[i]));
         }
     }
+
+    function testAddAsset() public {
+
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+        assertTrue(assetRegistry.assetData(swellAsset).active, "Swell asset should be active after addition");
+    }
+
+    function testAddDuplicateAsset() public {
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset); // First addition should succeed
+
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyActive.selector, address(swellAsset)));
+        assetRegistry.addAsset(swellAsset); // Attempt to add the same asset again should fail
+    }
+
+    function testAddExistingAsset() public {
+
+        address sfrxETHAddress = address(chainAddresses.lsd.SFRXETH_ADDRESS);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyActive.selector, sfrxETHAddress));
+        assetRegistry.addAsset(IERC20(sfrxETHAddress)); // Attempt to add the same asset again should fail
+    }
+
 
     // Utility functions
 
