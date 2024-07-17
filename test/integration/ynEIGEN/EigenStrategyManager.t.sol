@@ -116,6 +116,6 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         }
 
         uint256 totalAssetsAfter = ynEigenToken.totalAssets();
-        assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 1000), true, "Total assets before and after staking do not match within a threshold of 3");
+        assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking do not match within a threshold of 3");
     }
 }
