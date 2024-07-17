@@ -19,11 +19,9 @@ import "forge-std/console.sol";
 
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
-
+    event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
+    event DepositedToEigenlayer(IERC20[] depositAssets, uint256[] depositAmounts, IStrategy[] strategiesForNode);
 }
-
-
-
 
 /** @title EigenStrategyManager
  *  @dev This contract handles the strategy management for ynEigen asset allocations.
@@ -186,7 +184,11 @@ contract EigenStrategyManager is
             depositAsset.transfer(address(node), depositAmount);
         }
 
+        emit StakedAssetsToNode(nodeId, assets, amounts);
+
         node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
+
+        emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
     }
 
     function toEigenLayerDeposit(
