@@ -45,7 +45,7 @@ interface IAssetRegistryEvents {
     error ZeroAddress();
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyActive(address asset);
-    error AssetAlreadyInactive(address asset);
+    error NoStrategyDefinedForAsset(IERC20 asset);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -142,6 +142,11 @@ interface IAssetRegistryEvents {
             revert AssetAlreadyActive(address(asset));
         }
 
+        IStrategy strategy = eigenStrategyManager.strategies(asset);
+        if (address(strategy) == address(0)) {
+            revert NoStrategyDefinedForAsset(asset);
+        }
+
         assets.push(asset);
 
         _assetData[asset] = AssetData({
@@ -162,7 +167,7 @@ interface IAssetRegistryEvents {
     notZeroAddress(address(asset))
     whenNotPaused {
         if (!_assetData[asset].active) {
-            revert AssetAlreadyInactive(address(asset));
+            revert AssetNotActiveOrNonexistent(address(asset));
         }
 
         _assetData[asset].active = false;
