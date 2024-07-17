@@ -314,7 +314,7 @@ contract EigenStrategyManager is
     function getStakedAssetBalanceForNode(
         IERC20 asset,
         uint256 nodeId
-    ) internal view returns (uint256 stakedBalance) {
+    ) public view returns (uint256 stakedBalance) {
         if (address(strategies[asset]) == address(0)) {
             revert NoStrategyDefinedForAsset(address(asset));
         }
