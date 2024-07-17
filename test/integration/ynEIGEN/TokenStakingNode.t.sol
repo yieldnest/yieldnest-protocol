@@ -183,32 +183,4 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
     }
-
-	// function testRecoverDirectDeposits() public {
-	// 	// setup
-	// 	vm.prank(actors.ops.STAKING_NODE_CREATOR);
-	// 	ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
-	// 	// 1. Obtain stETH and Deposit assets to ynLSD by User
-    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
-    //     IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-    //     uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
-	// 	uint256 ynLSDBalanceBefore = stETH.balanceOf(address(ynlsd));
-
-	// 	// transfer steth to the staking node
-	// 	stETH.approve(address(lsdStakingNodeInstance), balance);
-	// 	stETH.transfer(address(lsdStakingNodeInstance), balance);
-
-	// 	// recover the stuck steth in the staking node
-	// 	vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-	// 	lsdStakingNodeInstance.recoverAssets(IERC20(chainAddresses.lsd.STETH_ADDRESS));
-	// 	stETH.balanceOf(address(ynlsd));
-	// 	assertEq(
-	// 		compareWithThreshold(
-	// 			stETH.balanceOf(address(ynlsd)) - ynLSDBalanceBefore, 
-	// 			balance, 
-	// 			2
-	// 		),
-	// 		true
-	// 	);
-	// }
 }
