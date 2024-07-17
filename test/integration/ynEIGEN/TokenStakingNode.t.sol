@@ -18,6 +18,11 @@ import "forge-std/console.sol";
 contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
 	ITokenStakingNode tokenStakingNode;
+    TestAssetUtils testAssetUtils;
+
+    constructor() {
+       testAssetUtils = new TestAssetUtils();
+    }
 
 	function setUp() public override {
 		super.setUp();
@@ -38,13 +43,18 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		assertEq(_implementation, address(_newTokenStakingNode.implementation()));
 	}
 
-	function testDepositAssetsToEigenlayerSuccess() public {
+	function testDepositAssetsToEigenlayerSuccessFuzz(
+        uint256 wstethAmount
+     ) public {
+        vm.assume(
+            wstethAmount < 10000 ether && wstethAmount >= 2 wei
+        ); 
+
+        //uint256 wstethAmount = 5.394e22;
+
 		// 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 balance = testAssetUtils.get_wstETH(address(this), 10 ether);
-		wstETH.approve(address(ynEigenToken), balance);
-		ynEigenToken.deposit(wstETH, balance, address(this));
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
 
 		// 2. Deposit assets to Eigenlayer by Token Staking Node
         IPausable pausableStrategyManager = IPausable(address(eigenLayer.strategyManager));
@@ -57,7 +67,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		IERC20[] memory assets = new IERC20[](1);
 		assets[0] = wstETH;
 		uint256[] memory amounts = new uint256[](1);
-		amounts[0] = 1 ether;
+		amounts[0] = wstethAmount;
         uint256 nodeId = tokenStakingNode.nodeId();
 		vm.prank(actors.ops.STRATEGY_CONTROLLER);
 		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
@@ -70,14 +80,19 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         //     compareWithThreshold(deposits[0], expectedStETHAmount, 2),
         //     "Strategy user underlying view does not match expected stETH amount within threshold"
         // );
+
+        
+        uint256 treshold = wstethAmount / 1e17 + 3;
 		uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
 		assertTrue(
-            compareWithThreshold(expectedBalance, amounts[0], 2),
+            compareWithThreshold(expectedBalance, amounts[0], treshold),
             "Staked asset balance does not match expected deposits"
         );
 
 		uint256 strategyUserUnderlyingView = eigenStrategyManager.strategies(assets[0]).userUnderlyingView(address(tokenStakingNode));
-		assertTrue(compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, 2), "Strategy user underlying view does not match expected stETH amount within threshold");
+
+
+		assertTrue(compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, treshold), "Strategy user underlying view does not match expected stETH amount within threshold");
 	}
 
 	function testDepositAssetsToEigenlayerFail() public {

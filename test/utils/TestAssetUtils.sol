@@ -65,7 +65,7 @@ contract TestAssetUtils is Test {
         IwstETH wsteth = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
 
         // add 1000 wei to guarantee there's always enough
-        uint256 stETHToMint = amount * wsteth.stEthPerToken() / 1e18 + 1000;
+        uint256 stETHToMint = amount * wsteth.stEthPerToken() / 1e18 + 1 ether;
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         vm.deal(address(this), stETHToMint);
         (bool success, ) = address(stETH).call{value: stETHToMint}("");
