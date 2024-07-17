@@ -80,6 +80,8 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             initialBalances[i] = assetsToDeposit[i].balanceOf(address(ynEigenToken));
         }
 
+        uint256 totalAssetsBefore = ynEigenToken.totalAssets();       
+
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), assetsToDeposit, amounts);
         vm.stopPrank();
@@ -112,5 +114,8 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             uint256 comparisonTreshold = 3;
             assertEq(compareWithThreshold(expectedUserUnderlyingView, userUnderlyingView, comparisonTreshold), true, "Initial balance does not match user underlying view within threshold");
         }
+
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
+        assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 1000), true, "Total assets before and after staking do not match within a threshold of 3");
     }
 }
