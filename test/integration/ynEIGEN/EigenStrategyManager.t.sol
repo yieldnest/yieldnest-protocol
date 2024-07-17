@@ -118,4 +118,20 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         uint256 totalAssetsAfter = ynEigenToken.totalAssets();
         assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking do not match within a threshold of 3");
     }
+
+    function testExpectedStrategiesForAssets() public {
+        address wstethAsset = chainAddresses.lsd.WSTETH_ADDRESS;
+        address woethAsset = chainAddresses.lsd.WOETH_ADDRESS;
+        address rethAsset = chainAddresses.lsd.RETH_ADDRESS;
+        address sfrxethAsset = chainAddresses.lsd.SFRXETH_ADDRESS;
+        address expectedStrategyForWSTETH = chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS;
+        address expectedStrategyForWOETH = chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS;
+        address expectedStrategyForRETH = chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS;
+        address expectedStrategyForSFRXETH = chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS;
+
+        assertEq(address(eigenStrategyManager.strategies(IERC20(wstethAsset))), expectedStrategyForWSTETH, "Incorrect strategy for WSTETH");
+        assertEq(address(eigenStrategyManager.strategies(IERC20(woethAsset))), expectedStrategyForWOETH, "Incorrect strategy for WOETH");
+        assertEq(address(eigenStrategyManager.strategies(IERC20(rethAsset))), expectedStrategyForRETH, "Incorrect strategy for RETH");
+        assertEq(address(eigenStrategyManager.strategies(IERC20(sfrxethAsset))), expectedStrategyForSFRXETH, "Incorrect strategy for SFRXETH");
+    }
 }
