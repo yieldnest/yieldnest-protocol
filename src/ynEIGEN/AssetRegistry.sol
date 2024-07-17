@@ -88,6 +88,7 @@ interface IAssetRegistryEvents {
         address admin;
         address pauser;
         address unpauser;
+        address assetManagerRole;
     }
 
     function initialize(Init calldata init)
@@ -103,7 +104,8 @@ interface IAssetRegistryEvents {
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
-
+        _grantRole(ASSET_MANAGER_ROLE, init.assetManagerRole);
+        
         uint256 assetsLength = init.assets.length;
         for (uint256 i = 0; i < assetsLength; i++) {
             if (address(init.assets[i]) == address(0)) {

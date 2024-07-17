@@ -257,7 +257,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             ynEigen: IynEigen(address(ynEigenToken)),
             admin: actors.admin.ADMIN,
             pauser: actors.ops.PAUSE_ADMIN,
-            unpauser: actors.admin.UNPAUSE_ADMIN
+            unpauser: actors.admin.UNPAUSE_ADMIN,
+            assetManagerRole: actors.admin.ASSET_MANAGER
         });
         assetRegistry.initialize(assetRegistryInit);
     }
