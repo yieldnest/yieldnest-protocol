@@ -104,32 +104,34 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 }
 
 
-// contract TokenStakingNodeDelegate is IntegrationBaseTest {
-// 	function testLSDStakingNodeDelegate() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
-//         IDelegationManager delegationManager = ynlsd.delegationManager();
+contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
-//         IPausable pauseDelegationManager = IPausable(address(delegationManager));
-//         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-//         pauseDelegationManager.unpause(0);
+    
+	function testTokenStakingNodeDelegate() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
 
-//         // register as operator
-//         delegationManager.registerAsOperator(
-//             IDelegationManager.OperatorDetails({
-//                 earningsReceiver: address(this),
-//                 delegationApprover: address(0),
-//                 stakerOptOutWindowBlocks: 1
-//             }), 
-//             "ipfs://some-ipfs-hash"
-//         );
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
+        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
 
-// 				ISignatureUtils.SignatureWithExpiry memory signature;
-// 				bytes32 approverSalt;
+        // register as operator
+        delegationManager.registerAsOperator(
+            IDelegationManager.OperatorDetails({
+                earningsReceiver: address(this),
+                delegationApprover: address(0),
+                stakerOptOutWindowBlocks: 1
+            }), 
+            "ipfs://some-ipfs-hash"
+        );
 
-// 				vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-//         lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
-//     }
+		ISignatureUtils.SignatureWithExpiry memory signature;
+		bytes32 approverSalt;
+
+		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(address(this), signature, approverSalt);
+    }
 
 //     function testLSDStakingNodeUndelegate() public {
 //         vm.prank(actors.ops.STAKING_NODE_CREATOR);
@@ -174,31 +176,31 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 //         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
 //     }
 
-// 	function testRecoverDirectDeposits() public {
-// 		// setup
-// 		vm.prank(actors.ops.STAKING_NODE_CREATOR);
-// 		ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
-// 		// 1. Obtain stETH and Deposit assets to ynLSD by User
-//         TestAssetUtils testAssetUtils = new TestAssetUtils();
-//         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-//         uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
-// 		uint256 ynLSDBalanceBefore = stETH.balanceOf(address(ynlsd));
+	// function testRecoverDirectDeposits() public {
+	// 	// setup
+	// 	vm.prank(actors.ops.STAKING_NODE_CREATOR);
+	// 	ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
+	// 	// 1. Obtain stETH and Deposit assets to ynLSD by User
+    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
+    //     IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+    //     uint256 balance = testAssetUtils.get_stETH(address(this), 0.01 ether);
+	// 	uint256 ynLSDBalanceBefore = stETH.balanceOf(address(ynlsd));
 
-// 		// transfer steth to the staking node
-// 		stETH.approve(address(lsdStakingNodeInstance), balance);
-// 		stETH.transfer(address(lsdStakingNodeInstance), balance);
+	// 	// transfer steth to the staking node
+	// 	stETH.approve(address(lsdStakingNodeInstance), balance);
+	// 	stETH.transfer(address(lsdStakingNodeInstance), balance);
 
-// 		// recover the stuck steth in the staking node
-// 		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-// 		lsdStakingNodeInstance.recoverAssets(IERC20(chainAddresses.lsd.STETH_ADDRESS));
-// 		stETH.balanceOf(address(ynlsd));
-// 		assertEq(
-// 			compareWithThreshold(
-// 				stETH.balanceOf(address(ynlsd)) - ynLSDBalanceBefore, 
-// 				balance, 
-// 				2
-// 			),
-// 			true
-// 		);
-// 	}
-// }
+	// 	// recover the stuck steth in the staking node
+	// 	vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
+	// 	lsdStakingNodeInstance.recoverAssets(IERC20(chainAddresses.lsd.STETH_ADDRESS));
+	// 	stETH.balanceOf(address(ynlsd));
+	// 	assertEq(
+	// 		compareWithThreshold(
+	// 			stETH.balanceOf(address(ynlsd)) - ynLSDBalanceBefore, 
+	// 			balance, 
+	// 			2
+	// 		),
+	// 		true
+	// 	);
+	// }
+}
