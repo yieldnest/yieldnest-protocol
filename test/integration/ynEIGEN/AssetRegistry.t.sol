@@ -209,6 +209,10 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         }
     }
 
+    // ============================================================================================
+    // AssetRegistry.addAsset
+    // ============================================================================================
+
     function testAddAsset() public {
         uint256 totalAssetsBefore = assetRegistry.totalAssets();
 
@@ -225,7 +229,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(totalAssetsBefore, totalAssetsAfter, "Total assets count should remain the same after adding an asset");
     }
 
-    function testAddDuplicateAsset() public {
+    function testAddDuplicateAssetShouldFail() public {
 
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
 
@@ -241,12 +245,68 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.addAsset(swellAsset); // Attempt to add the same asset again should fail
     }
 
-    function testAddExistingAsset() public {
+    function testAddExistingAssetShouldFail() public {
 
         address sfrxETHAddress = address(chainAddresses.lsd.SFRXETH_ADDRESS);
         vm.prank(actors.admin.ASSET_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyActive.selector, sfrxETHAddress));
         assetRegistry.addAsset(IERC20(sfrxETHAddress)); // Attempt to add the same asset again should fail
+    }
+
+    function testAddAssetWithoutStrategyShouldFail() public {
+        IERC20 assetWithoutStrategy = IERC20(chainAddresses.lsd.OETH_ADDRESS); // Assume OETH has no strategy set
+
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.NoStrategyDefinedForAsset.selector, assetWithoutStrategy));
+        assetRegistry.addAsset(assetWithoutStrategy); // This should fail as there's no strategy defined for OETH
+    }
+
+
+    // ============================================================================================
+    // AssetRegistry.disableAsset
+    // ============================================================================================
+
+    function testDisableAsset() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Ensure the asset is active before disabling
+        assertTrue(assetRegistry.assetData(swellAsset).active, "Asset should be active before disabling");
+
+        // Disable the asset
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.disableAsset(swellAsset);
+
+        // Check if the asset is now inactive
+        assertFalse(assetRegistry.assetData(swellAsset).active, "Asset should be inactive after disabling");
+    }
+
+    function testDisableNonexistentAssetShouldFail() public {
+        IERC20 nonexistentAsset = IERC20(address(0xABCDEF)); // Assume this asset was never added
+
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetNotActiveOrNonexistent.selector, address(nonexistentAsset)));
+        assetRegistry.disableAsset(nonexistentAsset); // This should fail as the asset does not exist
+    }
+
+    function testDisableAssetWithoutPermissionShouldFail() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), assetRegistry.ASSET_MANAGER_ROLE()));
+        assetRegistry.disableAsset(swellAsset);
     }
 
     // Utility functions
