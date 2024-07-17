@@ -50,19 +50,11 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             wstethAmount < 10000 ether && wstethAmount >= 2 wei
         ); 
 
-        //uint256 wstethAmount = 5.394e22;
-
 		// 1. Obtain wstETH and Deposit assets to ynEigen by User
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
 
 		// 2. Deposit assets to Eigenlayer by Token Staking Node
-        IPausable pausableStrategyManager = IPausable(address(eigenLayer.strategyManager));
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        address unpauser = pausableStrategyManager.pauserRegistry().unpauser();
-        vm.startPrank(unpauser);
-        pausableStrategyManager.unpause(0);
-        vm.stopPrank();
 
 		IERC20[] memory assets = new IERC20[](1);
 		assets[0] = wstETH;
@@ -80,8 +72,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         //     compareWithThreshold(deposits[0], expectedStETHAmount, 2),
         //     "Strategy user underlying view does not match expected stETH amount within threshold"
         // );
-
-        
+  
         uint256 treshold = wstethAmount / 1e17 + 3;
 		uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
 		assertTrue(
@@ -90,7 +81,6 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         );
 
 		uint256 strategyUserUnderlyingView = eigenStrategyManager.strategies(assets[0]).userUnderlyingView(address(tokenStakingNode));
-
 
 		assertTrue(compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, treshold), "Strategy user underlying view does not match expected stETH amount within threshold");
 	}
