@@ -24,6 +24,8 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
     IynEigen public ynEigen;
     IwstETH public wstETH;
     IERC4626 public woETH;
+    IERC20 public stETH;
+    IERC20 public oETH;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -44,29 +46,42 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         notZeroAddress(init.woETH) 
         notZeroAddress(init.admin)
     {
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         ynEigen = IynEigen(init.ynEigen);
         wstETH = IwstETH(init.wstETH);
         woETH = IERC4626(init.woETH);
-        __AccessControl_init();
-        _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
+
+        stETH = IERC20(wstETH.stETH());
+        oETH = IERC20(woETH.asset());
     }
 
-    function depositStETH(uint256 amount, address receiver) external {
-        IERC20 stETH = IERC20(wstETH.stETH());
+    function deposit(IERC20 asset, uint256 amount, address receiver) external returns (uint256) {
+        if (address(asset) == address(stETH)) {
+            return depositStETH(amount, receiver);
+        } else if (address(asset) == address(oETH)) {
+            return depositOETH(amount, receiver);
+        } else {
+            return ynEigen.deposit(IERC20(address(wstETH)), amount, receiver);
+        }
+    }
+
+    function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
         stETH.transferFrom(msg.sender, address(this), amount);
         stETH.approve(address(wstETH), amount);
         uint256 wstETHAmount = wstETH.wrap(amount);
         wstETH.approve(address(ynEigen), wstETHAmount);
-        ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
+
+        return ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
     }
 
-    function depositOETH(uint256 amount, address receiver) external {
-        IERC20 oeth = IERC20(woETH.asset());
-        oeth.transferFrom(msg.sender, address(this), amount);
-        oeth.approve(address(woETH), amount);
+    function depositOETH(uint256 amount, address receiver) internal returns (uint256) {
+        oETH.transferFrom(msg.sender, address(this), amount);
+        oETH.approve(address(woETH), amount);
         uint256 woETHShares = woETH.deposit(amount, address(this));
         woETH.approve(address(ynEigen), woETHShares);
-        ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
+
+        return ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
     }
 
     //--------------------------------------------------------------------------------------
