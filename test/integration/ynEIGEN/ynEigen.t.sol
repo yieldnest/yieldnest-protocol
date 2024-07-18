@@ -41,7 +41,6 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         vars.totalAssetsBefore = ynEigenToken.totalAssets();
 
         // 1. Obtain asset and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         vars.balance = testAssetUtils.get_Asset(address(asset), prankedUser, amount);
 
         vm.prank(prankedUser);
@@ -89,25 +88,6 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         depositAssetAndVerify(rETH, amount);
     }
-
-    function testDepositRETHSuccess() public {
-        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        uint256 amount = 10 ether;
-
-        uint256 initialSupply = ynEigenToken.totalSupply();
-
-        // 1. Obtain rETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
-        address prankedUser = address(0x456);
-        uint256 balance = testAssetUtils.get_rETH(prankedUser, amount);
-
-        vm.prank(prankedUser);
-        rETH.approve(address(ynEigenToken), balance);
-        vm.prank(prankedUser);
-        ynEigenToken.deposit(rETH, balance, prankedUser);
-
-        assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply after deposit");
-    }
     
     function testDepositwstETHSuccessWithMultipleDeposits() public {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
@@ -117,7 +97,6 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 initialSupply = ynEigenToken.totalSupply();
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_wstETH(prankedUser, amount);
         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
 
@@ -205,7 +184,6 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 totalAssetsBeforeDeposit = ynEigenToken.totalAssets();
         
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
         assertEq(balance == amount, true, "Amount not received");
         asset.approve(address(ynEigenToken), balance);
@@ -263,6 +241,11 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
 contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
 
+    TestAssetUtils testAssetUtils;
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
     function testTransferFailsForNonWhitelistedAddresses() public {
         // Arrange
         uint256 transferAmount = 1 ether;
@@ -283,7 +266,6 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
         address recipient = address(6); // An arbitrary recipient address
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
         wstETH.approve(address(ynEigenToken), balance);
@@ -326,7 +308,6 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
         address recipient = address(8); // An arbitrary recipient address
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
 
@@ -355,7 +336,6 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
         address recipient = address(10000); // An arbitrary recipient address
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
         wstETH.approve(address(ynEigenToken), balance);
@@ -413,6 +393,11 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
 
 contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
 
+    TestAssetUtils testAssetUtils;
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
     function testRetrieveAssetsNotEigenStrategyManager() public {
         IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         uint256 amount = 1000;
@@ -457,7 +442,6 @@ contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
         vm.deal(address(tokenStakingNode), 1000);
 
         // 1. Obtain stETH and Deposit assets to ynEigenToken by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
        
@@ -480,6 +464,11 @@ contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
 
 contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
 
+    TestAssetUtils testAssetUtils;
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
     function testYnEigendonationToZeroShareAttackResistance() public {
 
         uint INITIAL_AMOUNT = 10 ether;
@@ -490,7 +479,6 @@ contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
         IERC20 assetToken = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         testAssetUtils.get_wstETH(alice, INITIAL_AMOUNT);
         testAssetUtils.get_wstETH(bob, INITIAL_AMOUNT);
 
