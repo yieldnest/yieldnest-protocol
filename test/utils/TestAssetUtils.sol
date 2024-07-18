@@ -8,6 +8,7 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
+import { IynEigen } from "src/interfaces/IynEigen.sol";
 
 import "forge-std/console.sol";
 
@@ -37,6 +38,8 @@ contract TestAssetUtils is Test {
             return get_wOETH(receiver, amount);
         } else if (asset == chainAddresses.lsd.RETH_ADDRESS) {
             return get_rETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.SFRXETH_ADDRESS) {
+            return get_sfrxETH(receiver, amount);
         } else {
             revert("Unsupported asset type");
         }
@@ -62,7 +65,7 @@ contract TestAssetUtils is Test {
         IwstETH wsteth = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
 
         // add 1000 wei to guarantee there's always enough
-        uint256 stETHToMint = amount * wsteth.stEthPerToken() / 1e18 + 1000;
+        uint256 stETHToMint = amount * wsteth.stEthPerToken() / 1e18 + 1 ether;
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
         vm.deal(address(this), stETHToMint);
         (bool success, ) = address(stETH).call{value: stETHToMint}("");
@@ -146,11 +149,13 @@ contract TestAssetUtils is Test {
     function get_sfrxETH(address receiver, uint256 amount) public returns (uint256) {
 
         IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        IERC4626 sfrxETHVault = IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        uint256 rate = sfrxETH.balanceOf(address(this)) * 1e18 / sfrxETH.totalSupply();
+        uint256 rate = sfrxETHVault.totalAssets() * 1e18 / sfrxETHVault.totalSupply();
 
         IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138);
-        uint256 ethToDeposit = amount * 1e18 / rate;
+        uint256 ethToDeposit = amount * rate / 1e18 + 1 ether;
+        vm.deal(address(this), ethToDeposit);
         frxMinter.submitAndDeposit{value: ethToDeposit}(address(this));
 
         uint256 sfrxETHBalance = sfrxETH.balanceOf(address(this));
@@ -158,5 +163,14 @@ contract TestAssetUtils is Test {
         sfrxETH.transfer(receiver, amount);
 
         return amount;
+    }
+
+    function depositAsset(IynEigen ynEigenToken, address assetAddress, uint256 amount, address user) public {
+        IERC20 asset = IERC20(assetAddress);
+        get_Asset(assetAddress, user, amount);
+        vm.prank(user);
+        asset.approve(address(ynEigenToken), amount);
+        vm.prank(user);
+        ynEigenToken.deposit(asset, amount, user);
     }
 }

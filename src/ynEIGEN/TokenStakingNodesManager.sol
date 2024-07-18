@@ -104,6 +104,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         address stakingAdmin;
         address tokenStakingNodeOperator;
         address tokenStakingNodeCreatorRole;
+        address tokenStakingNodesDelegator;
     }
 
     function initialize(Init calldata init)
@@ -113,6 +114,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         notZeroAddress(address(init.stakingAdmin))
         notZeroAddress(address(init.tokenStakingNodeOperator))
         notZeroAddress(init.tokenStakingNodeCreatorRole)
+        notZeroAddress(init.tokenStakingNodesDelegator)
         initializer {
         __AccessControl_init();
 
@@ -120,6 +122,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         _grantRole(STAKING_ADMIN_ROLE, init.stakingAdmin);
         _grantRole(TOKEN_STAKING_NODE_OPERATOR_ROLE, init.tokenStakingNodeOperator);
         _grantRole(TOKEN_STAKING_NODE_CREATOR_ROLE, init.tokenStakingNodeCreatorRole);
+        _grantRole(TOKEN_STAKING_NODES_DELEGATOR_ROLE, init.tokenStakingNodesDelegator);
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
@@ -244,12 +247,35 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  TokenStakingNode Roles  --------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Checks if the specified account has the Token Staking Node Operator role.
+     * @param account The address to check for the role.
+     * @return True if the account has the Token Staking Node Operator role, false otherwise.
+     */
     function hasTokenStakingNodeOperatorRole(address account) external view returns (bool) {
         return hasRole(TOKEN_STAKING_NODE_OPERATOR_ROLE, account);
     }
 
+    /**
+     * @notice Checks if the specified address has the Token Staking Node Delegator role.
+     * @param _address The address to check for the role.
+     * @return True if the address has the Token Staking Node Delegator role, false otherwise.
+     */
     function hasTokenStakingNodeDelegatorRole(address _address) public view returns (bool) {
         return hasRole(TOKEN_STAKING_NODES_DELEGATOR_ROLE, _address);
+    }
+
+    /**
+     * @notice Checks if the specified address has the EigenStrategyManager role.
+     * @param caller The address to check.
+     * @return True if the specified address is the EigenStrategyManager, false otherwise.
+     */
+    function hasEigenStrategyManagerRole(address caller) public view returns (bool) {
+        return caller == address(eigenStrategyManager);
     }
 
     //--------------------------------------------------------------------------------------
@@ -270,15 +296,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
      */
     function nodesLength() public view returns (uint256) {
         return nodes.length;
-    }
-
-    /**
-     * @notice Checks if the specified address has the EigenStrategyManager role.
-     * @param caller The address to check.
-     * @return True if the specified address is the EigenStrategyManager, false otherwise.
-     */
-    function hasEigenStrategyManagerRole(address caller) public view returns (bool) {
-        return caller == address(eigenStrategyManager);
     }
 
     /**

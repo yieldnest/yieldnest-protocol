@@ -141,17 +141,6 @@ contract TokenStakingNode is
         emit Undelegated(withdrawalRoots);
     }
 
-    /**
-     * @notice Recovers assets that were deposited directly
-     * @param asset The asset to be recovered
-     */
-    function recoverAssets(IERC20 asset) external onlyOperator {
-        asset.safeTransfer(
-            address(tokenStakingNodesManager),
-            asset.balanceOf(address(this))
-        );
-    }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
