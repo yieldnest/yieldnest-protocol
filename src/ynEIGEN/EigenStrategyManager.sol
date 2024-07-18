@@ -148,8 +148,11 @@ contract EigenStrategyManager is
         IERC20[] calldata assets,
         uint256[] calldata amounts
     ) external onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
-        if (assets.length != amounts.length) {
-            revert LengthMismatch(assets.length, amounts.length);
+        uint256 assetsLength = assets.length;
+        uint256 amountsLength = amounts.length;
+
+        if (assetsLength != amountsLength) {
+            revert LengthMismatch(assetsLength, amountsLength);
         }
 
         ITokenStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
@@ -157,8 +160,8 @@ contract EigenStrategyManager is
             revert InvalidNodeId(nodeId);
         }
 
-        IStrategy[] memory strategiesForNode = new IStrategy[](assets.length);
-        for (uint256 i = 0; i < assets.length; i++) {
+        IStrategy[] memory strategiesForNode = new IStrategy[](assetsLength);
+        for (uint256 i = 0; i < assetsLength; i++) {
             IERC20 asset = assets[i];
             if (amounts[i] == 0) {
                 revert InvalidStakingAmount(amounts[i]);
@@ -167,15 +170,15 @@ contract EigenStrategyManager is
             if (address(strategy) == address(0)) {
                 revert StrategyNotFound(address(asset));
             }
-            strategiesForNode[i] = strategies[assets[i]];
+            strategiesForNode[i] = strategy;
         }
         // Transfer assets to node
         ynEigen.retrieveAssets(assets, amounts);
 
-        IERC20[] memory depositAssets = new IERC20[](assets.length);
-        uint256[] memory depositAmounts = new uint256[](amounts.length);
+        IERC20[] memory depositAssets = new IERC20[](assetsLength);
+        uint256[] memory depositAmounts = new uint256[](amountsLength);
 
-        for (uint256 i = 0; i < assets.length; i++) {
+        for (uint256 i = 0; i < assetsLength; i++) {
             (IERC20 depositAsset, uint256 depositAmount) = toEigenLayerDeposit(assets[i], amounts[i]);
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
