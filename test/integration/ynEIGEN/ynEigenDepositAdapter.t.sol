@@ -28,7 +28,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         stETH.approve(address(ynEigenDepositAdapterInstance), depositAmount);
         // Act: Perform the deposit operation using the ynEigenDepositAdapter
         vm.prank(depositor);
-        ynEigenDepositAdapterInstance.depositStETH(depositAmount, receiver);
+        ynEigenDepositAdapterInstance.deposit(stETH, depositAmount, receiver);
         
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
         assertTrue(
@@ -53,7 +53,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         oETH.approve(address(ynEigenDepositAdapterInstance), depositAmount);
         // Act: Perform the deposit operation using the ynEigenDepositAdapter
         vm.prank(depositor);
-        ynEigenDepositAdapterInstance.depositOETH(depositAmount, receiver);
+        ynEigenDepositAdapterInstance.deposit(oETH, depositAmount, receiver);
         
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
         assertTrue(

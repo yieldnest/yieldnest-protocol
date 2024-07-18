@@ -254,13 +254,45 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         );
     }
 
-    function testPreviewDeposit() public {
+    function testPreviewDepositwstETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );
+
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 amount = 1 ether;
 
         uint256 wstethPrice = rateProvider.rate(chainAddresses.lsd.WSTETH_ADDRESS);
 
         uint256 expectedDepositPreview = amount * wstethPrice / 1e18;
+        uint256 previewDeposit = ynEigenToken.previewDeposit(asset, amount);
+        assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
+    }
+
+    function testPreviewDepositwoETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );
+
+        IERC20 asset = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+
+
+        uint256 woethPrice = rateProvider.rate(chainAddresses.lsd.WOETH_ADDRESS);
+
+        uint256 expectedDepositPreview = amount * woethPrice / 1e18;
+        uint256 previewDeposit = ynEigenToken.previewDeposit(asset, amount);
+        assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
+    }
+
+    function testPreviewDepositsfrxETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );
+
+        IERC20 asset = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+
+        uint256 sfrxETHPrice = rateProvider.rate(chainAddresses.lsd.SFRXETH_ADDRESS);
+
+        uint256 expectedDepositPreview = amount * sfrxETHPrice / 1e18;
         uint256 previewDeposit = ynEigenToken.previewDeposit(asset, amount);
         assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
     }
