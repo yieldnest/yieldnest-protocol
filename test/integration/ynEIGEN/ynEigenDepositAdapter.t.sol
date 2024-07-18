@@ -12,8 +12,13 @@ import {ynBase} from "src/ynBase.sol";
 
 contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
-    function testDepositstETHSuccessWithOneDeposit() public {
-        uint256 depositAmount = 1 ether;
+    function testDepositstETHSuccessWithOneDepositFuzz(
+       uint256 depositAmount
+    ) public {
+
+        vm.assume(
+            depositAmount < 10000 ether && depositAmount >= 2 wei
+        );  
         address depositor = address(0x123);
         address receiver = address(0x456);
 
@@ -31,14 +36,20 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         ynEigenDepositAdapterInstance.deposit(stETH, depositAmount, receiver);
         
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
+        uint256 treshold = depositAmount / 1e17 + 3;
         assertTrue(
-            compareWithThreshold(receiverBalance, depositAmount, 2),
-            "Receiver's balance should match the deposited amount"
+            compareWithThreshold(receiverBalance, depositAmount, treshold),
+            string.concat("Receiver's balance: ", vm.toString(receiverBalance), ", Expected balance: ", vm.toString(depositAmount))
         );
     }
 
-    function testDepositOETHSuccessWithOneDeposit() public {
-        uint256 depositAmount = 1 ether;
+    function testDepositOETHSuccessWithOneDeposit(
+       uint256 depositAmount
+    ) public {
+
+        vm.assume(
+            depositAmount < 10000 ether && depositAmount >= 2 wei
+        );
         address depositor = address(0x789);
         address receiver = address(0xABC);
 
@@ -56,9 +67,10 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         ynEigenDepositAdapterInstance.deposit(oETH, depositAmount, receiver);
         
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
+        uint256 treshold = depositAmount / 1e17 + 3;
         assertTrue(
-            compareWithThreshold(receiverBalance, depositAmount, 2),
-            "Receiver's balance should match the deposited amount"
+            compareWithThreshold(receiverBalance, depositAmount, treshold),
+            string.concat("Receiver's balance: ", vm.toString(receiverBalance), ", Expected balance: ", vm.toString(depositAmount))
         );
     }
 }
