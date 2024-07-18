@@ -31,7 +31,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 totalAssetsAfter;
     }
 
-    function testDepositSuccessWithOneDeposit(IERC20 asset, uint256 amount) public {
+    function depositAssetAndVerify(IERC20 asset, uint256 amount) public {
 
         address prankedUser = address(0x1234543210);
         DepositTestVars memory vars;
@@ -63,11 +63,31 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(vars.totalAssetsAfter, vars.totalAssetsBefore + vars.ethEquivalent, "Total assets did not increase by the correct ETH equivalent amount");
     }
 
-    function testDepositwstETHSuccessWithOneDeposit() public {
-        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 amount = 32 ether;
+    function testDepositwstETHSuccessWithOneDepositFuzz(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
 
-        testDepositSuccessWithOneDeposit(wstETH, amount);
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        depositAssetAndVerify(wstETH, amount);
+    }
+
+    function testDepositsfrxETHSuccessWithOneDepositFuzz(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
+
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        depositAssetAndVerify(sfrxETH, amount);
+    }
+
+    function testDepositrETHSuccessWithOneDepositFuzz(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
+
+        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        depositAssetAndVerify(rETH, amount);
     }
 
     function testDepositRETHSuccess() public {
