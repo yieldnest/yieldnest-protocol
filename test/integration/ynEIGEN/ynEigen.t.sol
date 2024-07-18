@@ -12,23 +12,62 @@ import {ynBase} from "src/ynBase.sol";
 
 contract ynEigenTest is ynEigenIntegrationBaseTest {
 
+    TestAssetUtils testAssetUtils;
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
+    struct DepositTestVars {
+        uint256 initialSupply;
+        uint256 initialAssetBalance;
+        uint256 internalAssetBalanceBefore;
+        uint256 totalAssetsBefore;
+        uint256 balance;
+        uint256 finalAssetBalance;
+        uint256 finalSupply;
+        uint256 internalAssetBalanceAfter;
+        uint256 userYnEigenBalanceAfter;
+        uint256 ethEquivalent;
+        uint256 totalAssetsAfter;
+    }
+
+    function testDepositSuccessWithOneDeposit(IERC20 asset, uint256 amount) public {
+
+        address prankedUser = address(0x1234543210);
+        DepositTestVars memory vars;
+        vars.initialSupply = ynEigenToken.totalSupply();
+        vars.initialAssetBalance = asset.balanceOf(address(ynEigenToken));
+        vars.internalAssetBalanceBefore = ynEigenToken.assetBalance(asset);
+        vars.totalAssetsBefore = ynEigenToken.totalAssets();
+
+        // 1. Obtain asset and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        vars.balance = testAssetUtils.get_Asset(address(asset), prankedUser, amount);
+
+        vm.prank(prankedUser);
+        asset.approve(address(ynEigenToken), vars.balance);
+        vm.prank(prankedUser);
+        ynEigenToken.deposit(asset, vars.balance, prankedUser);
+
+        vars.finalAssetBalance = asset.balanceOf(address(ynEigenToken));
+        vars.finalSupply = ynEigenToken.totalSupply();
+        vars.internalAssetBalanceAfter = ynEigenToken.assetBalance(asset);
+
+        vars.userYnEigenBalanceAfter = ynEigenToken.balanceOf(prankedUser);
+
+        assertEq(vars.finalAssetBalance, vars.initialAssetBalance + vars.balance, "Asset balance did not increase correctly");
+        assertEq(vars.finalSupply, vars.initialSupply + vars.userYnEigenBalanceAfter, "Total supply did not increase correctly");
+
+        vars.ethEquivalent = rateProvider.rate(address(asset)) * amount / 1e18;
+        vars.totalAssetsAfter = ynEigenToken.totalAssets();
+        assertEq(vars.totalAssetsAfter, vars.totalAssetsBefore + vars.ethEquivalent, "Total assets did not increase by the correct ETH equivalent amount");
+    }
+
     function testDepositwstETHSuccessWithOneDeposit() public {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 32 ether;
 
-        uint256 initialSupply = ynEigenToken.totalSupply();
-
-        // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
-        address prankedUser = address(0x123);
-        uint256 balance = testAssetUtils.get_wstETH(prankedUser, amount);
-
-        vm.prank(prankedUser);
-        wstETH.approve(address(ynEigenToken), balance);
-        vm.prank(prankedUser);
-        ynEigenToken.deposit(wstETH, balance, prankedUser);
-
-        assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
+        testDepositSuccessWithOneDeposit(wstETH, amount);
     }
 
     function testDepositRETHSuccess() public {
