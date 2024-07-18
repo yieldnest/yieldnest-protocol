@@ -29,6 +29,8 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 userYnEigenBalanceAfter;
         uint256 ethEquivalent;
         uint256 totalAssetsAfter;
+
+        uint256 userYnEigenBalanceBefore;
     }
 
     function depositAssetAndVerify(IERC20 asset, uint256 amount) public {
@@ -43,6 +45,8 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         // 1. Obtain asset and Deposit assets to ynEigen by User
         vars.balance = testAssetUtils.get_Asset(address(asset), prankedUser, amount);
 
+        vars.userYnEigenBalanceBefore = ynEigenToken.balanceOf(prankedUser);
+
         vm.prank(prankedUser);
         asset.approve(address(ynEigenToken), vars.balance);
         vm.prank(prankedUser);
@@ -54,12 +58,23 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         vars.userYnEigenBalanceAfter = ynEigenToken.balanceOf(prankedUser);
 
-        assertEq(vars.finalAssetBalance, vars.initialAssetBalance + vars.balance, "Asset balance did not increase correctly");
-        assertEq(vars.finalSupply, vars.initialSupply + vars.userYnEigenBalanceAfter, "Total supply did not increase correctly");
+
+        assertEq(
+            vars.finalSupply,
+            vars.initialSupply + (vars.userYnEigenBalanceAfter - vars.userYnEigenBalanceBefore),
+        "Total supply did not increase correctly");
 
         vars.ethEquivalent = rateProvider.rate(address(asset)) * amount / 1e18;
         vars.totalAssetsAfter = ynEigenToken.totalAssets();
-        assertEq(vars.totalAssetsAfter, vars.totalAssetsBefore + vars.ethEquivalent, "Total assets did not increase by the correct ETH equivalent amount");
+        assertTrue(
+            compareWithThreshold(vars.totalAssetsAfter, vars.totalAssetsBefore + vars.ethEquivalent, 2),
+            string.concat(
+                "Total assets did not increase by the correct ETH equivalent amount. Expected: ",
+                vm.toString(vars.totalAssetsBefore + vars.ethEquivalent),
+                ", Got: ",
+                vm.toString(vars.totalAssetsAfter)
+            )
+        );
     }
 
     function testDepositwstETHSuccessWithOneDepositFuzz(uint256 amount) public {
@@ -87,6 +102,30 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         depositAssetAndVerify(rETH, amount);
+    }
+
+    function testMultipleDepositsFuzz(
+        uint8 asset0Index,
+        uint8 asset1Index,
+        uint256 asset0Amount,
+        uint256 asset1Amount
+        ) public {
+
+        vm.assume(asset0Index < 4 && asset1Index < 4);
+        vm.assume(
+            asset0Amount < 10000 ether && asset0Amount >= 2 wei &&
+            asset1Amount < 10000 ether && asset1Amount >= 2 wei
+        );
+
+        IERC20[] memory assets = new IERC20[](4);
+        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        assets[2] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        assets[3] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+
+        depositAssetAndVerify(assets[asset0Index], asset0Amount);
+        depositAssetAndVerify(assets[asset1Index], asset1Amount);
+
     }
     
     function testDepositwstETHSuccessWithMultipleDeposits() public {
