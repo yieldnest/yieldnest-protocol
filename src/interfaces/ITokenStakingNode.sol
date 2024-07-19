@@ -11,7 +11,7 @@ interface ITokenStakingNode {
     /// @notice Configuration for contract initialization.
     struct Init {
         ITokenStakingNodesManager tokenStakingNodesManager;
-        uint nodeId;
+        uint256 nodeId;
     }
 
     function nodeId() external returns (uint256);
