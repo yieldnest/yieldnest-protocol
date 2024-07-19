@@ -47,6 +47,17 @@ contract LSDRateProvider is Initializable {
      *         It reverts if the asset is not supported.
      */
     function rate(address _asset) external view returns (uint256) {
+
+        /*
+            This contract uses the rate as provided the protocol that controls the asset.
+            This approach avoids issues with sourcing market prices that would cause asset value
+            fluctuation that depends on market price fluctuation
+            Known risks that require mitigation:
+            In case one of the LSDs depegs from its ETH price, users can still deposit to ynEigen, 
+            and receive the same amount of shares as though the underlying asset has not depegged yet,
+            as the protocols below will report the same LSD/ETH price.
+        */
+
         if (_asset == LIDO_ASSET) {
             return IstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
         }
