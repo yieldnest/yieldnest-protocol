@@ -331,7 +331,6 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         // Check if the asset is now deleted
         IERC20[] memory allAssets = assetRegistry.getAssets();
         bool assetFound = false;
-        bool assetIsActive = false;
         for (uint i = 0; i < allAssets.length; i++) {
             if (address(allAssets[i]) == address(swellAsset)) {
                 assetFound = true;
@@ -362,7 +361,6 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
     function testDeleteExistingAsset_rETH() public {
         IERC20 rETHAsset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        IStrategy rETHStrategy = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
 
         depositAsset(chainAddresses.lsd.RETH_ADDRESS, 100, actors.admin.ASSET_MANAGER);
 

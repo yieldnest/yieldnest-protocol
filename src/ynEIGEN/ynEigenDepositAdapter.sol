@@ -56,6 +56,16 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         oETH = IERC20(woETH.asset());
     }
 
+    /**
+     * @notice Handles the deposit of assets into the ynEigen system.
+               It supports all assets supported by ynEigen
+            + oETH and and stETH which are wrapped prior to deposit.
+     * @dev This function routes the deposit based on the type of asset provided. 
+     * @param asset The asset to be deposited.
+     * @param amount The amount of the asset to be deposited.
+     * @param receiver The address that will receive the ynEigen tokens.
+     * @return The number of ynEigen tokens received by the receiver.
+     */
     function deposit(IERC20 asset, uint256 amount, address receiver) external returns (uint256) {
         if (address(asset) == address(stETH)) {
             return depositStETH(amount, receiver);
@@ -65,7 +75,6 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
             return ynEigen.deposit(IERC20(address(wstETH)), amount, receiver);
         }
     }
-
     function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
         stETH.transferFrom(msg.sender, address(this), amount);
         stETH.approve(address(wstETH), amount);
