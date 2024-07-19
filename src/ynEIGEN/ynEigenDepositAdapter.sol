@@ -16,6 +16,7 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
     //--------------------------------------------------------------------------------------
 
     error ZeroAddress();
+    error SelfReferral();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -66,7 +67,7 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
      * @param receiver The address that will receive the ynEigen tokens.
      * @return The number of ynEigen tokens received by the receiver.
      */
-    function deposit(IERC20 asset, uint256 amount, address receiver) external returns (uint256) {
+    function deposit(IERC20 asset, uint256 amount, address receiver) public returns (uint256) {
         if (address(asset) == address(stETH)) {
             return depositStETH(amount, receiver);
         } else if (address(asset) == address(oETH)) {
@@ -75,6 +76,37 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
             return ynEigen.deposit(IERC20(address(wstETH)), amount, receiver);
         }
     }
+
+
+    /**
+     * @notice Deposits an asset with referral information.
+     *          IMPORTANT: The referred or referree is the receiver, NOT msg.sender
+     * @dev This function extends the basic deposit functionality with referral tracking.
+     * @param asset The ERC20 asset to be deposited.
+     * @param amount The amount of the asset to be deposited.
+     * @param receiver The address that will receive the ynEigen tokens.
+     * @param referrer The address of the referrer.
+     * @return shares The number of ynEigen tokens received by the receiver.
+     */
+    function depositWithReferral(
+        IERC20 asset,
+        uint256 amount,
+        address receiver,
+        address referrer
+    ) external returns (uint256 shares) {
+        if (receiver == address(0)) {
+            revert ZeroAddress();
+        }
+        if (referrer == address(0)) {
+            revert ZeroAddress();
+        }
+        if (referrer == receiver) {
+            revert SelfReferral();
+        }
+
+        return deposit(asset, amount, receiver);
+    }
+
     function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
         stETH.transferFrom(msg.sender, address(this), amount);
         stETH.approve(address(wstETH), amount);
