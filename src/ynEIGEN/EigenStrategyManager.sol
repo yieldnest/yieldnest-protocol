@@ -15,8 +15,6 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
-import "forge-std/console.sol";
-
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
     event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
