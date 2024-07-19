@@ -38,6 +38,14 @@ contract LSDRateProvider is Initializable {
        _disableInitializers();
     }
 
+    /**
+     * @dev Returns the rate of the specified asset.
+     * @param _asset The address of the asset for which to get the rate.
+     * @return The rate of the specified asset in terms of its underlying value.
+     * @notice This function handles multiple types of liquid staking derivatives (LSDs) and their respective rates.
+     *         It supports Lido's stETH, Frax's sfrxETH, Rocket Pool's rETH, Swell's swETH, and Wrapped stETH.
+     *         It reverts if the asset is not supported.
+     */
     function rate(address _asset) external view returns (uint256) {
         if (_asset == LIDO_ASSET) {
             return IstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
