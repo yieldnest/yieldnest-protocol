@@ -238,7 +238,6 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
             eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
         }
         uint256 totalAssetsAfterDeposit = ynEigenToken.totalAssets();
-        uint256 assetRate = rateProvider.rate(address(asset));
 
         IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(tokenStakingNode)));

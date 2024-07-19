@@ -95,7 +95,6 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
             uint256 expectedUserUnderlyingView = initialBalance;
             if (address(assetsToDeposit[i]) == chainAddresses.lsd.WSTETH_ADDRESS || address(assetsToDeposit[i]) == chainAddresses.lsd.WOETH_ADDRESS) {
-                uint256 wrappedAssetRate = rateProvider.rate(address(assetsToDeposit[i]));
 
                 // TODO: come back to this to see why the reverse operation of converting the 
                 // userUnderlyingView to the wrapped asset using the Rate Provider does not give the same result

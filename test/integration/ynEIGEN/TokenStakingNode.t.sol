@@ -63,7 +63,6 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         uint256 nodeId = tokenStakingNode.nodeId();
 		vm.prank(actors.ops.STRATEGY_CONTROLLER);
 		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-		(, uint256[] memory deposits) = eigenLayer.strategyManager.getDeposits(address(tokenStakingNode));
 
         uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
 
@@ -87,7 +86,6 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
 	function testDepositAssetsToEigenlayerFail() public {
 		// 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 balance = testAssetUtils.get_wstETH(address(this), 10 ether);
 		wstETH.approve(address(ynEigenToken), balance);
