@@ -97,8 +97,10 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();
