@@ -16,7 +16,7 @@ interface IAssetRegistryEvents {
     event AssetAdded(address indexed asset);
     event AssetDeleted(address indexed asset, uint256 assetIndex);
     event AssetActivated(address indexed asset);
-    event AssetDeactivated(address indexed asset);
+    event AssetDisabled(address indexed asset);
     event PausedUpdated(bool paused);
 }
 
@@ -31,14 +31,16 @@ interface IAssetRegistryEvents {
 
     error UnsupportedAsset(IERC20 asset);
     error Paused();
-    error AssetNotActiveOrNonexistent(address inactiveAsset);
+    error AssetNotActive(address inactiveAsset);
+    error AssetAlreadyActive(address asset);
+    error AssetNotDisabled(address asset);
     error AssetBalanceNonZeroInPool(uint256 balanceInPool);
     error AssetBalanceNonZeroInStrategyManager(uint256 balanceInStrategyManager);
     error AssetNotFound(address absentAsset);
     error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 length1, uint256 length2);
-    error AssetAlreadyActive(address asset);
+    error AssetAlreadyAvailable(address asset);
     error NoStrategyDefinedForAsset(IERC20 asset);
 
     //--------------------------------------------------------------------------------------
@@ -104,12 +106,12 @@ interface IAssetRegistryEvents {
             if (address(init.assets[i]) == address(0)) {
                 revert ZeroAddress();
             }
-            if (_assetData[init.assets[i]].active) {
+            if (_assetData[init.assets[i]].status == AssetStatus.Active) {
                 revert AssetAlreadyActive(address(init.assets[i]));
             }
             assets.push(init.assets[i]);
             _assetData[init.assets[i]] = AssetData({
-                active: true
+                status: AssetStatus.Active
             });
         }
 
@@ -132,8 +134,8 @@ interface IAssetRegistryEvents {
     onlyRole(ASSET_MANAGER_ROLE)
     notZeroAddress(address(asset))
     whenNotPaused {
-        if (_assetData[asset].active) {
-            revert AssetAlreadyActive(address(asset));
+        if (_assetData[asset].status != AssetStatus.Unavailable) {
+            revert AssetAlreadyAvailable(address(asset));
         }
 
         IStrategy strategy = eigenStrategyManager.strategies(asset);
@@ -144,7 +146,7 @@ interface IAssetRegistryEvents {
         assets.push(asset);
 
         _assetData[asset] = AssetData({
-            active: true
+            status: AssetStatus.Active
         });
 
         emit AssetAdded(address(asset));
@@ -160,13 +162,13 @@ interface IAssetRegistryEvents {
     onlyRole(ASSET_MANAGER_ROLE)
     notZeroAddress(address(asset))
     whenNotPaused {
-        if (!_assetData[asset].active) {
-            revert AssetNotActiveOrNonexistent(address(asset));
+        if (_assetData[asset].status != AssetStatus.Active) {
+            revert AssetNotActive(address(asset));
         }
 
-        _assetData[asset].active = false;
+        _assetData[asset].status = AssetStatus.Disabled;
 
-        emit AssetDeactivated(address(asset));
+        emit AssetDisabled(address(asset));
     }
 
     /**
@@ -180,8 +182,9 @@ interface IAssetRegistryEvents {
     onlyRole(ASSET_MANAGER_ROLE)
     notZeroAddress(address(asset))
     whenNotPaused {
-        if (!_assetData[asset].active) {
-            revert AssetNotActiveOrNonexistent(address(asset));
+        if (_assetData[asset].status != AssetStatus.Disabled) {
+            // Asset can only be deleted it has been Disabled
+            revert AssetNotDisabled(address(asset));
         }
 
         uint256 balanceInPool = ynEigen.assetBalance(asset);
@@ -329,11 +332,44 @@ interface IAssetRegistryEvents {
      * @dev Returns true if the asset is active.
      */
     function assetIsSupported(IERC20 asset) public view returns (bool) {
-        return _assetData[asset].active;
+        return _assetData[asset].status == AssetStatus.Active;
     }
 
     function assetData(IERC20 asset) public view returns (AssetData memory) {
          return _assetData[asset];
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  Asset STATUS  ------------------------------------
+    //--------------------------------------------------------------------------------------
+    /**
+     * @notice Checks if an asset is disabled.
+     * @dev Returns true if the asset's status is Disabled.
+     * @param asset The asset to check.
+     * @return bool True if the asset is disabled.
+     */
+    function assetIsDisabled(IERC20 asset) internal view returns (bool) {
+        return _assetData[asset].status == AssetStatus.Disabled;
+    }
+
+    /**
+     * @notice Checks if an asset is active.
+     * @dev Returns true if the asset's status is Active.
+     * @param asset The asset to check.
+     * @return bool True if the asset is active.
+     */
+    function assetIsActive(IERC20 asset) internal view returns (bool) {
+        return _assetData[asset].status == AssetStatus.Active;
+    }
+
+    /**
+     * @notice Checks if an asset is unavailable.
+     * @dev Returns true if the asset's status is Unavailable.
+     * @param asset The asset to check.
+     * @return bool True if the asset is unavailable.
+     */
+    function assetIsUnavailable(IERC20 asset) internal view returns (bool) {
+        return _assetData[asset].status == AssetStatus.Unavailable;
     }
 
     //--------------------------------------------------------------------------------------
