@@ -256,9 +256,7 @@ contract EigenStrategyManager is
             IERC20 asset = assets[j];
             for (uint256 i; i < nodesCount; i++ ) {
                 ITokenStakingNode node = nodes[i];
-                uint256 balanceNode = asset.balanceOf(address(node));
-                stakedBalances[j] += balanceNode;
-
+                
                 uint256 strategyBalance = toUserAssetAmount(
                     asset,
                     strategies[asset].userUnderlyingView((address(node)))
