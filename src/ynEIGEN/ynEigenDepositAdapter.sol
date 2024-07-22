@@ -73,7 +73,7 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         } else if (address(asset) == address(oETH)) {
             return depositOETH(amount, receiver);
         } else {
-            return ynEigen.deposit(IERC20(address(wstETH)), amount, receiver);
+            return ynEigen.deposit(asset, amount, receiver);
         }
     }
 
