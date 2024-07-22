@@ -257,8 +257,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
         for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
             IERC20 asset = assetsToRetrieve[i];
-            IAssetRegistry.AssetData memory assetData = assetRegistry.assetData(asset);
-            if (!assetData.active) {
+            if (!assetRegistry.assetIsSupported(asset)) {
                 revert UnsupportedAsset(asset);
             }
 

@@ -17,11 +17,6 @@ import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAcces
 
 import "forge-std/console.sol";
 
-/**
- * @dev Work in progress (WIP) for generating NatSpec comments for the AssetRegistryTest contract.
- * This includes descriptions for test functions that validate the functionality of the AssetRegistry.
- */
-
 contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
     TestAssetUtils testAssetUtils;
@@ -223,7 +218,11 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(IERC20(chainAddresses.lsd.SWELL_ADDRESS));
-        assertTrue(assetRegistry.assetData(IERC20(chainAddresses.lsd.SWELL_ADDRESS)).active, "Swell asset should be active after addition");
+        assertEq(
+            uint256(assetRegistry.assetData(IERC20(chainAddresses.lsd.SWELL_ADDRESS)).status),
+            uint256(IAssetRegistry.AssetStatus.Active),
+            "Swell asset should be active after addition"
+        );
 
         uint256 totalAssetsAfter = assetRegistry.totalAssets();
         assertEq(totalAssetsBefore, totalAssetsAfter, "Total assets count should remain the same after adding an asset");
@@ -241,20 +240,40 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.addAsset(swellAsset); // First addition should succeed
 
         vm.prank(actors.admin.ASSET_MANAGER);
-        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyActive.selector, address(swellAsset)));
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyAvailable.selector, address(swellAsset)));
         assetRegistry.addAsset(swellAsset); // Attempt to add the same asset again should fail
+    }
+
+    function testAddDisabledAssetShouldFail() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Disable the asset
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.disableAsset(swellAsset);
+
+        // Attempt to add the disabled asset again should fail
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyAvailable.selector, address(swellAsset)));
+        assetRegistry.addAsset(swellAsset);
     }
 
     function testAddExistingAssetShouldFail() public {
 
         address sfrxETHAddress = address(chainAddresses.lsd.SFRXETH_ADDRESS);
         vm.prank(actors.admin.ASSET_MANAGER);
-        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyActive.selector, sfrxETHAddress));
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetAlreadyAvailable.selector, sfrxETHAddress));
         assetRegistry.addAsset(IERC20(sfrxETHAddress)); // Attempt to add the same asset again should fail
     }
 
     function testAddAssetWithoutStrategyShouldFail() public {
-        IERC20 assetWithoutStrategy = IERC20(chainAddresses.lsd.OETH_ADDRESS); // Assume OETH has no strategy set
+        IERC20 assetWithoutStrategy = IERC20(chainAddresses.lsd.SWELL_ADDRESS); // Assume OETH has no strategy set
 
         vm.prank(actors.admin.ASSET_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(AssetRegistry.NoStrategyDefinedForAsset.selector, assetWithoutStrategy));
@@ -277,21 +296,29 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.addAsset(swellAsset);
 
         // Ensure the asset is active before disabling
-        assertTrue(assetRegistry.assetData(swellAsset).active, "Asset should be active before disabling");
+        assertEq(
+            uint256(assetRegistry.assetData(swellAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Active),
+            "Asset should be active before disabling"
+        );
 
         // Disable the asset
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.disableAsset(swellAsset);
 
         // Check if the asset is now inactive
-        assertFalse(assetRegistry.assetData(swellAsset).active, "Asset should be inactive after disabling");
+        assertEq(
+            uint256(assetRegistry.assetData(swellAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Disabled),
+            "Asset status should be Disabled after disabling"
+        );
     }
 
     function testDisableNonexistentAssetShouldFail() public {
         IERC20 nonexistentAsset = IERC20(address(0xABCDEF)); // Assume this asset was never added
 
         vm.prank(actors.admin.ASSET_MANAGER);
-        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetNotActiveOrNonexistent.selector, address(nonexistentAsset)));
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetNotActive.selector, address(nonexistentAsset)));
         assetRegistry.disableAsset(nonexistentAsset); // This should fail as the asset does not exist
     }
 
@@ -309,6 +336,26 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.disableAsset(swellAsset);
     }
 
+    function testDisableAlreadyDisabledAssetShouldFail() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Disable the asset first time
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.disableAsset(swellAsset);
+
+        // Attempt to disable the already disabled asset
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetNotActive.selector, address(swellAsset)));
+        assetRegistry.disableAsset(swellAsset); // This should fail as the asset is already disabled
+    }
+
     function testDeleteAsset() public {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
@@ -319,14 +366,25 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
+        // Disable before deleting
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.disableAsset(swellAsset);
+
         // Ensure the asset is active before deleting
-        assertTrue(assetRegistry.assetData(swellAsset).active, "Asset should be active before deleting");
+        assertEq(
+            uint256(assetRegistry.assetData(swellAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Disabled),
+        "Asset should be disabled before deleting");
 
         // Delete the asset
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.deleteAsset(swellAsset);
 
-        assertFalse(assetRegistry.assetData(swellAsset).active, "Asset should not be active after deletion");
+        assertEq(
+            uint256(assetRegistry.assetData(swellAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Unavailable),
+        "Asset should be Unavailable after deletion");
+
 
         // Check if the asset is now deleted
         IERC20[] memory allAssets = assetRegistry.getAssets();
@@ -353,9 +411,42 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         // Simulate balance in the asset
         vm.mockCall(address(ynEigenToken), abi.encodeWithSelector(IynEigen.assetBalance.selector, swellAsset), abi.encode(100));
 
+
+        // Disable before deleting
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.disableAsset(swellAsset);
+
+        // Ensure the asset is active before deleting
+        assertEq(
+            uint256(assetRegistry.assetData(swellAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Disabled),
+        "Asset should be disabled before deleting");
+
         // Attempt to delete the asset
         vm.prank(actors.admin.ASSET_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetBalanceNonZeroInPool.selector, 100));
+        assetRegistry.deleteAsset(swellAsset);
+    }
+
+    function testDeleteAssetNotDisabledShouldFail() public {
+        IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
+        IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
+
+        // Add strategy and asset first
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.addAsset(swellAsset);
+
+        // Ensure the asset is active before attempting to delete
+        assertEq(
+            uint256(assetRegistry.assetData(swellAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Active),
+        "Asset should be Active before deletion attempt");
+
+        // Attempt to delete the asset without disabling it
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.AssetNotDisabled.selector, address(swellAsset)));
         assetRegistry.deleteAsset(swellAsset);
     }
 
@@ -364,8 +455,15 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         depositAsset(chainAddresses.lsd.RETH_ADDRESS, 100, actors.admin.ASSET_MANAGER);
 
-        // Ensure the asset is active before deleting
-        assertTrue(assetRegistry.assetData(rETHAsset).active, "rETH Asset should be active before deleting");
+        vm.prank(actors.admin.ASSET_MANAGER);
+        assetRegistry.disableAsset(rETHAsset);
+
+        // Ensure the asset is disabled before deleting
+        assertEq(
+            uint256(assetRegistry.assetData(rETHAsset).status),
+            uint256(IAssetRegistry.AssetStatus.Disabled),
+        "Asset should be Disabled before deletion");
+
 
         // Delete the asset
         vm.prank(actors.admin.ASSET_MANAGER);
