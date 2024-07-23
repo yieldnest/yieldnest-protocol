@@ -95,10 +95,10 @@ contract ContractAddresses {
                 DEPOSIT_2_ADDRESS: 0x4242424242424242424242424242424242424242
             }),
             eigenlayer: EigenlayerAddresses({
-                EIGENPOD_MANAGER_ADDRESS: 0x30770d7E3e71112d7A6b7259542D1f680a70e315, // Placeholder address, replaced with address(1) for holesky
-                DELEGATION_MANAGER_ADDRESS: 0xA44151489861Fe9e3055d95adC98FbD462B948e7, // Placeholder address, replaced with address(1) for holesky
+                EIGENPOD_MANAGER_ADDRESS: 0xB8d8952f572e67B11e43bC21250967772fa883Ff, // Placeholder address, replaced with address(1) for holesky
+                DELEGATION_MANAGER_ADDRESS: 0x75dfE5B44C2E530568001400D3f704bC8AE350CC, // Placeholder address, replaced with address(1) for holesky
                 DELEGATION_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348, // Placeholder address, replaced with address(1) for holesky
-                STRATEGY_MANAGER_ADDRESS: 0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6, // Placeholder address, replaced with address(1) for holesky
+                STRATEGY_MANAGER_ADDRESS: 0xF9fbF2e35D8803273E214c99BF15174139f4E67a, // Placeholder address, replaced with address(1) for holesky
                 STRATEGY_MANAGER_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348,
                 DELAYED_WITHDRAWAL_ROUTER_ADDRESS: 0x642c646053eaf2254f088e9019ACD73d9AE0FA32 // Placeholder address, replaced with address(1) for holesky
             }),

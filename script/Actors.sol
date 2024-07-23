@@ -46,10 +46,10 @@ contract ActorAddresses {
     constructor() {
 
         Wallets memory holeskyWallets = Wallets({
-            YNSecurityCouncil: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-            YNDelegator: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
-            YNDev: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-            YNValidatorService: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39
+            YNSecurityCouncil: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+            YNDelegator: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+            YNDev: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+            YNValidatorService: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
         });
 
         actors[17000] = Actors({
