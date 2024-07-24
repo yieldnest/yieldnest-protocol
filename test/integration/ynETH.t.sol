@@ -596,14 +596,14 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         testDepositETH(_amount);
 
         uint256 _userBalance = yneth.balanceOf(receiver);
-        assertTrue(_userBalance > 0, "testPreviewRedeemAfterDepositAndRewards: E0");
+        assertTrue(_userBalance > 0, "testPreviewRedeemAfterDepositAndRewards: E0"); // sanity check
         uint256 _previewRedeemBefore = yneth.previewRedeem(yneth.balanceOf(receiver));
         assertEq(_previewRedeemBefore, _amount, "testPreviewRedeemAfterDepositAndRewards: E1");
 
         vm.deal(address(executionLayerReceiver), _rewardAmount);
         rewardsDistributor.processRewards();
 
-        assertTrue(yneth.previewRedeem(_userBalance) > _previewRedeemBefore, "testPreviewRedeemAfterDepositAndRewards: E2");
+        assertApproxEqAbs(yneth.previewRedeem(_userBalance), _previewRedeemBefore + (_rewardAmount * 9_000 / 10_000), 10, "testPreviewRedeemAfterDepositAndRewards: E2");
     }
 
     function testConvertToAssetsAfterDepositAndRewards(uint256 _amount, uint256 _rewardAmount) public {
@@ -620,7 +620,7 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         vm.deal(address(executionLayerReceiver), _rewardAmount);
         rewardsDistributor.processRewards();
 
-        assertTrue(yneth.convertToAssets(_userBalance) > _previewRedeemBefore, "testConvertToAssetsAfterDepositAndRewards: E2");
+        assertApproxEqAbs(yneth.convertToAssets(_userBalance), _previewRedeemBefore + (_rewardAmount * 9_000 / 10_000), 10, "testConvertToAssetsAfterDepositAndRewards: E2");
     }
 
     function testPreviewRedeemBeforeDeposit(uint256 _amount) public {
