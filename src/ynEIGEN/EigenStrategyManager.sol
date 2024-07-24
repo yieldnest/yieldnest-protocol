@@ -68,6 +68,8 @@ contract EigenStrategyManager is
 
     IwstETH public constant wstETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     IERC4626 public constant woETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
+    IERC20 public constant oETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
+    IERC20 public constant stETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -198,11 +200,11 @@ contract EigenStrategyManager is
     ) internal returns (IERC20 depositAsset, uint256 depositAmount) {
         if (address(asset) == address(wstETH)) {
             // Adjust for wstETH
-            depositAsset = IERC20(wstETH.stETH());
+            depositAsset = stETH;
             depositAmount = wstETH.unwrap(amount); 
         } else if (address(asset) == address(woETH)) {
             // Adjust for woeth
-            depositAsset = IERC20(woETH.asset()); 
+            depositAsset = oETH; 
             // calling redeem with receiver and owner as address(this)
             depositAmount = woETH.redeem(amount, address(this), address(this)); 
         } else {
