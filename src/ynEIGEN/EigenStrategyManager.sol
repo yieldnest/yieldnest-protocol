@@ -66,10 +66,6 @@ contract EigenStrategyManager is
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IwstETH public constant wstETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-    IERC4626 public constant woETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
-    IERC20 public constant oETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
-    IERC20 public constant stETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -82,6 +78,11 @@ contract EigenStrategyManager is
 
     // Mapping of asset to its corresponding strategy
     mapping(IERC20 => IStrategy) public strategies;
+
+    IwstETH public wstETH;
+    IERC4626 public woETH;
+    IERC20 public oETH;
+    IERC20 public stETH;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -99,6 +100,8 @@ contract EigenStrategyManager is
         address unpauser;
         address pauser;
         address strategyAdmin;
+        IwstETH wstETH;
+        IERC4626 woETH;
     }
 
     function initialize(Init calldata init)
@@ -131,6 +134,10 @@ contract EigenStrategyManager is
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
         tokenStakingNodesManager = init.tokenStakingNodesManager;
+        wstETH = init.wstETH;
+        woETH = init.woETH;
+        stETH = IERC20(wstETH.stETH());
+        oETH = IERC20(woETH.asset());
     }
 
     //--------------------------------------------------------------------------------------

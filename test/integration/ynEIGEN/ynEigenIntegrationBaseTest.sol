@@ -35,6 +35,9 @@ import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
+import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+
 
 contract ynEigenIntegrationBaseTest is Test, Utils {
 
@@ -247,7 +250,9 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             strategyController: actors.ops.STRATEGY_CONTROLLER,
             unpauser: actors.admin.UNPAUSE_ADMIN,
             pauser: actors.ops.PAUSE_ADMIN,
-            strategyAdmin: actors.admin.EIGEN_STRATEGY_ADMIN
+            strategyAdmin: actors.admin.EIGEN_STRATEGY_ADMIN,
+            wstETH: IwstETH(chainAddresses.lsd.WSTETH_ADDRESS),
+            woETH: IERC4626(chainAddresses.lsd.WOETH_ADDRESS)
         });
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         eigenStrategyManager.initialize(eigenStrategyManagerInit);
