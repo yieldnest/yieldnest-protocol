@@ -104,6 +104,19 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         depositAssetAndVerify(rETH, amount);
     }
 
+    function testDepositmETHSuccessWithOneDepositFuzz(
+        // uint256 amount
+     ) public {
+
+        uint256 amount = 2;
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
+
+        IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        depositAssetAndVerify(mETH, amount);
+    }
+
     function testMultipleDepositsFuzz(
         uint8 asset0Index,
         uint8 asset1Index,

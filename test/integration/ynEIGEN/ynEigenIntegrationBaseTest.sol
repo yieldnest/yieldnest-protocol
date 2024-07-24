@@ -213,8 +213,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     }
 
     function setupEigenStrategyManagerAndAssetRegistry() public {
-        IERC20[] memory lsdAssets = new IERC20[](4);
-        IStrategy[] memory strategies = new IStrategy[](4);
+        IERC20[] memory lsdAssets = new IERC20[](5);
+        IStrategy[] memory strategies = new IStrategy[](5);
 
         // stETH
         // We accept deposits in wstETH, and deploy to the stETH strategy
@@ -234,6 +234,11 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         // We accept deposits in wsfrxETH, and deploy to the sfrxETH strategy
         lsdAssets[3] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
         strategies[3] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+
+        // mETH
+        // We accept deposits in wmETH, and deploy to the mETH strategy
+        lsdAssets[4] = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        strategies[4] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
 
         for (uint i = 0; i < lsdAssets.length; i++) {
             assets.push(lsdAssets[i]);
