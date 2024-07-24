@@ -7,7 +7,7 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {IstETH} from "src/external/lido/IstETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import {IswETH} from "src/external/swell/IswETH.sol";
-
+import {ImETHStaking} from "src/external/mantle/ImETHStaking.sol";
 
 contract LSDRateProvider {
 
@@ -27,6 +27,8 @@ contract LSDRateProvider {
     address constant RETH_ASSET = 0xae78736Cd615f374D3085123A210448E74Fc6393; // RETH
     address constant WOETH_ASSET = 0xDcEe70654261AF21C44c093C300eD3Bb97b78192;
     address constant SWELL_ASSET = 0xf951E335afb289353dc249e82926178EaC7DEd78;
+    address constant METH_ASSET = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
+    address constant METH_STAKING_CONTRACT = 0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f;
 
     address constant LIDO_UDERLYING = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH
 
@@ -65,6 +67,9 @@ contract LSDRateProvider {
         }
         if (_asset == RETH_ASSET) {
             return IrETH(RETH_ASSET).getExchangeRate();
+        }
+        if (_asset == METH_ASSET) {
+            return ImETHStaking(METH_STAKING_CONTRACT).mETHToETH(UNIT);
         }
         if (_asset == SWELL_ASSET) {
             return IswETH(SWELL_ASSET).swETHToETHRate();

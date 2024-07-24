@@ -9,6 +9,7 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
+import { ImETHStaking } from "src/external/mantle/ImETHStaking.sol";
 
 import "forge-std/console.sol";
 
@@ -40,6 +41,8 @@ contract TestAssetUtils is Test {
             return get_rETH(receiver, amount);
         } else if (asset == chainAddresses.lsd.SFRXETH_ADDRESS) {
             return get_sfrxETH(receiver, amount);
+        } else if (asset == chainAddresses.lsd.METH_ADDRESS) {
+            return get_mETH(receiver, amount);
         } else {
             revert("Unsupported asset type");
         }
@@ -161,6 +164,20 @@ contract TestAssetUtils is Test {
         uint256 sfrxETHBalance = sfrxETH.balanceOf(address(this));
         require(sfrxETHBalance >= amount, "Insufficient sfrxETH balance after deposit");
         sfrxETH.transfer(receiver, amount);
+
+        return amount;
+    }
+
+    function get_mETH(address receiver, uint256 amount) public returns (uint256) {
+        ImETHStaking mETHStaking = ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f);
+        IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
+
+        uint256 ethRequired = mETHStaking.mETHToETH(amount) + 1 ether;
+        vm.deal(address(this), ethRequired);
+        mETHStaking.stake{value: ethRequired}(amount);
+
+        require(mETH.balanceOf(address(this)) >= amount, "Insufficient mETH balance after staking");
+        mETH.transfer(receiver, amount);
 
         return amount;
     }
