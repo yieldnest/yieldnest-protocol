@@ -9,7 +9,7 @@ import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import {IswETH} from "src/external/swell/IswETH.sol";
 
 
-contract LSDRateProvider is Initializable {
+contract LSDRateProvider {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -33,10 +33,6 @@ contract LSDRateProvider is Initializable {
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
-
-    constructor() {
-       _disableInitializers();
-    }
 
     /**
      * @dev Returns the rate of the specified asset.
