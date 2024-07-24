@@ -40,6 +40,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     error AssetRetrievalLengthMismatch(uint256 assetsCount, uint256 amountsCount);
     error NotStrategyManager(address msgSender);
     error InsufficientAssetBalance(IERC20 asset, uint256 balance, uint256 requestedAmount);
+    error ZeroShares();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -140,6 +141,10 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         uint256 assetAmountInUnitOfAccount = assetRegistry.convertToUnitOfAccount(asset, amount);
         // Calculate how many shares to be minted using the same formula as ynUnitOfAccount
         shares = _convertToShares(assetAmountInUnitOfAccount, Math.Rounding.Floor);
+
+        if (shares == 0) {
+            revert ZeroShares();
+        }
 
         // Mint the calculated shares to the receiver 
         _mint(receiver, shares);
