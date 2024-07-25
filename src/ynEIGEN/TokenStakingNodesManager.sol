@@ -59,7 +59,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
     IStrategyManager public strategyManager;
     IDelegationManager public delegationManager;
-    IEigenStrategyManager eigenStrategyManager;
+    address yieldNestStrategyManager;
 
     UpgradeableBeacon public upgradeableBeacon;
     
@@ -91,7 +91,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     struct Init {
         IStrategyManager strategyManager;
         IDelegationManager delegationManager;
-        IEigenStrategyManager eigenStrategyManager;
+        address yieldNestStrategyManager;
         uint256 maxNodeCount;
         address admin;
         address pauser;
@@ -123,7 +123,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
         strategyManager = init.strategyManager;
         delegationManager = init.delegationManager;
-        eigenStrategyManager = init.eigenStrategyManager;
+        yieldNestStrategyManager = init.yieldNestStrategyManager;
         maxNodeCount = init.maxNodeCount;
     }
 
@@ -269,8 +269,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
      * @param caller The address to check.
      * @return True if the specified address is the EigenStrategyManager, false otherwise.
      */
-    function hasEigenStrategyManagerRole(address caller) public view returns (bool) {
-        return caller == address(eigenStrategyManager);
+    function hasYieldNestStrategyManagerRole(address caller) public view returns (bool) {
+        return caller == yieldNestStrategyManager;
     }
 
     //--------------------------------------------------------------------------------------

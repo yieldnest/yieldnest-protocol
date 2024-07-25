@@ -20,7 +20,7 @@ interface ITokenStakingNodesManager {
 
     function getAllNodes() external view returns (ITokenStakingNode[] memory);
     function nodesLength() external view returns (uint256);
-    function hasEigenStrategyManagerRole(address) external view returns (bool);
+    function hasYieldNestStrategyManagerRole(address) external view returns (bool);
 
     function getNodeById(uint256 nodeId) external view returns (ITokenStakingNode);
 }
