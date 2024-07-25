@@ -189,18 +189,45 @@ contract DeployYnLSD is BaseScript {
             eigenStrategyManager.initialize(eigenStrategyManagerInit);
         }
 
-    //     {
-    //         LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
-    //         ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
-            
-    //         ynLSDDeployment memory deployment = ynLSDDeployment({
-    //             ynlsd: ynlsd,
-    //             lsdStakingNodeImplementation: lsdStakingNodeImplementation,
-    //             yieldNestOracle: yieldNestOracle
-    //         });
-            
-    //         saveynLSDDeployment(deployment);
-    //     }
+        
+        {
+            TokenStakingNodesManager.Init memory tokenStakingNodesManagerInit = TokenStakingNodesManager.Init({
+                admin: actors.eoa.DEFAULT_SIGNER, // change at end of script
+                stakingAdmin: actors.eoa.DEFAULT_SIGNER, // change at end of script
+                strategyManager: IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
+                delegationManager: IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS),
+                yieldNestStrategyManager: address(eigenStrategyManager),
+                maxNodeCount: 10,
+                pauser: actors.ops.PAUSE_ADMIN,
+                unpauser: actors.admin.UNPAUSE_ADMIN,
+                tokenStakingNodeOperator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+                tokenStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
+                tokenStakingNodesDelegator: actors.admin.STAKING_NODES_DELEGATOR
+            });
+
+            tokenStakingNodesManager.initialize(tokenStakingNodesManagerInit);
+        }
+
+        TokenStakingNode tokenStakingNodeImplementation = new TokenStakingNode();
+        tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(address(tokenStakingNodeImplementation));
+
+        
+        // set these roles after deployment
+        tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN);
+        tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), actors.admin.STAKING_ADMIN);
+
+        vm.stopBroadcast();
+
+        // Deployment memory deployment = Deployment({
+        //     ynETH: yneth,
+        //     stakingNodesManager: stakingNodesManager,
+        //     executionLayerReceiver: executionLayerReceiver,
+        //     consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
+        //     rewardsDistributor: rewardsDistributor,
+        //     stakingNodeImplementation: stakingNodeImplementation
+        // });
+        
+        // saveDeployment(deployment);
     }
 }
 
