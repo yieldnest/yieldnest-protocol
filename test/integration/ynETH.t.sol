@@ -587,7 +587,51 @@ contract ynETHIntegrationTest is IntegrationBaseTest {
         bytes memory encodedError = abi.encodeWithSelector(ynETH.ZeroETH.selector);
         vm.expectRevert(encodedError);
         yneth.depositETH{value: 0}(address(this));
-    } 
+    }
+
+    function testPreviewRedeemAfterDepositAndRewards(uint256 _amount, uint256 _rewardAmount) public {
+        vm.assume(_amount > 0 && _amount <= 10_000 ether);
+        vm.assume(_rewardAmount > 0 && _rewardAmount <= 10_000 ether);
+
+        testDepositETH(_amount);
+
+        uint256 _userBalance = yneth.balanceOf(receiver);
+        assertTrue(_userBalance > 0, "testPreviewRedeemAfterDepositAndRewards: E0"); // sanity check
+        uint256 _previewRedeemBefore = yneth.previewRedeem(yneth.balanceOf(receiver));
+        assertEq(_previewRedeemBefore, _amount, "testPreviewRedeemAfterDepositAndRewards: E1");
+
+        vm.deal(address(executionLayerReceiver), _rewardAmount);
+        rewardsDistributor.processRewards();
+
+        assertApproxEqAbs(yneth.previewRedeem(_userBalance), _previewRedeemBefore + (_rewardAmount * 9_000 / 10_000), 10, "testPreviewRedeemAfterDepositAndRewards: E2");
+    }
+
+    function testConvertToAssetsAfterDepositAndRewards(uint256 _amount, uint256 _rewardAmount) public {
+        vm.assume(_amount > 0 && _amount <= 10_000 ether);
+        vm.assume(_rewardAmount > 0 && _rewardAmount <= 10_000 ether);
+
+        testDepositETH(_amount);
+
+        uint256 _userBalance = yneth.balanceOf(receiver);
+        assertTrue(_userBalance > 0, "testConvertToAssetsAfterDepositAndRewards: E0");
+        uint256 _previewRedeemBefore = yneth.convertToAssets(yneth.balanceOf(receiver));
+        assertEq(_previewRedeemBefore, _amount, "testConvertToAssetsAfterDepositAndRewards: E1");
+
+        vm.deal(address(executionLayerReceiver), _rewardAmount);
+        rewardsDistributor.processRewards();
+
+        assertApproxEqAbs(yneth.convertToAssets(_userBalance), _previewRedeemBefore + (_rewardAmount * 9_000 / 10_000), 10, "testConvertToAssetsAfterDepositAndRewards: E2");
+    }
+
+    function testPreviewRedeemBeforeDeposit(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount <= 10_000 ether);
+        assertEq(yneth.previewRedeem(_amount), _amount, "testPreviewRedeemBeforeDeposit: E0");
+    }
+
+    function testConvertToAssetsBeforeDeposit(uint256 _amount) public {
+        vm.assume(_amount > 0 && _amount <= 10_000 ether);
+        assertEq(yneth.convertToAssets(_amount), _amount, "testConvertToAssetsBeforeDeposit: E0");
+    }
 }
 
 
