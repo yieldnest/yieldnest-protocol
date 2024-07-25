@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
-import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
@@ -139,7 +138,7 @@ interface IAssetRegistryEvents {
             revert AssetAlreadyAvailable(address(asset));
         }
 
-        if (strategyManager.supportsAsset(asset)) {
+        if (!strategyManager.supportsAsset(asset)) {
             revert NoStrategyDefinedForAsset(asset);
         }
 
@@ -337,39 +336,6 @@ interface IAssetRegistryEvents {
 
     function assetData(IERC20 asset) public view returns (AssetData memory) {
          return _assetData[asset];
-    }
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  Asset STATUS  ------------------------------------
-    //--------------------------------------------------------------------------------------
-    /**
-     * @notice Checks if an asset is disabled.
-     * @dev Returns true if the asset's status is Disabled.
-     * @param asset The asset to check.
-     * @return bool True if the asset is disabled.
-     */
-    function assetIsDisabled(IERC20 asset) internal view returns (bool) {
-        return _assetData[asset].status == AssetStatus.Disabled;
-    }
-
-    /**
-     * @notice Checks if an asset is active.
-     * @dev Returns true if the asset's status is Active.
-     * @param asset The asset to check.
-     * @return bool True if the asset is active.
-     */
-    function assetIsActive(IERC20 asset) internal view returns (bool) {
-        return _assetData[asset].status == AssetStatus.Active;
-    }
-
-    /**
-     * @notice Checks if an asset is unavailable.
-     * @dev Returns true if the asset's status is Unavailable.
-     * @param asset The asset to check.
-     * @return bool True if the asset is unavailable.
-     */
-    function assetIsUnavailable(IERC20 asset) internal view returns (bool) {
-        return _assetData[asset].status == AssetStatus.Unavailable;
     }
 
     //--------------------------------------------------------------------------------------

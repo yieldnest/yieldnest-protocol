@@ -9,7 +9,20 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
+interface IynEigenDepositAdapterEvents {
+    event ReferralDepositProcessed(
+        address sender, 
+        address indexed receiver, 
+        address indexed asset, 
+        uint256 amount, 
+        uint256 shares, 
+        address indexed referrer, 
+        uint256 timestamp
+    );
+}
+
+
+contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, AccessControlUpgradeable {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -103,8 +116,8 @@ contract ynEigenDepositAdapter is Initializable, AccessControlUpgradeable {
         if (referrer == receiver) {
             revert SelfReferral();
         }
-
-        return deposit(asset, amount, receiver);
+        shares = deposit(asset, amount, receiver);
+        emit ReferralDepositProcessed(msg.sender, receiver, address(asset), amount, shares, referrer, block.timestamp);
     }
 
     function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
