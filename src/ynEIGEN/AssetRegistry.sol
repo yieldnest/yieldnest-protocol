@@ -339,39 +339,6 @@ interface IAssetRegistryEvents {
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  Asset STATUS  ------------------------------------
-    //--------------------------------------------------------------------------------------
-    /**
-     * @notice Checks if an asset is disabled.
-     * @dev Returns true if the asset's status is Disabled.
-     * @param asset The asset to check.
-     * @return bool True if the asset is disabled.
-     */
-    function assetIsDisabled(IERC20 asset) internal view returns (bool) {
-        return _assetData[asset].status == AssetStatus.Disabled;
-    }
-
-    /**
-     * @notice Checks if an asset is active.
-     * @dev Returns true if the asset's status is Active.
-     * @param asset The asset to check.
-     * @return bool True if the asset is active.
-     */
-    function assetIsActive(IERC20 asset) internal view returns (bool) {
-        return _assetData[asset].status == AssetStatus.Active;
-    }
-
-    /**
-     * @notice Checks if an asset is unavailable.
-     * @dev Returns true if the asset's status is Unavailable.
-     * @param asset The asset to check.
-     * @return bool True if the asset is unavailable.
-     */
-    function assetIsUnavailable(IERC20 asset) internal view returns (bool) {
-        return _assetData[asset].status == AssetStatus.Unavailable;
-    }
-
-    //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
