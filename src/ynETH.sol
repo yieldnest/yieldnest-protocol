@@ -39,6 +39,7 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
     error InsufficientBalance();
     error TransferFailed();
     error CallerNotAuthorized(address caller);
+    error ZeroShares();
 
 
     //--------------------------------------------------------------------------------------
@@ -129,6 +130,10 @@ contract ynETH is IynETH, ynBase, IYnETHEvents {
         uint256 assets = msg.value;
         
         shares = previewDeposit(assets);
+
+        if (shares == 0) {
+            revert ZeroShares();
+        }
 
         _mint(receiver, shares);
 
