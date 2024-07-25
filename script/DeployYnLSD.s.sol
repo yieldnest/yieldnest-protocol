@@ -11,10 +11,14 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IWETH} from "src/external/tokens/IWETH.sol";
 
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
@@ -26,6 +30,10 @@ import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
+
+import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -138,7 +146,7 @@ contract DeployYnLSD is BaseScript {
                 admin: actors.admin.ADMIN,
                 pauser: actors.ops.PAUSE_ADMIN,
                 unpauser: actors.admin.UNPAUSE_ADMIN,
-                eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
+                yieldNestStrategyManager: address(eigenStrategyManager),
                 assetRegistry: IAssetRegistry(address(assetRegistry)),
                 pauseWhitelist: lsdPauseWhitelist
             });
@@ -148,8 +156,8 @@ contract DeployYnLSD is BaseScript {
         {
             AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
                 assets: assets,
-                rateProvider: IRateProvider(address(rateProvider)),
-                eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
+                rateProvider: IRateProvider(address(lsdRateProvider)),
+                yieldNestStrategyManager: IYieldNestStrategyManager(address(eigenStrategyManager)),
                 ynEigen: IynEigen(address(ynLSDe)),
                 admin: actors.admin.ADMIN,
                 pauser: actors.ops.PAUSE_ADMIN,
@@ -164,8 +172,8 @@ contract DeployYnLSD is BaseScript {
                 assets: assets,
                 strategies: strategies,
                 ynEigen: IynEigen(address(ynLSDe)),
-                strategyManager: IStrategyManager(address(eigenLayer.strategyManager)),
-                delegationManager: IDelegationManager(address(eigenLayer.delegationManager)),
+                strategyManager: IStrategyManager(address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS)),
+                delegationManager: IDelegationManager(address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS)),
                 tokenStakingNodesManager: ITokenStakingNodesManager(address(tokenStakingNodesManager)),
                 admin: actors.admin.ADMIN,
                 strategyController: actors.ops.STRATEGY_CONTROLLER,
