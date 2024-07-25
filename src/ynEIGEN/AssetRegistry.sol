@@ -138,7 +138,7 @@ interface IAssetRegistryEvents {
             revert AssetAlreadyAvailable(address(asset));
         }
 
-        if (strategyManager.supportsAsset(asset)) {
+        if (!strategyManager.supportsAsset(asset)) {
             revert NoStrategyDefinedForAsset(asset);
         }
 
