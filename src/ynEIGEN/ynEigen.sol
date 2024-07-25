@@ -7,7 +7,7 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
-import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 
 import {ynBase} from "src/ynBase.sol";
 
@@ -48,7 +48,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
     mapping(address => Asset) public assets;
 
-    IEigenStrategyManager eigenStrategyManager;
+    address yieldNestStrategyManager;
     IAssetRegistry assetRegistry;
 
     bool public depositsPaused;
@@ -65,7 +65,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         string name;
         string symbol;
         IAssetRegistry assetRegistry;
-        IEigenStrategyManager eigenStrategyManager;
+        address yieldNestStrategyManager;
         address admin;
         address pauser;
         address unpauser;
@@ -86,7 +86,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         _grantRole(UNPAUSER_ROLE, init.unpauser);
 
         assetRegistry = init.assetRegistry;
-        eigenStrategyManager = init.eigenStrategyManager;
+        yieldNestStrategyManager = init.yieldNestStrategyManager;
 
         _setTransfersPaused(true);  // transfers are initially paused
         _updatePauseWhitelist(init.pauseWhitelist, true);
@@ -258,7 +258,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             revert AssetRetrievalLengthMismatch(assetsToRetrieve.length, amounts.length);
         }
 
-        address strategyManagerAddress = address(eigenStrategyManager);
+        address strategyManagerAddress = yieldNestStrategyManager;
 
         for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
             IERC20 asset = assetsToRetrieve[i];
@@ -317,7 +317,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     }
 
     modifier onlyStrategyManager() {
-        if(msg.sender != address(eigenStrategyManager)) {
+        if(msg.sender != yieldNestStrategyManager) {
             revert NotStrategyManager(msg.sender);
         }
         _;

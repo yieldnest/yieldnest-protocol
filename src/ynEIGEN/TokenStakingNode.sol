@@ -87,7 +87,7 @@ contract TokenStakingNode is
         IERC20[] memory assets,
         uint256[] memory amounts,
         IStrategy[] memory strategies
-    ) external nonReentrant onlyStrategyManager {
+    ) external nonReentrant onlyYieldNestStrategyManager {
         IStrategyManager strategyManager = tokenStakingNodesManager
             .strategyManager();
 
@@ -161,8 +161,8 @@ contract TokenStakingNode is
         _;
     }
 
-    modifier onlyStrategyManager() {
-        if (!tokenStakingNodesManager.hasEigenStrategyManagerRole(msg.sender)) {
+    modifier onlyYieldNestStrategyManager() {
+        if (!tokenStakingNodesManager.hasYieldNestStrategyManagerRole(msg.sender)) {
             revert NotStrategyManager();
         }
         _;

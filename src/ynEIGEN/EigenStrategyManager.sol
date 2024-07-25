@@ -7,7 +7,7 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
@@ -25,7 +25,7 @@ interface IEigenStrategyManagerEvents {
  *  @dev This contract handles the strategy management for ynEigen asset allocations.
  */
 contract EigenStrategyManager is 
-        IEigenStrategyManager,
+        IYieldNestStrategyManager,
         IEigenStrategyManagerEvents,
         Initializable,
         AccessControlUpgradeable,
@@ -345,6 +345,14 @@ contract EigenStrategyManager is
         stakedBalance += strategyBalance;
     }
 
+    /**
+     * @notice Checks if a given asset is supported by any strategy.
+     * @param asset The ERC20 token to check.
+     * @return isSupported True if there is a strategy defined for the asset, false otherwise.
+     */
+    function supportsAsset(IERC20 asset) public view returns (bool) {
+        return address(strategies[asset]) != address(0);
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------

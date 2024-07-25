@@ -4,13 +4,14 @@ pragma solidity ^0.8.24;
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
+
 
 interface IAssetRegistryEvents {
     event AssetAdded(address indexed asset);
@@ -63,7 +64,7 @@ interface IAssetRegistryEvents {
     bool public actionsPaused;
 
     IRateProvider public rateProvider;
-    IEigenStrategyManager public eigenStrategyManager;
+    IYieldNestStrategyManager public strategyManager;
     IynEigen ynEigen;
 
 
@@ -78,7 +79,7 @@ interface IAssetRegistryEvents {
     struct Init {
         IERC20[] assets;
         IRateProvider rateProvider;
-        IEigenStrategyManager eigenStrategyManager;
+        IYieldNestStrategyManager yieldNestStrategyManager;
         IynEigen ynEigen;
         address admin;
         address pauser;
@@ -116,7 +117,7 @@ interface IAssetRegistryEvents {
         }
 
         rateProvider = init.rateProvider;
-        eigenStrategyManager = init.eigenStrategyManager;
+        strategyManager = init.yieldNestStrategyManager;
         ynEigen = init.ynEigen;
     }
 
@@ -138,8 +139,7 @@ interface IAssetRegistryEvents {
             revert AssetAlreadyAvailable(address(asset));
         }
 
-        IStrategy strategy = eigenStrategyManager.strategies(asset);
-        if (address(strategy) == address(0)) {
+        if (strategyManager.supportsAsset(asset)) {
             revert NoStrategyDefinedForAsset(asset);
         }
 
@@ -192,7 +192,7 @@ interface IAssetRegistryEvents {
             revert AssetBalanceNonZeroInPool(balanceInPool);
         }
 
-        uint256 strategyBalance = eigenStrategyManager.getStakedAssetBalance(asset);
+        uint256 strategyBalance = strategyManager.getStakedAssetBalance(asset);
         if (strategyBalance != 0) {
             revert AssetBalanceNonZeroInStrategyManager(strategyBalance);
         }
@@ -266,7 +266,7 @@ interface IAssetRegistryEvents {
         // populate with the ynEigen balances
         assetBalances = ynEigen.assetBalances(assets);
 
-        uint256[] memory stakedAssetBalances = eigenStrategyManager.getStakedAssetsBalances(assets);
+        uint256[] memory stakedAssetBalances = strategyManager.getStakedAssetsBalances(assets);
 
         if (stakedAssetBalances.length != assetsCount) {
             revert LengthMismatch(assetsCount, stakedAssetBalances.length);

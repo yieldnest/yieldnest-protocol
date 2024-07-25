@@ -27,7 +27,7 @@ import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
-import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
@@ -181,7 +181,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             admin: actors.admin.ADMIN,
             pauser: actors.ops.PAUSE_ADMIN,
             unpauser: actors.admin.UNPAUSE_ADMIN,
-            eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
+            yieldNestStrategyManager: address(eigenStrategyManager),
             assetRegistry: IAssetRegistry(address(assetRegistry)),
             pauseWhitelist: pauseWhitelist
         });
@@ -195,7 +195,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         TokenStakingNodesManager.Init memory tokenStakingNodesManagerInit = TokenStakingNodesManager.Init({
             strategyManager: eigenLayer.strategyManager,
             delegationManager: eigenLayer.delegationManager,
-            eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
+            yieldNestStrategyManager: address(eigenStrategyManager),
             maxNodeCount: 10,
             admin: actors.admin.ADMIN,
             pauser: actors.ops.PAUSE_ADMIN,
@@ -265,7 +265,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
             assets: lsdAssets,
             rateProvider: IRateProvider(address(rateProvider)),
-            eigenStrategyManager: IEigenStrategyManager(address(eigenStrategyManager)),
+            yieldNestStrategyManager: IYieldNestStrategyManager(address(eigenStrategyManager)),
             ynEigen: IynEigen(address(ynEigenToken)),
             admin: actors.admin.ADMIN,
             pauser: actors.ops.PAUSE_ADMIN,
