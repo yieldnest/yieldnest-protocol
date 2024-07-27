@@ -22,6 +22,7 @@ import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManage
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
+import {HoleskyLSDRateProvider} from "src/testnet/HoleksyLSDRateProvider.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
@@ -62,14 +63,14 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
-        vm.startBroadcast(deployerPrivateKey);
-
         // solhint-disable-next-line no-console
         console.log("Default Signer Address:", _broadcaster);
         // solhint-disable-next-line no-console
         console.log("Current Block Number:", block.number);
         // solhint-disable-next-line no-console
         console.log("Current Chain ID:", block.chainid);
+
+        vm.startBroadcast(deployerPrivateKey);
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
@@ -86,7 +87,14 @@ contract DeployYnLSDe is BaseYnEigenScript {
         }
 
         {
-            LSDRateProvider lsdRateProviderImplementation = new LSDRateProvider();
+            address lsdRateProviderImplementation;
+            if (block.chainid == 17000) {
+                lsdRateProviderImplementation = address(new HoleskyLSDRateProvider());
+            } else if (block.chainid == 1) {
+                lsdRateProviderImplementation = address(new LSDRateProvider());
+            } else {
+                revert("Unsupported chain ID");
+            }
             TransparentUpgradeableProxy lsdRateProviderProxy = new TransparentUpgradeableProxy(address(lsdRateProviderImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
             lsdRateProvider = LSDRateProvider(address(lsdRateProviderProxy));
         }
