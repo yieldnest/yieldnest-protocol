@@ -54,7 +54,7 @@ contract UpgradeYnETH_0_0_2 is BaseScript {
         console.log("Deployment JSON file written successfully:", getDeploymentFile());
     }
 
-    function getDeploymentFile() internal view override returns (string memory) {
+    function getDeploymentFile() internal view returns (string memory) {
         string memory root = vm.projectRoot();
         return string.concat(root, "/deployments/ynETH-upgrade-0.0.2", vm.toString(block.chainid), ".json");
     }
