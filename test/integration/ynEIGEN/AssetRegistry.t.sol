@@ -244,6 +244,18 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.addAsset(swellAsset); // Attempt to add the same asset again should fail
     }
 
+    function testAddAssetWithNoPriceFeedShouldFail() public {
+        IERC20 assetWithoutPriceFeed = IERC20(chainAddresses.lsd.CBETH_ADDRESS); // Assume SWELL has no price feed
+
+        IStrategy strategyForAsset = IStrategy(chainAddresses.lsdStrategies.CBETH_STRATEGY_ADDRESS);
+        vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        eigenStrategyManager.addStrategy(assetWithoutPriceFeed, strategyForAsset);
+
+        vm.prank(actors.admin.ASSET_MANAGER);
+        vm.expectRevert(abi.encodeWithSelector(AssetRegistry.RateNotAvailableForAsset.selector, assetWithoutPriceFeed));
+        assetRegistry.addAsset(assetWithoutPriceFeed); // This should fail as there's no price feed for SWELL
+    }
+
     function testAddDisabledAssetShouldFail() public {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);

@@ -42,6 +42,7 @@ interface IAssetRegistryEvents {
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyAvailable(address asset);
     error NoStrategyDefinedForAsset(IERC20 asset);
+    error RateNotAvailableForAsset(IERC20 asset);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -140,6 +141,12 @@ interface IAssetRegistryEvents {
 
         if (!strategyManager.supportsAsset(asset)) {
             revert NoStrategyDefinedForAsset(asset);
+        }
+
+        try rateProvider.rate(address(asset)) {
+            // If the rate exists, do nothing
+        } catch {
+            revert RateNotAvailableForAsset(asset);
         }
 
         assets.push(asset);
