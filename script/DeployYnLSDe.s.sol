@@ -29,7 +29,7 @@ import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol
 
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
-import {BaseScript} from "script/BaseScript.s.sol";
+import {BaseYnEigenScript} from "script/BaseYnEigenScript.s.sol";
 
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
@@ -37,7 +37,7 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 
 import {console} from "lib/forge-std/src/console.sol";
 
-contract DeployYnLSD is BaseScript {
+contract DeployYnLSDe is BaseYnEigenScript {
 
     IDelegationManager public delegationManager;
     IDelayedWithdrawalRouter public delayedWithdrawalRouter;
@@ -49,6 +49,10 @@ contract DeployYnLSD is BaseScript {
     EigenStrategyManager eigenStrategyManager;
     TokenStakingNodesManager tokenStakingNodesManager;
     AssetRegistry assetRegistry;
+
+    function tokenName() internal override pure returns (string memory) {
+        return "YnLSDe";
+    }
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -218,16 +222,15 @@ contract DeployYnLSD is BaseScript {
 
         vm.stopBroadcast();
 
-        // Deployment memory deployment = Deployment({
-        //     ynETH: yneth,
-        //     stakingNodesManager: stakingNodesManager,
-        //     executionLayerReceiver: executionLayerReceiver,
-        //     consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
-        //     rewardsDistributor: rewardsDistributor,
-        //     stakingNodeImplementation: stakingNodeImplementation
-        // });
+        Deployment memory deployment = Deployment({
+            ynEigen: ynLSDe,
+            assetRegistry: assetRegistry,
+            eigenStrategyManager: eigenStrategyManager,
+            tokenStakingNodesManager: tokenStakingNodesManager,
+            tokenStakingNodeImplementation: tokenStakingNodeImplementation
+        });
         
-        // saveDeployment(deployment);
+        saveDeployment(deployment);
     }
 }
 
