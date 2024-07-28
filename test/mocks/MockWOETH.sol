@@ -10,11 +10,9 @@ contract MockWOETH is ERC4626Upgradeable {
     using SafeERC20 for IERC20;
 
     function initialize(
-        ERC20 underlying_,
-        string memory name_,
-        string memory symbol_
+        ERC20 underlying_
     ) public initializer {
-        __ERC20_init(name_, symbol_);
+        __ERC20_init("Mock WOETH", "MWOETH");
         __ERC4626_init(underlying_);
     }
 }
