@@ -133,8 +133,8 @@ contract ContractAddresses {
                 RETH_ADDRESS: 0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1, // source: https://docs.rocketpool.net/guides/staking/via-rp
                 STETH_ADDRESS: 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034, // source: https://docs.lido.fi/deployed-contracts/holesky/
                 WSTETH_ADDRESS: 0x8d09a4502Cc8Cf1547aD300E066060D043f6982D, // source: https://docs.lido.fi/deployed-contracts/holesky/
-                OETH_ADDRESS: 0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3, // TODO: fix, placeholder until available
-                WOETH_ADDRESS: 0xDcEe70654261AF21C44c093C300eD3Bb97b78192, // TODO: fix, placeholder until available
+                OETH_ADDRESS: 0x10B83FBce870642ee33f0877ffB7EA43530E473D, // TODO: fix, currently a YieldNest Mock is used
+                WOETH_ADDRESS: 0xbaAcDcC565006b6429F57bC0f436dFAf14A526b1, // TODO: fix, currently a YieldNest Mock is used
                 OETH_ZAPPER_ADDRESS: 0x9858e47BCbBe6fBAC040519B02d7cd4B2C470C66, // TODO: fix, placeholder until available
                 SWELL_ADDRESS: 0xf951E335afb289353dc249e82926178EaC7DEd78, // TODO: fix, placeholder until available
                 METH_ADDRESS: 0xe3C063B1BEe9de02eb28352b55D49D85514C67FF,
