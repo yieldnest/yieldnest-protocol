@@ -25,7 +25,9 @@ contract HoleskyLSDRateProvider {
     address public constant FRAX_ASSET = 0xa63f56985F9C7F3bc9fFc5685535649e0C1a55f3; // sfrxETH
     address public constant LIDO_ASSET = 0x8d09a4502Cc8Cf1547aD300E066060D043f6982D; // wstETH
     address public constant RETH_ASSET = 0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1; // RETH
-    address public constant WOETH_ASSET = 0xDcEe70654261AF21C44c093C300eD3Bb97b78192; // TODO: FIXME: set the mock address 
+
+    /** WOETH is a mock deployed by YieldNest */
+    address public constant WOETH_ASSET = 0xbaAcDcC565006b6429F57bC0f436dFAf14A526b1;
     address public constant METH_ASSET = 0xe3C063B1BEe9de02eb28352b55D49D85514C67FF;
     address public constant METH_STAKING_CONTRACT = 0xbe16244EAe9837219147384c8A7560BA14946262;
     address public constant LIDO_UDERLYING = 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034; // stETH

@@ -47,9 +47,6 @@ contract DeployOETH is BaseScript {
         mockOETH.initialize(mockController, mockController);
         console.log("MockOETH initialized with controller:", mockController);
 
-        TransparentUpgradeableProxy mockOETHProxy = TransparentUpgradeableProxy(
-            payable(0x10B83FBce870642ee33f0877ffB7EA43530E473D));
-
         MockWOETH mockWOETHImplementation = new MockWOETH();
         TransparentUpgradeableProxy mockWOETHProxy = new TransparentUpgradeableProxy(
             address(mockWOETHImplementation),
