@@ -10,8 +10,8 @@ contract MockOETH is ERC20Upgradeable, AccessControlUpgradeable {
     function initialize(address admin, address minter) public initializer {
         __ERC20_init("Mock OETH", "MOETH");
         __AccessControl_init();
-        grantRole(DEFAULT_ADMIN_ROLE, admin);
-        grantRole(MINTER_ROLE, minter);
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(MINTER_ROLE, minter);
     }
 
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {

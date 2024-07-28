@@ -4,6 +4,7 @@ contract ActorAddresses {
     struct EOAActors {
         address DEFAULT_SIGNER;
         address DEPOSIT_BOOTSTRAPPER;
+        address MOCK_CONTROLLER;
     }
 
     struct AdminActors {
@@ -66,7 +67,8 @@ contract ActorAddresses {
             actors[17000] = Actors({
                 eoa: EOAActors({
                     DEFAULT_SIGNER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
-                    DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
+                    DEPOSIT_BOOTSTRAPPER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
+                    MOCK_CONTROLLER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
                 }),
                 admin: AdminActors({
                     ADMIN: holeskyWallets.YNSecurityCouncil,
@@ -109,7 +111,8 @@ contract ActorAddresses {
         actors[1] = Actors({
             eoa: EOAActors({
                 DEFAULT_SIGNER: 0xa1E340bd1e3ea09B3981164BBB4AfeDdF0e7bA0D,
-                DEPOSIT_BOOTSTRAPPER: 0x67a114e733b52CAC50A168F02b5626f500801C62
+                DEPOSIT_BOOTSTRAPPER: 0x67a114e733b52CAC50A168F02b5626f500801C62,
+                MOCK_CONTROLLER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5
             }),
             admin: AdminActors({
                 ADMIN: mainnetWallets.YNSecurityCouncil,
