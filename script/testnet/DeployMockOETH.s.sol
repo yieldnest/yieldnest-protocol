@@ -16,7 +16,6 @@ import "forge-std/console.sol";
 contract DeployOETH is BaseScript {
     function run() external {
     
-
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         // ynETH.sol ROLES
@@ -32,7 +31,7 @@ contract DeployOETH is BaseScript {
         console.log("Current Chain ID:", block.chainid);
 
 
-        vm.startBroadcast();
+        vm.startBroadcast(deployerPrivateKey);
 
         address mockController = actors.eoa.MOCK_CONTROLLER;
 
@@ -48,6 +47,9 @@ contract DeployOETH is BaseScript {
         mockOETH.initialize(mockController, mockController);
         console.log("MockOETH initialized with controller:", mockController);
 
+        TransparentUpgradeableProxy mockOETHProxy = TransparentUpgradeableProxy(
+            payable(0x10B83FBce870642ee33f0877ffB7EA43530E473D));
+
         MockWOETH mockWOETHImplementation = new MockWOETH();
         TransparentUpgradeableProxy mockWOETHProxy = new TransparentUpgradeableProxy(
             address(mockWOETHImplementation),
@@ -61,6 +63,9 @@ contract DeployOETH is BaseScript {
 
 
         console.log("MockWoETH deployed at:", address(mockWOETHProxy));
+
+        console.log("Asset of MockWOETH:", address(mockWOETH.asset()));
+
         vm.stopBroadcast();
     }
 }
