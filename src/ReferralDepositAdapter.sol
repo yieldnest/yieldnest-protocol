@@ -51,8 +51,6 @@ contract ReferralDepositAdapter is
     //--------------------------------------------------------------------------------------
 
     function initialize(Init memory init) public initializer {
-        require(address(init._ynETH) != address(0), "ynETH cannot be zero");
-        require(init.referralPublisher != address(0), "Referral Publisher cannot be zero");
         ynETH = init._ynETH;
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(REFERRAL_PUBLISHER_ROLE, init.referralPublisher);

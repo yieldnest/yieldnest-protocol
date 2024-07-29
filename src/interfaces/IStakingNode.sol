@@ -10,7 +10,7 @@ import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfa
 
 struct WithdrawalCompletionParams {
     uint256 middlewareTimesIndex;
-    uint amount;
+    uint256 amount;
     uint32 withdrawalStartBlock;
     address delegatedAddress;
     uint96 nonce;
@@ -31,7 +31,7 @@ interface IStakingNode {
     /// @notice Configuration for contract initialization.
     struct Init {
         IStakingNodesManager stakingNodesManager;
-        uint nodeId;
+        uint256 nodeId;
     }
 
     function stakingNodesManager() external view returns (IStakingNodesManager);
@@ -50,11 +50,11 @@ interface IStakingNode {
 
     function implementation() external view returns (address);
 
-    function allocateStakedETH(uint amount) external payable;   
+    function allocateStakedETH(uint256 amount) external payable;   
     function deallocateStakedETH(uint256 amount) external payable;
-    function getETHBalance() external view returns (uint);
+    function getETHBalance() external view returns (uint256);
     function unverifiedStakedETH() external view returns (uint256);
-    function nodeId() external view returns (uint);
+    function nodeId() external view returns (uint256);
 
     /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
     function beaconChainETHStrategy() external view returns (IStrategy);
