@@ -222,9 +222,11 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
      * @param assetsArray An array of ERC20 tokens for which to retrieve balances.
      * @return balances An array of balances corresponding to the input assets.
      */
-    function assetBalances(IERC20[] memory assetsArray) public view returns (uint256[] memory balances) {
-        balances = new uint256[](assetsArray.length);
-        for (uint256 i = 0; i < assetsArray.length; i++) {
+    function assetBalances(IERC20[] calldata assetsArray) public view returns (uint256[] memory balances) {
+
+        uint256 assetsArrayLength = assetsArray.length;
+        balances = new uint256[](assetsArrayLength);
+        for (uint256 i = 0; i < assetsArrayLength; i++) {
             balances[i] = assets[address(assetsArray[i])].balance;
         }
     }
@@ -253,13 +255,15 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         IERC20[] calldata assetsToRetrieve,
         uint256[] calldata amounts
     ) public onlyStrategyManager {
-        if (assetsToRetrieve.length != amounts.length) {
-            revert AssetRetrievalLengthMismatch(assetsToRetrieve.length, amounts.length);
+
+        uint256 assetsToRetrieveLength = assetsToRetrieve.length;
+        if (assetsToRetrieveLength != amounts.length) {
+            revert AssetRetrievalLengthMismatch(assetsToRetrieveLength, amounts.length);
         }
 
         address strategyManagerAddress = yieldNestStrategyManager;
 
-        for (uint256 i = 0; i < assetsToRetrieve.length; i++) {
+        for (uint256 i = 0; i < assetsToRetrieveLength; i++) {
             IERC20 asset = assetsToRetrieve[i];
             if (!assetRegistry.assetIsSupported(asset)) {
                 revert UnsupportedAsset(asset);
