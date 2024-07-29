@@ -66,7 +66,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         string memory deploymentFile = getDeploymentFile();
         string memory jsonContent = vm.readFile(deploymentFile);
         Deployment memory deployment;
-        deployment.ynEigen = ynEigen(payable(jsonContent.readAddress(".proxy-ynEigen")));
+        deployment.ynEigen = ynEigen(payable(jsonContent.readAddress(string.concat(".proxy-",  tokenName()))));
         deployment.tokenStakingNodesManager = TokenStakingNodesManager(payable(jsonContent.readAddress(".proxy-tokenStakingNodesManager")));
         deployment.assetRegistry = AssetRegistry(payable(jsonContent.readAddress(".proxy-assetRegistry")));
         deployment.eigenStrategyManager = EigenStrategyManager(payable(jsonContent.readAddress(".proxy-eigenStrategyManager")));
