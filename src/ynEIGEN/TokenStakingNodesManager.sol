@@ -192,7 +192,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
      * It can only be called once to boostrap the first implementation.
      * @param _implementationContract The address of the new Token Staking Node implementation contract.
      */
-    function registerTokenStakingNodeImplementationContract(address _implementationContract)
+    function registerTokenStakingNode(address _implementationContract)
         public
         onlyRole(STAKING_ADMIN_ROLE)
         notZeroAddress(_implementationContract) {
@@ -213,7 +213,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
      * This function can only be called by an account with the STAKING_ADMIN_ROLE.
      * @param _implementationContract The address of the new implementation contract.
      */
-    function upgradeTokenStakingNodeImplementation(address _implementationContract)  
+    function upgradeTokenStakingNode(address _implementationContract)  
         public 
         onlyRole(STAKING_ADMIN_ROLE) 
         notZeroAddress(_implementationContract) {

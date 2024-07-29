@@ -8,8 +8,8 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 interface ITokenStakingNodesManager {
 
     function createTokenStakingNode() external returns (ITokenStakingNode);
-    function registerTokenStakingNodeImplementationContract(address _implementationContract) external;
-    function upgradeTokenStakingNodeImplementation(address _implementationContract) external;
+    function registerTokenStakingNode(address _implementationContract) external;
+    function upgradeTokenStakingNode(address _implementationContract) external;
     function setMaxNodeCount(uint256 _maxNodeCount) external;
     function hasTokenStakingNodeOperatorRole(address account) external view returns (bool);
     function hasTokenStakingNodeDelegatorRole(address account) external view returns (bool);

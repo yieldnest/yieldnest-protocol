@@ -72,7 +72,7 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
 
         TestTokenStakingNodeV2 testTokenStakingNodeV2 = new TestTokenStakingNodeV2();
         vm.prank(actors.admin.STAKING_ADMIN);
-        tokenStakingNodesManager.upgradeTokenStakingNodeImplementation(address(testTokenStakingNodeV2));
+        tokenStakingNodesManager.upgradeTokenStakingNode(address(testTokenStakingNodeV2));
 
         UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
         address upgradedImplementationAddress = beacon.implementation();
@@ -87,11 +87,11 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
 
     function testFailRegisterTokenStakingNodeImplementationTwice() public {
         address initialImplementation = address(new TestTokenStakingNodeV2());
-        tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(initialImplementation);
+        tokenStakingNodesManager.registerTokenStakingNode(initialImplementation);
 
         address newImplementation = address(new TestTokenStakingNodeV2());
         vm.expectRevert("ynEigenToken: Implementation already exists");
-        tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(newImplementation);
+        tokenStakingNodesManager.registerTokenStakingNode(newImplementation);
     }
 
     function testSetMaxNodeCount() public {
