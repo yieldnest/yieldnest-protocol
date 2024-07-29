@@ -14,6 +14,8 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+
 
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
@@ -31,6 +33,8 @@ contract EigenStrategyManager is
         AccessControlUpgradeable,
         ReentrancyGuardUpgradeable
     {
+
+    using SafeERC20 for IERC20;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -191,7 +195,7 @@ contract EigenStrategyManager is
             depositAmounts[i] = depositAmount;
 
             // Transfer each asset to the node
-            depositAsset.transfer(address(node), depositAmount);
+            depositAsset.safeTransfer(address(node), depositAmount);
         }
 
         emit StakedAssetsToNode(nodeId, assets, amounts);
