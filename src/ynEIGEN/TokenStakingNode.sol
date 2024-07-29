@@ -84,14 +84,15 @@ contract TokenStakingNode is
      * @param amounts An array of amounts corresponding to each asset to be deposited.
      */
     function depositAssetsToEigenlayer(
-        IERC20[] memory assets,
-        uint256[] memory amounts,
-        IStrategy[] memory strategies
+        IERC20[] calldata assets,
+        uint256[] calldata amounts,
+        IStrategy[] calldata strategies
     ) external nonReentrant onlyYieldNestStrategyManager {
         IStrategyManager strategyManager = tokenStakingNodesManager
             .strategyManager();
 
-        for (uint256 i = 0; i < assets.length; i++) {
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
             IERC20 asset = assets[i];
             uint256 amount = amounts[i];
             IStrategy strategy = strategies[i];
