@@ -209,7 +209,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         tokenStakingNodesManager.initialize(tokenStakingNodesManagerInit);
         vm.prank(actors.admin.STAKING_ADMIN); // TokenStakingNodesManager is the only contract that can register a staking node implementation contract
-        tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(address(tokenStakingNodeImplementation));
+        tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
     }
 
     function setupEigenStrategyManagerAndAssetRegistry() public {

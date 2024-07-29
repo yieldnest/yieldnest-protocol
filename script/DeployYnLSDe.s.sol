@@ -221,7 +221,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
         }
 
         TokenStakingNode tokenStakingNodeImplementation = new TokenStakingNode();
-        tokenStakingNodesManager.registerTokenStakingNodeImplementationContract(address(tokenStakingNodeImplementation));
+        tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
 
         
         // set these roles after deployment
