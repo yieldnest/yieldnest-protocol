@@ -12,7 +12,7 @@ import {ynBase} from "src/ynBase.sol";
 import "forge-std/console.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-
+import { EigenStrategyManager } from "src/ynEIGEN/EigenStrategyManager.sol";
 
 contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
@@ -116,6 +116,50 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
         uint256 totalAssetsAfter = ynEigenToken.totalAssets();
         assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking do not match within a threshold of 3");
+    }
+
+
+    function testStakeAssetsToMultipleNodes(
+        uint256 wstethAmount,
+        uint256 woethAmount
+    ) public {
+
+        vm.assume(
+            wstethAmount < 1000 ether && wstethAmount >= 2 wei &&
+            woethAmount < 1000 ether && woethAmount >= 2 wei
+        );
+
+        vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNodesManager.createTokenStakingNode();
+        tokenStakingNodesManager.createTokenStakingNode();
+        vm.stopPrank();
+
+        EigenStrategyManager.NodeAllocation[] memory allocations = new EigenStrategyManager.NodeAllocation[](2);
+        IERC20[] memory assets1 = new IERC20[](1);
+        uint256[] memory amounts1 = new uint256[](1);
+        assets1[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        amounts1[0] = wstethAmount;
+
+        testAssetUtils.depositAsset(ynEigenToken, address(assets1[0]), amounts1[0], depositors[0]);
+
+        IERC20[] memory assets2 = new IERC20[](1);
+        uint256[] memory amounts2 = new uint256[](1);
+        assets2[0] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+        amounts2[0] = wstethAmount;
+
+        testAssetUtils.depositAsset(ynEigenToken, address(assets2[0]), amounts2[0], depositors[1]);
+
+        allocations[0] = EigenStrategyManager.NodeAllocation(0, assets1, amounts1);
+        allocations[1] = EigenStrategyManager.NodeAllocation(1, assets2, amounts2);
+
+        uint256 totalAssetsBefore = ynEigenToken.totalAssets();
+
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNodes(allocations);
+        vm.stopPrank();
+
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
+        assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking to multiple nodes do not match within a threshold of 100");
     }
 
     function testExpectedStrategiesForAssets() public {

@@ -36,6 +36,18 @@ contract EigenStrategyManager is
 
     using SafeERC20 for IERC20;
 
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STRUCTS  -----------------------------------------
+    //--------------------------------------------------------------------------------------
+
+
+    struct NodeAllocation {
+        uint256 nodeId;
+        IERC20[] assets;
+        uint256[] amounts;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -154,11 +166,31 @@ contract EigenStrategyManager is
      * @param assets An array of ERC20 tokens to be staked.
      * @param amounts An array of amounts corresponding to each asset to be staked.
      */
-    function stakeAssetsToNode(
+   function stakeAssetsToNode(
         uint256 nodeId,
-        IERC20[] calldata assets,
-        uint256[] calldata amounts
-    ) external onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
+        IERC20[] memory assets,
+        uint256[] memory amounts
+    ) public onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
+        _stakeAssetsToNode(nodeId, assets, amounts);
+    }
+
+    /**
+     * @notice Stakes assets to multiple nodes on EigenLayer according to the specified allocations.
+     * @param allocations An array of NodeAllocation structs, each containing a node ID, an array of assets,
+     *        and an array of amounts to stake on that node.
+     */
+    function stakeAssetsToNodes(NodeAllocation[] calldata allocations) external onlyRole(STRATEGY_CONTROLLER_ROLE) nonReentrant {
+        for (uint256 i = 0; i < allocations.length; i++) {
+            NodeAllocation memory allocation = allocations[i];
+            _stakeAssetsToNode(allocation.nodeId, allocation.assets, allocation.amounts);
+        }
+    }
+
+    function _stakeAssetsToNode(
+        uint256 nodeId,
+        IERC20[] memory assets,
+        uint256[] memory amounts
+    ) internal {
         uint256 assetsLength = assets.length;
         uint256 amountsLength = amounts.length;
 
