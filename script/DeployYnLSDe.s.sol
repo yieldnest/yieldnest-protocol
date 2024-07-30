@@ -171,20 +171,6 @@ contract DeployYnLSDe is BaseYnEigenScript {
         }
 
         {
-            AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
-                assets: assets,
-                rateProvider: IRateProvider(address(lsdRateProvider)),
-                yieldNestStrategyManager: IYieldNestStrategyManager(address(eigenStrategyManager)),
-                ynEigen: IynEigen(address(ynLSDe)),
-                admin: actors.admin.ADMIN,
-                pauser: actors.ops.PAUSE_ADMIN,
-                unpauser: actors.admin.UNPAUSE_ADMIN,
-                assetManagerRole: actors.admin.ASSET_MANAGER
-            });
-            assetRegistry.initialize(assetRegistryInit);
-        }
-
-        {
             EigenStrategyManager.Init memory eigenStrategyManagerInit = EigenStrategyManager.Init({
                 assets: assets,
                 strategies: strategies,
@@ -201,6 +187,20 @@ contract DeployYnLSDe is BaseYnEigenScript {
                 woETH: IERC4626(chainAddresses.lsd.WOETH_ADDRESS)
             });
             eigenStrategyManager.initialize(eigenStrategyManagerInit);
+        }
+
+        {
+            AssetRegistry.Init memory assetRegistryInit = AssetRegistry.Init({
+                assets: assets,
+                rateProvider: IRateProvider(address(lsdRateProvider)),
+                yieldNestStrategyManager: IYieldNestStrategyManager(address(eigenStrategyManager)),
+                ynEigen: IynEigen(address(ynLSDe)),
+                admin: actors.admin.ADMIN,
+                pauser: actors.ops.PAUSE_ADMIN,
+                unpauser: actors.admin.UNPAUSE_ADMIN,
+                assetManagerRole: actors.admin.ASSET_MANAGER
+            });
+            assetRegistry.initialize(assetRegistryInit);
         }
  
         {
