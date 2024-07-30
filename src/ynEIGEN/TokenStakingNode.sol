@@ -125,7 +125,7 @@ contract TokenStakingNode is
             .delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
 
-        emit Delegated(operator, 0);
+        emit Delegated(operator, approverSalt);
     }
 
     /**
