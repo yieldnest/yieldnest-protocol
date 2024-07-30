@@ -101,23 +101,30 @@ interface IAssetRegistryEvents {
         _grantRole(PAUSER_ROLE, init.pauser);
         _grantRole(UNPAUSER_ROLE, init.unpauser);
         _grantRole(ASSET_MANAGER_ROLE, init.assetManagerRole);
+
+        strategyManager = init.yieldNestStrategyManager;
         
         uint256 assetsLength = init.assets.length;
         for (uint256 i = 0; i < assetsLength; i++) {
-            if (address(init.assets[i]) == address(0)) {
+            IERC20 asset = init.assets[i];
+            if (address(asset) == address(0)) {
                 revert ZeroAddress();
             }
-            if (_assetData[init.assets[i]].status == AssetStatus.Active) {
-                revert AssetAlreadyActive(address(init.assets[i]));
+            if (_assetData[asset].status == AssetStatus.Active) {
+                revert AssetAlreadyActive(address(asset));
             }
-            assets.push(init.assets[i]);
-            _assetData[init.assets[i]] = AssetData({
+
+            if (!strategyManager.supportsAsset(asset)) {
+                revert NoStrategyDefinedForAsset(asset);
+            }
+
+            assets.push(asset);
+            _assetData[asset] = AssetData({
                 status: AssetStatus.Active
             });
         }
 
         rateProvider = init.rateProvider;
-        strategyManager = init.yieldNestStrategyManager;
         ynEigen = init.ynEigen;
     }
 
