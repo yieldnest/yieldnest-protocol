@@ -511,7 +511,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         assertEq(address(ynETHRedemptionAssetsVaultInstance.ynETH()), _ynETH, "testInitializationVault: E0");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.DEFAULT_ADMIN_ROLE(), _admin), true, "testInitializationVault: E1");
-        assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE(), _redeemer), true, "testInitializationVault: E2");
+        assertEq(ynETHRedemptionAssetsVaultInstance.redeemer(), _redeemer, "testInitializationVault: E2");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.PAUSER_ROLE(), _admin), true, "testInitializationVault: E3");
         assertEq(ynETHRedemptionAssetsVaultInstance.hasRole(ynETHRedemptionAssetsVaultInstance.UNPAUSER_ROLE(), _admin), true, "testInitializationVault: E4");
         assertEq(ynETHRedemptionAssetsVaultInstance.paused(), false, "testInitializationVault: E5");
@@ -580,7 +580,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     function testTransferRedemptionAssetsWrongCaller(address _to, uint256 _amount) public {
         if (!isHolesky) return;
 
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
+        vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.NotRedeemer.selector, address(this)));
         ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
     }
 
@@ -604,7 +604,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         if (!isHolesky) return;
 
         uint256 _amount = 1 ether;
-        vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.REDEEMER_ROLE()));
+        vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.NotRedeemer.selector, address(this)));
         ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
     }
 

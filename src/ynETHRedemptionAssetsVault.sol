@@ -19,12 +19,12 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     error ZeroAddress();
     error InsufficientAssetBalance(address asset, uint256 requestedAmount, uint256 balance);
     error ContractPaused();
+    error NotRedeemer(address caller);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    bytes32 public constant REDEEMER_ROLE = keccak256("REDEEMER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
@@ -34,6 +34,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
 
     IynETH public ynETH;
     bool public paused;
+    address public redeemer;
 
     // Initializer with Init struct and roles
     struct Init {
@@ -50,10 +51,10 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
         initializer {
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
-        _grantRole(REDEEMER_ROLE, init.redeemer);
         _grantRole(PAUSER_ROLE, init.admin);
         _grantRole(UNPAUSER_ROLE, init.admin);
 
+        redeemer = init.redeemer;
         ynETH = init.ynETH;
         paused = false;
     }
@@ -89,9 +90,9 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
      * @notice Transfers a specified amount of redemption assets to a given address.
      * @param to The recipient address of the assets.
      * @param amount The amount of assets to transfer.
-     * @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
+     * @dev Requires the caller to be the redeemer and the contract to not be paused.
      */
-    function transferRedemptionAssets(address to, uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused nonReentrant {
+    function transferRedemptionAssets(address to, uint256 amount) public onlyRedeemer whenNotPaused nonReentrant {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) {
             revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
@@ -107,9 +108,9 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     /** 
      * @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
      * @param amount The amount of ETH to withdraw and process.
-     * @dev Requires the caller to have the REDEEMER_ROLE and the contract to not be paused.
+     * @dev Requires the caller to be the redeemer and the contract to not be paused.
      */
-    function withdrawRedemptionAssets(uint256 amount) public onlyRole(REDEEMER_ROLE) whenNotPaused nonReentrant {
+    function withdrawRedemptionAssets(uint256 amount) public onlyRedeemer whenNotPaused nonReentrant {
         ynETH.processWithdrawnETH{ value: amount }();
         emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);
     }
@@ -135,6 +136,16 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     modifier whenNotPaused() {
         if (paused) {
             revert ContractPaused();
+        }
+        _;
+    }
+
+    /**
+     * @notice Ensures that the caller has the REDEEMER_ROLE.
+     */
+    modifier onlyRedeemer() {
+        if (msg.sender != redeemer) {
+            revert NotRedeemer(msg.sender);
         }
         _;
     }
