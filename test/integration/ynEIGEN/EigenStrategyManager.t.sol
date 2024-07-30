@@ -145,7 +145,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         IERC20[] memory assets2 = new IERC20[](1);
         uint256[] memory amounts2 = new uint256[](1);
         assets2[0] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
-        amounts2[0] = wstethAmount;
+        amounts2[0] = woethAmount;
 
         testAssetUtils.depositAsset(ynEigenToken, address(assets2[0]), amounts2[0], depositors[1]);
 
@@ -158,8 +158,31 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         eigenStrategyManager.stakeAssetsToNodes(allocations);
         vm.stopPrank();
 
-        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
-        assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking to multiple nodes do not match within a threshold of 100");
+        {
+            uint256 totalAssetsAfter = ynEigenToken.totalAssets();
+            assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking to multiple nodes do not match within a threshold of 100");
+        }
+
+        {
+            uint256 userUnderlyingViewNode0 = eigenStrategyManager.strategies(assets1[0]).userUnderlyingView(address(tokenStakingNodesManager.nodes(0)));
+            IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
+            uint256 wstETHAmountNode0 = wstETH.getWstETHByStETH(userUnderlyingViewNode0);
+            assertEq(
+                compareWithThreshold(wstETHAmountNode0, wstethAmount, 3), true,
+                string.concat("Unwrapped stETH amount does not match expected for node 0. Expected: ", vm.toString(wstethAmount), ", Got: ", vm.toString(wstETHAmountNode0))
+            );
+        }
+
+        {     
+            uint256 userUnderlyingViewNode1 = eigenStrategyManager.strategies(assets2[0]).userUnderlyingView(address(tokenStakingNodesManager.nodes(1)));
+            IERC4626 woETH = IERC4626(chainAddresses.lsd.WOETH_ADDRESS);
+            uint256 woETHAmountNode1 =  woETH.previewDeposit(userUnderlyingViewNode1);
+            assertEq(
+                compareWithThreshold(woETHAmountNode1, woethAmount, 3), true,
+                string.concat("Unwrapped oETH amount does not match expected for node 1. Expected: ", vm.toString(woethAmount), ", Got: ", vm.toString(woETHAmountNode1))
+            );
+        }
+
     }
 
     function testExpectedStrategiesForAssets() public {
