@@ -26,7 +26,7 @@ import {HoleskyLSDRateProvider} from "src/testnet/HoleksyLSDRateProvider.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
-
+import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
@@ -50,6 +50,8 @@ contract DeployYnLSDe is BaseYnEigenScript {
     EigenStrategyManager eigenStrategyManager;
     TokenStakingNodesManager tokenStakingNodesManager;
     AssetRegistry assetRegistry;
+    ynEigenDepositAdapter ynEigenDepositAdapterInstance;
+    TokenStakingNode tokenStakingNodeImplementation;
 
     function tokenName() internal override pure returns (string memory) {
         return "YnLSDe";
@@ -200,8 +202,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
             });
             eigenStrategyManager.initialize(eigenStrategyManagerInit);
         }
-
-        
+ 
         {
             TokenStakingNodesManager.Init memory tokenStakingNodesManagerInit = TokenStakingNodesManager.Init({
                 admin: actors.eoa.DEFAULT_SIGNER, // change at end of script
@@ -220,13 +221,35 @@ contract DeployYnLSDe is BaseYnEigenScript {
             tokenStakingNodesManager.initialize(tokenStakingNodesManagerInit);
         }
 
-        TokenStakingNode tokenStakingNodeImplementation = new TokenStakingNode();
-        tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
-
+        {
+            tokenStakingNodeImplementation = new TokenStakingNode();
+            tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
+        }
         
         // set these roles after deployment
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN);
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), actors.admin.STAKING_ADMIN);
+
+        // ynEigenDepositAdapter
+        {
+            ynEigenDepositAdapter ynEigenDepositAdapterImplementation = new ynEigenDepositAdapter();
+            TransparentUpgradeableProxy ynEigenDepositAdapterProxy = new TransparentUpgradeableProxy(
+                address(ynEigenDepositAdapterImplementation),
+                actors.admin.PROXY_ADMIN_OWNER,
+                ""
+            );
+            ynEigenDepositAdapterInstance = ynEigenDepositAdapter(address(ynEigenDepositAdapterProxy));
+        }
+
+        {
+            ynEigenDepositAdapter.Init memory init = ynEigenDepositAdapter.Init({
+                ynEigen: address(ynLSDe),
+                wstETH: chainAddresses.lsd.WSTETH_ADDRESS,
+                woETH: chainAddresses.lsd.WOETH_ADDRESS,
+                admin: actors.admin.ADMIN
+            });
+            ynEigenDepositAdapterInstance.initialize(init);
+        }
 
         vm.stopBroadcast();
 
@@ -235,7 +258,8 @@ contract DeployYnLSDe is BaseYnEigenScript {
             assetRegistry: assetRegistry,
             eigenStrategyManager: eigenStrategyManager,
             tokenStakingNodesManager: tokenStakingNodesManager,
-            tokenStakingNodeImplementation: tokenStakingNodeImplementation
+            tokenStakingNodeImplementation: tokenStakingNodeImplementation,
+            ynEigenDepositAdapterInstance: ynEigenDepositAdapterInstance
         });
         
         saveDeployment(deployment);

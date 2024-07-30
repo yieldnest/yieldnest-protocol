@@ -6,6 +6,8 @@ import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
+import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
+
 
 import {Script} from "lib/forge-std/src/Script.sol";
 import {Utils} from "script/Utils.sol";
@@ -24,6 +26,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         EigenStrategyManager eigenStrategyManager;
         TokenStakingNodesManager tokenStakingNodesManager;
         TokenStakingNode tokenStakingNodeImplementation;
+        ynEigenDepositAdapter ynEigenDepositAdapterInstance;
     }
 
     function tokenName() internal virtual pure returns (string memory);
@@ -43,6 +46,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         serializeProxyElements(json, "eigenStrategyManager", address(deployment.eigenStrategyManager));
         serializeProxyElements(json, "tokenStakingNodesManager", address(deployment.tokenStakingNodesManager));
         vm.serializeAddress(json, "tokenStakingNodeImplementation", address(deployment.tokenStakingNodeImplementation));
+        serializeProxyElements(json, "ynEigenDepositAdapter", address(deployment.ynEigenDepositAdapterInstance));
 
         ActorAddresses.Actors memory actors = getActors();
         // actors
@@ -71,6 +75,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         deployment.assetRegistry = AssetRegistry(payable(jsonContent.readAddress(".proxy-assetRegistry")));
         deployment.eigenStrategyManager = EigenStrategyManager(payable(jsonContent.readAddress(".proxy-eigenStrategyManager")));
         deployment.tokenStakingNodeImplementation = TokenStakingNode(payable(jsonContent.readAddress(".tokenStakingNodeImplementation")));
+        deployment.ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(jsonContent.readAddress(".proxy-ynEigenDepositAdapter")));
 
         return deployment;
     }
