@@ -339,8 +339,6 @@ contract EigenStrategyManager is
         IERC20 asset,
         ITokenStakingNode node
     ) internal view returns (uint256 stakedBalance) {
-        uint256 balanceNode = asset.balanceOf(address(node));
-        stakedBalance += balanceNode;
 
         uint256 strategyBalance = toUserAssetAmount(
             asset,
