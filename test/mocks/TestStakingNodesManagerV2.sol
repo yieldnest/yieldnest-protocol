@@ -25,7 +25,11 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
              initializedVersion = node.getInitializedVersion();
          }
 
-         if (initializedVersion == 1) {
+        if (initializedVersion == 1) {
+            node.initializeV2(0);
+        }
+
+         if (initializedVersion == 2) {
             TestStakingNodeV2(payable(address(node)))
                 .initializeV2(TestStakingNodeV2.ReInit({valueToBeInitialized: 23}));
          }

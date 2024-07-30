@@ -15,6 +15,9 @@ import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
 
+import "forge-std/console.sol";
+
+
 
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
 
@@ -129,6 +132,9 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
         
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
+
+        // uint64 initializedVersion = stakingNodeInstance.getInitializedVersion();
+        // console.log("Initialized version initializedVersion", initializedVersion);
 
         TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
         vm.prank(actors.admin.STAKING_ADMIN);
@@ -549,11 +555,13 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
 
 contract StakingNodesManagerMisc is IntegrationBaseTest {
 
-    function testSendingETHToStakingNodesManagerShouldRevert() public {
+    function testSendingETHToStakingNodesManagerShouldNotRevert() public {
         uint256 amountToSend = 1 ether;
 
         // Send ETH to the StakingNodesManager contract
         (bool sent, ) = address(stakingNodesManager).call{value: amountToSend}("");
-        assertFalse(sent, "Sending ETH should fail");
+        assertTrue(sent, "ETH transfer failed");
+        assertEq(address(stakingNodesManager).balance, amountToSend, "Balance of StakingNodesManager incorrect after receiving ETH");
+
     }
 }

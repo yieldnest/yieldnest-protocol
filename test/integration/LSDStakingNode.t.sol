@@ -9,10 +9,11 @@ import {ILSDStakingNode} from "src/interfaces/ILSDStakingNode.sol";
 import {IynLSD} from "src/interfaces/IynLSD.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 
-contract skipLSDStakingNodeTest is IntegrationBaseTest {
+contract LSDStakingNodeTest is IntegrationBaseTest {
 
 	ILSDStakingNode lsdStakingNode;
 
