@@ -204,6 +204,10 @@ contract DeployYnLSDe is BaseYnEigenScript {
         }
  
         {
+            // Explanation of the use of DEFAULT_SIGNER in the script:
+            // DEFAULT_SIGNER is used as a placeholder for the initial administrative roles during setup
+            // to allow registering the implementation of TokenStakingNode as part of this script.
+            // It will be replaced by specific actor roles at the end of the script.
             TokenStakingNodesManager.Init memory tokenStakingNodesManagerInit = TokenStakingNodesManager.Init({
                 admin: actors.eoa.DEFAULT_SIGNER, // change at end of script
                 stakingAdmin: actors.eoa.DEFAULT_SIGNER, // change at end of script
@@ -226,7 +230,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
             tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
         }
         
-        // set these roles after deployment
+        // Post Deployment, the actual roles can be set.
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN);
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), actors.admin.STAKING_ADMIN);
 
