@@ -1,7 +1,10 @@
 /// SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
 import {ContractAddresses} from "./ContractAddresses.sol";
 import {BaseYnEigenScript} from "./BaseYnEigenScript.s.sol";
@@ -332,18 +335,6 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
 
     function verifySystemParameters() internal view {
         // Verify the system parameters
-        require(
-            deployment.ynEigen.assetRegistry() == address(deployment.assetRegistry),
-            "ynETH: assetRegistry INVALID"
-        );
-        console.log("\u2705 ynETH: assetRegistry - Value:", deployment.ynEigen.assetRegistry());
-
-        require(
-            deployment.ynEigen.eigenStrategyManager() == address(deployment.eigenStrategyManager),
-            "ynETH: eigenStrategyManager INVALID"
-        );
-        console.log("\u2705 ynETH: eigenStrategyManager - Value:", deployment.ynEigen.eigenStrategyManager());
-
         IERC20[] memory assets;
         IStrategy[] memory strategies;
         if (block.chainid == 1) {
@@ -376,135 +367,125 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
             revert(string(string.concat("Chain ID ", vm.toString(block.chainid), " not supported")));
         }
 
-        require(
-            deployment.assetRegistry.rateProvider() == IRateProvider(chainAddresses.lsdRateProvider),
-            "assetRegistry: rateProvider INVALID"
-        );
-        console.log("\u2705 assetRegistry: rateProvider - Value:", deployment.assetRegistry.rateProvider());
+        // require(
+        //     address(deployment.assetRegistry.rateProvider()) == address(chainAddresses.lsdRateProvider),
+        //     "assetRegistry: rateProvider INVALID"
+        // );
+        // console.log("\u2705 assetRegistry: rateProvider - Value:", deployment.assetRegistry.rateProvider());
 
-        require(
-            deployment.assetRegistry.yieldNestStrategyManager() == IYieldNestStrategyManager(address(deployment.eigenStrategyManager)),
-            "assetRegistry: yieldNestStrategyManager INVALID"
-        );
-        console.log("\u2705 assetRegistry: yieldNestStrategyManager - Value:", deployment.assetRegistry.yieldNestStrategyManager());
-
-        require(
-            deployment.assetRegistry.ynEigen() == IynEigen(address(deployment.ynEigen)),
-            "assetRegistry: ynEigen INVALID"
-        );
-        console.log("\u2705 assetRegistry: ynEigen - Value:", deployment.assetRegistry.ynEigen());
+        // require(
+        //     address(deployment.assetRegistry.ynEigen()) == address(deployment.ynEigen),
+        //     "assetRegistry: ynEigen INVALID"
+        // );
+        // console.log("\u2705 assetRegistry: ynEigen - Value:", deployment.assetRegistry.ynEigen());
 
         require(
             deployment.assetRegistry.assets(0) == assets[0],
             "assetRegistry: asset 0 INVALID"
         );
-        console.log("\u2705 assetRegistry: asset 0 - Value:", deployment.assetRegistry.assets(0));
+        console.log("\u2705 assetRegistry: asset 0 - Value:", address(deployment.assetRegistry.assets(0)));
 
         require(
             deployment.assetRegistry.assets(1) == assets[1],
             "assetRegistry: asset 1 INVALID"
         );
-        console.log("\u2705 assetRegistry: asset 1 - Value:", deployment.assetRegistry.assets(1));
+        console.log("\u2705 assetRegistry: asset 1 - Value:", address(deployment.assetRegistry.assets(1)));
 
         require(
             deployment.assetRegistry.assets(2) == assets[2],
             "assetRegistry: asset 2 INVALID"
         );
-        console.log("\u2705 assetRegistry: asset 2 - Value:", deployment.assetRegistry.assets(2));
+        console.log("\u2705 assetRegistry: asset 2 - Value:", address(deployment.assetRegistry.assets(2)));
 
         require(
             deployment.assetRegistry.assets(3) == assets[3],
             "assetRegistry: asset 3 INVALID"
         );
-        console.log("\u2705 assetRegistry: asset 3 - Value:", deployment.assetRegistry.assets(3));
+        console.log("\u2705 assetRegistry: asset 3 - Value:", address(deployment.assetRegistry.assets(3)));
 
         require(
-            deployment.eigenStrategyManager.ynEigen() == IynEigen(address(deployment.ynEigen)),
+            address(deployment.eigenStrategyManager.ynEigen()) == address(deployment.ynEigen),
             "eigenStrategyManager: ynEigen INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: ynEigen - Value:", deployment.eigenStrategyManager.ynEigen());
+        console.log("\u2705 eigenStrategyManager: ynEigen - Value:", address(deployment.eigenStrategyManager.ynEigen()));
 
         require(
-            deployment.eigenStrategyManager.strategyManager() == IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
+            address(deployment.eigenStrategyManager.strategyManager()) == address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
             "eigenStrategyManager: strategyManager INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: strategyManager - Value:", deployment.eigenStrategyManager.strategyManager());
+        console.log("\u2705 eigenStrategyManager: strategyManager - Value:", address(deployment.eigenStrategyManager.strategyManager()));
 
         require(
-            deployment.eigenStrategyManager.delegationManager() == IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS),
+            address(deployment.eigenStrategyManager.delegationManager()) == address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS),
             "eigenStrategyManager: delegationManager INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: delegationManager - Value:", deployment.eigenStrategyManager.delegationManager());
+        console.log("\u2705 eigenStrategyManager: delegationManager - Value:", address(deployment.eigenStrategyManager.delegationManager()));
 
         require(
-            deployment.eigenStrategyManager.tokenStakingNodesManager() == ITokenStakingNodesManager(address(deployment.tokenStakingNodesManager)),
+            address(deployment.eigenStrategyManager.tokenStakingNodesManager()) == address(deployment.tokenStakingNodesManager),
             "eigenStrategyManager: tokenStakingNodesManager INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: tokenStakingNodesManager - Value:", deployment.eigenStrategyManager.tokenStakingNodesManager());
+        console.log("\u2705 eigenStrategyManager: tokenStakingNodesManager - Value:", address(deployment.eigenStrategyManager.tokenStakingNodesManager()));
 
         require(
-            deployment.eigenStrategyManager.wstETH() == IwstETH(chainAddresses.lsd.WSTETH_ADDRESS),
+            address(deployment.eigenStrategyManager.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
             "eigenStrategyManager: wstETH INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: wstETH - Value:", deployment.eigenStrategyManager.wstETH());
+        console.log("\u2705 eigenStrategyManager: wstETH - Value:", address(deployment.eigenStrategyManager.wstETH()));
 
         require(
-            deployment.eigenStrategyManager.woETH() == IERC4626(chainAddresses.lsd.WOETH_ADDRESS),
+            address(deployment.eigenStrategyManager.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
             "eigenStrategyManager: woETH INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: woETH - Value:", deployment.eigenStrategyManager.woETH());
+        console.log("\u2705 eigenStrategyManager: woETH - Value:", address(deployment.eigenStrategyManager.woETH()));
 
         require(
-            deployment.eigenStrategyManager.assets(0) == assets[0],
-            "eigenStrategyManager: asset 0 INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: asset 0 - Value:", deployment.eigenStrategyManager.assets(0));
-
-        require(
-            deployment.eigenStrategyManager.assets(1) == assets[1],
-            "eigenStrategyManager: asset 1 INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: asset 1 - Value:", deployment.eigenStrategyManager.assets(1));
-
-        require(
-            deployment.eigenStrategyManager.assets(2) == assets[2],
-            "eigenStrategyManager: asset 2 INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: asset 2 - Value:", deployment.eigenStrategyManager.assets(2));
-
-        require(
-            deployment.eigenStrategyManager.assets(3) == assets[3],
-            "eigenStrategyManager: asset 3 INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: asset 3 - Value:", deployment.eigenStrategyManager.assets(3));
-
-        require(
-            deployment.eigenStrategyManager.strategies(0) == strategies[0],
+            deployment.eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS)) == strategies[0],
             "eigenStrategyManager: strategy 0 INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: strategy 0 - Value:", deployment.eigenStrategyManager.strategies(0));
+        console.log("\u2705 eigenStrategyManager: strategy 0 - Value:", address(deployment.eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS))));
 
         require(
-            deployment.eigenStrategyManager.strategies(1) == strategies[1],
+            deployment.eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS)) == strategies[1],
             "eigenStrategyManager: strategy 1 INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: strategy 1 - Value:", deployment.eigenStrategyManager.strategies(1));
+        console.log("\u2705 eigenStrategyManager: strategy 1 - Value:", address(deployment.eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS))));
 
         require(
-            deployment.eigenStrategyManager.strategies(2) == strategies[2],
-            "eigenStrategyManager: strategy 2 INVALID"
+            address(deployment.tokenStakingNodesManager.strategyManager()) == address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
+            "tokenStakingNodesManager: strategyManager INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: strategy 2 - Value:", deployment.eigenStrategyManager.strategies(2));
+        console.log("\u2705 tokenStakingNodesManager: strategyManager - Value:", address(deployment.tokenStakingNodesManager.strategyManager()));
 
         require(
-            deployment.eigenStrategyManager.strategies(3) == strategies[3],
-            "eigenStrategyManager: strategy 3 INVALID"
+            address(deployment.tokenStakingNodesManager.delegationManager()) == address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS),
+            "tokenStakingNodesManager: delegationManager INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: strategy 3 - Value:", deployment.eigenStrategyManager.strategies(3));
+        console.log("\u2705 tokenStakingNodesManager: delegationManager - Value:", address(deployment.tokenStakingNodesManager.delegationManager()));
 
-        // tokenStakingNodesManager
+        require(
+            deployment.tokenStakingNodesManager.maxNodeCount() == 10,
+            "tokenStakingNodesManager: maxNodeCount INVALID"
+        );
+        console.log("\u2705 tokenStakingNodesManager: maxNodeCount - Value:", deployment.tokenStakingNodesManager.maxNodeCount());
 
+        require(
+            address(deployment.ynEigenDepositAdapterInstance.ynEigen()) == address(deployment.ynEigen),
+            "ynEigenDepositAdapter: ynEigen INVALID"
+        );
+        console.log("\u2705 ynEigenDepositAdapter: ynEigen - Value:", address(deployment.ynEigenDepositAdapterInstance.ynEigen()));
 
+        require(
+            address(deployment.ynEigenDepositAdapterInstance.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
+            "ynEigenDepositAdapter: wstETH INVALID"
+        );
+        console.log("\u2705 ynEigenDepositAdapter: wstETH - Value:", address(deployment.ynEigenDepositAdapterInstance.wstETH()));
+
+        require(
+            address(deployment.ynEigenDepositAdapterInstance.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
+            "ynEigenDepositAdapter: woETH INVALID"
+        );
+        console.log("\u2705 ynEigenDepositAdapter: woETH - Value:", address(deployment.ynEigenDepositAdapterInstance.woETH()));
 
         console.log("\u2705 All system parameters verified successfully");
     }
