@@ -22,9 +22,19 @@ contract TestAssetUtils is Test {
     ContractAddresses.ChainAddresses chainAddresses;
     ContractAddresses contractAddresses;
 
+    address public FRX_ETH_WETH_DUAL_ORACLE;
+
+
     constructor() {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
+        if (block.chainid == 1) {
+            FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
+        } else if (block.chainid == 17000) {
+            // UNAVAILABLE
+            FRX_ETH_WETH_DUAL_ORACLE = address(0x0);
+        }
     }
 
     function get_Asset(address asset, address receiver, uint256 amount) public returns (uint256 balance) {

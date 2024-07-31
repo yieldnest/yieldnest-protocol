@@ -7,6 +7,8 @@ import {IstETH} from "src/external/lido/IstETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import {IswETH} from "src/external/swell/IswETH.sol";
 import {ImETHStaking} from "src/external/mantle/ImETHStaking.sol";
+import {IFrxEthWethDualOracle} from "src/external/frax/IFrxEthWethDualOracle.sol";
+import {IsfrxETH} from "src/external/frax/IsfrxETH.sol";
 
 contract LSDRateProvider {
 
@@ -22,6 +24,7 @@ contract LSDRateProvider {
 
     uint256 constant UNIT = 1e18;
     address constant FRAX_ASSET = 0xac3E018457B222d93114458476f3E3416Abbe38F; // sfrxETH
+    address constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0; // FrxEthWethDualOracle
     address constant LIDO_ASSET = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0; // wstETH
     address constant RETH_ASSET = 0xae78736Cd615f374D3085123A210448E74Fc6393; // RETH
     address constant WOETH_ASSET = 0xDcEe70654261AF21C44c093C300eD3Bb97b78192;
@@ -47,10 +50,9 @@ contract LSDRateProvider {
 
         /*
             This contract uses the rate as provided the protocol that controls the asset.
-            This approach avoids issues with sourcing market prices that would cause asset value
-            fluctuation that depends on market price fluctuation
-            Known risks that require mitigation:
-            In case one of the LSDs depegs from its ETH price, users can still deposit to ynEigen, 
+            Known current risks:
+            In case one of the LSDs depegs from its ETH price and the oracles still report the undepegged price,
+            users can still deposit to ynEigen, 
             and receive the same amount of shares as though the underlying asset has not depegged yet,
             as the protocols below will report the same LSD/ETH price.
         */
@@ -59,7 +61,13 @@ contract LSDRateProvider {
             return IstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
         }
         if (_asset == FRAX_ASSET) {
-            return IERC4626(FRAX_ASSET).totalAssets() * UNIT / IERC20(FRAX_ASSET).totalSupply();
+            /* Calculate the price per share of sfrxETH in terms of ETH using the Frax Oracle.
+               The Frax Oracle provides a time-weighted average price (TWAP) using a curve exponential moving average (EMA)
+               to smooth out the price fluctuations of ETH per sfrxETH. This helps in obtaining a stable conversion rate.
+            */
+
+            uint256 frxETHPriceInETH = IFrxEthWethDualOracle(FRX_ETH_WETH_DUAL_ORACLE).getCurveEmaEthPerFrxEth();
+            return IsfrxETH(FRAX_ASSET).pricePerShare() * frxETHPriceInETH / UNIT;
         }
         if (_asset == WOETH_ASSET) {
             return IERC4626(WOETH_ASSET).previewRedeem(UNIT);
