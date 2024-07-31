@@ -9,6 +9,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract ynEigenTest is ynEigenIntegrationBaseTest {
 
@@ -104,17 +105,72 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         depositAssetAndVerify(rETH, amount);
     }
 
-    function testDepositmETHSuccessWithOneDepositFuzz(
-        // uint256 amount
-     ) public {
+    function testAssetBalancesFuzz(uint256 _amount) public {
+        vm.assume(_amount < 10000 ether && _amount >= 2 wei);
 
-        uint256 amount = 2;
-        vm.assume(
-            amount < 10000 ether && amount >= 2 wei
-        );        
+        uint256 _rETHBalanceBefore = IERC20(chainAddresses.lsd.RETH_ADDRESS).balanceOf(address(ynEigenToken));
+        uint256 _sfrxETHBalanceBefore = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(address(ynEigenToken));
+        uint256 _wstETHBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(address(ynEigenToken));
 
-        IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
-        depositAssetAndVerify(mETH, amount);
+        testDepositrETHSuccessWithOneDepositFuzz(_amount);
+        testDepositsfrxETHSuccessWithOneDepositFuzz(_amount);
+        testDepositwstETHSuccessWithOneDepositFuzz(_amount);
+
+        IERC20[] memory _assets = new IERC20[](3);
+        _assets[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        _assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        _assets[2] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+
+        uint256[] memory balances = ynEigenToken.assetBalances(_assets);
+
+        assertEq(balances[0], _rETHBalanceBefore + _amount, "testAssetBalancesFuzz: E0");
+        assertEq(balances[1], _sfrxETHBalanceBefore + _amount, "testAssetBalancesFuzz: E1");
+        assertEq(balances[2], _wstETHBalanceBefore + _amount, "testAssetBalancesFuzz: E2");
+    }
+
+    function testPauseDeposits() public {
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        ynEigenToken.pauseDeposits();
+        assertTrue(ynEigenToken.depositsPaused(), "testPauseDeposits: E0");
+
+        uint256 _amount = 1 ether;
+        address _user = address(0x1234543210);
+        address _asset = chainAddresses.lsd.WSTETH_ADDRESS;
+        testAssetUtils.get_Asset(_asset, _user, _amount);
+
+        vm.startPrank(_user);
+        IERC20(_asset).approve(address(ynEigenToken), _amount);
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.Paused.selector));
+        ynEigenToken.deposit(IERC20(_asset), _amount, _user);
+        vm.stopPrank();
+    }
+
+    function testPauseDepositsWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), ynEigenToken.PAUSER_ROLE()));
+        ynEigenToken.pauseDeposits();
+    }
+
+    function testUnpauseDeposits() public {
+        testPauseDeposits();
+
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.unpauseDeposits();
+        assertFalse(ynEigenToken.depositsPaused(), "testUnpauseDeposits: E0");
+
+        depositAssetAndVerify(IERC20(chainAddresses.lsd.RETH_ADDRESS), 1 ether);
+    }
+
+    function testUnpauseDepositsWrongCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), ynEigenToken.UNPAUSER_ROLE()));
+        ynEigenToken.unpauseDeposits();
+    }
+
+    function testAssetIsSupported() public {
+        IERC20 _asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        assertTrue(ynEigenToken.assetIsSupported(_asset), "testAssetIsSupported: E0");
+
+        IERC20 _unsupportedAsset = IERC20(address(1));
+        assertFalse(ynEigenToken.assetIsSupported(_unsupportedAsset), "testAssetIsSupported: E1");
     }
 
     function testMultipleDepositsFuzz(
@@ -497,7 +553,28 @@ contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
     }
 
     function testRetrieveAssetsUnsupportedAsset() public {
-        // come back to this
+        testRetrieveAssetsSuccess();
+
+        IERC20 asset = IERC20(address(0x123));
+        uint256 amount = 1000;
+        IERC20[] memory assets = new IERC20[](1);
+        uint256[] memory amounts = new uint256[](1);
+        assets[0] = asset;
+        amounts[0] = amount;
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, asset));
+        vm.prank(address(eigenStrategyManager));
+        ynEigenToken.retrieveAssets(assets, amounts);
+    }
+
+    function testRetrieveAssetsWrongCaller() public {
+        IERC20 asset = IERC20(address(0x123));
+        uint256 amount = 1000;
+        IERC20[] memory assets = new IERC20[](1);
+        uint256[] memory amounts = new uint256[](1);
+        assets[0] = asset;
+        amounts[0] = amount;
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.NotStrategyManager.selector, address(this)));
+        ynEigenToken.retrieveAssets(assets, amounts);
     }
 
     function testRetrieveTransferExceedsBalance() public {
@@ -590,3 +667,5 @@ contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
         assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
     }   
 }
+
+// | src/ynEIGEN/ynEigen.sol                                 | 85.25% (52/61)    | 87.67% (64/73)     | 100.00% (20/20)  | 75.00% (12/16)
