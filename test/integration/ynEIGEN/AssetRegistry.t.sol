@@ -13,6 +13,8 @@ import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IwstETH } from "src/external/lido/IwstETH.sol";
 import {IstETH} from "src/external/lido/IstETH.sol";
+import {IFrxEthWethDualOracle} from "src/external/frax/IFrxEthWethDualOracle.sol";
+import {IsfrxETH} from "src/external/frax/IsfrxETH.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 import "forge-std/console.sol";
@@ -145,7 +147,8 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         // End of the Selection
         IERC20 asset = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS); // Using wstETH as the asset
         address FRAX_ASSET = chainAddresses.lsd.SFRXETH_ADDRESS;
-        uint256 realRate = IERC4626(FRAX_ASSET).totalAssets() * 1e18 / IERC20(FRAX_ASSET).totalSupply();
+        IFrxEthWethDualOracle FRX_ETH_WETH_DUAL_ORACLE = IFrxEthWethDualOracle(testAssetUtils.FRX_ETH_WETH_DUAL_ORACLE());
+        uint256 realRate = IsfrxETH(FRAX_ASSET).pricePerShare() * FRX_ETH_WETH_DUAL_ORACLE.getCurveEmaEthPerFrxEth() / 1e18;
         uint256 expectedConvertedAmount = amount * realRate / 1e18; // Calculating the expected converted amount based on the real rate
         uint256 convertedAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
