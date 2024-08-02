@@ -97,6 +97,9 @@ contract YnEIGENScenarioTest1 is ynEigenIntegrationBaseTest {
 
 contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 
+	error Paused();
+	error TransfersPaused();
+
 	/**
 		Scenario 2: Deposit Paused 
 		Objective: Ensure that deposits are correctly 
@@ -117,7 +120,7 @@ contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 		deal({ token: asset, to: user1, give: 1 ether });
 		vm.startPrank(user1);
 		IERC20(asset).approve(address(ynEigenToken), 1 ether);
-		vm.expectRevert(bytes4(keccak256(abi.encodePacked("Paused()"))));
+		vm.expectRevert(Paused.selector);
 		ynEigenToken.deposit(IERC20(asset), 1 ether, user1);
 		vm.stopPrank();
 	}
@@ -154,7 +157,7 @@ contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 
 		// should fail when not on the pause whitelist
 		ynEigenToken.approve(user2, amount);
-		vm.expectRevert(bytes4(keccak256(abi.encodePacked("TransfersPaused()"))));
+		vm.expectRevert(TransfersPaused.selector);
 		ynEigenToken.transfer(user2, amount);
 		vm.stopPrank();
 
