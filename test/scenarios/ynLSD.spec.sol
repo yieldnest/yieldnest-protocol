@@ -18,14 +18,14 @@ contract YnEIGENScenarioTest1 is ynEigenIntegrationBaseTest {
 	address user2 = address(0x02);
 	address user3 = address(0x03);
 
-	function test_ynLSD_Scenario_1_Fuzz(uint256 random1, uint256 random2, uint256 random3) public {
+	function test_ynEIGEN_Scenario_1_Fuzz(uint256 random1, uint256 random2, uint256 random3) public {
 
 		/**
 			Users deposit random amounts
-			- Check the total assets of ynLSD
+			- Check the total assets of ynEIGEN
 			- Check the share balance of each user
 			- Check the total deposited in the pool
-			- Check total supply of ynLSD
+			- Check total supply of ynEIGEN
 		 */
 
 		vm.assume(random1 > 0 && random1 < 100_000_000 ether);
@@ -107,8 +107,8 @@ contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 	address user1 = address(0x01);
 	address user2 = address(0x02);
 
-	// pause ynLSD and try to deposit fail
-	function test_ynLSD_Scenario_2_Pause() public {
+	// pause ynEIGEN and try to deposit fail
+	function test_ynEIGEN_Scenario_2_Pause() public {
 
 		vm.prank(actors.ops.PAUSE_ADMIN);
 	 	ynEigenToken.pauseDeposits();
@@ -122,7 +122,7 @@ contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 		vm.stopPrank();
 	}
 
-	function test_ynLSD_Scenario_2_Unpause() public {
+	function test_ynEIGEN_Scenario_2_Unpause() public {
 
 	 	vm.prank(actors.ops.PAUSE_ADMIN);
 	 	ynEigenToken.pauseDeposits();
@@ -141,7 +141,7 @@ contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 		assertEq(ynEigenToken.balanceOf(user1), assetRegistry.convertToUnitOfAccount(IERC20(asset), 1 ether));
 	}
 
-	function test_ynLSD_Scenario_2_Pause_Transfer(uint256 random1) public {
+	function test_ynEIGEN_Scenario_2_Pause_Transfer(uint256 random1) public {
 		vm.assume(random1 > 0 && random1 < 100_000_000 ether);
 		
 		uint256 amount = random1;
