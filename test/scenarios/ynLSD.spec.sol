@@ -6,7 +6,7 @@ import {Invariants} from "./Invariants.sol";
 import "../integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import "forge-std/console.sol";
 
-contract YnLSDScenarioTest1 is ynEigenIntegrationBaseTest {
+contract YnEIGENScenarioTest1 is ynEigenIntegrationBaseTest {
 
 	/**
 		Scenario 1: Successful ETH Deposit and Share Minting 
@@ -95,7 +95,7 @@ contract YnLSDScenarioTest1 is ynEigenIntegrationBaseTest {
 	}
 }
 
-contract YnLSDScenarioTest2 is ynEigenIntegrationBaseTest {
+contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 
 	/**
 		Scenario 2: Deposit Paused 
@@ -171,7 +171,7 @@ contract YnLSDScenarioTest2 is ynEigenIntegrationBaseTest {
 	}
 }
 
-contract YnLSDScenarioTest3 is ynEigenIntegrationBaseTest {
+contract YnEIGENScenarioTest3 is ynEigenIntegrationBaseTest {
 
 	/**
 		Scenario 3: Deposit LSD to Strategy Manager
