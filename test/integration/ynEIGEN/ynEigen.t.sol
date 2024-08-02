@@ -667,5 +667,3 @@ contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
         assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
     }   
 }
-
-// | src/ynEIGEN/ynEigen.sol                                 | 85.25% (52/61)    | 87.67% (64/73)     | 100.00% (20/20)  | 75.00% (12/16)
