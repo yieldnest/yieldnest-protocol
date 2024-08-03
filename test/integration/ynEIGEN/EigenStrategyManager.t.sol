@@ -202,34 +202,46 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
     }
 
     function testAddStrategySuccess() public {
-        vm.prank(address(0x1)); // Assuming address(0x1) has STRATEGY_ADMIN_ROLE
-        IERC20 newAsset = IERC20(address(0x123)); // Example new asset address
-        IStrategy newStrategy = IStrategy(address(0x456)); // Example new strategy address
+        IERC20 newAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS); // Using SWELL as the new asset
+        IStrategy newStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS); // Using SWELL strategy
 
         // Initially, there should be no strategy set for newAsset
         assertEq(address(eigenStrategyManager.strategies(newAsset)), address(0), "Strategy already set for new asset");
 
         // Add strategy for newAsset
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(newAsset, newStrategy);
+        eigenStrategyManager.setStrategy(newAsset, newStrategy);
 
         // Verify that the strategy has been set
         assertEq(address(eigenStrategyManager.strategies(newAsset)), address(newStrategy), "Strategy not set correctly");
     }
 
-    function testAddStrategyFailureAlreadySet() public {
-        IERC20 existingAsset = IERC20(address(0x123)); // Example existing asset address
-        IStrategy existingStrategy = IStrategy(address(0x456)); // Example existing strategy address
+    function testAddStrategyTwice() public {
+        IERC20 existingAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS); 
+        IStrategy existingStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
         // Setup: Add a strategy initially
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(existingAsset, existingStrategy);
+        eigenStrategyManager.setStrategy(existingAsset, existingStrategy);
 
 
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        // Attempt to add the same strategy again should fail
-        vm.expectRevert(abi.encodeWithSelector(EigenStrategyManager.StrategyAlreadySetForAsset.selector, address(existingAsset)));
-        eigenStrategyManager.addStrategy(existingAsset, existingStrategy);
+        eigenStrategyManager.setStrategy(existingAsset, existingStrategy);
+    }
+
+    function testAddStrategyWithMismatchedUnderlyingToken() public {
+        IERC20 asset = IERC20(chainAddresses.lsd.SWELL_ADDRESS); // Using SWELL as the asset
+        IStrategy mismatchedStrategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS); // Incorrect strategy for SWELL
+
+        // Setup: Ensure the underlying token of the mismatched strategy is not SWELL
+        assertNotEq(address(mismatchedStrategy.underlyingToken()), address(asset), "Underlying token should not match asset");
+
+        // Attempt to add a strategy with a mismatched underlying token
+        vm.startPrank(actors.admin.EIGEN_STRATEGY_ADMIN);
+        vm.expectRevert(
+            abi.encodeWithSelector(EigenStrategyManager.AssetDoesNotMatchStrategyUnderlyingToken.selector, address(asset), address(mismatchedStrategy.underlyingToken())));
+        eigenStrategyManager.setStrategy(asset, mismatchedStrategy);
+        vm.stopPrank();
     }
 
     function testAddStrategyFailureZeroAsset() public {
@@ -238,7 +250,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
         // Test with zero address for asset
         vm.expectRevert(abi.encodeWithSelector(EigenStrategyManager.ZeroAddress.selector));
-        eigenStrategyManager.addStrategy(IERC20(address(0)), newStrategy);
+        eigenStrategyManager.setStrategy(IERC20(address(0)), newStrategy);
     }
 
     function testAddStrategyFailureZeroStrategy() public {
@@ -246,6 +258,6 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
         vm.expectRevert(abi.encodeWithSelector(EigenStrategyManager.ZeroAddress.selector));
-        eigenStrategyManager.addStrategy(newAsset, IStrategy(address(0)));
+        eigenStrategyManager.setStrategy(newAsset, IStrategy(address(0)));
     }
 }
