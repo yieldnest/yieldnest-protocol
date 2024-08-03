@@ -217,7 +217,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
 
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(IERC20(chainAddresses.lsd.SWELL_ADDRESS));
@@ -237,7 +237,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
 
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset); // First addition should succeed
@@ -252,7 +252,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         IStrategy strategyForAsset = IStrategy(chainAddresses.lsdStrategies.CBETH_STRATEGY_ADDRESS);
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(assetWithoutPriceFeed, strategyForAsset);
+        eigenStrategyManager.setStrategy(assetWithoutPriceFeed, strategyForAsset);
 
         vm.prank(actors.admin.ASSET_MANAGER);
         vm.expectRevert(abi.encodeWithSelector(AssetRegistry.RateNotAvailableForAsset.selector, assetWithoutPriceFeed));
@@ -265,7 +265,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -306,7 +306,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -343,7 +343,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -357,7 +357,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -377,7 +377,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -419,7 +419,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -449,7 +449,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 
@@ -492,7 +492,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
 
         // Add strategy and asset first
         vm.prank(actors.admin.EIGEN_STRATEGY_ADMIN);
-        eigenStrategyManager.addStrategy(swellAsset, swellStrategy);
+        eigenStrategyManager.setStrategy(swellAsset, swellStrategy);
         vm.prank(actors.admin.ASSET_MANAGER);
         assetRegistry.addAsset(swellAsset);
 

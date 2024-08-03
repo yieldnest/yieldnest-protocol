@@ -59,7 +59,7 @@ contract EigenStrategyManager is
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyExists(address asset);
     error NoStrategyDefinedForAsset(address asset);
-    error StrategyAlreadySetForAsset(address asset);
+    error AssetDoesNotMatchStrategyUnderlyingToken(address asset, address strategyUnderlyingToken);
     
 
     //--------------------------------------------------------------------------------------
@@ -266,13 +266,13 @@ contract EigenStrategyManager is
      * @param asset The asset for which the strategy is to be added.
      * @param strategy The strategy contract address to be associated with the asset.
      */
-    function addStrategy(IERC20 asset, IStrategy strategy)
+    function setStrategy(IERC20 asset, IStrategy strategy)
         external
         onlyRole(STRATEGY_ADMIN_ROLE)
         notZeroAddress(address(asset))
         notZeroAddress(address(strategy)) {
-        if (address(strategies[asset]) != address(0)){
-            revert StrategyAlreadySetForAsset(address(asset));
+        if (address(strategy.underlyingToken()) != address(asset)) {
+            revert AssetDoesNotMatchStrategyUnderlyingToken(address(asset), address(strategy.underlyingToken()));
         }
 
         strategies[asset] = strategy;
