@@ -35,6 +35,7 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         verifyRoles();
         verifySystemParameters();
         verifyContractDependencies();
+        ynLSDeSanityCheck();
     }
 
     function verifyProxyAdminOwners() internal view {
@@ -491,6 +492,14 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
             "assetRegistry: strategyManager dependency mismatch"
         );
         console.log("\u2705 assetRegistry: strategyManager dependency verified successfully");
+    }
+
+    function ynLSDeSanityCheck() internal {
+        require(
+            deployment.assetRegistry.totalAssets() >= 0,
+            "assetRegistry: totalAssets INVALID"
+        );
+        console.log("\u2705 assetRegistry: totalAssets - Value:", deployment.assetRegistry.totalAssets());
     }
 
     function tokenName() internal override pure returns (string memory) {
