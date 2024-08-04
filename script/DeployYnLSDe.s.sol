@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
@@ -53,6 +54,8 @@ contract DeployYnLSDe is BaseYnEigenScript {
     ynEigenDepositAdapter ynEigenDepositAdapterInstance;
     TokenStakingNode tokenStakingNodeImplementation;
 
+    TimelockController public timelock;
+
     function tokenName() internal override pure returns (string memory) {
         return "YnLSDe";
     }
@@ -81,10 +84,26 @@ contract DeployYnLSDe is BaseYnEigenScript {
         delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
 
+        // Deploy timelock
+        {
+            address[] memory _proposers = new address[](2);
+            _proposers[0] = actors.admin.PROXY_ADMIN_OWNER;
+            _proposers[1] = actors.admin.STAKING_ADMIN;
+            address[] memory _executors = new address[](2);
+            _executors[0] = actors.admin.PROXY_ADMIN_OWNER;
+            _executors[1] = actors.admin.STAKING_ADMIN;
+            timelock = new TimelockController(
+                3 days, // delay
+                _proposers,
+                _executors,
+                actors.admin.PROXY_ADMIN_OWNER // admin
+            );
+        }
+
         // Deploy implementations
         {
             ynEigen ynLSDeImplementation = new ynEigen();
-            TransparentUpgradeableProxy ynLSDeProxy = new TransparentUpgradeableProxy(address(ynLSDeImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy ynLSDeProxy = new TransparentUpgradeableProxy(address(ynLSDeImplementation), address(timelock), "");
             ynLSDe = ynEigen(address(ynLSDeProxy));
         }
 
@@ -97,7 +116,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
             } else {
                 revert("Unsupported chain ID");
             }
-            TransparentUpgradeableProxy lsdRateProviderProxy = new TransparentUpgradeableProxy(address(lsdRateProviderImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy lsdRateProviderProxy = new TransparentUpgradeableProxy(address(lsdRateProviderImplementation), address(timelock), "");
             lsdRateProvider = LSDRateProvider(address(lsdRateProviderProxy));
         }
 
@@ -137,19 +156,19 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         {
             EigenStrategyManager eigenStrategyManagerImplementation = new EigenStrategyManager();
-            TransparentUpgradeableProxy eigenStrategyManagerProxy = new TransparentUpgradeableProxy(address(eigenStrategyManagerImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy eigenStrategyManagerProxy = new TransparentUpgradeableProxy(address(eigenStrategyManagerImplementation), address(timelock), "");
             eigenStrategyManager = EigenStrategyManager(address(eigenStrategyManagerProxy));
         }
 
         {
             TokenStakingNodesManager tokenStakingNodesManagerImplementation = new TokenStakingNodesManager();
-            TransparentUpgradeableProxy tokenStakingNodesManagerProxy = new TransparentUpgradeableProxy(address(tokenStakingNodesManagerImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy tokenStakingNodesManagerProxy = new TransparentUpgradeableProxy(address(tokenStakingNodesManagerImplementation), address(timelock), "");
             tokenStakingNodesManager = TokenStakingNodesManager(address(tokenStakingNodesManagerProxy));
         }
 
         {
             AssetRegistry assetRegistryImplementation = new AssetRegistry();
-            TransparentUpgradeableProxy assetRegistryProxy = new TransparentUpgradeableProxy(address(assetRegistryImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+            TransparentUpgradeableProxy assetRegistryProxy = new TransparentUpgradeableProxy(address(assetRegistryImplementation), address(timelock), "");
             assetRegistry = AssetRegistry(address(assetRegistryProxy));
         }
 
@@ -239,7 +258,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
             ynEigenDepositAdapter ynEigenDepositAdapterImplementation = new ynEigenDepositAdapter();
             TransparentUpgradeableProxy ynEigenDepositAdapterProxy = new TransparentUpgradeableProxy(
                 address(ynEigenDepositAdapterImplementation),
-                actors.admin.PROXY_ADMIN_OWNER,
+                address(timelock),
                 ""
             );
             ynEigenDepositAdapterInstance = ynEigenDepositAdapter(address(ynEigenDepositAdapterProxy));
