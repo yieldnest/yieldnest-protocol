@@ -8,16 +8,15 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 
 import {ContractAddresses} from "./ContractAddresses.sol";
 import {BaseYnEigenScript} from "./BaseYnEigenScript.s.sol";
-// import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-// import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-// import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {Utils} from "./Utils.sol";
 
 import {ActorAddresses} from "./Actors.sol";
 import {console} from "../lib/forge-std/src/console.sol";
 
-// forge script script/VerifyYnLSDe.s.sol:VerifyYnLSDeScript --legacy --rpc-url https://ethereum-holesky-rpc.publicnode.com --broadcast
-
+interface IynEigen {
+    function assetRegistry() external view returns (address);
+    function yieldNestStrategyManager() external view returns (address);
+}
 contract VerifyYnLSDeScript is BaseYnEigenScript {
 
     Deployment deployment;
@@ -35,7 +34,7 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         verifyProxyAdminOwners();
         verifyRoles();
         verifySystemParameters();
-        // verifyContractDependencies(); // @todo
+        verifyContractDependencies();
     }
 
     function verifyProxyAdminOwners() internal view {
@@ -296,43 +295,6 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         console.log("\u2705 ynEigenDepositAdapter: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
     }
 
-    // {
-    // "ADMIN": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
-    // "DEFAULT_SIGNER": "0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5",
-    // "EIGEN_STRATEGY_ADMIN": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
-    // "PAUSE_ADMIN": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
-    // "PROXY_ADMIN_OWNER": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
-    // "STAKING_ADMIN": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
-    // "STAKING_NODES_OPERATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
-    // "STRATEGY_CONTROLLER": "0x1234567890123456789012345678901234567890",
-    // "TOKEN_STAKING_NODE_CREATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
-    // "UNPAUSE_ADMIN": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
-    // "implementation-YnLSDe": "0xf59624D4Cb47A6470293E4A3a667614256C201b3",
-    // "implementation-assetRegistry": "0x46ACFa9399b1AD9cE961A78B529Fe0B237653Dbd",
-    // "implementation-eigenStrategyManager": "0x69D2C2606E967F82CDa5700A431958837e202596",
-    // "implementation-tokenStakingNodesManager": "0x3afe56CAB25D9a999e8C9382563bfcb8B14aBf3D",
-    // "implementation-ynEigenDepositAdapter": "0x271bC23121Df9cA87D9e93A66e8CcAD5EE8d4889",
-    // "proxy-YnLSDe": "0x06422232DF6814153faA91eA4907bAA3B24c7A9E",
-    // "proxy-assetRegistry": "0x1b6E84502C860393B3bc4575E80ba7490a992915",
-    // "proxy-eigenStrategyManager": "0x95df255197efA88f2D44aa2356DEcf16066562CA",
-    // "proxy-tokenStakingNodesManager": "0xd0B26346a0737c81Db6A354396f72D022646d29E",
-    // "proxy-ynEigenDepositAdapter": "0xEe168c00969555cb7cb916588297BdD1B25687Ee",
-    // "proxyAdmin-YnLSDe": "0xF4C5EAfE2b95ef970B26D78b024B184CcFB2E8ff",
-    // "proxyAdmin-assetRegistry": "0x1597a4647df97Bc168527C282f0a2817CAF8242f",
-    // "proxyAdmin-eigenStrategyManager": "0xE30e82D8b99688Ff08Ca6B998FbB25b9A04bfc34",
-    // "proxyAdmin-tokenStakingNodesManager": "0x84fceB89720d9e2C88Deb7B918a83005Ba109e17",
-    // "proxyAdmin-ynEigenDepositAdapter": "0xa304673979F66114e64a3680D9395A52c7218bC0",
-    // "tokenStakingNodeImplementation": "0x8A96E90711669e68B6B879e9CeBE581e691b6861"
-    // }
-    // struct Deployment {
-    //     ynEigen ynEigen;
-    //     AssetRegistry assetRegistry;
-    //     EigenStrategyManager eigenStrategyManager; todo
-    //     TokenStakingNodesManager tokenStakingNodesManager; todo
-    //     TokenStakingNode tokenStakingNodeImplementation; todo
-    //     ynEigenDepositAdapter ynEigenDepositAdapterInstance; todo
-    // }
-
     function verifySystemParameters() internal view {
         // Verify the system parameters
         IERC20[] memory assets;
@@ -366,18 +328,6 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         } else {
             revert(string(string.concat("Chain ID ", vm.toString(block.chainid), " not supported")));
         }
-
-        // require(
-        //     address(deployment.assetRegistry.rateProvider()) == address(chainAddresses.lsdRateProvider),
-        //     "assetRegistry: rateProvider INVALID"
-        // );
-        // console.log("\u2705 assetRegistry: rateProvider - Value:", deployment.assetRegistry.rateProvider());
-
-        // require(
-        //     address(deployment.assetRegistry.ynEigen()) == address(deployment.ynEigen),
-        //     "assetRegistry: ynEigen INVALID"
-        // );
-        // console.log("\u2705 assetRegistry: ynEigen - Value:", deployment.assetRegistry.ynEigen());
 
         require(
             deployment.assetRegistry.assets(0) == assets[0],
@@ -488,6 +438,59 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         console.log("\u2705 ynEigenDepositAdapter: woETH - Value:", address(deployment.ynEigenDepositAdapterInstance.woETH()));
 
         console.log("\u2705 All system parameters verified successfully");
+    }
+
+    function verifyContractDependencies() internal {
+
+        verifyYnEIGENDependencies();
+        verifyTokenStakingNodesManagerDependencies();
+        verifyAssetRegistryDependencies();
+
+        console.log("\u2705 All contract dependencies verified successfully");
+    }
+
+    // @dev - cant verify, those dependencies are internal
+    function verifyYnEIGENDependencies() internal view {
+        // Verify ynEIGEN contract dependencies
+        // require(
+        //     IynEigen(address(deployment.ynEigen)).assetRegistry() == address(deployment.assetRegistry),
+        //     "ynEigen: AssetRegistry dependency mismatch"
+        // );
+        // console.log("\u2705 ynEigen: AssetRegistry dependency verified successfully");
+
+        // require(
+        //     IynEigen(address(deployment.ynEigen)).yieldNestStrategyManager() == address(deployment.eigenStrategyManager),
+        //     "ynEigen: EigenStrategyManager dependency mismatch"
+        // );
+        // console.log("\u2705 ynEigen: EigenStrategyManager dependency verified successfully");
+    }
+
+    function verifyTokenStakingNodesManagerDependencies() internal view {
+        require(
+            address(deployment.tokenStakingNodesManager.strategyManager()) == chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS,
+            "tokenStakingNodesManager: strategyManager dependency mismatch"
+        );
+        console.log("\u2705 tokenStakingNodesManager: strategyManager dependency verified successfully");
+
+        require (
+            address(deployment.tokenStakingNodesManager.delegationManager()) == chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS,
+            "tokenStakingNodesManager: delegationManager dependency mismatch"
+        );
+        console.log("\u2705 tokenStakingNodesManager: delegationManager dependency verified successfully");
+
+        require(
+            address(deployment.tokenStakingNodesManager.upgradeableBeacon().implementation()) == address(deployment.tokenStakingNodeImplementation),
+            "tokenStakingNodesManager: upgradeableBeacon dependency mismatch"
+        );
+        console.log("\u2705 tokenStakingNodesManager: upgradeableBeacon dependency verified successfully");
+    }
+
+    function verifyAssetRegistryDependencies() internal view {
+        require(
+            address(deployment.assetRegistry.strategyManager()) == address(deployment.eigenStrategyManager),
+            "assetRegistry: strategyManager dependency mismatch"
+        );
+        console.log("\u2705 assetRegistry: strategyManager dependency verified successfully");
     }
 
     function tokenName() internal override pure returns (string memory) {
