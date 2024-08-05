@@ -452,18 +452,18 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
 
     // @dev - cant verify, those dependencies are internal
     function verifyYnEIGENDependencies() internal view {
-        // Verify ynEIGEN contract dependencies
-        // require(
-        //     IynEigen(address(deployment.ynEigen)).assetRegistry() == address(deployment.assetRegistry),
-        //     "ynEigen: AssetRegistry dependency mismatch"
-        // );
-        // console.log("\u2705 ynEigen: AssetRegistry dependency verified successfully");
+        //Verify ynEIGEN contract dependencies
+        require(
+            IynEigen(address(deployment.ynEigen)).assetRegistry() == address(deployment.assetRegistry),
+            "ynEigen: AssetRegistry dependency mismatch"
+        );
+        console.log("\u2705 ynEigen: AssetRegistry dependency verified successfully");
 
-        // require(
-        //     IynEigen(address(deployment.ynEigen)).yieldNestStrategyManager() == address(deployment.eigenStrategyManager),
-        //     "ynEigen: EigenStrategyManager dependency mismatch"
-        // );
-        // console.log("\u2705 ynEigen: EigenStrategyManager dependency verified successfully");
+        require(
+            IynEigen(address(deployment.ynEigen)).yieldNestStrategyManager() == address(deployment.eigenStrategyManager),
+            "ynEigen: EigenStrategyManager dependency mismatch"
+        );
+        console.log("\u2705 ynEigen: EigenStrategyManager dependency verified successfully");
     }
 
     function verifyTokenStakingNodesManagerDependencies() internal view {
