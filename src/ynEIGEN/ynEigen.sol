@@ -47,8 +47,8 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
     mapping(address => Asset) public assets;
 
-    address yieldNestStrategyManager;
-    IAssetRegistry assetRegistry;
+    address public yieldNestStrategyManager;
+    IAssetRegistry public assetRegistry;
 
     bool public depositsPaused;
 

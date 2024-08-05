@@ -23,16 +23,16 @@ contract LSDRateProvider {
     //--------------------------------------------------------------------------------------
 
     uint256 constant UNIT = 1e18;
-    address constant FRAX_ASSET = 0xac3E018457B222d93114458476f3E3416Abbe38F; // sfrxETH
-    address constant FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0; // FrxEthWethDualOracle
-    address constant LIDO_ASSET = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0; // wstETH
-    address constant RETH_ASSET = 0xae78736Cd615f374D3085123A210448E74Fc6393; // RETH
-    address constant WOETH_ASSET = 0xDcEe70654261AF21C44c093C300eD3Bb97b78192;
-    address constant SWELL_ASSET = 0xf951E335afb289353dc249e82926178EaC7DEd78;
-    address constant METH_ASSET = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
-    address constant METH_STAKING_CONTRACT = 0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f;
+    address constant public FRAX_ASSET = 0xac3E018457B222d93114458476f3E3416Abbe38F; // sfrxETH
+    address constant public FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0; // FrxEthWethDualOracle
+    address constant public LIDO_ASSET = 0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0; // wstETH
+    address constant public RETH_ASSET = 0xae78736Cd615f374D3085123A210448E74Fc6393; // RETH
+    address constant public WOETH_ASSET = 0xDcEe70654261AF21C44c093C300eD3Bb97b78192;
+    address constant public SWELL_ASSET = 0xf951E335afb289353dc249e82926178EaC7DEd78;
+    address constant public METH_ASSET = 0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa;
+    address constant public METH_STAKING_CONTRACT = 0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f;
 
-    address constant LIDO_UDERLYING = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH
+    address constant public LIDO_UDERLYING = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84; // stETH
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
