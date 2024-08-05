@@ -58,7 +58,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
     IStrategyManager public strategyManager;
     IDelegationManager public delegationManager;
-    address yieldNestStrategyManager;
+    address public yieldNestStrategyManager;
 
     UpgradeableBeacon public upgradeableBeacon;
     

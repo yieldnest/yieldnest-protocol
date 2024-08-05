@@ -65,7 +65,7 @@ interface IAssetRegistryEvents {
 
     IRateProvider public rateProvider;
     IYieldNestStrategyManager public strategyManager;
-    IynEigen ynEigen;
+    IynEigen public ynEigen;
 
 
     //--------------------------------------------------------------------------------------
