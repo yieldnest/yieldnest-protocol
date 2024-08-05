@@ -492,6 +492,18 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
             "assetRegistry: strategyManager dependency mismatch"
         );
         console.log("\u2705 assetRegistry: strategyManager dependency verified successfully");
+
+        require(
+            address(deployment.assetRegistry.rateProvider()) == address(deployment.rateProvider),
+            "assetRegistry: rateProvider dependency mismatch"
+        );
+        console.log("\u2705 assetRegistry: rateProvider dependency verified successfully");
+
+        require(
+            address(deployment.assetRegistry.ynEigen()) == address(deployment.ynEigen),
+            "assetRegistry: ynEigen dependency mismatch"
+        );
+        console.log("\u2705 assetRegistry: ynEigen dependency verified successfully");
     }
 
     function ynLSDeSanityCheck() internal {
