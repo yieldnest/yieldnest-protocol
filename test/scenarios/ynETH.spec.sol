@@ -352,9 +352,9 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		// The SelfDestructSender contract is created with the amountToSend and immediately self-destructs,
 		// sending its balance to the target address.
 		address(new SelfDestructSender{value: amountToSendViaSelfDestruct}(target));
-		
+
 		log_balances(stakingNode);
-		
+
 		assertEq(address(yneth).balance, 0, "yneth.balance != 0");
 		assertEq(address(stakingNode).balance, 1 ether, "stakingNode.balance !=  1 ether");
 		assertEq(address(consensusLayerReceiver).balance, 0, "consensusLayerReceiver.balance != 0");
@@ -397,7 +397,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		uint256 amount = 32 ether + 1 wei;
 		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
 		uint256 initialPodBalance = address(eigenPod).balance;
-        
+
         vm.deal(actors.ops.STAKING_NODES_OPERATOR, 40 ether);
         (bool success,) = payable(address(eigenPod)).call{value: amount}("");
         require(success, "Failed to send rewards to EigenPod");
@@ -437,7 +437,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 	}
 
 	function runInvariants(address user, uint256 previousTotalDeposited, uint256 previousTotalShares, uint256 userAmount, uint256 userShares) public {
-		
+
 		uint256 totalDeposited = 0;
 		Vm.Log[] memory logs = vm.getRecordedLogs();
 
@@ -454,12 +454,11 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		Invariants.totalAssetsIntegrity(yneth.totalAssets(), previousTotalDeposited, userAmount);
 
 		Invariants.shareMintIntegrity(yneth.totalSupply(), previousTotalShares, userShares);
-		
+
 		Invariants.userSharesIntegrity(yneth.balanceOf(user), 0, userShares);
 	}
 
 	/*
-
 	*/
 }
 
@@ -469,6 +468,3 @@ contract SelfDestructSender {
         selfdestruct(_target);
     }
 }
-
-
-

@@ -34,6 +34,7 @@ import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
