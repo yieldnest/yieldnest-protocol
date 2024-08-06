@@ -5,6 +5,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
@@ -23,6 +24,10 @@ interface IynEigenDepositAdapterEvents {
 
 
 contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, AccessControlUpgradeable {
+
+    using SafeERC20 for IERC20;
+    using SafeERC20 for IwstETH;
+    using SafeERC20 for IERC4626;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -90,7 +95,6 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
         }
     }
 
-
     /**
      * @notice Deposits an asset with referral information.
      *          IMPORTANT: The referred or referree is the receiver, NOT msg.sender
@@ -121,19 +125,19 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
     }
 
     function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
-        stETH.transferFrom(msg.sender, address(this), amount);
-        stETH.approve(address(wstETH), amount);
+        stETH.safeTransferFrom(msg.sender, address(this), amount);
+        stETH.forceApprove(address(wstETH), amount);
         uint256 wstETHAmount = wstETH.wrap(amount);
-        wstETH.approve(address(ynEigen), wstETHAmount);
+        wstETH.forceApprove(address(ynEigen), wstETHAmount);
 
         return ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
     }
 
     function depositOETH(uint256 amount, address receiver) internal returns (uint256) {
-        oETH.transferFrom(msg.sender, address(this), amount);
-        oETH.approve(address(woETH), amount);
+        oETH.safeTransferFrom(msg.sender, address(this), amount);
+        oETH.forceApprove(address(woETH), amount);
         uint256 woETHShares = woETH.deposit(amount, address(this));
-        woETH.approve(address(ynEigen), woETHShares);
+        woETH.forceApprove(address(ynEigen), woETHShares);
 
         return ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
     }
