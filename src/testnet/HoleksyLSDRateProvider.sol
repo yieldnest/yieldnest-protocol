@@ -5,7 +5,6 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {IstETH} from "src/external/lido/IstETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
-import {IswETH} from "src/external/swell/IswETH.sol";
 import {ImETHStaking} from "src/external/mantle/ImETHStaking.sol";
 
 contract HoleskyLSDRateProvider {
