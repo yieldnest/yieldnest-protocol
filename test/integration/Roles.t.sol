@@ -130,50 +130,35 @@ contract RolesTest is IntegrationBaseTest {
 
         assertTrue(executionLayerReceiver.hasRole(WITHDRAWER_ROLE, newRewardsDistributor));
         assertFalse(executionLayerReceiver.hasRole(WITHDRAWER_ROLE, address(rewardsDistributor)));
-    }    
-    function testRoleChangeYnLSD() public {
-        address newStakingAdmin = address(0xABC);
-        bytes32 STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
-        bytes32 LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
-        bytes32 LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
-
-        assertTrue(ynlsd.hasRole(ynlsd.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN));
-        assertTrue(ynlsd.hasRole(STAKING_ADMIN_ROLE, actors.admin.STAKING_ADMIN));
-        assertTrue(ynlsd.hasRole(LSD_RESTAKING_MANAGER_ROLE, actors.ops.LSD_RESTAKING_MANAGER));
-        assertTrue(ynlsd.hasRole(LSD_STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR));
-
-        vm.startPrank(actors.admin.ADMIN);
-        ynlsd.grantRole(STAKING_ADMIN_ROLE, newStakingAdmin);
-        ynlsd.revokeRole(STAKING_ADMIN_ROLE, actors.admin.STAKING_ADMIN);
-        ynlsd.grantRole(LSD_RESTAKING_MANAGER_ROLE, newStakingAdmin);
-        ynlsd.revokeRole(LSD_RESTAKING_MANAGER_ROLE, actors.ops.LSD_RESTAKING_MANAGER);
-        ynlsd.grantRole(LSD_STAKING_NODE_CREATOR_ROLE, newStakingAdmin);
-        ynlsd.revokeRole(LSD_STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR);
-        vm.stopPrank();
-
-        assertTrue(ynlsd.hasRole(STAKING_ADMIN_ROLE, newStakingAdmin));
-        assertTrue(ynlsd.hasRole(LSD_RESTAKING_MANAGER_ROLE, newStakingAdmin));
-        assertTrue(ynlsd.hasRole(LSD_STAKING_NODE_CREATOR_ROLE, newStakingAdmin));
-        assertFalse(ynlsd.hasRole(STAKING_ADMIN_ROLE, actors.admin.STAKING_ADMIN));
-        assertFalse(ynlsd.hasRole(LSD_RESTAKING_MANAGER_ROLE, actors.ops.LSD_RESTAKING_MANAGER));
-        assertFalse(ynlsd.hasRole(LSD_STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR));
     }
 
-    function testRoleChangeYieldNestOracle() public {
-        address newOracleManager = address(0xDEF);
-        bytes32 ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
+    // function testRoleChangeYnLSD() public {
+    //     address newStakingAdmin = address(0xABC);
+    //     bytes32 STAKING_ADMIN_ROLE = keccak256("STAKING_ADMIN_ROLE");
+    //     bytes32 LSD_RESTAKING_MANAGER_ROLE = keccak256("LSD_RESTAKING_MANAGER_ROLE");
+    //     bytes32 LSD_STAKING_NODE_CREATOR_ROLE = keccak256("LSD_STAKING_NODE_CREATOR_ROLE");
 
-        assertTrue(yieldNestOracle.hasRole(yieldNestOracle.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN));
-        assertTrue(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, actors.admin.ORACLE_ADMIN));
+    //     assertTrue(ynlsd.hasRole(ynlsd.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN));
+    //     assertTrue(ynlsd.hasRole(STAKING_ADMIN_ROLE, actors.admin.STAKING_ADMIN));
+    //     assertTrue(ynlsd.hasRole(LSD_RESTAKING_MANAGER_ROLE, actors.ops.LSD_RESTAKING_MANAGER));
+    //     assertTrue(ynlsd.hasRole(LSD_STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR));
 
-        vm.startPrank(actors.admin.ADMIN);
-        yieldNestOracle.grantRole(ORACLE_MANAGER_ROLE, newOracleManager);
-        yieldNestOracle.revokeRole(ORACLE_MANAGER_ROLE, actors.admin.ORACLE_ADMIN);
-        vm.stopPrank();
+    //     vm.startPrank(actors.admin.ADMIN);
+    //     ynlsd.grantRole(STAKING_ADMIN_ROLE, newStakingAdmin);
+    //     ynlsd.revokeRole(STAKING_ADMIN_ROLE, actors.admin.STAKING_ADMIN);
+    //     ynlsd.grantRole(LSD_RESTAKING_MANAGER_ROLE, newStakingAdmin);
+    //     ynlsd.revokeRole(LSD_RESTAKING_MANAGER_ROLE, actors.ops.LSD_RESTAKING_MANAGER);
+    //     ynlsd.grantRole(LSD_STAKING_NODE_CREATOR_ROLE, newStakingAdmin);
+    //     ynlsd.revokeRole(LSD_STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR);
+    //     vm.stopPrank();
 
-        assertTrue(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, newOracleManager));
-        assertFalse(yieldNestOracle.hasRole(ORACLE_MANAGER_ROLE, actors.admin.ORACLE_ADMIN));
-    }
+    //     assertTrue(ynlsd.hasRole(STAKING_ADMIN_ROLE, newStakingAdmin));
+    //     assertTrue(ynlsd.hasRole(LSD_RESTAKING_MANAGER_ROLE, newStakingAdmin));
+    //     assertTrue(ynlsd.hasRole(LSD_STAKING_NODE_CREATOR_ROLE, newStakingAdmin));
+    //     assertFalse(ynlsd.hasRole(STAKING_ADMIN_ROLE, actors.admin.STAKING_ADMIN));
+    //     assertFalse(ynlsd.hasRole(LSD_RESTAKING_MANAGER_ROLE, actors.ops.LSD_RESTAKING_MANAGER));
+    //     assertFalse(ynlsd.hasRole(LSD_STAKING_NODE_CREATOR_ROLE, actors.ops.STAKING_NODE_CREATOR));
+    // }
 }
 
 

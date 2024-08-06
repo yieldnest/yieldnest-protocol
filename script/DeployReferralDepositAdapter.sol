@@ -12,7 +12,6 @@ import { IynETH } from "src/interfaces/IynETH.sol";
 contract DeployReferralDepositAdapter is BaseScript {
 
 
-
     function saveDeployment(ReferralDepositAdapter referralDepositAdapter) public virtual {
         string memory json = "deployment";
 
@@ -40,7 +39,7 @@ contract DeployReferralDepositAdapter is BaseScript {
         console.log("Deployment JSON file written successfully:", getDeploymentFile());
     }
 
-    function getDeploymentFile() internal override view returns (string memory) {
+    function getDeploymentFile() internal view returns (string memory) {
         string memory root = vm.projectRoot();
         return string.concat(root, "/deployments/ReferralDepositAdapter-", vm.toString(block.chainid), ".json");
     }
