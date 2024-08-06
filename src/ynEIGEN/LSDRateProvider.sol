@@ -45,27 +45,21 @@ contract LSDRateProvider {
      * @notice This function handles multiple types of liquid staking derivatives (LSDs) and their respective rates.
      *         It supports Lido's stETH, Frax's sfrxETH, Rocket Pool's rETH, Swell's swETH, and Wrapped stETH.
      *         It reverts if the asset is not supported.
+     *         The rates are sourced from each protocol's specific redemption rate provider. 
      */
     function rate(address _asset) external view returns (uint256) {
-
-        /*
-            This contract uses the rate as provided the protocol that controls the asset.
-            Known current risks:
-            In case one of the LSDs depegs from its ETH price and the oracles still report the undepegged price,
-            users can still deposit to ynEigen, 
-            and receive the same amount of shares as though the underlying asset has not depegged yet,
-            as the protocols below will report the same LSD/ETH price.
-        */
 
         if (_asset == LIDO_ASSET) {
             return IstETH(LIDO_UDERLYING).getPooledEthByShares(UNIT);
         }
         if (_asset == FRAX_ASSET) {
-            /* Calculate the price per share of sfrxETH in terms of ETH using the Frax Oracle.
-               The Frax Oracle provides a time-weighted average price (TWAP) using a curve exponential moving average (EMA)
-               to smooth out the price fluctuations of ETH per sfrxETH. This helps in obtaining a stable conversion rate.
-            */
+            /* 
+            
+            The deposit asset for sfrxETH is frxETH and not ETH. In order to account for any frxETH/ETH rate fluctuations,
+            an frxETH/ETH oracle is used as provided by Frax.
 
+            Documentation: https://docs.frax.finance/frax-oracle/advanced-concepts
+            */
             uint256 frxETHPriceInETH = IFrxEthWethDualOracle(FRX_ETH_WETH_DUAL_ORACLE).getCurveEmaEthPerFrxEth();
             return IsfrxETH(FRAX_ASSET).pricePerShare() * frxETHPriceInETH / UNIT;
         }
