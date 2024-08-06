@@ -151,6 +151,7 @@ interface IAssetRegistryEvents {
         }
 
         try rateProvider.rate(address(asset)) {
+            // solhint-disable-previous-line no-empty-blocks
             // If the rate exists, do nothing
         } catch {
             revert RateNotAvailableForAsset(asset);
