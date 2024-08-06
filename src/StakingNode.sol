@@ -251,6 +251,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         }
     }
 
+    
+    /**
+     * @dev Sets the proof submitter for the EigenPod associated with this StakingNode.
+     * This function can only be called by the StakingNodesManager.
+     * @param submitter The address of the new proof submitter.
+     */
+    function setProofSubmitter(address submitter) external onlyStakingNodesManager {
+        eigenPod.setProofSubmitter(submitter);
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  DELEGATION   -------------------------------------
     //--------------------------------------------------------------------------------------
