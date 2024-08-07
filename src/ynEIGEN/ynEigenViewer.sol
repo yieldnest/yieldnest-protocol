@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {IynEigen} from "../interfaces/IynEigen.sol";
+import {IRateProvider} from "../interfaces/IRateProvider.sol";
 import {ITokenStakingNodesManager,ITokenStakingNode} from "../interfaces/ITokenStakingNodesManager.sol";
 
 import {AssetRegistry} from "./AssetRegistry.sol";
@@ -21,13 +22,16 @@ contract ynEigenViewer {
     AssetRegistry public assetRegistry;
     IynEigen public ynEIGEN;
     ITokenStakingNodesManager public tokenStakingNodesManager;
+    IRateProvider public rateProvider;
 
     uint256 public constant DECIMALS = 1_000;
+    uint256 constant UNIT = 1 ether;
 
-    constructor(address _assetRegistry, address _ynEIGEN, address _tokenStakingNodesManager) {
+    constructor(address _assetRegistry, address _ynEIGEN, address _tokenStakingNodesManager, address _rateProvider) {
         assetRegistry = AssetRegistry(_assetRegistry);
         ynEIGEN = IynEigen(_ynEIGEN);
         tokenStakingNodesManager = ITokenStakingNodesManager(_tokenStakingNodesManager);
+        rateProvider = IRateProvider(_rateProvider);
     }
 
     function getAllStakingNodes() external view returns (ITokenStakingNode[] memory) {
@@ -41,7 +45,7 @@ contract ynEigenViewer {
 
         uint256 _totalAssets = ynEIGEN.totalAssets();
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            uint256 _balance = ynEIGEN.assetBalance(_assets[i]);
+            uint256 _balance = ynEIGEN.assetBalance(_assets[i]) * rateProvider.rate(address(_assets[i])) / UNIT;
             _assetsInfo[i] = AssetInfo({
                 asset: address(_assets[i]),
                 name: IERC20Metadata(address(_assets[i])).name(),

@@ -19,7 +19,12 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
 
     function setUp() public override {
         super.setUp();
-        _ynEigenViewer = new ynEigenViewer(address(assetRegistry), address(ynEigenToken), address(tokenStakingNodesManager));
+        _ynEigenViewer = new ynEigenViewer(
+            address(assetRegistry),
+            address(ynEigenToken),
+            address(tokenStakingNodesManager),
+            address(rateProvider)
+        );
     }
 
     function testGetAllStakingNodes() public {
