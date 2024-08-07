@@ -275,15 +275,15 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         assetRegistry.initialize(assetRegistryInit);
     }
 
-        function setupYnEigenDepositAdapter() public {
-            ynEigenDepositAdapter.Init memory ynEigenDepositAdapterInit = ynEigenDepositAdapter.Init({
-                ynEigen: address(ynEigenToken),
-                wstETH: chainAddresses.lsd.WSTETH_ADDRESS,
-                woETH: chainAddresses.lsd.WOETH_ADDRESS,
-                admin: actors.admin.ADMIN
-            });
-            vm.prank(actors.admin.PROXY_ADMIN_OWNER);
-            ynEigenDepositAdapterInstance.initialize(ynEigenDepositAdapterInit);
-        }
+    function setupYnEigenDepositAdapter() public {
+        ynEigenDepositAdapter.Init memory ynEigenDepositAdapterInit = ynEigenDepositAdapter.Init({
+            ynEigen: address(ynEigenToken),
+            wstETH: chainAddresses.lsd.WSTETH_ADDRESS,
+            woETH: chainAddresses.lsd.WOETH_ADDRESS,
+            admin: actors.admin.ADMIN
+        });
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+        ynEigenDepositAdapterInstance.initialize(ynEigenDepositAdapterInit);
+    }
 }
 
