@@ -8,6 +8,7 @@ import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 
 import {Script} from "lib/forge-std/src/Script.sol";
@@ -29,6 +30,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         TokenStakingNode tokenStakingNodeImplementation;
         ynEigenDepositAdapter ynEigenDepositAdapterInstance;
         IRateProvider rateProvider;
+        TimelockController upgradeTimelock;
     }
 
     function tokenName() internal virtual pure returns (string memory);
@@ -50,6 +52,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         vm.serializeAddress(json, "tokenStakingNodeImplementation", address(deployment.tokenStakingNodeImplementation));
         serializeProxyElements(json, "ynEigenDepositAdapter", address(deployment.ynEigenDepositAdapterInstance));
         serializeProxyElements(json, "rateProvider", address(deployment.rateProvider));
+        vm.serializeAddress(json, "upgradeTimelock", address(deployment.upgradeTimelock));
 
         ActorAddresses.Actors memory actors = getActors();
         // actors
@@ -80,6 +83,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         deployment.tokenStakingNodeImplementation = TokenStakingNode(payable(jsonContent.readAddress(".tokenStakingNodeImplementation")));
         deployment.ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(jsonContent.readAddress(".proxy-ynEigenDepositAdapter")));
         deployment.rateProvider = IRateProvider(payable(jsonContent.readAddress(".proxy-rateProvider")));
+        deployment.upgradeTimelock = TimelockController(payable(jsonContent.readAddress(".upgradeTimelock")));
 
         return deployment;
     }

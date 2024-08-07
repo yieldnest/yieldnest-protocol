@@ -281,7 +281,8 @@ contract DeployYnLSDe is BaseYnEigenScript {
             tokenStakingNodesManager: tokenStakingNodesManager,
             tokenStakingNodeImplementation: tokenStakingNodeImplementation,
             ynEigenDepositAdapterInstance: ynEigenDepositAdapterInstance,
-            rateProvider: IRateProvider(address(lsdRateProvider))
+            rateProvider: IRateProvider(address(lsdRateProvider)),
+            upgradeTimelock: timelock
         });
         
         saveDeployment(deployment);

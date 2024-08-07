@@ -39,45 +39,48 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
     }
 
     function verifyProxyAdminOwners() internal view {
+
+        address proxyAdminOwner = address(deployment.upgradeTimelock);
+        
         address ynLSDAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynEigen))).owner();
         require(
-            ynLSDAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("ynETH: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(ynLSDAdmin))
+            ynLSDAdmin == proxyAdminOwner,
+            string.concat("ynETH: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(proxyAdminOwner), ", got: ", vm.toString(ynLSDAdmin))
         );
         console.log("\u2705 ynETH: PROXY_ADMIN_OWNER - ", vm.toString(ynLSDAdmin));
 
         address stakingNodesManagerAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.tokenStakingNodesManager))).owner();
         require(
-            stakingNodesManagerAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("stakingNodesManager: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(stakingNodesManagerAdmin))
+            stakingNodesManagerAdmin == proxyAdminOwner,
+            string.concat("stakingNodesManager: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(proxyAdminOwner), ", got: ", vm.toString(stakingNodesManagerAdmin))
         );
         console.log("\u2705 stakingNodesManager: PROXY_ADMIN_OWNER - ", vm.toString(stakingNodesManagerAdmin));
 
         address assetRegistryAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.assetRegistry))).owner();
         require(
-            assetRegistryAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("assetRegistry: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(assetRegistryAdmin))
+            assetRegistryAdmin == proxyAdminOwner,
+            string.concat("assetRegistry: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(proxyAdminOwner), ", got: ", vm.toString(assetRegistryAdmin))
         );
         console.log("\u2705 assetRegistry: PROXY_ADMIN_OWNER - ", vm.toString(assetRegistryAdmin));
 
         address eigenStrategyManagerAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.eigenStrategyManager))).owner();
         require(
-            eigenStrategyManagerAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("eigenStrategyManager: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(eigenStrategyManagerAdmin))
+            eigenStrategyManagerAdmin == proxyAdminOwner,
+            string.concat("eigenStrategyManager: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(proxyAdminOwner), ", got: ", vm.toString(eigenStrategyManagerAdmin))
         );
         console.log("\u2705 eigenStrategyManager: PROXY_ADMIN_OWNER - ", vm.toString(eigenStrategyManagerAdmin));
 
         address ynEigenDepositAdapterAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynEigenDepositAdapterInstance))).owner();
         require(
-            ynEigenDepositAdapterAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("ynEigenDepositAdapter: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(ynEigenDepositAdapterAdmin))
+            ynEigenDepositAdapterAdmin == proxyAdminOwner,
+            string.concat("ynEigenDepositAdapter: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(proxyAdminOwner), ", got: ", vm.toString(ynEigenDepositAdapterAdmin))
         );
         console.log("\u2705 ynEigenDepositAdapter: PROXY_ADMIN_OWNER - ", vm.toString(ynEigenDepositAdapterAdmin));
 
         address ynEigenDepositAdapterInstanceAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynEigenDepositAdapterInstance))).owner();
         require(
-            ynEigenDepositAdapterInstanceAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("ynEigenDepositAdapterInstance: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(ynEigenDepositAdapterInstanceAdmin))
+            ynEigenDepositAdapterInstanceAdmin == proxyAdminOwner,
+            string.concat("ynEigenDepositAdapterInstance: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(proxyAdminOwner), ", got: ", vm.toString(ynEigenDepositAdapterInstanceAdmin))
         );
         console.log("\u2705 ynEigenDepositAdapterInstance: PROXY_ADMIN_OWNER - ", vm.toString(ynEigenDepositAdapterInstanceAdmin));
     }
@@ -230,15 +233,17 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         );
         console.log("\u2705 tokenStakingNodesManager: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
 
+
+        address proxyAdminOwner = address(deployment.upgradeTimelock);
         // STAKING_ADMIN_ROLE
         require(
             deployment.tokenStakingNodesManager.hasRole(
                 deployment.tokenStakingNodesManager.STAKING_ADMIN_ROLE(), 
-                address(actors.admin.STAKING_ADMIN)
+                proxyAdminOwner
             ), 
             "tokenStakingNodesManager: STAKING_ADMIN_ROLE INVALID"
         );
-        console.log("\u2705 tokenStakingNodesManager: STAKING_ADMIN_ROLE - ", vm.toString(address(actors.admin.STAKING_ADMIN)));
+        console.log("\u2705 tokenStakingNodesManager: STAKING_ADMIN_ROLE - ", vm.toString(address(proxyAdminOwner)));
 
         // TOKEN_STAKING_NODE_OPERATOR_ROLE
         require(
