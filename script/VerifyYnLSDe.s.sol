@@ -31,11 +31,52 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         deployment = loadDeployment();
         actors = getActors();
 
+        verifyUpgradeTimelockRoles();
         verifyProxyAdminOwners();
         verifyRoles();
         verifySystemParameters();
         verifyContractDependencies();
         ynLSDeSanityCheck();
+    }
+
+    function verifyUpgradeTimelockRoles() internal view {
+        // Verify PROPOSER_ROLE
+        require(
+            deployment.upgradeTimelock.hasRole(
+                deployment.upgradeTimelock.PROPOSER_ROLE(),
+                address(actors.wallets.YNDev)
+            ),
+            "upgradeTimelock: PROPOSER_ROLE INVALID"
+        );
+        console.log("\u2705 upgradeTimelock: PROPOSER_ROLE - ", vm.toString(address(actors.wallets.YNDev)));
+
+        // Verify EXECUTOR_ROLE
+        require(
+            deployment.upgradeTimelock.hasRole(
+                deployment.upgradeTimelock.EXECUTOR_ROLE(),
+                address(actors.wallets.YNSecurityCouncil)
+            ),
+            "upgradeTimelock: EXECUTOR_ROLE INVALID"
+        );
+        console.log("\u2705 upgradeTimelock: EXECUTOR_ROLE - ", vm.toString(address(actors.wallets.YNSecurityCouncil)));
+
+        // Verify CANCELLER_ROLE
+        require(
+            deployment.upgradeTimelock.hasRole(
+                deployment.upgradeTimelock.CANCELLER_ROLE(),
+                address(actors.wallets.YNDev)
+            ),
+            "upgradeTimelock: CANCELLER_ROLE INVALID"
+        );
+        console.log("\u2705 upgradeTimelock: CANCELLER_ROLE - ", vm.toString(address(actors.wallets.YNDev)));
+
+        // Verify delay
+        uint256 expectedDelay = 3 days; // Adjust this value if the expected delay is different
+        require(
+            deployment.upgradeTimelock.getMinDelay() == expectedDelay,
+            "upgradeTimelock: DELAY INVALID"
+        );
+        console.log("\u2705 upgradeTimelock: DELAY - ", deployment.upgradeTimelock.getMinDelay());
     }
 
     function verifyProxyAdminOwners() internal view {
