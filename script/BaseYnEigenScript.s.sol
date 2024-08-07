@@ -7,6 +7,7 @@ import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
+import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 
 
 import {Script} from "lib/forge-std/src/Script.sol";
@@ -27,6 +28,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         TokenStakingNodesManager tokenStakingNodesManager;
         TokenStakingNode tokenStakingNodeImplementation;
         ynEigenDepositAdapter ynEigenDepositAdapterInstance;
+        IRateProvider rateProvider;
     }
 
     function tokenName() internal virtual pure returns (string memory);
@@ -47,6 +49,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         serializeProxyElements(json, "tokenStakingNodesManager", address(deployment.tokenStakingNodesManager));
         vm.serializeAddress(json, "tokenStakingNodeImplementation", address(deployment.tokenStakingNodeImplementation));
         serializeProxyElements(json, "ynEigenDepositAdapter", address(deployment.ynEigenDepositAdapterInstance));
+        serializeProxyElements(json, "rateProvider", address(deployment.rateProvider));
 
         ActorAddresses.Actors memory actors = getActors();
         // actors
@@ -76,6 +79,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         deployment.eigenStrategyManager = EigenStrategyManager(payable(jsonContent.readAddress(".proxy-eigenStrategyManager")));
         deployment.tokenStakingNodeImplementation = TokenStakingNode(payable(jsonContent.readAddress(".tokenStakingNodeImplementation")));
         deployment.ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(jsonContent.readAddress(".proxy-ynEigenDepositAdapter")));
+        deployment.rateProvider = IRateProvider(payable(jsonContent.readAddress(".proxy-rateProvider")));
 
         return deployment;
     }
