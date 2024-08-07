@@ -86,12 +86,10 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         // Deploy timelock
         {
-            address[] memory _proposers = new address[](2);
-            _proposers[0] = actors.admin.PROXY_ADMIN_OWNER;
-            _proposers[1] = actors.admin.STAKING_ADMIN;
-            address[] memory _executors = new address[](2);
-            _executors[0] = actors.admin.PROXY_ADMIN_OWNER;
-            _executors[1] = actors.admin.STAKING_ADMIN;
+            address[] memory _proposers = new address[](1);
+            _proposers[0] = actors.wallets.YNDev;
+            address[] memory _executors = new address[](1);
+            _executors[0] = actors.wallets.YNSecurityCouncil;
             timelock = new TimelockController(
                 3 days, // delay
                 _proposers,
@@ -251,7 +249,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
         
         // Post Deployment, the actual roles can be set.
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN);
-        tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), actors.admin.STAKING_ADMIN);
+        tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), address(timelock));
 
         // ynEigenDepositAdapter
         {
