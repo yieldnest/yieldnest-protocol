@@ -22,9 +22,6 @@ echo "Chain ID: $CHAIN_ID"
 # List of contracts to verify
 contracts=("YnLSDe" "assetRegistry" "eigenStrategyManager" "tokenStakingNodesManager" "ynEigenDepositAdapter" "rateProvider" "ynEigenViewer")
 
-# Map contracts to their Solidity contract names
-# Declare an associative array to map contracts to their Solidity contract names
-# Function to get Solidity contract name
 get_solidity_contract_name() {
     local contract_key=$1
     local solidity_contract=""
@@ -105,7 +102,7 @@ for contract in "${contracts[@]}"; do
     read proxy impl proxy_admin <<< $(extract_addresses $contract)
     verify_contract $proxy $impl $proxy_admin $contract
 done
-Verify TokenStakingNode implementation
+# Verify TokenStakingNode implementation
 token_staking_node_impl=$(jq -r '.tokenStakingNodeImplementation' "$DEPLOYMENT_FILE")
 forge verify-contract $token_staking_node_impl TokenStakingNode \
     --etherscan-api-key $ETHERSCAN_API_KEY \
@@ -127,20 +124,9 @@ echo "Timelock delay: $delay seconds"
 YNDev=$(jq -r '.YNDev' "$DEPLOYMENT_FILE")
 YNSecurityCouncil=$(jq -r '.YnSecurityCouncil' "$DEPLOYMENT_FILE")
 
-# Create arrays for proposers and executors
-proposers=($YNDev)
-executors=($YNSecurityCouncil)
-
-# Log proposers and executors
-echo "Proposers:"
-for proposer in "${proposers[@]}"; do
-    echo "  $proposer"
-done
-
-echo "Executors:"
-for executor in "${executors[@]}"; do
-    echo "  $executor"
-done
+# Log YNDev and YNSecurityCouncil addresses
+echo "YNDev address: $YNDev"
+echo "YNSecurityCouncil address: $YNSecurityCouncil"
 
 # Encode constructor arguments; assumes only one of each.
 constructor_args=$(cast abi-encode "constructor(uint256,address[],address[],address)" $delay "[$YNDev]" "[$YNSecurityCouncil]" $YNSecurityCouncil)
