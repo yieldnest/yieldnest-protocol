@@ -32,17 +32,17 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         assertEq(_nodes.length, 0, "There should be no nodes");
     }
 
-    function testGetYnLSDeAssets() public {
+    function testGetYnEigenAssets() public {
         IERC20[] memory _assets = assetRegistry.getAssets();
-        assertTrue(_assets.length > 0, "testGetYnLSDeAssets: E0");
+        assertTrue(_assets.length > 0, "testGetYnEigenAssets: E0");
 
-        ynEigenViewer.AssetInfo[] memory _assetsInfo = _ynEigenViewer.getYnLSDeAssets();
+        ynEigenViewer.AssetInfo[] memory _assetsInfo = _ynEigenViewer.getYnEigenAssets();
         for (uint256 i = 0; i < _assets.length; ++i) {
-            assertEq(_assetsInfo[i].asset, address(_assets[i]), "testGetYnLSDeAssets: E1");
-            assertEq(_assetsInfo[i].name, IERC20Metadata(address(_assets[i])).name(), "testGetYnLSDeAssets: E2");
-            assertEq(_assetsInfo[i].symbol, IERC20Metadata(address(_assets[i])).symbol(), "testGetYnLSDeAssets: E3");
-            assertEq(_assetsInfo[i].ratioOfTotalAssets, 0, "testGetYnLSDeAssets: E4");
-            assertEq(_assetsInfo[i].totalBalance, 0, "testGetYnLSDeAssets: E5");
+            assertEq(_assetsInfo[i].asset, address(_assets[i]), "testGetYnEigenAssets: E1");
+            assertEq(_assetsInfo[i].name, IERC20Metadata(address(_assets[i])).name(), "testGetYnEigenAssets: E2");
+            assertEq(_assetsInfo[i].symbol, IERC20Metadata(address(_assets[i])).symbol(), "testGetYnEigenAssets: E3");
+            assertEq(_assetsInfo[i].ratioOfTotalAssets, 0, "testGetYnEigenAssets: E4");
+            assertEq(_assetsInfo[i].totalBalance, 0, "testGetYnEigenAssets: E5");
         }
     }
 }

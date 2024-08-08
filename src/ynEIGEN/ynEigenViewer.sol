@@ -38,7 +38,7 @@ contract ynEigenViewer {
         return tokenStakingNodesManager.getAllNodes();
     }
 
-    function getYnLSDeAssets() external view returns (AssetInfo[] memory _assetsInfo) {
+    function getYnEigenAssets() external view returns (AssetInfo[] memory _assetsInfo) {
         IERC20[] memory _assets = assetRegistry.getAssets();
         uint256 _assetsLength = _assets.length;
         _assetsInfo = new AssetInfo[](_assetsLength);
