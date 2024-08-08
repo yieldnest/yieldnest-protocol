@@ -90,9 +90,11 @@ verify_contract() {
         --etherscan-api-key $ETHERSCAN_API_KEY \
         --rpc-url $RPC_URL
 
+    # FIXME: this still doesn't work.
     # Verify the proxy admin contract
-    forge verify-contract $proxy_admin ProxyAdmin \
+    forge verify-contract \
         --constructor-args $(cast abi-encode "constructor(address)" $timelock_address) \
+        $proxy_admin ProxyAdmin \
         --etherscan-api-key $ETHERSCAN_API_KEY \
         --rpc-url $RPC_URL
 }
