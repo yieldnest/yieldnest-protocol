@@ -19,6 +19,20 @@ echo "Using RPC URL: $RPC_URL"
 CHAIN_ID=$(cast chain-id --rpc-url $RPC_URL)
 echo "Chain ID: $CHAIN_ID"
 
+# List of contracts to verify
+contracts=("YnLSDe" "assetRegistry" "eigenStrategyManager" "tokenStakingNodesManager" "ynEigenDepositAdapter" "rateProvider" "ynEigenViewer")
+
+# Map contracts to their Solidity contract names
+declare -A solidity_contracts=(
+    ["YnLSDe"]="ynEigen"
+    ["assetRegistry"]="AssetRegistry"
+    ["eigenStrategyManager"]="EigenStrategyManager"
+    ["tokenStakingNodesManager"]="TokenStakingNodesManager"
+    ["ynEigenDepositAdapter"]="ynEigenDepositAdapter"
+    ["rateProvider"]="LSDRateProvider"
+    ["ynEigenViewer"]="ynEigenViewer"
+)
+
 # Function to extract proxy and implementation addresses
 extract_addresses() {
     local key=$1
@@ -35,12 +49,19 @@ verify_contract() {
     local proxy_admin=$3
     local contract_name=$4
 
-    echo "Verifying $contract_name..."
+    # Get the Solidity contract name
+    local solidity_contract=${solidity_contracts[$contract_name]}
+    if [ -z "$solidity_contract" ]; then
+        echo "Error: No Solidity contract name found for $contract_name"
+        return 1
+    fi
 
-    # # Verify the implementation contract
-    # forge verify-contract $impl_address $contract_name \
-    #     --etherscan-api-key $ETHERSCAN_API_KEY \
-    #     --rpc-url https://holesky.infura.io/v3/
+    echo "Verifying $contract_name (Solidity contract: $solidity_contract)..."
+
+    # Verify the implementation contract
+    forge verify-contract $impl_address $solidity_contract \
+        --etherscan-api-key $ETHERSCAN_API_KEY \
+        --rpc-url $RPC_URL
 
     # # Verify the proxy contract
     # local proxy_admin=$(jq -r '.upgradeTimelock' "$DEPLOYMENT_FILE")
@@ -51,15 +72,13 @@ verify_contract() {
     #     --rpc-url https://holesky.infura.io/v3/
 }
 
-# List of contracts to verify
-contracts=("YnLSDe" "assetRegistry" "eigenStrategyManager" "tokenStakingNodesManager" "ynEigenDepositAdapter" "rateProvider" "ynEigenViewer")
 
 # Verify each contract
 for contract in "${contracts[@]}"; do
     read proxy impl proxy_admin <<< $(extract_addresses $contract)
     verify_contract $proxy $impl $proxy_admin $contract
 done
-# Verify TokenStakingNode implementation
+Verify TokenStakingNode implementation
 token_staking_node_impl=$(jq -r '.tokenStakingNodeImplementation' "$DEPLOYMENT_FILE")
 forge verify-contract $token_staking_node_impl TokenStakingNode \
     --etherscan-api-key $ETHERSCAN_API_KEY \
@@ -96,11 +115,10 @@ for executor in "${executors[@]}"; do
     echo "  $executor"
 done
 
-# Encode constructor arguments
+# Encode constructor arguments; assumes only one of each.
 constructor_args=$(cast abi-encode "constructor(uint256,address[],address[],address)" $delay "[$YNDev]" "[$YNSecurityCouncil]" $YNSecurityCouncil)
 
 echo "Timelock constructor arguments: $constructor_args"
-
 
 # Verify TimelockController
 timelock_address=$(jq -r '.upgradeTimelock' "$DEPLOYMENT_FILE")
