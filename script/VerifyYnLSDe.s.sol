@@ -71,7 +71,7 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         console.log("\u2705 upgradeTimelock: CANCELLER_ROLE - ", vm.toString(address(actors.wallets.YNDev)));
 
         // Verify delay
-        uint256 expectedDelay = 3 days; // Adjust this value if the expected delay is different
+        uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 3 days;
         require(
             deployment.upgradeTimelock.getMinDelay() == expectedDelay,
             "upgradeTimelock: DELAY INVALID"
