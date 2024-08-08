@@ -23,15 +23,33 @@ echo "Chain ID: $CHAIN_ID"
 contracts=("YnLSDe" "assetRegistry" "eigenStrategyManager" "tokenStakingNodesManager" "ynEigenDepositAdapter" "rateProvider" "ynEigenViewer")
 
 # Map contracts to their Solidity contract names
-declare -A solidity_contracts=(
-    ["YnLSDe"]="ynEigen"
-    ["assetRegistry"]="AssetRegistry"
-    ["eigenStrategyManager"]="EigenStrategyManager"
-    ["tokenStakingNodesManager"]="TokenStakingNodesManager"
-    ["ynEigenDepositAdapter"]="ynEigenDepositAdapter"
-    ["rateProvider"]="LSDRateProvider"
-    ["ynEigenViewer"]="ynEigenViewer"
-)
+# Declare an associative array to map contracts to their Solidity contract names
+# Function to get Solidity contract name
+get_solidity_contract_name() {
+    local contract_key=$1
+    local solidity_contract=""
+
+    if [ "$contract_key" == "YnLSDe" ]; then
+        solidity_contract="ynEigen"
+    elif [ "$contract_key" == "assetRegistry" ]; then
+        solidity_contract="AssetRegistry"
+    elif [ "$contract_key" == "eigenStrategyManager" ]; then
+        solidity_contract="EigenStrategyManager"
+    elif [ "$contract_key" == "tokenStakingNodesManager" ]; then
+        solidity_contract="TokenStakingNodesManager"
+    elif [ "$contract_key" == "ynEigenDepositAdapter" ]; then
+        solidity_contract="ynEigenDepositAdapter"
+    elif [ "$contract_key" == "rateProvider" ]; then
+        solidity_contract="LSDRateProvider"
+    elif [ "$contract_key" == "ynEigenViewer" ]; then
+        solidity_contract="ynEigenViewer"
+    else
+        echo "Error: Unknown contract key '$contract_key'" >&2
+        return 1
+    fi
+
+    echo "$solidity_contract"
+}
 
 # Function to extract proxy and implementation addresses
 extract_addresses() {
@@ -50,7 +68,7 @@ verify_contract() {
     local contract_name=$4
 
     # Get the Solidity contract name
-    local solidity_contract=${solidity_contracts[$contract_name]}
+    local solidity_contract=$(get_solidity_contract_name "$contract_name")
     if [ -z "$solidity_contract" ]; then
         echo "Error: No Solidity contract name found for $contract_name"
         return 1
