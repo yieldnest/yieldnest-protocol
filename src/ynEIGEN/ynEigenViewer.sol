@@ -45,7 +45,7 @@ contract ynEigenViewer {
 
         uint256 _totalAssets = ynEIGEN.totalAssets();
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            uint256 _balance = ynEIGEN.assetBalance(_assets[i]) * rateProvider.rate(address(_assets[i])) / UNIT;
+            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], ynEIGEN.assetBalance(_assets[i]));
             _assetsInfo[i] = AssetInfo({
                 asset: address(_assets[i]),
                 name: IERC20Metadata(address(_assets[i])).name(),
