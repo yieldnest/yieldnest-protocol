@@ -24,7 +24,7 @@ contract ynEigenViewer {
     ITokenStakingNodesManager public immutable tokenStakingNodesManager;
     IRateProvider public immutable rateProvider;
 
-    uint256 public constant DECIMALS = 1_000;
+    uint256 public constant DECIMALS = 1_000_000;
     uint256 public constant UNIT = 1 ether;
 
     constructor(address _assetRegistry, address _ynEIGEN, address _tokenStakingNodesManager, address _rateProvider) {
