@@ -68,6 +68,8 @@ abstract contract BaseYnEigenScript is BaseScript {
         vm.serializeAddress(json, "TOKEN_STAKING_NODE_CREATOR", address(actors.ops.STAKING_NODE_CREATOR));
         vm.serializeAddress(json, "STRATEGY_CONTROLLER", address(actors.ops.STRATEGY_CONTROLLER));
         vm.serializeAddress(json, "EIGEN_STRATEGY_ADMIN", address(actors.admin.EIGEN_STRATEGY_ADMIN));
+        vm.serializeAddress(json, "YnSecurityCouncil", address(actors.wallets.YNSecurityCouncil));
+        vm.serializeAddress(json, "YNDev", address(actors.wallets.YNDev));
         string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address((actors.eoa.DEFAULT_SIGNER)));
         
         vm.writeJson(finalJson, getDeploymentFile());

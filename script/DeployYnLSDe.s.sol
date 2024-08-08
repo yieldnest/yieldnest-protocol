@@ -92,8 +92,16 @@ contract DeployYnLSDe is BaseYnEigenScript {
             _proposers[0] = actors.wallets.YNDev;
             address[] memory _executors = new address[](1);
             _executors[0] = actors.wallets.YNSecurityCouncil;
+            uint256 delay;
+            if (block.chainid == 17000) { // Holesky
+                delay = 15 minutes;
+            } else if (block.chainid == 1) { // Mainnet
+                delay = 3 days;
+            } else {
+                revert("Unsupported chain ID");
+            }
             timelock = new TimelockController(
-                3 days, // delay
+                delay,
                 _proposers,
                 _executors,
                 actors.admin.PROXY_ADMIN_OWNER // admin
@@ -275,7 +283,6 @@ contract DeployYnLSDe is BaseYnEigenScript {
         }
 
         {
-
             address _viewerImplementation = address(new ynEigenViewer(address(assetRegistry), address(ynLSDe), address(tokenStakingNodesManager), address(lsdRateProvider)));
             viewer = ynEigenViewer(address(new TransparentUpgradeableProxy(_viewerImplementation, address(timelock), "")));
         }
