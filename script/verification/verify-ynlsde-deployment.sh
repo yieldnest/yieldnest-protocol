@@ -60,6 +60,8 @@ extract_addresses() {
     echo "$proxy_address $impl_address $proxy_admin"
 }
 
+timelock_address=$(jq -r '.upgradeTimelock' "$DEPLOYMENT_FILE")
+
 # Function to verify a contract
 verify_contract() {
     local proxy_address=$1
@@ -81,13 +83,18 @@ verify_contract() {
         --etherscan-api-key $ETHERSCAN_API_KEY \
         --rpc-url $RPC_URL
 
-    # # Verify the proxy contract
-    # local proxy_admin=$(jq -r '.upgradeTimelock' "$DEPLOYMENT_FILE")
-    # forge verify-contract \
-    #     --constructor-args $(cast abi-encode "constructor(address,address,bytes)" $impl_address $proxy_admin "0x") \
-    #     $proxy_address TransparentUpgradeableProxy \
-    #     --etherscan-api-key $ETHERSCAN_API_KEY \
-    #     --rpc-url https://holesky.infura.io/v3/
+    # Verify the proxy contract
+    forge verify-contract \
+        --constructor-args $(cast abi-encode "constructor(address,address,bytes)" $impl_address $timelock_address "0x") \
+        $proxy_address TransparentUpgradeableProxy \
+        --etherscan-api-key $ETHERSCAN_API_KEY \
+        --rpc-url $RPC_URL
+
+    # Verify the proxy admin contract
+    forge verify-contract $proxy_admin ProxyAdmin \
+        --constructor-args $(cast abi-encode "constructor(address)" $timelock_address) \
+        --etherscan-api-key $ETHERSCAN_API_KEY \
+        --rpc-url $RPC_URL
 }
 
 
@@ -139,7 +146,6 @@ constructor_args=$(cast abi-encode "constructor(uint256,address[],address[],addr
 echo "Timelock constructor arguments: $constructor_args"
 
 # Verify TimelockController
-timelock_address=$(jq -r '.upgradeTimelock' "$DEPLOYMENT_FILE")
 forge verify-contract $timelock_address TimelockController \
      --constructor-args $constructor_args \
     --etherscan-api-key $ETHERSCAN_API_KEY \
