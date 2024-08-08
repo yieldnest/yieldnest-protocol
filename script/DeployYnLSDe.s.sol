@@ -28,6 +28,7 @@ import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
+import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
 
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
@@ -53,6 +54,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
     AssetRegistry assetRegistry;
     ynEigenDepositAdapter ynEigenDepositAdapterInstance;
     TokenStakingNode tokenStakingNodeImplementation;
+    ynEigenViewer viewer;
 
     TimelockController public timelock;
 
@@ -272,6 +274,12 @@ contract DeployYnLSDe is BaseYnEigenScript {
             ynEigenDepositAdapterInstance.initialize(init);
         }
 
+        {
+
+            address _viewerImplementation = address(new ynEigenViewer(address(assetRegistry), address(ynLSDe), address(tokenStakingNodesManager), address(lsdRateProvider)));
+            viewer = ynEigenViewer(address(new TransparentUpgradeableProxy(_viewerImplementation, address(timelock), "")));
+        }
+
         vm.stopBroadcast();
 
         Deployment memory deployment = Deployment({
@@ -282,7 +290,8 @@ contract DeployYnLSDe is BaseYnEigenScript {
             tokenStakingNodeImplementation: tokenStakingNodeImplementation,
             ynEigenDepositAdapterInstance: ynEigenDepositAdapterInstance,
             rateProvider: IRateProvider(address(lsdRateProvider)),
-            upgradeTimelock: timelock
+            upgradeTimelock: timelock,
+            viewer: viewer
         });
         
         saveDeployment(deployment);
