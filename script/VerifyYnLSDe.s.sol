@@ -496,7 +496,6 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         console.log("\u2705 All contract dependencies verified successfully");
     }
 
-    // @dev - cant verify, those dependencies are internal
     function verifyYnEIGENDependencies() internal view {
         //Verify ynEIGEN contract dependencies
         require(
@@ -530,6 +529,12 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
             "tokenStakingNodesManager: upgradeableBeacon dependency mismatch"
         );
         console.log("\u2705 tokenStakingNodesManager: upgradeableBeacon dependency verified successfully");
+
+        require(
+            address(deployment.tokenStakingNodesManager.yieldNestStrategyManager()) == address(deployment.eigenStrategyManager),
+            "tokenStakingNodesManager: yieldNestStrategyManager dependency mismatch"
+        );
+        console.log("\u2705 tokenStakingNodesManager: yieldNestStrategyManager dependency verified successfully");
     }
 
     function verifyAssetRegistryDependencies() internal view {
