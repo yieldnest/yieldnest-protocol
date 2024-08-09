@@ -75,10 +75,36 @@ verify_contract() {
 
     echo "Verifying $contract_name (Solidity contract: $solidity_contract)..."
 
+    
     # Verify the implementation contract
-    forge verify-contract $impl_address $solidity_contract \
-        --etherscan-api-key $ETHERSCAN_API_KEY \
-        --rpc-url $RPC_URL
+    if [ "$contract_name" == "ynEigenViewer" ]; then
+
+        # Extract proxy addresses for ynEigen, eigenStrategyManager, and tokenStakingNodesManager
+        read YnEigen _ _ <<< $(extract_addresses YnLSDe)
+        read AssetRegistry _ _ <<< $(extract_addresses assetRegistry)
+        read TokenStakingNodesManager _ _ <<< $(extract_addresses tokenStakingNodesManager)
+        read RateProvider _ _ <<< $(extract_addresses rateProvider)
+
+        echo "Verifying ynEigenViewer..."
+        echo "AssetRegistry address: $AssetRegistry"
+        echo "YnEigen address: $YnEigen"
+        echo "TokenStakingNodesManager address: $TokenStakingNodesManager"
+        echo "RateProvider address: $RateProvider"
+
+
+        # Encode constructor arguments for ynEigenViewer
+        constructor_args=$(cast abi-encode "constructor(address,address,address,address)" $AssetRegistry  $YnEigen $TokenStakingNodesManager $RateProvider)
+        
+        # Verify the ynEigenViewer implementation contract
+        forge verify-contract $impl_address $solidity_contract \
+            --constructor-args $constructor_args \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --rpc-url $RPC_URL
+    else
+        forge verify-contract $impl_address $solidity_contract \
+            --etherscan-api-key $ETHERSCAN_API_KEY \
+            --rpc-url $RPC_URL
+    fi
 
     # Verify the proxy contract
     forge verify-contract \
@@ -95,7 +121,6 @@ verify_contract() {
         --etherscan-api-key $ETHERSCAN_API_KEY \
         --rpc-url $RPC_URL
 }
-
 
 # Verify each contract
 for contract in "${contracts[@]}"; do
