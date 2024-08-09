@@ -195,14 +195,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /**
      * @dev Validates the withdrawal credentials for a withdrawal.
      * This activates the activation of the staked funds within EigenLayer.
-     * @param oracleTimestamp The timestamp of the oracle that signed the block.
+     * @param beaconTimestamp The timestamp of the oracle that signed the block.
      * @param stateRootProof The state root proof.
      * @param validatorIndices The indices of the validators.
      * @param validatorFieldsProofs The validator fields proofs.
      * @param validatorFields The validator fields.
      */
     function verifyWithdrawalCredentials(
-        uint64 oracleTimestamp,
+        uint64 beaconTimestamp,
         BeaconChainProofs.StateRootProof calldata stateRootProof,
         uint40[] calldata validatorIndices,
         bytes[] calldata validatorFieldsProofs,
@@ -210,7 +210,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     ) external onlyOperator {
 
         IEigenPod(address(eigenPod)).verifyWithdrawalCredentials(
-            oracleTimestamp,
+            beaconTimestamp,
             stateRootProof,
             validatorIndices,
             validatorFieldsProofs,
@@ -223,7 +223,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // (32ETH in the absence of slasing, and less than that if slashed)
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
-            emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
+            emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], beaconTimestamp, effectiveBalanceGwei);
             
             if (effectiveBalanceGwei > 0) {
                 // If the effectiveBalanceGwei is not 0, then the full stake of the validator
@@ -232,7 +232,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 // effectiveBalanceGwei *may* be less than DEFAULT_VALIDATOR_STAKE if the validator was slashed.
                 unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
 
-                emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
+                emit ValidatorRestaked(validatorIndices[i], beaconTimestamp, effectiveBalanceGwei);
             }
         }
     }
