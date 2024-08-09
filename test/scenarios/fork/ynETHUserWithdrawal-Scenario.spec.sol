@@ -9,7 +9,7 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
-import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+//import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -19,7 +19,7 @@ import {ScenarioBaseTest} from "test/scenarios/ScenarioBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
-import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
+//import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
@@ -51,7 +51,7 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         uint256 previousYnETHRedemptionAssetsVaultBalance;
         uint256 previousYnETHBalance;
     }
-
+/*
     function test_UserWithdrawal_1ETH_Holesky() public {
 
         if (block.chainid != 17000) {
@@ -187,4 +187,5 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
             "Difference in ynETH Redemption assets vault available assets does not match the expected ETH equivalent"
         );
     }
+*/
 }

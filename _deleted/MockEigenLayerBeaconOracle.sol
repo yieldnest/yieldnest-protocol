@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
-
+/*
 import "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 
 contract MockEigenLayerBeaconOracle is IBeaconChainOracle  {
@@ -14,7 +14,8 @@ contract MockEigenLayerBeaconOracle is IBeaconChainOracle  {
         mockBeaconChainStateRoot = beaconChainStateRoot;
     }
 
-    function timestampToBlockRoot(uint256 /*blockNumber*/) external view returns(bytes32) {
+    function timestampToBlockRoot(uint256 blockNumber) external view returns(bytes32) {
         return mockBeaconChainStateRoot;
     }
 }
+*/

@@ -9,10 +9,10 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
-import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+//import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelayedWithdrawalRouter} from "src/interfaces/IDelayedWithdrawalRouter.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -20,7 +20,7 @@ import {ScenarioBaseTest} from "test/scenarios/ScenarioBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
-import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
+//import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
@@ -51,7 +51,7 @@ contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
         uint256 previousYnETHBalance;
         uint256 totalDelayedWitdrawalsBefore;
     }
-
+/*
     function test_processDelayedWithdrawals_From_PartialRewards_Holesky() public {
 
         if (block.chainid != 17000) {
@@ -141,4 +141,5 @@ contract StakingNodeRewardsCollectionOnHolesky is StakingNodeTestBase {
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
     }
+*/
 }

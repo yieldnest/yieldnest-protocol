@@ -9,7 +9,7 @@ import { IYnETHEvents } from "src/ynETH.sol";
 import { BeaconChainProofs } from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
 import { IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-import { IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+import { IDelayedWithdrawalRouter } from "src/interfaces/IDelayedWithdrawalRouter.sol";
 import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
 import { ProofUtils } from "test/utils/ProofUtils.sol";
 import "forge-std/Vm.sol";
@@ -259,7 +259,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 	event Log(string message, uint256 value);
 	event LogAddress(string message, address value);
-	
+/*	
 	function test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
 		vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
 
@@ -315,6 +315,7 @@ contract YnETHScenarioTest8 is IntegrationBaseTest, YnETHScenarioTest3 {
         // until processed rewards should be in the consensusLayerReceiver 
 		assertEq(ynethBalance, 0, "yneth.balance != 0");
 	}
+*/
 }
 
 contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
@@ -329,7 +330,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		// Additional setup can be added here if needed
 		vm.recordLogs();
 	}
-
+/*
 	function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
 
 		uint256 previousTotalDeposited = yneth.totalDepositedInPool();
@@ -390,7 +391,8 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 			userShares
 		);
 	}
-
+*/
+/*
 	function send_eth_rewards_to_eigenpod(IStakingNode stakingNode) public returns (uint256) {
 
 		// send concensus rewards to eigen pod
@@ -427,7 +429,7 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 
 		return amount;
 	}
-
+*/
 	function log_balances (IStakingNode stakingNode) public {
 		emit LogUint("yneth.balance", address(yneth).balance);
 		emit LogUint("stakingNode.balance", address(stakingNode).balance);

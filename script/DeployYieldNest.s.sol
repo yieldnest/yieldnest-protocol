@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelayedWithdrawalRouter} from "src/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";

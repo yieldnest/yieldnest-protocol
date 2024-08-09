@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.24;
 import {BaseScript} from "script/BaseScript.s.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ReferralDepositAdapter} from "src/ReferralDepositAdapter.sol";

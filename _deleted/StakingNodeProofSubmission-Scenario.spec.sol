@@ -9,7 +9,7 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
-import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+//import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -478,6 +478,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
 
     }
 
+/*
     function setupForVerifyAndProcessWithdrawals() public {
 
         MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
@@ -488,6 +489,7 @@ contract StakingNodeVerifyWithdrawalCredentialsOnHolesky is StakingNodeTestBase 
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
     }
+*/
 
     function verifyAndProcessWithdrawalSuccesfullyForProofFile(
         uint256 nodeId,

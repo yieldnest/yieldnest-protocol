@@ -9,7 +9,7 @@ import {depositRootGenerator} from "src/external/ethereum/DepositRootGenerator.s
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+import {IDelayedWithdrawalRouter} from "src/interfaces/IDelayedWithdrawalRouter.sol";
 import {IRewardsDistributor,IRewardsReceiver, RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";

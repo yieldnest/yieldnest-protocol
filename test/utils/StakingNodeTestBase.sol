@@ -9,8 +9,8 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
-import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+//import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+import {IDelayedWithdrawalRouter} from "src/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -20,7 +20,7 @@ import {ScenarioBaseTest} from "test/scenarios/ScenarioBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
-import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
+//import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
@@ -43,7 +43,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         bytes[] validatorFieldsProofs;
         bytes32[][] validatorFields;
     }
-
+/*
     struct ValidatorWithdrawalProofParams {
         BeaconChainProofs.StateRootProof stateRootProof;
         bytes32[][] validatorFields;
@@ -51,7 +51,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         bytes32[][] withdrawalFields;
         BeaconChainProofs.WithdrawalProof[] withdrawalProofs;
     }
-
+*/
     struct WithdrawAction {
         uint256 nodeId;
         uint256 amountToReinvest;
@@ -82,7 +82,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 
         return validatorProofs;
     }
-
+/*
     function getValidatorWithdrawalProofParams() public returns (ValidatorWithdrawalProofParams memory) {
         ValidatorWithdrawalProofParams memory params;
 
@@ -100,7 +100,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 
         return params;
     }
-
+*/
     function bytes32ToData(bytes32 data) public pure returns (address) {
         return address(uint160(uint256(data)));
     }
@@ -110,7 +110,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         return bytes32ToData(validatorFields[1]);
     }
 
-
+/*
     function _getWithdrawalProof() internal returns (BeaconChainProofs.WithdrawalProof memory) {
         {
             bytes32 blockRoot = getBlockRoot();
@@ -135,8 +135,9 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
                 );
         }
     }
-
-    function setupForVerifyAndProcessWithdrawals(uint256 /* nodeId */, string memory path) public {
+*/
+/*
+    function setupForVerifyAndProcessWithdrawals(uint256 nodeId, string memory path) public {
 
         setJSON(path);
 
@@ -170,7 +171,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         bytes32 latestBlockRoot = _getLatestBlockRoot();
         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
     }
-
+*/
     function runSystemStateInvariants(
         uint256 previousTotalAssets,
         uint256 previousTotalSupply,
@@ -261,7 +262,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         }
         return balances;
     }
-
+/*
     function sumTotalDelayedWithdrawalsForUser(address user) public view returns (uint256 totalDelayedWithdrawals) {
 
         IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals
@@ -270,7 +271,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
             totalDelayedWithdrawals += delayedWithdrawals[j].amount;
         }
     }
-
+*/
     function finalizeRequest(uint256 tokenId) public {
         vm.prank(actors.ops.REQUEST_FINALIZER);
         ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);

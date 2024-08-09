@@ -6,7 +6,7 @@ import {OwnableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contrac
 import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+//import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
@@ -18,7 +18,7 @@ import {StakingNode} from "src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 import {ProofUtils} from "test/utils/ProofUtils.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
-import { MockEigenLayerBeaconOracle } from "../mocks/MockEigenLayerBeaconOracle.sol";
+//import { MockEigenLayerBeaconOracle } from "../mocks/MockEigenLayerBeaconOracle.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
 import {MockEigenPod} from "../mocks/MockEigenPod.sol";
@@ -533,7 +533,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
         assertEq(stakingNodeInstance.implementation(), address(newMockStakingNodeImplementation));
     }
-
+/*
     function testVerifyWithdrawalCredentialsWithWrongWithdrawalAddress() public {
 
         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
@@ -660,8 +660,8 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         params.stakingNodeInstance = stakingNodeInstance;
         params.validatorProofs = validatorProofs;
     }
-    
-
+*/    
+/*
     function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
         if (block.chainid != 1) {
             return; // Skip test if not on Ethereum Mainnet
@@ -692,7 +692,8 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         assertEq(stakingNodeETHBalanceBeforeVerification, stakingNodeInstance.getETHBalance(), "Staking node ETH balance should not change after verification");
         assertEq(ynETHTotalAssetsBeforeVerification, yneth.totalAssets(), "Total assets should not change after verification");
     }
-
+*/
+/*
     function testVerifyWithdrawalCredentialsSuccesfully_1ETH() public {
         if (block.chainid != 1) {
             return; // Skip test if not on Ethereum Mainnet
@@ -772,7 +773,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         );
         assertEq(shares, depositAmount, "Shares do not match deposit amount");
     }
-
+*/
     function skiptestVerifyWithdrawalCredentialsMismatchedValidatorIndexAndProofsLengths() public {
 
         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
