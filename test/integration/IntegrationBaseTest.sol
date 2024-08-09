@@ -17,9 +17,6 @@ import {IReferralDepositAdapter} from "src/interfaces/IReferralDepositAdapter.so
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
 import {ynETH} from "src/ynETH.sol";
-import {ynLSD} from "src/ynLSD.sol";
-import {YieldNestOracle} from "src/YieldNestOracle.sol";
-import {LSDStakingNode} from "src/LSDStakingNode.sol";
 import {ynViewer} from "src/ynViewer.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
@@ -60,11 +57,6 @@ contract IntegrationBaseTest is Test, Utils {
 
     // Assets
     ynETH public yneth;
-    ynLSD public ynlsd;
-
-
-    // Oracles
-    YieldNestOracle public yieldNestOracle;
 
     // Eigen
     IEigenPodManager public eigenPodManager;
@@ -88,13 +80,11 @@ contract IntegrationBaseTest is Test, Utils {
 
         // Setup Protocol
         setupYnETHPoxies();
-        setupYnLSDProxies();
         setupEthereum();
         setupEigenLayer();
         setupRewardsDistributor();
         setupStakingNodesManager();
         setupYnETH();
-        setupYieldNestOracleAndYnLSD();
         setupUtils();
     }
 
@@ -138,20 +128,6 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager = new StakingNodesManager();
         stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-    }
-
-    function setupYnLSDProxies() public {
-        TransparentUpgradeableProxy ynLSDProxy;
-        TransparentUpgradeableProxy yieldNestOracleProxy;
-
-        yieldNestOracle = new YieldNestOracle();
-        ynlsd = new ynLSD();
-
-        yieldNestOracleProxy = new TransparentUpgradeableProxy(address(yieldNestOracle), actors.admin.PROXY_ADMIN_OWNER, "");
-        ynLSDProxy = new TransparentUpgradeableProxy(address(ynlsd), actors.admin.PROXY_ADMIN_OWNER, "");
-
-        yieldNestOracle = YieldNestOracle(address(yieldNestOracleProxy));
-        ynlsd = ynLSD(address(ynLSDProxy));
     }
 
     function setupUtils() public {
@@ -247,67 +223,6 @@ contract IntegrationBaseTest is Test, Utils {
         stakingNodesManager.initialize(stakingNodesManagerInit);
         vm.prank(actors.admin.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
-    }
-    
-    function setupYieldNestOracleAndYnLSD() public {
-        IERC20[] memory assets = new IERC20[](2);
-        address[] memory assetsAddresses = new address[](2);
-        address[] memory priceFeeds = new address[](2);
-        uint256[] memory maxAges = new uint256[](2);
-        IStrategy[] memory strategies = new IStrategy[](2);
-
-        address[] memory pauseWhitelist = new address[](1);
-        pauseWhitelist[0] = actors.ops.PAUSE_ADMIN;
-
-        // stETH
-        assets[0] = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        assetsAddresses[0] = chainAddresses.lsd.STETH_ADDRESS;
-        strategies[0] = IStrategy(chainAddresses.lsd.STETH_STRATEGY_ADDRESS);
-        priceFeeds[0] = chainAddresses.lsd.STETH_FEED_ADDRESS;
-        maxAges[0] = uint256(86400); //one hour
-
-        // rETH
-        assets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        assetsAddresses[1] = chainAddresses.lsd.RETH_ADDRESS;
-        strategies[1] = IStrategy(chainAddresses.lsd.RETH_STRATEGY_ADDRESS);
-        priceFeeds[1] = chainAddresses.lsd.RETH_FEED_ADDRESS;
-        maxAges[1] = uint256(86400);
-
-        YieldNestOracle.Init memory oracleInit = YieldNestOracle.Init({
-            assets: assetsAddresses,
-            priceFeedAddresses: priceFeeds,
-            maxAges: maxAges,
-            admin: actors.admin.ADMIN,
-            oracleManager: actors.admin.ORACLE_ADMIN
-        });
-        yieldNestOracle.initialize(oracleInit);
-        LSDStakingNode lsdStakingNodeImplementation = new LSDStakingNode();
-        ynLSD.Init memory init = ynLSD.Init({
-            assets: assets,
-            strategies: strategies,
-            strategyManager: strategyManager,
-            delegationManager: delegationManager,
-            oracle: yieldNestOracle,
-            maxNodeCount: 10,
-            admin: actors.admin.ADMIN,
-            unpauser: actors.admin.UNPAUSE_ADMIN,
-            stakingAdmin: actors.admin.STAKING_ADMIN,
-            lsdRestakingManager: actors.ops.LSD_RESTAKING_MANAGER,
-            lsdStakingNodeCreatorRole: actors.ops.STAKING_NODE_CREATOR,
-            pauseWhitelist: pauseWhitelist,
-            pauser: actors.ops.PAUSE_ADMIN,
-            depositBootstrapper: actors.eoa.DEPOSIT_BOOTSTRAPPER
-        });
-
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
-        testAssetUtils.get_stETH(actors.eoa.DEPOSIT_BOOTSTRAPPER, 10000 ether);
-
-        vm.prank(actors.eoa.DEPOSIT_BOOTSTRAPPER);
-        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynlsd), type(uint256).max);
-        ynlsd.initialize(init);
-
-        vm.prank(actors.admin.STAKING_ADMIN);
-        ynlsd.registerLSDStakingNodeImplementationContract(address(lsdStakingNodeImplementation));
     }
 }
 
