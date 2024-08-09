@@ -16,6 +16,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import { IwstETH } from "src/external/lido/IwstETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
+import { MockOETH } from "test/mocks/MockOETH.sol";
+import { IERC4626 } from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 
 import { BaseYnEigenScript } from "script/BaseYnEigenScript.s.sol";
@@ -32,28 +34,6 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
         return "YnLSDe";
     }
 
-    function getWstETH(address _broadcaster, uint256 amount) internal returns (uint256) {
-
-        stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
-        console.log("stETH contract loaded:", address(stETH));
-
-
-        console.log("Allocating ether to contract:", amount);
-        vm.deal(address(this), amount);
-        console.log("Depositing ether to stETH contract");
-        (bool sent, ) = address(stETH).call{value: amount}("");
-        require(sent, "Failed to send Ether");
-        IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
-        console.log("Approving wstETH contract to spend stETH");
-        stETH.approve(address(wstETH), amount);
-        console.log("Wrapping stETH to wstETH");
-        wstETH.wrap(amount);
-        uint256 wstETHBalance = wstETH.balanceOf(_broadcaster);
-        console.log("Balance of wstETH:", wstETHBalance);
-        return wstETHBalance;
-    }
-
-
 
     function run() external {
 
@@ -67,6 +47,8 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
+        require(_broadcaster == actors.eoa.MOCK_CONTROLLER, "Caller must be MOCK_CONTROLLER");
+
         // solhint-disable-next-line no-console
         console.log("Default Signer Address:", _broadcaster);
         // solhint-disable-next-line no-console
@@ -76,33 +58,50 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        uint256 amount = 0.01 ether;
+        // Load OETH contract
+        IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
 
-        uint256 wstETHBalance = getWstETH(_broadcaster, amount);
+        // Mint OETH to _broadcaster
+        // Note: This assumes there's a way to mint OETH directly. In reality, you might need to interact with a specific contract or follow a different process to acquire OETH.
+        uint256 oethAmount = 10 ether; // Adjust this amount as needed
+        MockOETH mockOeth = MockOETH(address(oeth));
+        mockOeth.mint(_broadcaster, oethAmount);
 
-        // console.log("Depositing wstETH into ynEigen");
-        // IynEigen ynEigen = IynEigen(deployment.ynEigen);
-        // wstETH.approve(address(deployment.ynEigen), wstETHBalance);
+        console.log("Minted OETH amount:", oethAmount);
 
-        // deposit half of it.
-        // ynEigen.deposit(IERC20(address(wstETH)), wstETHBalance / 2, _broadcaster);
-        // Send wstETH to the specified address
+        // Load wOETH contract
+        IERC4626 woeth = IERC4626(chainAddresses.lsd.WOETH_ADDRESS);
 
-        address recipient = _broadcaster;
-        uint256 amountToSend = wstETHBalance / 2;
+        // Approve wOETH to spend OETH
+        oeth.approve(address(woeth), oethAmount);
+
+        uint256 depositedOETHAmount = oethAmount / 2;
+        uint256 sentOETHAmount = oethAmount - depositedOETHAmount;
+        // Wrap OETH into wOETH
+        uint256 woethAmount = woeth.deposit(depositedOETHAmount, _broadcaster);
+
+        console.log("Wrapped OETH into wOETH amount:", woethAmount);
+
+        // Define the recipient address (you may want to make this configurable)
+        address recipient = _broadcaster; // or any other address you want to send to
+
+        console.log("Sending wOETH to:", recipient);
+        console.log("Amount to send:", woethAmount);
         
-        console.log("Sending wstETH to:", recipient);
-        console.log("Amount to send:", amountToSend);
+        woeth.transfer(recipient, woethAmount);
         
-        IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
-        bool success = wstETH.transfer(recipient, amountToSend);
-        require(success, "Failed to transfer wstETH");
+        console.log("wOETH transfer successful");
+
+        // Transfer the remaining OETH to the recipient
+        console.log("Sending OETH to:", recipient);
+        console.log("Amount to send:", sentOETHAmount);
         
-        console.log("wstETH transfer successful");
+        oeth.transfer(recipient, sentOETHAmount);
+        
+        console.log("OETH transfer successful");
 
         vm.stopBroadcast();
 
         console.log("Deposit successful");
     }
 }
-
