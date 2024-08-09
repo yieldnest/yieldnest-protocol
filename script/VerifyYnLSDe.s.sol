@@ -401,12 +401,6 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         console.log("\u2705 assetRegistry: asset 3 - Value:", address(deployment.assetRegistry.assets(3)));
 
         require(
-            address(deployment.eigenStrategyManager.ynEigen()) == address(deployment.ynEigen),
-            "eigenStrategyManager: ynEigen INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: ynEigen - Value:", address(deployment.eigenStrategyManager.ynEigen()));
-
-        require(
             address(deployment.eigenStrategyManager.strategyManager()) == address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
             "eigenStrategyManager: strategyManager INVALID"
         );
@@ -492,6 +486,7 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         verifyYnEIGENDependencies();
         verifyTokenStakingNodesManagerDependencies();
         verifyAssetRegistryDependencies();
+        verifyEigenStrategyManagerDependencies();
 
         console.log("\u2705 All contract dependencies verified successfully");
     }
@@ -555,6 +550,14 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
             "assetRegistry: ynEigen dependency mismatch"
         );
         console.log("\u2705 assetRegistry: ynEigen dependency verified successfully");
+    }
+
+    function verifyEigenStrategyManagerDependencies() internal view {
+        require(
+            address(deployment.eigenStrategyManager.ynEigen()) == address(deployment.ynEigen),
+            "eigenStrategyManager: ynEigen INVALID"
+        );
+        console.log("\u2705 eigenStrategyManager: ynEigen - Value:", address(deployment.eigenStrategyManager.ynEigen()));
     }
 
     function ynLSDeSanityCheck() internal {
