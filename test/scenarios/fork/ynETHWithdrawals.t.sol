@@ -55,7 +55,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
             vm.deal(user, 10_000 ether);
 
-            setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
+            // setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
         }
     }
 

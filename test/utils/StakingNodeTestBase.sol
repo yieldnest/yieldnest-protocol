@@ -9,8 +9,8 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
-import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+// import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
+// import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -20,7 +20,7 @@ import {ScenarioBaseTest} from "test/scenarios/ScenarioBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
-import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
+// import { MockEigenLayerBeaconOracle } from "test/mocks/MockEigenLayerBeaconOracle.sol";
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
@@ -49,7 +49,7 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         bytes32[][] validatorFields;
         bytes[] validatorFieldsProofs;
         bytes32[][] withdrawalFields;
-        BeaconChainProofs.WithdrawalProof[] withdrawalProofs;
+        // BeaconChainProofs.WithdrawalProof[] withdrawalProofs;
     }
 
     struct WithdrawAction {
@@ -89,13 +89,13 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         params.validatorFieldsProofs = new bytes[](1);
         params.validatorFields = new bytes32[][](1);
         params.withdrawalFields = new bytes32[][](1);
-        params.withdrawalProofs =  new BeaconChainProofs.WithdrawalProof[](1);
+        // params.withdrawalProofs =  new BeaconChainProofs.WithdrawalProof[](1);
 
         params.stateRootProof.beaconStateRoot = getBeaconStateRoot();
         params.stateRootProof.proof = getStateRootProof();
         params.validatorFields[0] = getValidatorFields();
         params.withdrawalFields[0] = getWithdrawalFields();
-        params.withdrawalProofs[0] = _getWithdrawalProof();
+        // params.withdrawalProofs[0] = _getWithdrawalProof();
         params.validatorFieldsProofs[0] = abi.encodePacked(getValidatorProof());
 
         return params;
@@ -111,65 +111,52 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
     }
 
 
-    function _getWithdrawalProof() internal returns (BeaconChainProofs.WithdrawalProof memory) {
-        {
-            bytes32 blockRoot = getBlockRoot();
-            bytes32 slotRoot = getSlotRoot();
-            bytes32 timestampRoot = getTimestampRoot();
-            bytes32 executionPayloadRoot = getExecutionPayloadRoot();
+    // function _getWithdrawalProof() internal returns (BeaconChainProofs.WithdrawalProof memory) {
+    //     {
+    //         bytes32 blockRoot = getBlockRoot();
+    //         bytes32 slotRoot = getSlotRoot();
+    //         bytes32 timestampRoot = getTimestampRoot();
+    //         bytes32 executionPayloadRoot = getExecutionPayloadRoot();
 
-            return
-                BeaconChainProofs.WithdrawalProof(
-                    abi.encodePacked(getWithdrawalProofDeneb()),
-                    abi.encodePacked(getSlotProof()),
-                    abi.encodePacked(getExecutionPayloadProof()),
-                    abi.encodePacked(getTimestampProofDeneb()),
-                    abi.encodePacked(getHistoricalSummaryProof()),
-                    uint64(getBlockRootIndex()),
-                    uint64(getHistoricalSummaryIndex()),
-                    uint64(getWithdrawalIndex()),
-                    blockRoot,
-                    slotRoot,
-                    timestampRoot,
-                    executionPayloadRoot
-                );
-        }
-    }
+    //         return
+    //             BeaconChainProofs.WithdrawalProof(
+    //                 abi.encodePacked(getWithdrawalProofDeneb()),
+    //                 abi.encodePacked(getSlotProof()),
+    //                 abi.encodePacked(getExecutionPayloadProof()),
+    //                 abi.encodePacked(getTimestampProofDeneb()),
+    //                 abi.encodePacked(getHistoricalSummaryProof()),
+    //                 uint64(getBlockRootIndex()),
+    //                 uint64(getHistoricalSummaryIndex()),
+    //                 uint64(getWithdrawalIndex()),
+    //                 blockRoot,
+    //                 slotRoot,
+    //                 timestampRoot,
+    //                 executionPayloadRoot
+    //             );
+    //     }
+    // }
 
-    function setupForVerifyAndProcessWithdrawals(uint256 /* nodeId */, string memory path) public {
+    // function setupForVerifyWithdrawalCredentials(uint256 nodeId, string memory path) public {
 
-        setJSON(path);
+    //     setJSON(path);
 
-        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+    //     IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
-        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
-        vm.prank(eigenPodManagerOwner);
-        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
-        bytes32 latestBlockRoot = _getLatestBlockRoot();
-        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
-    }
+    //     MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
 
-    function setupForVerifyWithdrawalCredentials(uint256 nodeId, string memory path) public {
-
-        setJSON(path);
-
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-
-        MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
-
-        address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
-        vm.prank(eigenPodManagerOwner);
-        eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+    //     address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+    //     vm.prank(eigenPodManagerOwner);
+    //     eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
         
-        // set existing EigenPod to be the EigenPod of the StakingNode for the 
-        // purpose of testing verifyWithdrawalCredentials
-        address eigenPodAddress = getWithdrawalAddress();
+    //     // set existing EigenPod to be the EigenPod of the StakingNode for the 
+    //     // purpose of testing verifyWithdrawalCredentials
+    //     address eigenPodAddress = getWithdrawalAddress();
 
-        assertEq(eigenPodAddress, address(stakingNodeInstance.eigenPod()), "EigenPod address does not match the expected address");
+    //     assertEq(eigenPodAddress, address(stakingNodeInstance.eigenPod()), "EigenPod address does not match the expected address");
 
-        bytes32 latestBlockRoot = _getLatestBlockRoot();
-        mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
-    }
+    //     bytes32 latestBlockRoot = _getLatestBlockRoot();
+    //     mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    // }
 
     function runSystemStateInvariants(
         uint256 previousTotalAssets,
@@ -262,14 +249,15 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
         return balances;
     }
 
-    function sumTotalDelayedWithdrawalsForUser(address user) public view returns (uint256 totalDelayedWithdrawals) {
+    // // TODO: Update This 
+    // function sumTotalDelayedWithdrawalsForUser(address user) public view returns (uint256 totalDelayedWithdrawals) {
 
-        IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals
-            = delayedWithdrawalRouter.getUserDelayedWithdrawals(user);
-        for (uint256 j = 0; j < delayedWithdrawals.length; j++) {
-            totalDelayedWithdrawals += delayedWithdrawals[j].amount;
-        }
-    }
+    //     IDelayedWithdrawalRouter.DelayedWithdrawal[] memory delayedWithdrawals
+    //         = delayedWithdrawalRouter.getUserDelayedWithdrawals(user);
+    //     for (uint256 j = 0; j < delayedWithdrawals.length; j++) {
+    //         totalDelayedWithdrawals += delayedWithdrawals[j].amount;
+    //     }
+    // }
 
     function finalizeRequest(uint256 tokenId) public {
         vm.prank(actors.ops.REQUEST_FINALIZER);
