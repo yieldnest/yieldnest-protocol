@@ -401,36 +401,6 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         console.log("\u2705 assetRegistry: asset 3 - Value:", address(deployment.assetRegistry.assets(3)));
 
         require(
-            address(deployment.eigenStrategyManager.strategyManager()) == address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
-            "eigenStrategyManager: strategyManager INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: strategyManager - Value:", address(deployment.eigenStrategyManager.strategyManager()));
-
-        require(
-            address(deployment.eigenStrategyManager.delegationManager()) == address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS),
-            "eigenStrategyManager: delegationManager INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: delegationManager - Value:", address(deployment.eigenStrategyManager.delegationManager()));
-
-        require(
-            address(deployment.eigenStrategyManager.tokenStakingNodesManager()) == address(deployment.tokenStakingNodesManager),
-            "eigenStrategyManager: tokenStakingNodesManager INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: tokenStakingNodesManager - Value:", address(deployment.eigenStrategyManager.tokenStakingNodesManager()));
-
-        require(
-            address(deployment.eigenStrategyManager.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
-            "eigenStrategyManager: wstETH INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: wstETH - Value:", address(deployment.eigenStrategyManager.wstETH()));
-
-        require(
-            address(deployment.eigenStrategyManager.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
-            "eigenStrategyManager: woETH INVALID"
-        );
-        console.log("\u2705 eigenStrategyManager: woETH - Value:", address(deployment.eigenStrategyManager.woETH()));
-
-        require(
             deployment.eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS)) == strategies[0],
             "eigenStrategyManager: strategy 0 INVALID"
         );
@@ -558,6 +528,36 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
             "eigenStrategyManager: ynEigen INVALID"
         );
         console.log("\u2705 eigenStrategyManager: ynEigen - Value:", address(deployment.eigenStrategyManager.ynEigen()));
+
+        require(
+            address(deployment.eigenStrategyManager.strategyManager()) == address(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS),
+            "eigenStrategyManager: strategyManager INVALID"
+        );
+        console.log("\u2705 eigenStrategyManager: strategyManager - Value:", address(deployment.eigenStrategyManager.strategyManager()));
+
+        require(
+            address(deployment.eigenStrategyManager.delegationManager()) == address(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS),
+            "eigenStrategyManager: delegationManager INVALID"
+        );
+        console.log("\u2705 eigenStrategyManager: delegationManager - Value:", address(deployment.eigenStrategyManager.delegationManager()));
+
+        require(
+            address(deployment.eigenStrategyManager.tokenStakingNodesManager()) == address(deployment.tokenStakingNodesManager),
+            "eigenStrategyManager: tokenStakingNodesManager INVALID"
+        );
+        console.log("\u2705 eigenStrategyManager: tokenStakingNodesManager - Value:", address(deployment.eigenStrategyManager.tokenStakingNodesManager()));
+
+        require(
+            address(deployment.eigenStrategyManager.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
+            "eigenStrategyManager: wstETH INVALID"
+        );
+        console.log("\u2705 eigenStrategyManager: wstETH - Value:", address(deployment.eigenStrategyManager.wstETH()));
+
+        require(
+            address(deployment.eigenStrategyManager.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
+            "eigenStrategyManager: woETH INVALID"
+        );
+        console.log("\u2705 eigenStrategyManager: woETH - Value:", address(deployment.eigenStrategyManager.woETH()));
     }
 
     function ynLSDeSanityCheck() internal {
