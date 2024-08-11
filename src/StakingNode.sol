@@ -235,14 +235,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         }
     }
 
-    
     /**
-     * @dev Sets the proof submitter for the EigenPod associated with this StakingNode.
-     * This function can only be called by the StakingNodesManager.
-     * @param submitter The address of the new proof submitter.
+     * @dev Create a checkpoint used to prove the pod's active validator set.
+     * This function can only be called by the Operator.
+     * @param revertIfNoBalance Forces a revert if the pod ETH balance is 0.
      */
-    function setProofSubmitter(address submitter) external onlyOperator {
-        eigenPod.setProofSubmitter(submitter);
+    function startCheckpoint(bool revertIfNoBalance) external onlyOperator {
+        eigenPod.startCheckpoint(revertIfNoBalance);
     }
 
     //--------------------------------------------------------------------------------------
