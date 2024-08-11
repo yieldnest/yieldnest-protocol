@@ -101,7 +101,8 @@ contract StakingNodesManager is
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
-    // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    /// @dev redemptionAssetsVault replaces the slot formerly used by: IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    IRedemptionAssetsVault public redemptionAssetsVault;
     IStrategyManager public strategyManager;
     
     UpgradeableBeacon public upgradeableBeacon;
@@ -128,8 +129,6 @@ contract StakingNodesManager is
     mapping(bytes pubkey => bool) usedValidators;
 
     bool public validatorRegistrationPaused;
-
-    IRedemptionAssetsVault public redemptionAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
