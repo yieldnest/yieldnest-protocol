@@ -5,7 +5,7 @@ import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 
-contract HoleskyStakingNodesManager is StakingNodesManager {
+contract PreProdHoleskyStakingNodesManager is StakingNodesManager {
     // Additional functionality can be added here
 
     function initializeStakingNode(IStakingNode node, uint256 nodeCount) internal override {
