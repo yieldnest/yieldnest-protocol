@@ -36,7 +36,7 @@ import { ynETHRedemptionAssetsVault } from "src/ynETHRedemptionAssetsVault.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-import {PreProdHoleskyStakingNodesManager} from "src/PreProdHoleskystakingNodesManager.sol";
+import {PreProdHoleskyStakingNodesManager} from "src/PreProdHoleskyStakingNodesManager.sol";
 import "forge-std/console.sol";
 
 
