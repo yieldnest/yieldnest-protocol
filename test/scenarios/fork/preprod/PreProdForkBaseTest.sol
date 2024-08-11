@@ -220,6 +220,15 @@ contract PreProdForkBaseTest is Test, Utils {
         uint256 balanceAfter = stakingNode1.getETHBalance();
         console.log("Staking Node 1 ETH balance after upgrade:", balanceAfter);
 
+        // Print ETH balance of staking node 0
+        IStakingNode stakingNode0 = stakingNodesManager.nodes(0);
+        uint256 balanceNode0 = stakingNode0.getETHBalance();
+        console.log("Staking Node 0 ETH balance:", balanceNode0);
+
+        // Print totalAssets of ynETH
+        uint256 totalAssets = yneth.totalAssets();
+        console.log("ynETH total assets:", totalAssets);
+
         bytes32 burnerRole = yneth.BURNER_ROLE();
         vm.prank(GLOBAL_ADMIN);
         yneth.grantRole(burnerRole, address(ynETHWithdrawalQueueManager));
