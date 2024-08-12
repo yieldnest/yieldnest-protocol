@@ -5,6 +5,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
+import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
+
+import {HoleskyLSDRateProvider} from "../../../src/testnet/HoleksyLSDRateProvider.sol";
+
 import {TestStakingNodesManagerV2} from "../../mocks/TestStakingNodesManagerV2.sol";
 import {TestStakingNodeV2} from "../../mocks/TestStakingNodeV2.sol";
 
@@ -12,6 +16,8 @@ import "./ynLSDeScenarioBaseTest.sol";
 import "forge-std/console.sol";
 
 contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
+
+    address public constant TIMELOCK = 0x62173555C27C67644C5634e114e42A63A59CD7A5;
     
     function test_Upgrade_ynLSDe_Scenario() public {
         if (block.chainid != 17000) return;
@@ -81,7 +87,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         if (block.chainid != 17000) return;
 
         address previousLSDRateProviderImpl = getTransparentUpgradeableProxyImplementationAddress(address(lsdRateProvider));
-        address newLSDRateProviderImpl = address(new LSDRateProvider());
+        address newLSDRateProviderImpl = address(new HoleskyLSDRateProvider());
         
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
@@ -89,9 +95,8 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         vm.prank(getTransparentUpgradeableProxyAdminAddress(address(lsdRateProvider)));
         ITransparentUpgradeableProxy(address(lsdRateProvider)).upgradeToAndCall(newLSDRateProviderImpl, "");
 
-        // NOTE: fails with `UnsupportedAsset(0x8d09a4502Cc8Cf1547aD300E066060D043f6982D)`
-        // runUpgradeInvariants(address(lsdRateProvider), previousLSDRateProviderImpl, newLSDRateProviderImpl);
-        // runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runUpgradeInvariants(address(lsdRateProvider), previousLSDRateProviderImpl, newLSDRateProviderImpl);
+        runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
     }
 
     function test_Upgrade_ynEigenDepositAdapter() public {
@@ -110,43 +115,29 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
     }
 
-    // function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
-    //     // // Collect all existing eigenPod addresses before the upgrade
-    //     // ITokenStakingNode[] memory tokenStakingNodes = tokenStakingNodesManager.getAllNodes();
-    //     // address[] memory eigenPodAddressesBefore = new address[](tokenStakingNodes.length);
-    //     // for (uint i = 0; i < tokenStakingNodes.length; i++) {
-    //     //     eigenPodAddressesBefore[i] = address(tokenStakingNodes[i].eigenPod());
-    //     // }
+    function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
+        ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
 
-    //     uint256 previousTotalAssets = yneigen.totalAssets();
-    //     uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
+        uint256 previousTotalAssets = yneigen.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-    //     // // Upgrade the StakingNodeManager to support the new initialization version.
-    //     // address newStakingNodesManagerImpl = address(new TestStakingNodesManagerV2());
-    //     // vm.prank(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodeImplementation)));
-    //     // ITransparentUpgradeableProxy(address(tokenStakingNodeImplementation)).upgradeToAndCall(newStakingNodesManagerImpl, "");
+        TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
+        vm.prank(TIMELOCK);
+        tokenStakingNodesManager.upgradeTokenStakingNode(payable(testStakingNodeV2));
 
-    //     // TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
-    //     // vm.prank(actors.admin.STAKING_ADMIN);
-    //     // tokenStakingNodesManager.upgradeTokenStakingNode(payable(testStakingNodeV2));
+        UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
+        address upgradedImplementationAddress = beacon.implementation();
+        assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
 
-    //     // UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
-    //     // address upgradedImplementationAddress = beacon.implementation();
-    //     // assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
+        // check tokenStakingNodesManager.getAllNodes is the same as before
+        ITokenStakingNode[] memory tokenStakingNodesAfter = tokenStakingNodesManager.getAllNodes();
+        assertEq(tokenStakingNodesAfter.length, tokenStakingNodesBefore.length, "TokenStakingNodes length mismatch after upgrade");
+        for (uint i = 0; i < tokenStakingNodesAfter.length; i++) {
+            assertEq(address(tokenStakingNodesAfter[i]), address(tokenStakingNodesBefore[i]), "TokenStakingNode address mismatch after upgrade");
+        }
 
-    //     // // Collect all existing eigenPod addresses after the upgrade
-    //     // address[] memory eigenPodAddressesAfter = new address[](tokenStakingNodes.length);
-    //     // for (uint i = 0; i < tokenStakingNodes.length; i++) {
-    //     //     eigenPodAddressesAfter[i] = address(tokenStakingNodes[i].eigenPod());
-    //     // }
-
-    //     // // Compare eigenPod addresses before and after the upgrade
-    //     // for (uint i = 0; i < tokenStakingNodes.length; i++) {
-    //     //     assertEq(eigenPodAddressesAfter[i], eigenPodAddressesBefore[i], "EigenPod address mismatch after upgrade");
-    //     // }
-
-    //     runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
-    // }
+        runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+    }
 
     function runUpgradeInvariants(
         address proxyAddress,
