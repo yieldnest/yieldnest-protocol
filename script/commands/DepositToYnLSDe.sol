@@ -53,8 +53,6 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
         return wstETHBalance;
     }
 
-
-
     function run() external {
 
         ContractAddresses contractAddresses = new ContractAddresses();
@@ -78,27 +76,32 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
 
         uint256 amount = 0.01 ether;
 
+            
+        IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
+
         uint256 wstETHBalance = getWstETH(_broadcaster, amount);
 
-        // console.log("Depositing wstETH into ynEigen");
-        // IynEigen ynEigen = IynEigen(deployment.ynEigen);
-        // wstETH.approve(address(deployment.ynEigen), wstETHBalance);
+        console.log("Depositing wstETH into ynEigen");
+        IynEigen ynEigen = IynEigen(deployment.ynEigen);
+        wstETH.approve(address(deployment.ynEigen), wstETHBalance);
 
         // deposit half of it.
-        // ynEigen.deposit(IERC20(address(wstETH)), wstETHBalance / 2, _broadcaster);
-        // Send wstETH to the specified address
+        ynEigen.deposit(IERC20(address(wstETH)), wstETHBalance / 2, _broadcaster);
+        
+        
+        
+        // //Send wstETH to the specified address
 
-        address recipient = _broadcaster;
-        uint256 amountToSend = wstETHBalance / 2;
+        // address recipient = _broadcaster;
+        // uint256 amountToSend = wstETHBalance / 2;
         
-        console.log("Sending wstETH to:", recipient);
-        console.log("Amount to send:", amountToSend);
+        // console.log("Sending wstETH to:", recipient);
+        // console.log("Amount to send:", amountToSend);
+    
+        // bool success = wstETH.transfer(recipient, amountToSend);
+        // require(success, "Failed to transfer wstETH");
         
-        IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
-        bool success = wstETH.transfer(recipient, amountToSend);
-        require(success, "Failed to transfer wstETH");
-        
-        console.log("wstETH transfer successful");
+        // console.log("wstETH transfer successful");
 
         vm.stopBroadcast();
 

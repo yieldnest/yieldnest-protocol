@@ -37,6 +37,11 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
 
     function run() external {
 
+        // Check if the current network is Holesky
+        if (block.chainid != 17000) {
+            revert("This script can only be run on the Holesky network");
+        }
+
         ContractAddresses contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
