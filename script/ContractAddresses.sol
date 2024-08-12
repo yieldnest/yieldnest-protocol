@@ -11,6 +11,7 @@ contract ContractAddresses {
         address EIGEN_STRATEGY_MANAGER_ADDRESS;
         address LSD_RATE_PROVIDER_ADDRESS;
         address YNEIGEN_DEPOSIT_ADAPTER_ADDRESS;
+        address TIMELOCK_CONTROLLER_ADDRESS;
     }
 
     struct YieldNestAddresses {
@@ -126,7 +127,8 @@ contract ContractAddresses {
                 ASSET_REGISTRY_ADDRESS: address(0),
                 EIGEN_STRATEGY_MANAGER_ADDRESS: address(0),
                 LSD_RATE_PROVIDER_ADDRESS: address(0),
-                YNEIGEN_DEPOSIT_ADAPTER_ADDRESS: address(0)
+                YNEIGEN_DEPOSIT_ADAPTER_ADDRESS: address(0),
+                TIMELOCK_CONTROLLER_ADDRESS: address(0)
             })
         });
 
@@ -180,7 +182,8 @@ contract ContractAddresses {
                 ASSET_REGISTRY_ADDRESS: 0xaD31546AdbfE1EcD7137310508f112039a35b6F7,
                 EIGEN_STRATEGY_MANAGER_ADDRESS: 0xA0a11A9b84bf87c0323bc183715a22eC7881B7FC,
                 LSD_RATE_PROVIDER_ADDRESS: 0xd68C29263F6dC2Ff8D9307b3AfAcD6D6fDeFbB3A,
-                YNEIGEN_DEPOSIT_ADAPTER_ADDRESS: 0x7d0c1F604571a1c015684e6c15f2DdEc432C5e74
+                YNEIGEN_DEPOSIT_ADAPTER_ADDRESS: 0x7d0c1F604571a1c015684e6c15f2DdEc432C5e74,
+                TIMELOCK_CONTROLLER_ADDRESS: 0x62173555C27C67644C5634e114e42A63A59CD7A5
             })
         });
     }

@@ -13,11 +13,8 @@ import {TestStakingNodesManagerV2} from "../../mocks/TestStakingNodesManagerV2.s
 import {TestStakingNodeV2} from "../../mocks/TestStakingNodeV2.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
-import "forge-std/console.sol";
 
 contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
-
-    address public constant TIMELOCK = 0x62173555C27C67644C5634e114e42A63A59CD7A5;
     
     function test_Upgrade_ynLSDe_Scenario() public {
         if (block.chainid != 17000) return;
@@ -28,8 +25,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-        vm.prank(getTransparentUpgradeableProxyAdminAddress(address(yneigen)));
-        ITransparentUpgradeableProxy(address(yneigen)).upgradeToAndCall(newImplementation, "");
+        upgradeContract(address(yneigen), newImplementation);
 
         runUpgradeInvariants(address(yneigen), previousImplementation, newImplementation);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
@@ -44,8 +40,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-        vm.prank(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager)));
-        ITransparentUpgradeableProxy(address(tokenStakingNodesManager)).upgradeToAndCall(newStakingNodesManagerImpl, "");
+        upgradeContract(address(tokenStakingNodesManager), newStakingNodesManagerImpl);
         
         runUpgradeInvariants(address(tokenStakingNodesManager), previousStakingNodesManagerImpl, newStakingNodesManagerImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
@@ -60,8 +55,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-        vm.prank(getTransparentUpgradeableProxyAdminAddress(address(assetRegistry)));
-        ITransparentUpgradeableProxy(address(assetRegistry)).upgradeToAndCall(newAssetRegistryImpl, "");
+        upgradeContract(address(assetRegistry), newAssetRegistryImpl);
         
         runUpgradeInvariants(address(assetRegistry), previousAssetRegistryImpl, newAssetRegistryImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
@@ -76,8 +70,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-        vm.prank(getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager)));
-        ITransparentUpgradeableProxy(address(eigenStrategyManager)).upgradeToAndCall(newEigenStrategyManagerImpl, "");
+        upgradeContract(address(eigenStrategyManager), newEigenStrategyManagerImpl);
         
         runUpgradeInvariants(address(eigenStrategyManager), previousEigenStrategyManagerImpl, newEigenStrategyManagerImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
@@ -92,8 +85,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-        vm.prank(getTransparentUpgradeableProxyAdminAddress(address(lsdRateProvider)));
-        ITransparentUpgradeableProxy(address(lsdRateProvider)).upgradeToAndCall(newLSDRateProviderImpl, "");
+        upgradeContract(address(lsdRateProvider), newLSDRateProviderImpl);
 
         runUpgradeInvariants(address(lsdRateProvider), previousLSDRateProviderImpl, newLSDRateProviderImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
@@ -108,22 +100,49 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
-        vm.prank(getTransparentUpgradeableProxyAdminAddress(address(ynEigenDepositAdapter_)));
-        ITransparentUpgradeableProxy(address(ynEigenDepositAdapter_)).upgradeToAndCall(newYnEigenDepositAdapterImpl, "");
+        upgradeContract(address(ynEigenDepositAdapter_), newYnEigenDepositAdapterImpl);
         
         runUpgradeInvariants(address(ynEigenDepositAdapter_), previousYnEigenDepositAdapterImpl, newYnEigenDepositAdapterImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
     }
 
     function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
+        if (block.chainid != 17000) return;
+
         ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
 
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
         TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
-        vm.prank(TIMELOCK);
-        tokenStakingNodesManager.upgradeTokenStakingNode(payable(testStakingNodeV2));
+        {
+            bytes memory _data = abi.encodeWithSignature(
+                "upgradeTokenStakingNode(address)",
+                payable(testStakingNodeV2)
+            );
+            vm.startPrank(actors.wallets.YNDev);
+            timelockController.schedule(
+                address(tokenStakingNodesManager), // target
+                0, // value
+                _data,
+                bytes32(0), // predecessor
+                bytes32(0), // salt
+                timelockController.getMinDelay() // delay
+            );
+            vm.stopPrank();
+
+            skip(timelockController.getMinDelay());
+
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
+            timelockController.execute(
+                address(tokenStakingNodesManager), // target
+                0, // value
+                _data,
+                bytes32(0), // predecessor
+                bytes32(0) // salt
+            );
+            vm.stopPrank();
+        }
 
         UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
         address upgradedImplementationAddress = beacon.implementation();
@@ -155,4 +174,35 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         assertEq(yneigen.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 	}
+
+    function upgradeContract(address _proxyAddress, address _newImplementation) internal {
+        bytes memory _data = abi.encodeWithSignature(
+            "upgradeAndCall(address,address,bytes)",
+            _proxyAddress, // proxy
+            _newImplementation, // implementation
+            "" // no data
+        );
+        vm.startPrank(actors.wallets.YNDev);
+        timelockController.schedule(
+            getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
+            0, // value
+            _data,
+            bytes32(0), // predecessor
+            bytes32(0), // salt
+            timelockController.getMinDelay() // delay
+        );
+        vm.stopPrank();
+
+        skip(timelockController.getMinDelay());
+
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.execute(
+            getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
+            0, // value
+            _data,
+            bytes32(0), // predecessor
+            bytes32(0) // salt
+        );
+        vm.stopPrank();
+    }
 }

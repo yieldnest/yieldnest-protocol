@@ -6,6 +6,8 @@ import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegati
 import {IDelayedWithdrawalRouter} from "@eigenlayer/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategyManager} from "@eigenlayer/src/contracts/interfaces/IStrategyManager.sol";
 
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+
 import {Utils} from "../../../script/Utils.sol";
 import {ActorAddresses} from "../../../script/Actors.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
@@ -33,6 +35,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     EigenStrategyManager public eigenStrategyManager;
     LSDRateProvider public lsdRateProvider;
     ynEigenDepositAdapter public ynEigenDepositAdapter_;
+    TimelockController public timelockController;
 
     // Staking
     TokenStakingNodesManager public tokenStakingNodesManager;
@@ -76,6 +79,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         ynEigenDepositAdapter_ = ynEigenDepositAdapter(chainAddresses.ynEigen.YNEIGEN_DEPOSIT_ADAPTER_ADDRESS);
         tokenStakingNodesManager = TokenStakingNodesManager(chainAddresses.ynEigen.TOKEN_STAKING_NODES_MANAGER_ADDRESS);
         yneigen = ynEigen(chainAddresses.ynEigen.YNEIGEN_ADDRESS);
+        timelockController = TimelockController(payable(chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS));
 
     }
 }
