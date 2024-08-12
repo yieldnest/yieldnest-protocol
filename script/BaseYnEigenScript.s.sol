@@ -93,5 +93,13 @@ abstract contract BaseYnEigenScript is BaseScript {
 
         return deployment;
     }
+
+    function getProxyAddress(string memory contractName) public view returns (address) {
+        string memory deploymentFile = getDeploymentFile();
+        string memory jsonContent = vm.readFile(deploymentFile);
+        string memory proxyKey = string.concat(".proxy-", contractName);
+        return jsonContent.readAddress(proxyKey);
+    }
+
 }
 
