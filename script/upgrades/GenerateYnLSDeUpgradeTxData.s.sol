@@ -17,7 +17,7 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import { IwstETH } from "src/external/lido/IwstETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 
 import { BaseYnEigenScript } from "script/BaseYnEigenScript.s.sol";
@@ -65,7 +65,7 @@ contract GenerateYnLSDeUpgradeTxData is BaseYnEigenScript {
 
          bytes memory data = ""; // Empty data for now, can be customized if needed
          bytes memory txData = abi.encodeWithSelector(
-             ITransparentUpgradeableProxy.upgradeToAndCall.selector,
+             ProxyAdmin.upgradeAndCall.selector,
              address(proxy),
              newImplementation,
              data
