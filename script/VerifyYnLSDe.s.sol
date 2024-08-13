@@ -44,11 +44,11 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         require(
             deployment.upgradeTimelock.hasRole(
                 deployment.upgradeTimelock.PROPOSER_ROLE(),
-                address(actors.wallets.YNDev)
+                address(actors.wallets.YNSecurityCouncil)
             ),
             "upgradeTimelock: PROPOSER_ROLE INVALID"
         );
-        console.log("\u2705 upgradeTimelock: PROPOSER_ROLE - ", vm.toString(address(actors.wallets.YNDev)));
+        console.log("\u2705 upgradeTimelock: PROPOSER_ROLE - ", vm.toString(address(actors.wallets.YNSecurityCouncil)));
 
         // Verify EXECUTOR_ROLE
         require(
@@ -64,11 +64,11 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         require(
             deployment.upgradeTimelock.hasRole(
                 deployment.upgradeTimelock.CANCELLER_ROLE(),
-                address(actors.wallets.YNDev)
+                address(actors.wallets.YNSecurityCouncil)
             ),
             "upgradeTimelock: CANCELLER_ROLE INVALID"
         );
-        console.log("\u2705 upgradeTimelock: CANCELLER_ROLE - ", vm.toString(address(actors.wallets.YNDev)));
+        console.log("\u2705 upgradeTimelock: CANCELLER_ROLE - ", vm.toString(address(actors.wallets.YNSecurityCouncil)));
 
         // Verify delay
         uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 3 days;

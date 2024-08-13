@@ -88,8 +88,12 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         // Deploy timelock
         {
+            // Configure TimelockController roles:
+            // - YNSecurityCouncil is set as both proposer and executor
+            // This setup ensures that only the security council can propose, cancel and execute
+            // And the Timelock adds the necessary delay for each upgrade.
             address[] memory _proposers = new address[](1);
-            _proposers[0] = actors.wallets.YNDev;
+            _proposers[0] = actors.wallets.YNSecurityCouncil;
             address[] memory _executors = new address[](1);
             _executors[0] = actors.wallets.YNSecurityCouncil;
             uint256 delay;
