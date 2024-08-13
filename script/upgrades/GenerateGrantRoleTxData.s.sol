@@ -23,7 +23,7 @@ import {BaseScript} from "script/BaseScript.s.sol";
 import { BaseYnEigenScript } from "script/BaseYnEigenScript.s.sol";
 
 
-contract GenerateYnLSDeUpgradeTxData is BaseScript {
+contract GenerateGrantRoleTxData is BaseScript {
 
     function run() external {
         // Get role and account from command line arguments
@@ -33,19 +33,21 @@ contract GenerateYnLSDeUpgradeTxData is BaseScript {
         // Convert role string to bytes32
         bytes32 role = keccak256(bytes(roleString));
 
-        // Print role string
-        console.log("Role:", roleString);
-
-        // Print role as bytes32
-        console.logBytes32(role);
-
-        // Print account address
-        console.log("Account:", account);
+        // Print role information
+        console.log("Role Information:");
+        console.log("----------------");
+        console.log("Role (string):", roleString);
+        console.log("Role (bytes32):", vm.toString(role));
+        console.log("Account:", vm.toString(account));
+        console.log("----------------");
 
         // Generate the calldata for grantRole
         bytes memory callData = abi.encodeWithSignature("grantRole(bytes32,address)", role, account);
 
         // Output the generated calldata
+        console.log("\nGenerated Calldata:");
+        console.log("--------------------");
         console.logBytes(callData);
+        console.log("--------------------");
     }
 }

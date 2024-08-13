@@ -33,48 +33,43 @@ contract GenerateYnLSDeUpgradeTxData is BaseYnEigenScript {
     function tokenName() internal override pure returns (string memory) {
         return "YnLSDe";
     }
-
     function run() external {
-
         ContractAddresses contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
 
         deployment = loadDeployment();
         actors = getActors();
 
-        // solhint-disable-next-line no-console
-        console.log("Current Block Number:", block.number);
-        // solhint-disable-next-line no-console
-        console.log("Current Chain ID:", block.chainid);
-         // Read which contract to upgrade
-         string memory contractToUpgrade = vm.envString("CONTRACT_TO_UPGRADE");
+        console.log("=== Upgrade Information ===");
+        console.log("Current Block Number: %s", block.number);
+        console.log("Current Chain ID: %s", block.chainid);
 
+        string memory contractToUpgrade = vm.envString("CONTRACT_TO_UPGRADE");
         address newImplementation = vm.envAddress("NEW_IMPLEMENTATION");
 
+        console.log("=== Contract Upgrade Details ===");
+        console.log("Contract to upgrade: %s", contractToUpgrade);
+        console.log("Contract address: %s", vm.toString(getProxyAddress(contractToUpgrade)));
 
-        console.log(string.concat("Contract to upgrade: ", contractToUpgrade));
-        console.log(string.concat("New implementation: ", vm.toString(newImplementation)));
+        console.log("New implementation: %s", vm.toString(newImplementation));
 
-         // Cast the contract from the deployment to the proxy
-         address proxyAddress = getProxyAddress(contractToUpgrade);
-         ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddress);
-
+        address proxyAddress = getProxyAddress(contractToUpgrade);
+        ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddress);
         address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(proxy));
 
-         // Generate and print txData for upgradeAndCall
+        bytes memory data = ""; // Empty data for now, can be customized if needed
+        bytes memory txData = abi.encodeWithSelector(
+            ProxyAdmin.upgradeAndCall.selector,
+            address(proxy),
+            newImplementation,
+            data
+        );
 
-         bytes memory data = ""; // Empty data for now, can be customized if needed
-         bytes memory txData = abi.encodeWithSelector(
-             ProxyAdmin.upgradeAndCall.selector,
-             address(proxy),
-             newImplementation,
-             data
-         );
-
-         console.log("Target ProxyAdmin:", vm.toString(proxyAdmin));
-
-         console.log("Upgrade transaction data:");
-         console.logBytes(txData);
+        console.log("=== Upgrade Transaction Details ===");
+        console.log("Upgrade timelock: %s", vm.toString(address(deployment.upgradeTimelock)));
+        console.log("Target ProxyAdmin: %s", vm.toString(proxyAdmin));
+        console.log("Upgrade transaction data:");
+        console.logBytes(txData);
     }
 
 }
