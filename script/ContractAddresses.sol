@@ -4,6 +4,16 @@ pragma solidity ^0.8.24;
 
 contract ContractAddresses {
 
+    struct YnEigenAddresses {
+        address YNEIGEN_ADDRESS;
+        address TOKEN_STAKING_NODES_MANAGER_ADDRESS;
+        address ASSET_REGISTRY_ADDRESS;
+        address EIGEN_STRATEGY_MANAGER_ADDRESS;
+        address LSD_RATE_PROVIDER_ADDRESS;
+        address YNEIGEN_DEPOSIT_ADAPTER_ADDRESS;
+        address TIMELOCK_CONTROLLER_ADDRESS;
+    }
+
     struct YieldNestAddresses {
         address YNETH_ADDRESS;
         address STAKING_NODES_MANAGER_ADDRESS;
@@ -55,6 +65,7 @@ contract ContractAddresses {
         LSDAddresses lsd;
         LSDStrategies lsdStrategies;
         YieldNestAddresses yn;
+        YnEigenAddresses ynEigen;
     }
 
     struct ChainIds {
@@ -109,6 +120,15 @@ contract ContractAddresses {
                 REWARDS_DISTRIBUTOR_ADDRESS: 0x40d5FF3E218f54f4982661a0464a298Cf6652351,
                 EXECUTION_LAYER_RECEIVER_ADDRESS: 0x1D6b2a11FFEa5F9a8Ed85A02581910b3d695C12b,
                 CONSENSUS_LAYER_RECEIVER_ADDRESS: 0xE439fe4563F7666FCd7405BEC24aE7B0d226536e
+            }),
+            ynEigen: YnEigenAddresses({
+                YNEIGEN_ADDRESS: address(0),
+                TOKEN_STAKING_NODES_MANAGER_ADDRESS: address(0),
+                ASSET_REGISTRY_ADDRESS: address(0),
+                EIGEN_STRATEGY_MANAGER_ADDRESS: address(0),
+                LSD_RATE_PROVIDER_ADDRESS: address(0),
+                YNEIGEN_DEPOSIT_ADAPTER_ADDRESS: address(0),
+                TIMELOCK_CONTROLLER_ADDRESS: address(0)
             })
         });
 
@@ -155,6 +175,15 @@ contract ContractAddresses {
                 REWARDS_DISTRIBUTOR_ADDRESS: 0x82915efF62af9FCC0d0735b8681959e069E3f2D8,
                 EXECUTION_LAYER_RECEIVER_ADDRESS: 0xA5E9E1ceb4cC1854d0e186a9B3E67158b84AD072,
                 CONSENSUS_LAYER_RECEIVER_ADDRESS: 0x706EED02702fFE9CBefD6A65E63f3C2b59B7eF2d
+            }),
+            ynEigen: YnEigenAddresses({
+                YNEIGEN_ADDRESS: 0x071bdC8eDcdD66730f45a3D3A6F794FAA37C75ED,
+                TOKEN_STAKING_NODES_MANAGER_ADDRESS: 0x5c20D1a85C7d9acB503135a498E26Eb55d806552,
+                ASSET_REGISTRY_ADDRESS: 0xaD31546AdbfE1EcD7137310508f112039a35b6F7,
+                EIGEN_STRATEGY_MANAGER_ADDRESS: 0xA0a11A9b84bf87c0323bc183715a22eC7881B7FC,
+                LSD_RATE_PROVIDER_ADDRESS: 0xd68C29263F6dC2Ff8D9307b3AfAcD6D6fDeFbB3A,
+                YNEIGEN_DEPOSIT_ADAPTER_ADDRESS: 0x7d0c1F604571a1c015684e6c15f2DdEc432C5e74,
+                TIMELOCK_CONTROLLER_ADDRESS: 0x62173555C27C67644C5634e114e42A63A59CD7A5
             })
         });
     }
