@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 
@@ -29,6 +30,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
 
         runUpgradeInvariants(address(yneigen), previousImplementation, newImplementation);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(yneigen));
     }
     
     function test_Upgrade_TokenStakingNodesManager_Scenario() public {
@@ -44,6 +46,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         
         runUpgradeInvariants(address(tokenStakingNodesManager), previousStakingNodesManagerImpl, newStakingNodesManagerImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(tokenStakingNodesManager));
     }
 
     function test_Upgrade_AssetRegistry() public {
@@ -59,6 +62,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         
         runUpgradeInvariants(address(assetRegistry), previousAssetRegistryImpl, newAssetRegistryImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(assetRegistry));
     }
 
     function test_Upgrade_EigenStrategyManager() public {
@@ -74,6 +78,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         
         runUpgradeInvariants(address(eigenStrategyManager), previousEigenStrategyManagerImpl, newEigenStrategyManagerImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(eigenStrategyManager));
     }
 
     function test_Upgrade_LSDRateProvider() public {
@@ -89,6 +94,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
 
         runUpgradeInvariants(address(lsdRateProvider), previousLSDRateProviderImpl, newLSDRateProviderImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(lsdRateProvider));
     }
 
     function test_Upgrade_ynEigenDepositAdapter() public {
@@ -104,6 +110,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         
         runUpgradeInvariants(address(ynEigenDepositAdapter_), previousYnEigenDepositAdapterImpl, newYnEigenDepositAdapterImpl);
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(ynEigenDepositAdapter_));
     }
 
     function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
@@ -156,6 +163,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         }
 
         runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+        runTransferOwnership(address(tokenStakingNodesManager));
     }
 
     function runUpgradeInvariants(
@@ -175,14 +183,14 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 	}
 
-    function upgradeContract(address _proxyAddress, address _newImplementation) internal {
+    function upgradeContract(address _proxyAddress, address _newImplementation) public {
         bytes memory _data = abi.encodeWithSignature(
             "upgradeAndCall(address,address,bytes)",
             _proxyAddress, // proxy
             _newImplementation, // implementation
             "" // no data
         );
-        vm.startPrank(actors.wallets.YNDev);
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.schedule(
             getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
             0, // value
@@ -204,5 +212,33 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
             bytes32(0) // salt
         );
         vm.stopPrank();
+    }
+
+    function runTransferOwnership(address _proxy) public {
+        address _newOwner = actors.wallets.YNDev;
+        bytes memory _data = abi.encodeWithSignature("transferOwnership(address)", _newOwner);
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.schedule(
+            getTransparentUpgradeableProxyAdminAddress(address(_proxy)), // target
+            0, // value
+            _data,
+            bytes32(0), // predecessor
+            bytes32(0), // salt
+            timelockController.getMinDelay() // delay
+        );
+        vm.stopPrank();
+
+        skip(timelockController.getMinDelay());
+
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.execute(
+            getTransparentUpgradeableProxyAdminAddress(address(_proxy)), // target
+            0, // value
+            _data,
+            bytes32(0), // predecessor
+            bytes32(0) // salt
+        );
+        vm.stopPrank();
+        assertEq(Ownable(getTransparentUpgradeableProxyAdminAddress(address(_proxy))).owner(), _newOwner, "Ownership transfer failed");
     }
 }
