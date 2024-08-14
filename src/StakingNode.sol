@@ -14,7 +14,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ONE_GWEI, DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
+import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -52,7 +52,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     error NotStakingNodesOperator();
-    error ETHDepositorNotDelayedWithdrawalRouterOrEigenPod();
+    error ETHDepositorNotDelegationManagerOrEigenPod();
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
@@ -123,11 +123,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     receive() external payable {
         // Consensus Layer rewards and the validator principal will be sent this way.
-    //    if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())
-    //         && msg.sender != address(eigenPod)) {
-    //         revert ETHDepositorNotDelayedWithdrawalRouterOrEigenPod();
-    //    }
-       emit ETHReceived(msg.sender, msg.value);
+        if (msg.sender != address(stakingNodesManager.delegationManager())
+            && msg.sender != address(eigenPod)) {
+            revert ETHDepositorNotDelegationManagerOrEigenPod();
+        }
+        emit ETHReceived(msg.sender, msg.value);
     }
 
     constructor() {
