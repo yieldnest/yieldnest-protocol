@@ -7,6 +7,17 @@ import {IstETH} from "src/external/lido/IstETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import {ImETHStaking} from "src/external/mantle/ImETHStaking.sol";
 
+
+struct StaderExchangeRate {
+    uint256 block_number;
+    uint256 eth_balance;
+    uint256 ethx_supply;
+}
+
+interface StaderOracle {
+    function getExchangeRate() external view returns (StaderExchangeRate memory);
+}
+
 contract HoleskyLSDRateProvider {
 
     //--------------------------------------------------------------------------------------
@@ -30,6 +41,10 @@ contract HoleskyLSDRateProvider {
     address public constant METH_ASSET = 0xe3C063B1BEe9de02eb28352b55D49D85514C67FF;
     address public constant METH_STAKING_CONTRACT = 0xbe16244EAe9837219147384c8A7560BA14946262;
     address public constant LIDO_UDERLYING = 0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034; // stETH
+
+    /// STADER
+    address public constant STADER_ORACLE = 0x90ED1c6563e99Ea284F7940b1b443CE0BC4fC3e4;
+    address public constant STADER_ASSET = 0xB4F5fc289a778B80392b86fa70A7111E5bE0F859; //ETHX
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -70,6 +85,12 @@ contract HoleskyLSDRateProvider {
         if (_asset == METH_ASSET) {
             return ImETHStaking(METH_STAKING_CONTRACT).mETHToETH(UNIT);
         }
+
+        if (_asset == STADER_ASSET) {
+            StaderExchangeRate memory res = StaderOracle(STADER_ORACLE).getExchangeRate();
+            return (res.eth_balance * UNIT) / res.ethx_supply;
+        }
+        
         revert UnsupportedAsset(_asset);
     }
 }
