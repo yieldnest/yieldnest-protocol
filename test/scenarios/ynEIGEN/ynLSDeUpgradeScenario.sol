@@ -86,7 +86,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
 
         address previousLSDRateProviderImpl = getTransparentUpgradeableProxyImplementationAddress(address(lsdRateProvider));
         address newLSDRateProviderImpl = address(new HoleskyLSDRateProvider());
-        
+
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
 
@@ -215,7 +215,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function runTransferOwnership(address _proxy) public {
-        address _newOwner = actors.wallets.YNDev;
+        address _newOwner = address(0x1241242151);
         bytes memory _data = abi.encodeWithSignature("transferOwnership(address)", _newOwner);
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.schedule(
