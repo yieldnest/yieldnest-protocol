@@ -45,7 +45,7 @@ interface IStakingNode {
     ) external;
     function undelegate() external;
 
-    function processDelayedWithdrawals() external;
+    function processETHSurplus() external;
 
     function implementation() external view returns (address);
 
@@ -87,7 +87,7 @@ interface IStakingNode {
 
     function getUnverifiedStakedETH() external view returns (uint256);
     function getQueuedSharesAmount() external view returns (uint256);
-    function getWithdrawnValidatorPrincipal() external view returns (uint256);
+    function getWithdrawnETH() external view returns (uint256);
     function startCheckpoint(bool revertIfNoBalance) external;
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
 }
