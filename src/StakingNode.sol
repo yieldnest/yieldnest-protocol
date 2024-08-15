@@ -52,7 +52,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     error NotStakingNodesOperator();
-    error ETHDepositorNotDelegationManagerOrEigenPod();
+    error ETHDepositorNotEigenPod();
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
@@ -123,9 +123,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     receive() external payable {
         // Consensus Layer rewards and the validator principal will be sent this way.
-        if (msg.sender != address(stakingNodesManager.delegationManager())
-            && msg.sender != address(eigenPod)) {
-            revert ETHDepositorNotDelegationManagerOrEigenPod();
+        if (msg.sender != address(eigenPod)) {
+            revert ETHDepositorNotEigenPod();
         }
         emit ETHReceived(msg.sender, msg.value);
     }
