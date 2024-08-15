@@ -45,7 +45,6 @@ interface IStakingNode {
     ) external;
     function undelegate() external;
 
-    // function withdrawNonBeaconChainETHBalanceWei() external;
     function processDelayedWithdrawals() external;
 
     function implementation() external view returns (address);
@@ -61,14 +60,14 @@ interface IStakingNode {
 
     /**
      * @notice Verifies the withdrawal credentials and balance of validators.
-     * @param oracleTimestamp An array of oracle block numbers corresponding to each validator.
+     * @param beaconTimestamp An array of oracle block numbers corresponding to each validator.
      * @param stateRootProof An array of state root proofs corresponding to each validator.
      * @param validatorIndices An array of validator indices.
      * @param validatorFieldsProofs An array of ValidatorFieldsAndBalanceProofs, containing the merkle proofs for validator fields and balances.
      * @param validatorFields An array of arrays, each containing the validator fields to be verified.
      */
     function verifyWithdrawalCredentials(
-        uint64 oracleTimestamp,
+        uint64 beaconTimestamp,
         BeaconChainProofs.StateRootProof calldata stateRootProof,
         uint40[] calldata validatorIndices,
         bytes[] calldata validatorFieldsProofs,
@@ -89,6 +88,6 @@ interface IStakingNode {
     function getUnverifiedStakedETH() external view returns (uint256);
     function getQueuedSharesAmount() external view returns (uint256);
     function getWithdrawnValidatorPrincipal() external view returns (uint256);
-
+    function startCheckpoint(bool revertIfNoBalance) external;
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
 }
