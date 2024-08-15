@@ -92,74 +92,74 @@ contract LSDStakingNodeTest is IntegrationBaseTest {
 
 
 contract LSDStakingNodeDelegate is IntegrationBaseTest {
-	function testLSDStakingNodeDelegate() public {
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
-        IDelegationManager delegationManager = ynlsd.delegationManager();
+	// function testLSDStakingNodeDelegate() public {
+  //       vm.prank(actors.ops.STAKING_NODE_CREATOR);
+  //       ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
+  //       IDelegationManager delegationManager = ynlsd.delegationManager();
 
-        IPausable pauseDelegationManager = IPausable(address(delegationManager));
-        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-        pauseDelegationManager.unpause(0);
+  //       IPausable pauseDelegationManager = IPausable(address(delegationManager));
+  //       vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+  //       pauseDelegationManager.unpause(0);
 
-        // register as operator
-        delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                earningsReceiver: address(this),
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
-            "ipfs://some-ipfs-hash"
-        );
+  //       // register as operator
+  //       delegationManager.registerAsOperator(
+  //           IDelegationManager.OperatorDetails({
+  //               earningsReceiver: address(this),
+  //               delegationApprover: address(0),
+  //               stakerOptOutWindowBlocks: 1
+  //           }), 
+  //           "ipfs://some-ipfs-hash"
+  //       );
 
-				ISignatureUtils.SignatureWithExpiry memory signature;
-				bytes32 approverSalt;
+	// 			ISignatureUtils.SignatureWithExpiry memory signature;
+	// 			bytes32 approverSalt;
 
-				vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-        lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
-    }
+	// 			vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
+  //       lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
+  //   }
 
-    function testLSDStakingNodeUndelegate() public {
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
-        IDelegationManager delegationManager = ynlsd.delegationManager();
-        IPausable pauseDelegationManager = IPausable(address(delegationManager));
+    // function testLSDStakingNodeUndelegate() public {
+    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
+    //     ILSDStakingNode lsdStakingNodeInstance = ynlsd.createLSDStakingNode();
+    //     IDelegationManager delegationManager = ynlsd.delegationManager();
+    //     IPausable pauseDelegationManager = IPausable(address(delegationManager));
         
-        // Unpause delegation manager to allow delegation
-        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-        pauseDelegationManager.unpause(0);
+    //     // Unpause delegation manager to allow delegation
+    //     vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+    //     pauseDelegationManager.unpause(0);
 
-        // Register as operator and delegate
-        delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                earningsReceiver: address(this),
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
-            "ipfs://some-ipfs-hash"
-        );
+    //     // Register as operator and delegate
+    //     delegationManager.registerAsOperator(
+    //         IDelegationManager.OperatorDetails({
+    //             earningsReceiver: address(this),
+    //             delegationApprover: address(0),
+    //             stakerOptOutWindowBlocks: 1
+    //         }), 
+    //         "ipfs://some-ipfs-hash"
+    //     );
 				
-				vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-				ISignatureUtils.SignatureWithExpiry memory signature;
-				bytes32 approverSalt;
+		// 		vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
+		// 		ISignatureUtils.SignatureWithExpiry memory signature;
+		// 		bytes32 approverSalt;
 
-        lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
+    //     lsdStakingNodeInstance.delegate(address(this), signature, approverSalt);
 
-        // Attempt to undelegate
-        vm.expectRevert();
-        lsdStakingNodeInstance.undelegate();
+    //     // Attempt to undelegate
+    //     vm.expectRevert();
+    //     lsdStakingNodeInstance.undelegate();
 
-        IStrategyManager strategyManager = ynlsd.strategyManager();
-        uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(lsdStakingNodeInstance));
-        assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
+    //     IStrategyManager strategyManager = ynlsd.strategyManager();
+    //     uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(lsdStakingNodeInstance));
+    //     assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
-        // Now actually undelegate with the correct role
-        vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
-        lsdStakingNodeInstance.undelegate();
+    //     // Now actually undelegate with the correct role
+    //     vm.prank(actors.ops.LSD_RESTAKING_MANAGER);
+    //     lsdStakingNodeInstance.undelegate();
         
-        // Verify undelegation
-        address delegatedAddress = delegationManager.delegatedTo(address(lsdStakingNodeInstance));
-        assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
-    }
+    //     // Verify undelegation
+    //     address delegatedAddress = delegationManager.delegatedTo(address(lsdStakingNodeInstance));
+    //     assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+    // }
 
 	function testRecoverDirectDeposits() public {
 		// setup

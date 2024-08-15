@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+// import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -75,7 +75,7 @@ contract IntegrationBaseTest is Test, Utils {
     // Eigen
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
 
     // Ethereum
@@ -184,11 +184,11 @@ contract IntegrationBaseTest is Test, Utils {
     }
 
     function setupEigenLayer() public {
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(vm.addr(6));
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(vm.addr(6));
         strategyManager = IStrategyManager(vm.addr(7));
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
     }
 
@@ -245,7 +245,7 @@ contract IntegrationBaseTest is Test, Utils {
             ynETH: IynETH(address(yneth)),
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
-            delayedWithdrawalRouter: delayedWithdrawalRouter,
+            // delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             stakingNodeCreatorRole:  actors.ops.STAKING_NODE_CREATOR

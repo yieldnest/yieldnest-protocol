@@ -9,7 +9,6 @@ import {depositRootGenerator} from "src/external/ethereum/DepositRootGenerator.s
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IRewardsDistributor,IRewardsReceiver, RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
@@ -101,7 +100,8 @@ contract StakingNodesManager is
     IEigenPodManager public eigenPodManager;
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    /// @dev redemptionAssetsVault replaces the slot formerly used by: IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    IRedemptionAssetsVault public redemptionAssetsVault;
     IStrategyManager public strategyManager;
     
     UpgradeableBeacon public upgradeableBeacon;
@@ -128,8 +128,6 @@ contract StakingNodesManager is
     mapping(bytes pubkey => bool) usedValidators;
 
     bool public validatorRegistrationPaused;
-
-    IRedemptionAssetsVault public redemptionAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -160,7 +158,6 @@ contract StakingNodesManager is
         IDepositContract depositContract;
         IEigenPodManager eigenPodManager;
         IDelegationManager delegationManager;
-        IDelayedWithdrawalRouter delayedWithdrawalRouter;
         IStrategyManager strategyManager;
     }
 
@@ -212,7 +209,6 @@ contract StakingNodesManager is
         notZeroAddress(address(init.depositContract))
         notZeroAddress(address(init.eigenPodManager))
         notZeroAddress(address(init.delegationManager))
-        notZeroAddress(address(init.delayedWithdrawalRouter))
         notZeroAddress(address(init.strategyManager)) {
         // Ethereum
         depositContractEth2 = init.depositContract;    
@@ -220,7 +216,6 @@ contract StakingNodesManager is
         // Eigenlayer
         eigenPodManager = init.eigenPodManager;    
         delegationManager = init.delegationManager;
-        delayedWithdrawalRouter = init.delayedWithdrawalRouter;
         strategyManager = init.strategyManager;
     }
 

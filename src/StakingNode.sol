@@ -14,7 +14,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ONE_GWEI, DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
+import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -24,7 +24,7 @@ interface StakingNodeEvents {
      event ETHReceived(address sender, uint256 value);
      event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
      event AllocatedStakedETH(uint256 currentUnverifiedStakedETH, uint256 newAmount);
-     event DeallocatedStakedETH(uint256 amount, uint256 currentWithdrawnValidatorPrincipal);
+     event DeallocatedStakedETH(uint256 amount, uint256 currentWithdrawnETH);
      event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
      event VerifyWithdrawalCredentialsCompleted(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
      event WithdrawalProcessed(
@@ -52,7 +52,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
 
     error NotStakingNodesOperator();
-    error ETHDepositorNotDelayedWithdrawalRouterOrEigenPod();
+    error ETHDepositorNotEigenPod();
     error ClaimAmountTooLow(uint256 expected, uint256 actual);
     error ZeroAddress();
     error NotStakingNodesManager();
@@ -60,7 +60,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error NoBalanceToProcess();
     error MismatchInExpectedETHBalanceAfterWithdrawals(uint256 actualWithdrawalAmount, uint256 totalWithdrawalAmount);
     error TransferFailed();
-    error InsufficientWithdrawnValidatorPrincipal(uint256 amount, uint256 withdrawnValidatorPrincipal);
+    error InsufficientWithdrawnETH(uint256 amount, uint256 withdrawnETH);
     error NotStakingNodesWithdrawer();
 
     //--------------------------------------------------------------------------------------
@@ -80,8 +80,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /** @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode */
     uint256 private _unused_former_allocatedETH;
 
-    /** @dev Accounts for withdrawn ETH balance that can be withdrawn by the StakingNodesManager contract */
-    uint256 public withdrawnValidatorPrincipal;
+    /** @dev Accounts for withdrawn ETH balance that can be withdrawn by the StakingNodesManager contract
+            This is made up of both validator principal, rewards and arbitrary ETH sent to the Eigenpod
+            that are withdrawn from Eigenlayer.
+     */
+    uint256 public withdrawnETH;
 
     /** 
      * @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
@@ -123,11 +126,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     receive() external payable {
         // Consensus Layer rewards and the validator principal will be sent this way.
-       if (msg.sender != address(stakingNodesManager.delayedWithdrawalRouter())
-            && msg.sender != address(eigenPod)) {
-            revert ETHDepositorNotDelayedWithdrawalRouterOrEigenPod();
-       }
-       emit ETHReceived(msg.sender, msg.value);
+        if (msg.sender != address(eigenPod)) {
+            revert ETHDepositorNotEigenPod();
+        }
+        emit ETHReceived(msg.sender, msg.value);
     }
 
     constructor() {
@@ -172,28 +174,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //----------------------------------  EXPEDITED WITHDRAWAL   ---------------------------
     //--------------------------------------------------------------------------------------
 
-     /**
-     * @notice  Allows the StakingNode to withdraw ETH from the EigenPod before restaking.
-     * @dev  This allows StakingNode to retrieve rewards from the Consensus Layer that accrue over time as 
-     *       validators sweep them to the withdrawal address
-     */
-    function withdrawNonBeaconChainETHBalanceWei() external onlyOperator {
-
-        // withdraw all available balance to withdraw.
-        //Warning: the ETH balance of the EigenPod may be higher in case there's beacon chain ETH there
-        uint256 balanceToWithdraw = eigenPod.nonBeaconChainETHBalanceWei();
-        eigenPod.withdrawNonBeaconChainETHBalanceWei(address(this), balanceToWithdraw);
-        emit WithdrawnNonBeaconChainETH(balanceToWithdraw, address(eigenPod).balance);
-    }
-
     /**
-     * @notice Processes withdrawals by verifying the node's balance and transferring ETH to the StakingNodesManager.
-     * @dev This function checks if the node's current balance matches the expected balance and then transfers the ETH to the StakingNodesManager.
+     * @notice Processes extra ETH residing in the StakingNode that is not accounted as withdrawnETH as rewards.
+     * @dev 
      */
-    function processDelayedWithdrawals() public nonReentrant onlyOperator {
+    function processETHSurplus() public nonReentrant onlyOperator {
 
         // Delayed withdrawals that do not count as validator principal are handled as rewards
-        uint256 balance = address(this).balance - withdrawnValidatorPrincipal;
+        uint256 balance = address(this).balance - withdrawnETH;
         if (balance == 0) {
             revert NoBalanceToProcess();
         }
@@ -208,15 +196,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     
     /**
      * @dev Validates the withdrawal credentials for a withdrawal.
-     * This activates the activation of the staked funds within EigenLayer.
-     * @param oracleTimestamp The timestamp of the oracle that signed the block.
+     * This activates the staked funds within EigenLayer as shares.
+     * verifyWithdrawalCredentials MUST be called for all validators BEFORE they
+     * are exited from the beacon chain to keep the getETHBalance return value consistent.
+     * If a validator is exited without this call, TVL is double counted for its principal.
+     * @param beaconTimestamp The timestamp of the oracle that signed the block.
      * @param stateRootProof The state root proof.
      * @param validatorIndices The indices of the validators.
      * @param validatorFieldsProofs The validator fields proofs.
      * @param validatorFields The validator fields.
      */
     function verifyWithdrawalCredentials(
-        uint64 oracleTimestamp,
+        uint64 beaconTimestamp,
         BeaconChainProofs.StateRootProof calldata stateRootProof,
         uint40[] calldata validatorIndices,
         bytes[] calldata validatorFieldsProofs,
@@ -224,7 +215,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     ) external onlyOperator {
 
         IEigenPod(address(eigenPod)).verifyWithdrawalCredentials(
-            oracleTimestamp,
+            beaconTimestamp,
             stateRootProof,
             validatorIndices,
             validatorFieldsProofs,
@@ -237,18 +228,26 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // (32ETH in the absence of slasing, and less than that if slashed)
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
-            emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
+            emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], beaconTimestamp, effectiveBalanceGwei);
             
-            if (effectiveBalanceGwei > 0) {
-                // If the effectiveBalanceGwei is not 0, then the full stake of the validator
-                // is verified as part of this process and shares are credited to this StakingNode instance.
-                // This assumes StakingNodesManager.sol always stakes the full 32 ETH in one go.
-                // effectiveBalanceGwei *may* be less than DEFAULT_VALIDATOR_STAKE if the validator was slashed.
-                unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
+            // If the effectiveBalanceGwei is not 0, then the full stake of the validator
+            // is verified as part of this process and shares are credited to this StakingNode instance.
+            // verifyWithdrawalCredentials can only be called for non-exited validators
+            // This assumes StakingNodesManager.sol always stakes the full 32 ETH in one go.
+            // effectiveBalanceGwei *may* be less than DEFAULT_VALIDATOR_STAKE if the validator was slashed.
+            unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
 
-                emit ValidatorRestaked(validatorIndices[i], oracleTimestamp, effectiveBalanceGwei);
-            }
+            emit ValidatorRestaked(validatorIndices[i], beaconTimestamp, effectiveBalanceGwei);
         }
+    }
+
+    /**
+     * @dev Create a checkpoint used to prove the pod's active validator set.
+     * This function can only be called by the Operator.
+     * @param revertIfNoBalance Forces a revert if the pod ETH balance is 0.
+     */
+    function startCheckpoint(bool revertIfNoBalance) external onlyOperator {
+        eigenPod.startCheckpoint(revertIfNoBalance);
     }
 
     //--------------------------------------------------------------------------------------
@@ -293,63 +292,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
-
-
-    /**
-     * @notice Verifies and processes multiple withdrawals for validators.
-     * @dev This function processes each withdrawal proof provided, updating the unverified staked ETH and emitting relevant events.
-     * @param oracleTimestamp The timestamp from the oracle used for verification.
-     * @param stateRootProof The proof of the state root.
-     * @param withdrawalProofs An array of withdrawal proofs to be processed.
-     * @param validatorFieldsProofs An array of proofs for validator fields.
-     * @param validatorFields An array of validator fields, each corresponding to a withdrawal proof.
-     * @param withdrawalFields An array of withdrawal fields, each corresponding to a withdrawal proof.
-     */
-    function verifyAndProcessWithdrawals(
-        uint64 oracleTimestamp,
-        BeaconChainProofs.StateRootProof calldata stateRootProof,
-        BeaconChainProofs.WithdrawalProof[] calldata withdrawalProofs,
-        bytes[] calldata validatorFieldsProofs,
-        bytes32[][] calldata validatorFields,
-        bytes32[][] calldata withdrawalFields
-    ) external onlyOperator {
-
-        for (uint256 i = 0; i < withdrawalProofs.length; i++) {
-            // Emit event for each withdrawal processed
-            emit WithdrawalProcessed(
-                validatorFields[i].getValidatorIndex(),
-                validatorFields[i].getEffectiveBalanceGwei() * ONE_GWEI,
-                validatorFields[i].getWithdrawalCredentials(),
-                validatorFields[i].getWithdrawalAmountGwei() * ONE_GWEI,
-                oracleTimestamp
-            );
-
-            // Check if the withdrawal is a full withdrawal, to decide if to update unverifiedStakedETH
-            if (withdrawalProofs[i].getWithdrawalEpoch() >= validatorFields[i].getWithdrawableEpoch()) {
-                // Retrieve validator info using the pubkey hash
-                IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyHashToInfo(validatorFields[i].getPubkeyHash());
-                
-                if (validatorInfo.restakedBalanceGwei == 0) {
-                    // If restakedBalanceGwei is 0, then the validator stake has not been verified before for this validator.
-                    // Update the unverified staked ETH by subtracting the DEFAULT_VALIDATOR_STAKE
-                    // validatorFields[i].getWithdrawalAmountGwei() *may* be less than DEFAULT_VALIDATOR_STAKE
-                    // if the validator was slashed.
-                    unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
-                }
-            }
-            // For partial withdrawals, sharesDeltaGwei = 0, no change in shares occurs, and no principal is verified.
-        }
-
-        // Call the EigenPod to verify and process the withdrawals
-        eigenPod.verifyAndProcessWithdrawals(
-            oracleTimestamp,
-            stateRootProof,
-            withdrawalProofs,
-            validatorFieldsProofs,
-            validatorFields,
-            withdrawalFields
-        );
-    }
 
     /**
      * @dev Queues a validator Principal withdrawal for processing. DelegationManager calls EigenPodManager.decreasesShares
@@ -447,7 +389,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         queuedSharesAmount -= actualWithdrawalAmount;
 
         // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
-        withdrawnValidatorPrincipal += actualWithdrawalAmount;
+        withdrawnETH += actualWithdrawalAmount;
 
         emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
     }
@@ -473,13 +415,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @param amount The amount of ETH to deallocate and transfer.
      */
     function deallocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
-        if (amount > withdrawnValidatorPrincipal) {
-            revert InsufficientWithdrawnValidatorPrincipal(amount, withdrawnValidatorPrincipal);
+        if (amount > withdrawnETH) {
+            revert InsufficientWithdrawnETH(amount, withdrawnETH);
         }
 
-        emit DeallocatedStakedETH(amount, withdrawnValidatorPrincipal);
+        emit DeallocatedStakedETH(amount, withdrawnETH);
 
-        withdrawnValidatorPrincipal -= amount;
+        withdrawnETH -= amount;
 
         (bool success, ) = address(stakingNodesManager).call{value: amount}("");
         if (!success) {
@@ -489,12 +431,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function getETHBalance() public view returns (uint256) {
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
-        // TODO: unverifiedStakedETH MUST be initialized to the correct value 
-        // ad deploy time
-        // Example: If ALL validators have been verified it MUST be 0
-        // If NONE of the validators have been verified it MUST be equal to former allocatedETH
+    
+        // Compute the total ETH balance of the StakingNode
+        // This includes:
+        // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
+        // 2. unverifiedStakedETH: ETH staked with validators but not yet verified
+        // 3. queuedSharesAmount: Shares queued for withdrawal (1 share = 1 ETH)
+        // 4. podOwnerShares: Active shares in Eigenlayer, representing staked ETH
         int256 totalETHBalance =
-            int256(withdrawnValidatorPrincipal + unverifiedStakedETH + queuedSharesAmount)
+            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount)
             + eigenPodManager.podOwnerShares(address(this));
 
         if (totalETHBalance < 0) {
@@ -522,11 +467,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     /**
-     * @notice Retrieves the amount of ETH that has been withdrawn from validators and is held by this StakingNode.
-     * @return The amount of withdrawn validator principal in wei.
+     * @notice Retrieves the amount of ETH that has been withdrawn from Eigenlayer and is held by this StakingNode.
+               Composed of validator principal, validator staking rewards and arbitrary ETH sent to the Eigenpod.
+     * @return The amount of withdrawn ETH.
      */
-    function getWithdrawnValidatorPrincipal() public view returns (uint256) {
-        return withdrawnValidatorPrincipal;
+    function getWithdrawnETH() public view returns (uint256) {
+        return withdrawnETH;
     }
 
     //--------------------------------------------------------------------------------------

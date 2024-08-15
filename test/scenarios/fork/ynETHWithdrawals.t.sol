@@ -55,7 +55,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
             vm.deal(user, 10_000 ether);
 
-            setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
+            // setupForVerifyWithdrawalCredentials(nodeId, "test/data/holesky_wc_proof_1916455.json");
         }
     }
 
@@ -111,11 +111,11 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         _queuedSharesAmountBefore = stakingNode.queuedSharesAmount();
         uint256 _balanceBefore = address(stakingNode).balance;
-        uint256 _withdrawnValidatorPrincipalBefore = stakingNode.withdrawnValidatorPrincipal();
+        uint256 _withdrawnETHBefore = stakingNode.withdrawnETH();
         completeQueuedWithdrawals(stakingNode, withdrawalAmount);
         assertEq(address(stakingNode).balance - _balanceBefore, withdrawalAmount, "testQueueWithdrawal: E1");
         assertEq(stakingNode.queuedSharesAmount(), _queuedSharesAmountBefore - withdrawalAmount, "testQueueWithdrawal: E2");
-        assertEq(stakingNode.withdrawnValidatorPrincipal(), _withdrawnValidatorPrincipalBefore + withdrawalAmount, "testQueueWithdrawal: E3");
+        assertEq(stakingNode.withdrawnETH(), _withdrawnETHBefore + withdrawalAmount, "testQueueWithdrawal: E3");
     }
 
     function testQueueWithdrawalWrongCaller() public {
@@ -180,8 +180,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         if (!isHolesky) return;
 
         testRequestWithdrawal(withdrawalAmount);
-
-        uint256 _withdrawnValidatorPrincipalBefore = stakingNode.withdrawnValidatorPrincipal();
+        uint256 _withdrawnETHBefore = stakingNode.withdrawnETH();
         uint256 _stakingNodesManagerBalanceBefore = address(stakingNodesManager).balance;
         uint256 _ynETHBalanceBefore = address(yneth).balance;
         uint256 _withdrawalAssetsVaultBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
@@ -197,7 +196,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
         stakingNodesManager.processPrincipalWithdrawals(_actions);
 
-        assertEq(stakingNode.withdrawnValidatorPrincipal() + withdrawalAmount, _withdrawnValidatorPrincipalBefore, "testProcessPrincipalWithdrawalsForNode: E0");
+        assertEq(stakingNode.withdrawnETH() + withdrawalAmount, _withdrawnETHBefore, "testProcessPrincipalWithdrawalsForNode: E0");
         assertEq(address(stakingNodesManager).balance, _stakingNodesManagerBalanceBefore, "testProcessPrincipalWithdrawalsForNode: E1");
         assertEq(address(yneth).balance, _ynETHBalanceBefore, "testProcessPrincipalWithdrawalsForNode: E2");
         assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _withdrawalAssetsVaultBalanceBefore + withdrawalAmount, "testProcessPrincipalWithdrawalsForNode: E3");

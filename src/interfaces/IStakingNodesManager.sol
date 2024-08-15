@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
@@ -35,7 +34,6 @@ interface IStakingNodesManager {
     function delegationManager() external view returns (IDelegationManager);
     function strategyManager() external view returns (IStrategyManager);
 
-    function delayedWithdrawalRouter() external view returns (IDelayedWithdrawalRouter);
     function getAllValidators() external view returns (Validator[] memory);
     function getAllNodes() external view returns (IStakingNode[] memory);
     function isStakingNodesOperator(address) external view returns (bool);
