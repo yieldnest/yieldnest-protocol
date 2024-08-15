@@ -196,7 +196,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     
     /**
      * @dev Validates the withdrawal credentials for a withdrawal.
-     * This activates the activation of the staked funds within EigenLayer.
+     * This activates the staked funds within EigenLayer as shares.
+     * verifyWithdrawalCredentials MUST be called for all validators BEFORE they
+     * are exited from the beacon chain to keep the getETHBalance return value consistent.
+     * If a validator is exited without this call, TVL is double counted for its principal.
      * @param beaconTimestamp The timestamp of the oracle that signed the block.
      * @param stateRootProof The state root proof.
      * @param validatorIndices The indices of the validators.
@@ -428,10 +431,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function getETHBalance() public view returns (uint256) {
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
-        // TODO: unverifiedStakedETH MUST be initialized to the correct value 
-        // ad deploy time
-        // Example: If ALL validators have been verified it MUST be 0
-        // If NONE of the validators have been verified it MUST be equal to former allocatedETH
+    
+        // Compute the total ETH balance of the StakingNode
+        // This includes:
+        // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
+        // 2. unverifiedStakedETH: ETH staked with validators but not yet verified
+        // 3. queuedSharesAmount: Shares queued for withdrawal (1 share = 1 ETH)
+        // 4. podOwnerShares: Active shares in Eigenlayer, representing staked ETH
         int256 totalETHBalance =
             int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount)
             + eigenPodManager.podOwnerShares(address(this));
