@@ -95,7 +95,7 @@ contract ContractAddresses {
                 DEPOSIT_2_ADDRESS: 0x4242424242424242424242424242424242424242
             }),
             eigenlayer: EigenlayerAddresses({
-                EIGENPOD_MANAGER_ADDRESS: 0xB8d8952f572e67B11e43bC21250967772fa883Ff, //0x30770d7E3e71112d7A6b7259542D1f680a70e315, // Placeholder address, replaced with address(1) for holesky
+                EIGENPOD_MANAGER_ADDRESS: 0x30770d7E3e71112d7A6b7259542D1f680a70e315, // Placeholder address, replaced with address(1) for holesky
                 DELEGATION_MANAGER_ADDRESS: 0xA44151489861Fe9e3055d95adC98FbD462B948e7, // Placeholder address, replaced with address(1) for holesky
                 DELEGATION_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348, // Placeholder address, replaced with address(1) for holesky
                 STRATEGY_MANAGER_ADDRESS: 0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6, // Placeholder address, replaced with address(1) for holesky
@@ -112,10 +112,10 @@ contract ContractAddresses {
                 STETH_STRATEGY_ADDRESS: 0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3 // Placeholder address, replaced with address(1) for holesky
             }),
             yn: YieldNestAddresses({
-                YNETH_ADDRESS: 0xe8A0fA11735b9C91F5F89340A2E2720e9c9d19fb, //0xd9029669BC74878BCB5BE58c259ed0A277C5c16E,
-                STAKING_NODES_MANAGER_ADDRESS: 0x535b319b941A40bF117Bc5FBAdF31Fa4d08e01b9, //0xc2387EBb4Ea66627E3543a771e260Bd84218d6a1,
-                REWARDS_DISTRIBUTOR_ADDRESS: 0x7616A52349cd98f124B51b304F2756ab10478F39, //0x82915efF62af9FCC0d0735b8681959e069E3f2D8,
-                EXECUTION_LAYER_RECEIVER_ADDRESS: 0xB65375A51CB304B367D7De5D525Ea570a480CdBF, //0xA5E9E1ceb4cC1854d0e186a9B3E67158b84AD072,
+                YNETH_ADDRESS: 0xd9029669BC74878BCB5BE58c259ed0A277C5c16E,
+                STAKING_NODES_MANAGER_ADDRESS: 0xc2387EBb4Ea66627E3543a771e260Bd84218d6a1,
+                REWARDS_DISTRIBUTOR_ADDRESS: 0x82915efF62af9FCC0d0735b8681959e069E3f2D8,
+                EXECUTION_LAYER_RECEIVER_ADDRESS: 0xA5E9E1ceb4cC1854d0e186a9B3E67158b84AD072,
                 CONSENSUS_LAYER_RECEIVER_ADDRESS: 0x706EED02702fFE9CBefD6A65E63f3C2b59B7eF2d
             })
         });
