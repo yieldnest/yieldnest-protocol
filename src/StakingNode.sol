@@ -226,6 +226,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             
             // If the effectiveBalanceGwei is not 0, then the full stake of the validator
             // is verified as part of this process and shares are credited to this StakingNode instance.
+            // verifyWithdrawalCredentials can only be called for non-exited validators
             // This assumes StakingNodesManager.sol always stakes the full 32 ETH in one go.
             // effectiveBalanceGwei *may* be less than DEFAULT_VALIDATOR_STAKE if the validator was slashed.
             unverifiedStakedETH -= DEFAULT_VALIDATOR_STAKE;
