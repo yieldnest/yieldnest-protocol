@@ -289,8 +289,10 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         {
             address _viewerImplementation = address(new ynEigenViewer(address(assetRegistry), address(ynLSDe), address(tokenStakingNodesManager), address(lsdRateProvider)));
+
+            // ProxyAdmin Owner set to YNSecurityCouncil since ynEigenViewer does not run production on-chain SC logic.
             viewer = ynEigenViewer(
-                address(new TransparentUpgradeableProxy(_viewerImplementation, address(actors.wallets.YNDev), "")
+                address(new TransparentUpgradeableProxy(_viewerImplementation, address(actors.wallets.YNSecurityCouncil), "")
             ));
         }
 
