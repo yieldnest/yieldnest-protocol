@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {IEigenPodManager} from "@eigenlayer/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "@eigenlayer/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategyManager} from "@eigenlayer/src/contracts/interfaces/IStrategyManager.sol";
 
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
@@ -47,7 +46,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     // Eigen
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
 
     function setUp() public virtual {
@@ -66,7 +64,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         // Assign Eigenlayer addresses
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
 
         // Assign LSD addresses
