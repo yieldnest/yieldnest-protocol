@@ -83,7 +83,6 @@ contract DeployYnLSDe is BaseYnEigenScript {
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
 
         // Deploy timelock
@@ -108,7 +107,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
                 delay,
                 _proposers,
                 _executors,
-                actors.admin.PROXY_ADMIN_OWNER // admin
+                actors.wallets.YNSecurityCouncil // admin
             );
         }
 
@@ -137,7 +136,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         if (block.chainid == 1) {
 
-            uint256 assetCount = 3;
+            uint256 assetCount = 4;
             assets = new IERC20[](assetCount);
             assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
             assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
@@ -191,7 +190,7 @@ contract DeployYnLSDe is BaseYnEigenScript {
             address[] memory lsdPauseWhitelist = new address[](0);
 
             ynEigen.Init memory ynlsdeInit = ynEigen.Init({
-                name: "Eigenlayer YieldNest LSD",
+                name: "YieldNest Restaked LSD - Eigenlayer",
                 symbol: "ynLSDe",
                 admin: actors.admin.ADMIN,
                 pauser: actors.ops.PAUSE_ADMIN,
