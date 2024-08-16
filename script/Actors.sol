@@ -23,7 +23,6 @@ contract ActorAddresses {
     struct OpsActors {
         address STAKING_NODES_OPERATOR;
         address VALIDATOR_MANAGER;
-        address LSD_RESTAKING_MANAGER;
         address STAKING_NODE_CREATOR;
         address POOLED_DEPOSITS_OWNER;
         address PAUSE_ADMIN;
@@ -85,7 +84,6 @@ contract ActorAddresses {
                 ops: OpsActors({
                     STAKING_NODES_OPERATOR: holeskyWallets.YNDev,
                     VALIDATOR_MANAGER: holeskyWallets.YNValidatorService,
-                    LSD_RESTAKING_MANAGER: holeskyWallets.YNDev,
                     STAKING_NODE_CREATOR: holeskyWallets.YNDev,
                     POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
                     PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
@@ -129,7 +127,6 @@ contract ActorAddresses {
             ops: OpsActors({
                 STAKING_NODES_OPERATOR:mainnetWallets.YNDev,
                 VALIDATOR_MANAGER: mainnetWallets.YNValidatorService,
-                LSD_RESTAKING_MANAGER: mainnetWallets.YNDev,
                 STAKING_NODE_CREATOR: mainnetWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
