@@ -78,4 +78,11 @@ contract ynEigenViewer {
             return ynEIGEN.previewDeposit(IERC20(asset), amount);
         }
     }
+    
+    function getRate() external view returns (uint256) {
+        uint256 _totalSupply = ynEIGEN.totalSupply();
+        uint256 _totalAssets = ynEIGEN.totalAssets();
+        if (_totalSupply == 0 || _totalAssets == 0) return 1 ether;
+        return 1 ether * _totalAssets / _totalSupply;
+    }
 }

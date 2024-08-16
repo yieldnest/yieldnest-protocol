@@ -59,4 +59,12 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         // Verify the result
         assertTrue(expectedShares > 0, "Expected shares should be greater than 0");
     }
+
+    function testGetRate() public {
+        // Get rate
+        uint256 rate = _ynEigenViewer.getRate();
+
+        // Verify that the rate is not zero
+        assertEq(rate, 1e18, "Rate is 1 with no deposits");
+    }
 }
