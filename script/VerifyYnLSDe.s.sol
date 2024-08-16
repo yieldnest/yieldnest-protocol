@@ -70,6 +70,16 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         );
         console.log("\u2705 upgradeTimelock: CANCELLER_ROLE - ", vm.toString(address(actors.wallets.YNSecurityCouncil)));
 
+        // Verify DEFAULT_ADMIN_ROLE
+        require(
+            deployment.upgradeTimelock.hasRole(
+                deployment.upgradeTimelock.DEFAULT_ADMIN_ROLE(),
+                address(actors.wallets.YNSecurityCouncil)
+            ),
+            "upgradeTimelock: DEFAULT_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 upgradeTimelock: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.wallets.YNSecurityCouncil)));
+
         // Verify delay
         uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 3 days;
         require(
@@ -347,16 +357,18 @@ contract VerifyYnLSDeScript is BaseYnEigenScript {
         IERC20[] memory assets;
         IStrategy[] memory strategies;
         if (block.chainid == 1) {
-            uint256 assetCount = 3;
+            uint256 assetCount = 4;
             assets = new IERC20[](assetCount);
             assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
             assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
             assets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+            assets[3] = IERC20(chainAddresses.lsd.METH_ADDRESS);
 
             strategies = new IStrategy[](assetCount);
             strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
             strategies[1] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
             strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+            strategies[3] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
 
         } else if (block.chainid == 17000) {
 
