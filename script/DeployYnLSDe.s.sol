@@ -4,9 +4,7 @@ pragma solidity ^0.8.24;
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
@@ -43,9 +41,7 @@ import {console} from "lib/forge-std/src/console.sol";
 contract DeployYnLSDe is BaseYnEigenScript {
 
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
-    IEigenPodManager public eigenPodManager;
 
     ynEigen ynLSDe;
     LSDRateProvider lsdRateProvider;
@@ -81,7 +77,6 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
 
