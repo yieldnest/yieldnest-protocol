@@ -61,7 +61,7 @@ contract ActorAddresses {
                 // TODO: replace with concrete deployment
                 YNStrategyController: 0x1234567890123456789012345678901234567890,
                 // TODO: replace with concrete deployment
-                YNTokenStakingNodeOperator:0x2234567890123456789012345678901234567890
+                YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890
             });
 
             actors[17000] = Actors({
@@ -103,7 +103,7 @@ contract ActorAddresses {
             YNDev: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
             YNValidatorService: 0x8e20eAf121154B69B7b880FA6c617c0175c4dE2e,
             // TODO: replace with concrete deployment
-            YNStrategyController: 0x1234567890123456789012345678901234567890,
+            YNStrategyController: 0x0573A7DaFBc080064663623979287286Bb65C1BD,
             // TODO: replace with concrete deployment
             YNTokenStakingNodeOperator:0x2234567890123456789012345678901234567890
         });
