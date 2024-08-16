@@ -6,7 +6,7 @@ import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extens
 import {ITokenStakingNodesManager,ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNodesManager.sol";
 
 import {ynEigenViewer} from "../../../src/ynEIGEN/ynEigenViewer.sol";
-
+import {console} from "forge-std/console.sol";
 import "./ynEigenIntegrationBaseTest.sol";
 
 interface IAssetRegistryView {
@@ -44,5 +44,19 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
             assertEq(_assetsInfo[i].ratioOfTotalAssets, 0, "testGetYnEigenAssets: E4");
             assertEq(_assetsInfo[i].totalBalance, 0, "testGetYnEigenAssets: E5");
         }
+    }
+
+    function testPreviewDepositStETH() public {
+        // Set up test amount
+        uint256 testAmount = 1 ether;
+
+        // Log STETH_ADDRESS
+        console.log("STETH_ADDRESS:", address(chainAddresses.lsd.STETH_ADDRESS));
+
+        // Call previewDeposit
+        uint256 expectedShares = _ynEigenViewer.previewDeposit(IERC20(chainAddresses.lsd.STETH_ADDRESS), testAmount);
+
+        // Verify the result
+        assertTrue(expectedShares > 0, "Expected shares should be greater than 0");
     }
 }

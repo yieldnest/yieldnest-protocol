@@ -2,12 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
+import {IwstETH} from "../external/lido/IwstETH.sol";
 import {IynEigen} from "../interfaces/IynEigen.sol";
 import {IRateProvider} from "../interfaces/IRateProvider.sol";
 import {ITokenStakingNodesManager,ITokenStakingNode} from "../interfaces/ITokenStakingNodesManager.sol";
-
+import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {AssetRegistry} from "./AssetRegistry.sol";
+import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
+
 
 contract ynEigenViewer {
     
@@ -53,6 +55,27 @@ contract ynEigenViewer {
                 ratioOfTotalAssets: (_balance > 0 && _totalAssets > 0) ? _balance * DECIMALS / _totalAssets : 0,
                 totalBalance: _balance
             });
+        }
+    }
+
+    function previewDeposit(IERC20 asset, uint256 amount) external view returns (uint256 shares) {
+        IEigenStrategyManager eigenStrategyManager = IEigenStrategyManager(ynEIGEN.yieldNestStrategyManager());
+        address oETH = address(eigenStrategyManager.oETH());
+        address stETH = address(eigenStrategyManager.stETH());
+        address woETH = address(eigenStrategyManager.woETH());
+        address wstETH = address(eigenStrategyManager.wstETH());
+
+        if (address(asset) == oETH) {
+            // Convert oETH to woETH
+            uint256 woETHAmount = IERC4626(woETH).convertToShares(amount);
+            return ynEIGEN.previewDeposit(IERC20(woETH), woETHAmount);
+        } else if (address(asset) == stETH) {
+            // Convert stETH to wstETH
+            uint256 wstETHAmount = IwstETH(wstETH).getWstETHByStETH(amount);
+            return ynEIGEN.previewDeposit(IERC20(wstETH), wstETHAmount);
+        } else {
+            // For all other assets, use the standard previewDeposit function
+            return ynEIGEN.previewDeposit(IERC20(asset), amount);
         }
     }
 }
