@@ -288,7 +288,9 @@ contract DeployYnLSDe is BaseYnEigenScript {
 
         {
             address _viewerImplementation = address(new ynEigenViewer(address(assetRegistry), address(ynLSDe), address(tokenStakingNodesManager), address(lsdRateProvider)));
-            viewer = ynEigenViewer(address(new TransparentUpgradeableProxy(_viewerImplementation, address(timelock), "")));
+            viewer = ynEigenViewer(
+                address(new TransparentUpgradeableProxy(_viewerImplementation, address(actors.wallets.YNDev), "")
+            ));
         }
 
         vm.stopBroadcast();
