@@ -105,7 +105,7 @@ contract ActorAddresses {
             // TODO: replace with concrete deployment
             YNStrategyController: 0x0573A7DaFBc080064663623979287286Bb65C1BD,
             // TODO: replace with concrete deployment
-            YNTokenStakingNodeOperator:0x2234567890123456789012345678901234567890
+            YNTokenStakingNodeOperator: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975 // same as YNSecurityCouncil
         });
 
         actors[1] = Actors({
