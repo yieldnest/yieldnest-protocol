@@ -142,11 +142,13 @@ contract DeployYnLSDe is BaseYnEigenScript {
             assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
             assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
             assets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+            assets[3] = IERC20(chainAddresses.lsd.METH_ADDRESS);
 
             strategies = new IStrategy[](assetCount);
             strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
             strategies[1] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
             strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+            strategies[3] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
 
         } else if (block.chainid == 17000) {
 
