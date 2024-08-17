@@ -18,7 +18,6 @@ import "./ynLSDeScenarioBaseTest.sol";
 contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     
     function test_Upgrade_ynLSDe_Scenario() public {
-        if (block.chainid != 17000) return;
 
         address previousImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneigen));
         address newImplementation = address(new ynEigen()); 
@@ -34,7 +33,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
     
     function test_Upgrade_TokenStakingNodesManager_Scenario() public {
-        if (block.chainid != 17000) return;
 
         address previousStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(tokenStakingNodesManager));
         address newStakingNodesManagerImpl = address(new TokenStakingNodesManager());
@@ -50,7 +48,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_AssetRegistry() public {
-        if (block.chainid != 17000) return;
 
         address previousAssetRegistryImpl = getTransparentUpgradeableProxyImplementationAddress(address(assetRegistry));
         address newAssetRegistryImpl = address(new AssetRegistry());
@@ -66,7 +63,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_EigenStrategyManager() public {
-        if (block.chainid != 17000) return;
 
         address previousEigenStrategyManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(eigenStrategyManager));
         address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
@@ -82,10 +78,16 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_LSDRateProvider() public {
-        if (block.chainid != 17000) return;
 
         address previousLSDRateProviderImpl = getTransparentUpgradeableProxyImplementationAddress(address(lsdRateProvider));
-        address newLSDRateProviderImpl = address(new HoleskyLSDRateProvider());
+        address newLSDRateProviderImpl;
+        if (block.chainid == 17000) { // Holesky
+            newLSDRateProviderImpl = address(new HoleskyLSDRateProvider());
+        } else if (block.chainid == 1) { // Mainnet
+            newLSDRateProviderImpl = address(new LSDRateProvider());
+        } else {
+            revert("Unsupported chain ID");
+        }
 
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
@@ -98,7 +100,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_ynEigenDepositAdapter() public {
-        if (block.chainid != 17000) return;
 
         address previousYnEigenDepositAdapterImpl = getTransparentUpgradeableProxyImplementationAddress(address(ynEigenDepositAdapter_));
         address newYnEigenDepositAdapterImpl = address(new ynEigenDepositAdapter());
@@ -114,7 +115,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
-        if (block.chainid != 17000) return;
 
         ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
 
@@ -127,7 +127,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
                 "upgradeTokenStakingNode(address)",
                 payable(testStakingNodeV2)
             );
-            vm.startPrank(actors.wallets.YNDev);
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
             timelockController.schedule(
                 address(tokenStakingNodesManager), // target
                 0, // value
