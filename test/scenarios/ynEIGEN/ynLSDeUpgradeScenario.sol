@@ -138,7 +138,15 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
             );
             vm.stopPrank();
 
-            skip(timelockController.getMinDelay());
+            uint256 minDelay;
+            if (block.chainid == 1) { // Mainnet
+                minDelay = 3 days;
+            } else if (block.chainid == 17000) { // Holesky
+                minDelay = 15 minutes;
+            } else {
+                revert("Unsupported chain ID");
+            }
+            skip(minDelay);
 
             vm.startPrank(actors.wallets.YNSecurityCouncil);
             timelockController.execute(
@@ -201,7 +209,15 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         );
         vm.stopPrank();
 
-        skip(timelockController.getMinDelay());
+        uint256 minDelay;
+        if (block.chainid == 1) { // Mainnet
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) { // Holesky
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
 
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.execute(
@@ -228,7 +244,15 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         );
         vm.stopPrank();
 
-        skip(timelockController.getMinDelay());
+        uint256 minDelay;
+        if (block.chainid == 1) { // Mainnet
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) { // Holesky
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
 
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.execute(
