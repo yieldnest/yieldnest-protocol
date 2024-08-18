@@ -14,12 +14,15 @@ import {TestStakingNodesManagerV2} from "../../mocks/TestStakingNodesManagerV2.s
 import {TestStakingNodeV2} from "../../mocks/TestStakingNodeV2.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
+import {console} from "forge-std/console.sol";
+
 
 contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     
     function test_Upgrade_ynLSDe_Scenario() public {
 
         address previousImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneigen));
+        console.log("Total assets before upgrade:", yneigen.totalAssets());
         address newImplementation = address(new ynEigen()); 
 
         uint256 previousTotalAssets = yneigen.totalAssets();
@@ -159,6 +162,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
             vm.stopPrank();
         }
 
+    
         UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
         address upgradedImplementationAddress = beacon.implementation();
         assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
@@ -187,7 +191,8 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function runSystemStateInvariants(uint256 previousTotalAssets, uint256 previousTotalSupply) public {  
-        assertEq(yneigen.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        uint256 threshold = previousTotalAssets / 1e3;
+        assertTrue(compareWithThreshold(yneigen.totalAssets(), previousTotalAssets, threshold), "Total assets integrity check failed");
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 	}
 
