@@ -261,6 +261,10 @@ contract DeployYnLSDe is BaseYnEigenScript {
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN);
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), address(timelock));
 
+        // Remove roles from DEFAULT_SIGNER. DEFAULT_ADMIN_ROLE MUST be done last.
+        tokenStakingNodesManager.revokeRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), actors.eoa.DEFAULT_SIGNER);
+        tokenStakingNodesManager.revokeRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), actors.eoa.DEFAULT_SIGNER);
+
         // ynEigenDepositAdapter
         {
             ynEigenDepositAdapter ynEigenDepositAdapterImplementation = new ynEigenDepositAdapter();

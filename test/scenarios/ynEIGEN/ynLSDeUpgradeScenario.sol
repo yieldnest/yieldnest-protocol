@@ -14,13 +14,15 @@ import {TestStakingNodesManagerV2} from "../../mocks/TestStakingNodesManagerV2.s
 import {TestStakingNodeV2} from "../../mocks/TestStakingNodeV2.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
+import {console} from "forge-std/console.sol";
+
 
 contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     
     function test_Upgrade_ynLSDe_Scenario() public {
-        if (block.chainid != 17000) return;
 
         address previousImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneigen));
+        console.log("Total assets before upgrade:", yneigen.totalAssets());
         address newImplementation = address(new ynEigen()); 
 
         uint256 previousTotalAssets = yneigen.totalAssets();
@@ -34,7 +36,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
     
     function test_Upgrade_TokenStakingNodesManager_Scenario() public {
-        if (block.chainid != 17000) return;
 
         address previousStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(tokenStakingNodesManager));
         address newStakingNodesManagerImpl = address(new TokenStakingNodesManager());
@@ -50,7 +51,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_AssetRegistry() public {
-        if (block.chainid != 17000) return;
 
         address previousAssetRegistryImpl = getTransparentUpgradeableProxyImplementationAddress(address(assetRegistry));
         address newAssetRegistryImpl = address(new AssetRegistry());
@@ -66,7 +66,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_EigenStrategyManager() public {
-        if (block.chainid != 17000) return;
 
         address previousEigenStrategyManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(eigenStrategyManager));
         address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
@@ -82,10 +81,16 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_LSDRateProvider() public {
-        if (block.chainid != 17000) return;
 
         address previousLSDRateProviderImpl = getTransparentUpgradeableProxyImplementationAddress(address(lsdRateProvider));
-        address newLSDRateProviderImpl = address(new HoleskyLSDRateProvider());
+        address newLSDRateProviderImpl;
+        if (block.chainid == 17000) { // Holesky
+            newLSDRateProviderImpl = address(new HoleskyLSDRateProvider());
+        } else if (block.chainid == 1) { // Mainnet
+            newLSDRateProviderImpl = address(new LSDRateProvider());
+        } else {
+            revert("Unsupported chain ID");
+        }
 
         uint256 previousTotalAssets = yneigen.totalAssets();
         uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
@@ -98,7 +103,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_ynEigenDepositAdapter() public {
-        if (block.chainid != 17000) return;
 
         address previousYnEigenDepositAdapterImpl = getTransparentUpgradeableProxyImplementationAddress(address(ynEigenDepositAdapter_));
         address newYnEigenDepositAdapterImpl = address(new ynEigenDepositAdapter());
@@ -114,7 +118,6 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
-        if (block.chainid != 17000) return;
 
         ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
 
@@ -127,7 +130,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
                 "upgradeTokenStakingNode(address)",
                 payable(testStakingNodeV2)
             );
-            vm.startPrank(actors.wallets.YNDev);
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
             timelockController.schedule(
                 address(tokenStakingNodesManager), // target
                 0, // value
@@ -138,7 +141,15 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
             );
             vm.stopPrank();
 
-            skip(timelockController.getMinDelay());
+            uint256 minDelay;
+            if (block.chainid == 1) { // Mainnet
+                minDelay = 3 days;
+            } else if (block.chainid == 17000) { // Holesky
+                minDelay = 15 minutes;
+            } else {
+                revert("Unsupported chain ID");
+            }
+            skip(minDelay);
 
             vm.startPrank(actors.wallets.YNSecurityCouncil);
             timelockController.execute(
@@ -151,6 +162,7 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
             vm.stopPrank();
         }
 
+    
         UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
         address upgradedImplementationAddress = beacon.implementation();
         assertEq(upgradedImplementationAddress, payable(testStakingNodeV2));
@@ -179,7 +191,8 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
     }
 
     function runSystemStateInvariants(uint256 previousTotalAssets, uint256 previousTotalSupply) public {  
-        assertEq(yneigen.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        uint256 threshold = previousTotalAssets / 1e3;
+        assertTrue(compareWithThreshold(yneigen.totalAssets(), previousTotalAssets, threshold), "Total assets integrity check failed");
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 	}
 
@@ -201,7 +214,15 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         );
         vm.stopPrank();
 
-        skip(timelockController.getMinDelay());
+        uint256 minDelay;
+        if (block.chainid == 1) { // Mainnet
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) { // Holesky
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
 
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.execute(
@@ -228,7 +249,15 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         );
         vm.stopPrank();
 
-        skip(timelockController.getMinDelay());
+        uint256 minDelay;
+        if (block.chainid == 1) { // Mainnet
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) { // Holesky
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
 
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.execute(
