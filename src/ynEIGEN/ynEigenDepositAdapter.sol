@@ -20,6 +20,15 @@ interface IynEigenDepositAdapterEvents {
         address indexed referrer, 
         uint256 timestamp
     );
+
+    event DepositWrappedAsset(
+        address indexed sender,
+        address indexed receiver,
+        address indexed asset,
+        uint256 amount,
+        uint256 wrappedAmount,
+        uint256 shares
+    );
 }
 
 
@@ -126,22 +135,26 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
         emit ReferralDepositProcessed(msg.sender, receiver, address(asset), amount, shares, referrer, block.timestamp);
     }
 
-    function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
+    function depositStETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         stETH.safeTransferFrom(msg.sender, address(this), amount);
         stETH.forceApprove(address(wstETH), amount);
         uint256 wstETHAmount = wstETH.wrap(amount);
         wstETH.forceApprove(address(ynEigen), wstETHAmount);
 
-        return ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
+        shares = ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
+
+        emit DepositWrappedAsset(msg.sender, receiver, address(stETH), amount, wstETHAmount, shares);
     }
 
-    function depositOETH(uint256 amount, address receiver) internal returns (uint256) {
+    function depositOETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         oETH.safeTransferFrom(msg.sender, address(this), amount);
         oETH.forceApprove(address(woETH), amount);
         uint256 woETHShares = woETH.deposit(amount, address(this));
         woETH.forceApprove(address(ynEigen), woETHShares);
 
-        return ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
+        shares = ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
+
+        emit DepositWrappedAsset(msg.sender, receiver, address(oETH), amount, woETHShares, shares);
     }
 
     //--------------------------------------------------------------------------------------
