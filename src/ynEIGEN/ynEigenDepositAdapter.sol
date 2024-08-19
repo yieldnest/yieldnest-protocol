@@ -91,6 +91,8 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
         } else if (address(asset) == address(oETH)) {
             return depositOETH(amount, receiver);
         } else {
+            asset.safeTransferFrom(msg.sender, address(this), amount);
+            asset.forceApprove(address(ynEigen), amount);
             return ynEigen.deposit(asset, amount, receiver);
         }
     }

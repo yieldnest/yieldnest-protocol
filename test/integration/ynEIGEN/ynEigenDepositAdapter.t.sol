@@ -12,6 +12,13 @@ import {ynBase} from "src/ynBase.sol";
 
 contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
+
+    TestAssetUtils testAssetUtils;
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
+
     function testDepositstETHSuccessWithOneDepositFuzz(
        uint256 depositAmount
     ) public {
@@ -72,5 +79,112 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
             compareWithThreshold(receiverBalance, depositAmount, treshold),
             string.concat("Receiver's balance: ", vm.toString(receiverBalance), ", Expected balance: ", vm.toString(depositAmount))
         );
+    }
+
+    function testDepositwstETHSuccessWithOneDepositFuzzWithAdapter(
+        uint256 amount
+    ) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
+
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        depositAssetAndVerify(wstETH, amount);
+    }
+
+    function testDepositsfrxETHSuccessWithOneDepositFuzzWithAdapter(
+        uint256 amount
+    ) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
+
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        depositAssetAndVerify(sfrxETH, amount);
+    }
+
+    function testDepositrETHSuccessWithOneDepositFuzzWithAdapter(
+        uint256 amount
+    ) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 2 wei
+        );        
+
+        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        depositAssetAndVerify(rETH, amount);
+    }
+
+    function testDepositmETHSuccessWithOneDepositFuzzWithAdapter(
+        uint256 amount
+     ) public {
+        // NOTE: mETH doesn't usually work with 10k amounts at a time to stake ETH and obtain it in 1 tx
+        vm.assume(
+            amount < 1000 ether && amount >= 2 wei
+        );        
+
+        IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        depositAssetAndVerify(mETH, amount);
+    }
+
+    function depositAssetAndVerify(IERC20 asset, uint256 amount) internal {
+        address prankedUser = address(0x1234543210);
+        address receiver = address(0x9876543210);
+
+        uint256 initialSupply = ynEigenToken.totalSupply();
+        uint256 initialAssetBalance = asset.balanceOf(address(ynEigenToken));
+        uint256 initialReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        // Obtain asset for prankedUser
+        uint256 balance = testAssetUtils.get_Asset(address(asset), prankedUser, amount);
+
+        vm.startPrank(prankedUser);
+        asset.approve(address(ynEigenDepositAdapterInstance), balance);
+        ynEigenDepositAdapterInstance.deposit(asset, balance, receiver);
+        vm.stopPrank();
+
+        uint256 finalAssetBalance = asset.balanceOf(address(ynEigenToken));
+        uint256 finalSupply = ynEigenToken.totalSupply();
+        uint256 finalReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        // Verify asset balance of ynEigenToken increased
+        assertEq(finalAssetBalance, initialAssetBalance + balance, "Asset balance did not increase correctly");
+    }
+    
+    function testDepositWithReferralWstETHFuzz(
+        uint256 amount,
+        address receiver,
+        address referrer
+    ) public {
+        vm.assume(amount >= 2 wei && amount < 10000 ether);
+        vm.assume(receiver != address(0) && referrer != address(0) && receiver != referrer);
+
+        address prankedUser = address(0x1234543210);
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+
+        uint256 initialSupply = ynEigenToken.totalSupply();
+        uint256 initialAssetBalance = wstETH.balanceOf(address(ynEigenToken));
+        uint256 initialReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        // Obtain asset for prankedUser
+        uint256 balance = testAssetUtils.get_Asset(address(wstETH), prankedUser, amount);
+
+        vm.startPrank(prankedUser);
+        wstETH.approve(address(ynEigenDepositAdapterInstance), balance);
+        
+        uint256 shares = ynEigenDepositAdapterInstance.depositWithReferral(wstETH, balance, receiver, referrer);
+        vm.stopPrank();
+
+        uint256 finalAssetBalance = ynEigenToken.assetBalance(wstETH);
+        uint256 finalSupply = ynEigenToken.totalSupply();
+        uint256 finalReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        // Verify wstETH balance of ynEigenToken increased
+        assertEq(finalAssetBalance, initialAssetBalance + balance, "wstETH balance did not increase correctly");
+        
+        // Verify total supply increased
+        assertEq(finalSupply, initialSupply + shares, "Total supply did not increase correctly");
+        
+        // Verify receiver balance increased
+        assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
     }
 }
