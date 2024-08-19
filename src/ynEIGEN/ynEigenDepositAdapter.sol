@@ -107,6 +107,12 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
     }
 
 
+    /// @notice Simulates the deposit of assets into the ynEigen system and returns the expected number of shares.
+    /// @dev This function handles the conversion for oETH and stETH before simulating the deposit since
+    ///      they are not natively supported by ynEigen.
+    /// @param asset The asset to be deposited.
+    /// @param amount The amount of the asset to be deposited.
+    /// @return shares The expected number of ynEigen tokens (shares) to be received.
     function previewDeposit(IERC20 asset, uint256 amount) external view returns (uint256 shares) {
         if (address(asset) == address(oETH)) {
             // Convert oETH to woETH
