@@ -30,7 +30,6 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         address receiver = address(0x456);
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         testAssetUtils.get_stETH(depositor, depositAmount * 10);
 
         // Arrange: Setup the initial balance of stETH for the depositor
@@ -61,7 +60,6 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         address receiver = address(0xABC);
 
         // 1. Obtain woETH and Deposit assets to ynEigen by User
-        TestAssetUtils testAssetUtils = new TestAssetUtils();
         testAssetUtils.get_OETH(depositor, depositAmount * 10);
 
         // Arrange: Setup the initial balance of oETH for the depositor
@@ -139,7 +137,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         vm.startPrank(prankedUser);
         asset.approve(address(ynEigenDepositAdapterInstance), balance);
-        ynEigenDepositAdapterInstance.deposit(asset, balance, receiver);
+        uint256 shares = ynEigenDepositAdapterInstance.deposit(asset, balance, receiver);
         vm.stopPrank();
 
         uint256 finalAssetBalance = asset.balanceOf(address(ynEigenToken));
@@ -148,6 +146,11 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         // Verify asset balance of ynEigenToken increased
         assertEq(finalAssetBalance, initialAssetBalance + balance, "Asset balance did not increase correctly");
+        // Verify total supply increased
+        assertEq(finalSupply, initialSupply + shares, "Total supply did not increase correctly");
+
+        // Verify receiver balance increased
+        assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
     }
     
     function testDepositWithReferralWstETHFuzz(
@@ -155,6 +158,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         address receiver,
         address referrer
     ) public {
+
         vm.assume(amount >= 2 wei && amount < 10000 ether);
         vm.assume(receiver != address(0) && referrer != address(0) && receiver != referrer);
 
@@ -186,5 +190,8 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         
         // Verify receiver balance increased
         assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
+
+        // Verify user balance increased
+        assertEq(ynEigenToken.balanceOf(receiver), initialReceiverBalance + shares, "User balance did not increase correctly");
     }
 }
