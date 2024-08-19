@@ -106,6 +106,22 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
         }
     }
 
+
+    function previewDeposit(IERC20 asset, uint256 amount) external view returns (uint256 shares) {
+        if (address(asset) == address(oETH)) {
+            // Convert oETH to woETH
+            uint256 woETHAmount = IERC4626(woETH).convertToShares(amount);
+            return ynEigen.previewDeposit(IERC20(woETH), woETHAmount);
+        } else if (address(asset) == address(stETH)) {
+            // Convert stETH to wstETH
+            uint256 wstETHAmount = IwstETH(wstETH).getWstETHByStETH(amount);
+            return ynEigen.previewDeposit(IERC20(wstETH), wstETHAmount);
+        } else {
+            // For all other assets, use the standard previewDeposit function
+            return ynEigen.previewDeposit(IERC20(asset), amount);
+        }
+    }
+
     /**
      * @notice Deposits an asset with referral information.
      *          IMPORTANT: The referred or referree is the receiver, NOT msg.sender

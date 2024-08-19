@@ -18,7 +18,6 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         testAssetUtils = new TestAssetUtils();
     }
 
-
     function testDepositstETHSuccessWithOneDepositFuzz(
        uint256 depositAmount
     ) public {
@@ -29,17 +28,27 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         address depositor = address(0x123);
         address receiver = address(0x456);
 
-        // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        testAssetUtils.get_stETH(depositor, depositAmount * 10);
 
         // Arrange: Setup the initial balance of stETH for the depositor
         IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
 
+        uint256 initialSupply = ynEigenToken.totalSupply();
+        uint256 initialReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        testAssetUtils.get_stETH(depositor, depositAmount * 10);
+
+        // Preview deposit to get expected shares
+        uint256 expectedShares = ynEigenDepositAdapterInstance.previewDeposit(stETH, depositAmount);
+    
         vm.prank(depositor);
         stETH.approve(address(ynEigenDepositAdapterInstance), depositAmount);
         // Act: Perform the deposit operation using the ynEigenDepositAdapter
         vm.prank(depositor);
-        ynEigenDepositAdapterInstance.deposit(stETH, depositAmount, receiver);
+        uint256 shares = ynEigenDepositAdapterInstance.deposit(stETH, depositAmount, receiver);
+
+        // Assert that the actual shares match the expected shares
+        assertEq(shares, expectedShares, "Actual shares do not match expected shares");
         
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
         uint256 treshold = depositAmount / 1e17 + 3;
@@ -47,6 +56,14 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
             compareWithThreshold(receiverBalance, depositAmount, treshold),
             string.concat("Receiver's balance: ", vm.toString(receiverBalance), ", Expected balance: ", vm.toString(depositAmount))
         );
+
+        uint256 finalSupply = ynEigenToken.totalSupply();
+        uint256 finalReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        assertEq(finalSupply, initialSupply + shares, "Total supply did not increase correctly");
+
+        // Verify receiver balance increased
+        assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
     }
 
     function testDepositOETHSuccessWithOneDeposit(
@@ -59,17 +76,26 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         address depositor = address(0x789);
         address receiver = address(0xABC);
 
+        // Arrange: Setup the initial balance of oETH for the depositor
+        IERC20 oETH = IERC20(chainAddresses.lsd.OETH_ADDRESS);
+
+        uint256 initialSupply = ynEigenToken.totalSupply();
+        uint256 initialReceiverBalance = ynEigenToken.balanceOf(receiver);
+
         // 1. Obtain woETH and Deposit assets to ynEigen by User
         testAssetUtils.get_OETH(depositor, depositAmount * 10);
 
-        // Arrange: Setup the initial balance of oETH for the depositor
-        IERC20 oETH = IERC20(chainAddresses.lsd.OETH_ADDRESS);
+        // Preview deposit to get expected shares
+        uint256 expectedShares = ynEigenDepositAdapterInstance.previewDeposit(oETH, depositAmount);
 
         vm.prank(depositor);
         oETH.approve(address(ynEigenDepositAdapterInstance), depositAmount);
         // Act: Perform the deposit operation using the ynEigenDepositAdapter
         vm.prank(depositor);
-        ynEigenDepositAdapterInstance.deposit(oETH, depositAmount, receiver);
+        uint256 shares = ynEigenDepositAdapterInstance.deposit(oETH, depositAmount, receiver);
+
+        // Assert that the actual shares match the expected shares
+        assertEq(shares, expectedShares, "Actual shares do not match expected shares");
         
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
         uint256 treshold = depositAmount / 1e17 + 3;
@@ -77,6 +103,17 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
             compareWithThreshold(receiverBalance, depositAmount, treshold),
             string.concat("Receiver's balance: ", vm.toString(receiverBalance), ", Expected balance: ", vm.toString(depositAmount))
         );
+
+        uint256 finalSupply = ynEigenToken.totalSupply();
+        uint256 finalReceiverBalance = ynEigenToken.balanceOf(receiver);
+
+        // // // Verify asset balance of ynEigenToken increased
+        // // assertEq(finalAssetBalance, initialAssetBalance + balance, "Asset balance did not increase correctly");
+        // Verify total supply increased
+        assertEq(finalSupply, initialSupply + shares, "Total supply did not increase correctly");
+
+        // Verify receiver balance increased
+        assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
     }
 
     function testDepositwstETHSuccessWithOneDepositFuzzWithAdapter(
@@ -135,10 +172,15 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         // Obtain asset for prankedUser
         uint256 balance = testAssetUtils.get_Asset(address(asset), prankedUser, amount);
 
+        uint256 expectedShares = ynEigenDepositAdapterInstance.previewDeposit(asset, balance);
+
         vm.startPrank(prankedUser);
         asset.approve(address(ynEigenDepositAdapterInstance), balance);
         uint256 shares = ynEigenDepositAdapterInstance.deposit(asset, balance, receiver);
         vm.stopPrank();
+
+        // Verify that the actual shares received match the expected shares
+        assertEq(shares, expectedShares, "Actual shares do not match expected shares");
 
         uint256 finalAssetBalance = asset.balanceOf(address(ynEigenToken));
         uint256 finalSupply = ynEigenToken.totalSupply();
