@@ -12,7 +12,6 @@ import {ynBase} from "src/ynBase.sol";
 
 
 interface IynEigenEvents {
-    event Deposit(address indexed sender, address indexed receiver, uint256 amount, uint256 shares);
     event DepositAsset(address indexed sender, address indexed receiver, address indexed asset, uint256 amount, uint256 shares);
     event AssetRetrieved(IERC20 asset, uint256 amount, address destination);
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
