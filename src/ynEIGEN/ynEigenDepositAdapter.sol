@@ -20,6 +20,15 @@ interface IynEigenDepositAdapterEvents {
         address indexed referrer, 
         uint256 timestamp
     );
+
+    event DepositWrappedAsset(
+        address indexed sender,
+        address indexed receiver,
+        address indexed asset,
+        uint256 amount,
+        uint256 wrappedAmount,
+        uint256 shares
+    );
 }
 
 
@@ -91,7 +100,31 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
         } else if (address(asset) == address(oETH)) {
             return depositOETH(amount, receiver);
         } else {
+            asset.safeTransferFrom(msg.sender, address(this), amount);
+            asset.forceApprove(address(ynEigen), amount);
             return ynEigen.deposit(asset, amount, receiver);
+        }
+    }
+
+
+    /// @notice Simulates the deposit of assets into the ynEigen system and returns the expected number of shares.
+    /// @dev This function handles the conversion for oETH and stETH before simulating the deposit since
+    ///      they are not natively supported by ynEigen.
+    /// @param asset The asset to be deposited.
+    /// @param amount The amount of the asset to be deposited.
+    /// @return shares The expected number of ynEigen tokens (shares) to be received.
+    function previewDeposit(IERC20 asset, uint256 amount) external view returns (uint256 shares) {
+        if (address(asset) == address(oETH)) {
+            // Convert oETH to woETH
+            uint256 woETHAmount = IERC4626(woETH).convertToShares(amount);
+            return ynEigen.previewDeposit(IERC20(woETH), woETHAmount);
+        } else if (address(asset) == address(stETH)) {
+            // Convert stETH to wstETH
+            uint256 wstETHAmount = IwstETH(wstETH).getWstETHByStETH(amount);
+            return ynEigen.previewDeposit(IERC20(wstETH), wstETHAmount);
+        } else {
+            // For all other assets, use the standard previewDeposit function
+            return ynEigen.previewDeposit(IERC20(asset), amount);
         }
     }
 
@@ -124,22 +157,26 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
         emit ReferralDepositProcessed(msg.sender, receiver, address(asset), amount, shares, referrer, block.timestamp);
     }
 
-    function depositStETH(uint256 amount, address receiver) internal returns (uint256) {
+    function depositStETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         stETH.safeTransferFrom(msg.sender, address(this), amount);
         stETH.forceApprove(address(wstETH), amount);
         uint256 wstETHAmount = wstETH.wrap(amount);
         wstETH.forceApprove(address(ynEigen), wstETHAmount);
 
-        return ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
+        shares = ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
+
+        emit DepositWrappedAsset(msg.sender, receiver, address(stETH), amount, wstETHAmount, shares);
     }
 
-    function depositOETH(uint256 amount, address receiver) internal returns (uint256) {
+    function depositOETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         oETH.safeTransferFrom(msg.sender, address(this), amount);
         oETH.forceApprove(address(woETH), amount);
         uint256 woETHShares = woETH.deposit(amount, address(this));
         woETH.forceApprove(address(ynEigen), woETHShares);
 
-        return ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
+        shares = ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
+
+        emit DepositWrappedAsset(msg.sender, receiver, address(oETH), amount, woETHShares, shares);
     }
 
     //--------------------------------------------------------------------------------------

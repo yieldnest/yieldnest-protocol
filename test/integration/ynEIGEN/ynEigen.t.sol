@@ -105,12 +105,12 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
     }
 
     function testDepositmETHSuccessWithOneDepositFuzz(
-        // uint256 amount
+        uint256 amount
      ) public {
-
-        uint256 amount = 2;
+        
+        // NOTE: mETH doesn't usually work with 10k amounts at a time to stake ETH and obtain it in 1 tx
         vm.assume(
-            amount < 10000 ether && amount >= 2 wei
+            amount < 1000 ether && amount >= 2 wei
         );        
 
         IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
