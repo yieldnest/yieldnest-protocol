@@ -117,6 +117,58 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         runTransferOwnership(address(ynEigenDepositAdapter_));
     }
 
+    function test_Upgrade_AllContracts_Batch() public {
+        address[] memory contracts = new address[](6);
+        address[] memory newImplementations = new address[](6);
+
+        // YnLSDe
+        contracts[0] = address(yneigen);
+        newImplementations[0] = address(new ynEigen());
+
+        // EigenStrategyManager
+        contracts[1] = address(eigenStrategyManager);
+        newImplementations[1] = address(new EigenStrategyManager());
+
+        // LSDRateProvider
+        if (block.chainid == 17000) { // Holesky
+            newImplementations[2] = address(new HoleskyLSDRateProvider());
+        } else if (block.chainid == 1) { // Mainnet
+            newImplementations[2] = address(new LSDRateProvider());
+        } else {
+            revert("Unsupported chain ID");
+        }
+        contracts[2] = address(lsdRateProvider);
+
+        // ynEigenDepositAdapter
+        contracts[3] = address(ynEigenDepositAdapter_);
+        newImplementations[3] = address(new ynEigenDepositAdapter());
+
+        // AssetRegistry
+        contracts[4] = address(assetRegistry);
+        newImplementations[4] = address(new AssetRegistry());
+
+        // TokenStakingNodesManager
+        contracts[5] = address(tokenStakingNodesManager);
+        newImplementations[5] = address(new TokenStakingNodesManager());
+
+        uint256 previousTotalAssets = yneigen.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
+
+        address[] memory previousImplementations = new address[](contracts.length);
+        for (uint i = 0; i < contracts.length; i++) {
+            previousImplementations[i] = getTransparentUpgradeableProxyImplementationAddress(contracts[i]);
+        }
+
+        upgradeContractBatch(contracts, newImplementations);
+
+        for (uint i = 0; i < contracts.length; i++) {
+            runUpgradeInvariants(contracts[i], previousImplementations[i], newImplementations[i]);
+            runTransferOwnership(contracts[i]);
+        }
+
+        runSystemStateInvariants(previousTotalAssets, previousTotalSupply);
+    }
+
     function test_Upgrade_TokenStakingNodeImplementation_Scenario() public {
 
         ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
@@ -195,6 +247,56 @@ contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
         assertTrue(compareWithThreshold(yneigen.totalAssets(), previousTotalAssets, threshold), "Total assets integrity check failed");
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 	}
+
+    function upgradeContractBatch(address[] memory _proxyAddresses, address[] memory _newImplementations) public {
+        require(_proxyAddresses.length == _newImplementations.length, "Arrays must have the same length");
+
+        address[] memory targets = new address[](_proxyAddresses.length);
+        uint256[] memory values = new uint256[](_proxyAddresses.length);
+        bytes[] memory payloads = new bytes[](_proxyAddresses.length);
+
+        for (uint i = 0; i < _proxyAddresses.length; i++) {
+            targets[i] = getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]);
+            values[i] = 0;
+            payloads[i] = abi.encodeWithSignature(
+                "upgradeAndCall(address,address,bytes)",
+                _proxyAddresses[i],
+                _newImplementations[i],
+                ""
+            );
+        }
+
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.scheduleBatch(
+            targets,
+            values,
+            payloads,
+            bytes32(0), // predecessor
+            bytes32(0), // salt
+            timelockController.getMinDelay() // delay
+        );
+        vm.stopPrank();
+
+        uint256 minDelay;
+        if (block.chainid == 1) { // Mainnet
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) { // Holesky
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
+
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.executeBatch(
+            targets,
+            values,
+            payloads,
+            bytes32(0), // predecessor
+            bytes32(0) // salt
+        );
+        vm.stopPrank();
+    }
 
     function upgradeContract(address _proxyAddress, address _newImplementation) public {
         bytes memory _data = abi.encodeWithSignature(
