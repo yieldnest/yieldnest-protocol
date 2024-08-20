@@ -16,7 +16,7 @@
   "implementation-eigenStrategyManager": "0xc599064e66FB509FD49B5083896649a742066758",
   "implementation-rateProvider": "0x94009d1296dc2e6370Aa34c94BEDFeD55f96a276",
   "implementation-tokenStakingNodesManager": "0xAD89Fd40BE78811E279C89FF15DC3B831785192D",
-  "implementation-ynEigenDepositAdapter": "0x6A8A62bD2E8fd57477B73cdecdF03EeA27Bc27b9",
+  "implementation-ynEigenDepositAdapter": "0x7af5cc12cee35dee9ccd0aa4d5e1772eb45b2046",
   "implementation-ynEigenViewer": "0x85bB85b81Db2f9b446e9100057420AE5DE7232E4",
   "proxy-YnLSDe": "0x071bdC8eDcdD66730f45a3D3A6F794FAA37C75ED",
   "proxy-assetRegistry": "0xaD31546AdbfE1EcD7137310508f112039a35b6F7",
