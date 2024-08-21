@@ -185,8 +185,8 @@ contract DeployYnLSDe is BaseYnEigenScript {
             address[] memory lsdPauseWhitelist = new address[](0);
 
             ynEigen.Init memory ynlsdeInit = ynEigen.Init({
-                name: "YieldNest Restaked LSD - Eigenlayer",
-                symbol: "ynLSDe",
+                name: "YieldNest Restaked Test - Eigenlayer",
+                symbol: "ynTESTe",
                 admin: actors.admin.ADMIN,
                 pauser: actors.ops.PAUSE_ADMIN,
                 unpauser: actors.admin.UNPAUSE_ADMIN,
