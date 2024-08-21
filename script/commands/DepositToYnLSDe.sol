@@ -7,10 +7,16 @@ import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import {IwstETH} from "../../src/external/lido/IwstETH.sol";
 import {IynEigen} from "../../src/interfaces/IynEigen.sol";
+import {ImETHStaking} from "../../src/external/mantle/ImETHStaking.sol";
+import {IfrxMinter} from "../../src/external/frax/IfrxMinter.sol";
 
 import {ContractAddresses} from "../ContractAddresses.sol";
 
 import "../BaseYnEigenScript.s.sol";
+
+interface IRocketPoolDepositPool {
+    function deposit() external payable;
+}
 
 contract DepositStETHToYnLSDe is BaseYnEigenScript {
 
@@ -59,7 +65,7 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
     }
 
     function _getTokenAddress(string memory n) internal returns (address) {
-        if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("sfrxETH"))) {
+        if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("sfrxETH")) && block.chainid == 1) {
             return chainAddresses.lsd.SFRXETH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("wstETH"))) {
             return chainAddresses.lsd.STETH_ADDRESS;
@@ -86,53 +92,48 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
         }
     }
 
+    // NOTE: not deployed on holesky
     function _getSFRXETH() internal returns (uint256) {
-        IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138); // @todo - holesky?
-        frxMinter.submitAndDeposit{value: AMOUNT}(broadcaster);
-        IERC4626 sfrxETH = IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS);
-        IERC20 frxETH = IERC4626(chainAddresses.lsd.FRXETH_ADDRESS); // @todo
-        frxETH.approve(address(sfrxETH), AMOUNT);
-        return sfrxETH.deposit(AMOUNT, broadcaster);
+        IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138).submitAndDeposit{value: AMOUNT}(broadcaster);
+        IERC4626 frxeth = IERC4626(0x5E8422345238F34275888049021821E8E08CAa1f);
+        frxeth.approve(chainAddresses.lsd.SFRXETH_ADDRESS, AMOUNT);
+        return IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS).deposit(AMOUNT, broadcaster);
     }
 
     function _getWSTETH() internal returns (uint256) {
+        uint256 balanceBefore = IERC20(chainAddresses.lsd.STETH_ADDRESS).balanceOf(broadcaster);
         (bool sent, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: AMOUNT}("");
         require(sent, "Failed to send Ether");
 
-        uint256 _stETHBalance = IERC20(chainAddresses.lsd.STETH_ADDRESS).balanceOf(broadcaster);
-        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(chainAddresses.lsd.WSTETH_ADDRESS, _stETHBalance);
-        return IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).wrap(_stETHBalance);
+        uint256 amount = IERC20(chainAddresses.lsd.STETH_ADDRESS).balanceOf(broadcaster) - balanceBefore;
+        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(chainAddresses.lsd.WSTETH_ADDRESS, amount);
+        return IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).wrap(amount);
     }
 
-    // function _getMETH() internal returns (uint256) { // @todo
-    //     ImETHStaking mETHStaking = ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f);
-    //     IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
+    function _getMETH() internal returns (uint256) {
+        ImETHStaking mETHStaking = block.chainid == 1
+            ? ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f)
+            : ImETHStaking(0xbe16244EAe9837219147384c8A7560BA14946262);
+        IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        uint256 _balanceBefore = mETH.balanceOf(broadcaster);
+        mETHStaking.stake{value: AMOUNT}(mETHStaking.ethToMETH(AMOUNT));
+        return mETH.balanceOf(broadcaster) - _balanceBefore;
+    }
 
-    //     uint256 ethRequired = mETHStaking.mETHToETH(amount) + 1 ether;
-    //     vm.deal(address(this), ethRequired);
-    //     mETHStaking.stake{value: ethRequired}(amount);
+    function _getRETH() internal returns (uint256) { // NOTE: only holesky
+        IRocketPoolDepositPool depositPool = IRocketPoolDepositPool(0x320f3aAB9405e38b955178BBe75c477dECBA0C27);
+        uint256 _balanceBefore = IERC20(chainAddresses.lsd.RETH_ADDRESS).balanceOf(broadcaster);
+        // NOTE: only works if pool is not at max capacity (it may be)
+        depositPool.deposit{value: AMOUNT}();
+        return IERC20(chainAddresses.lsd.RETH_ADDRESS).balanceOf(broadcaster) - _balanceBefore;
+    }
 
-    //     require(mETH.balanceOf(address(this)) >= amount, "Insufficient mETH balance after staking");
-    //     mETH.transfer(receiver, amount);
-
-    //     return amount;
-    // }
-
-    // function _getRETH() internal returns (uint256) { // @todo
-    //     uint256 ethRequired = AMOUNT * 1e18 / IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
-    //     // NOTE: only works if pool is not at max capacity (it may be)
-    //     IRocketPoolDepositPool(0xDD3f50F8A6CafbE9b31a427582963f465E745AF8).deposit{value: ethRequired}(); // @todo - holesky?
-
-    //     require(IERC20(chainAddresses.lsd.RETH_ADDRESS).balanceOf(address(this)) >= amount, "Insufficient rETH balance after deposit");
-    //     IERC20(chainAddresses.lsd.RETH_ADDRESS).transfer(receiver, amount);
-    // }
-
-    function _deposit(uint256 amount, address token) internal { // @todo - if token is wsteth/oeth use deposit adapter
+    function _deposit(uint256 amount, address token) internal {
         IERC20(token).approve(chainAddresses.ynEigen.YNEIGEN_ADDRESS, amount);
-        IynEigen(chainAddresses.ynEigen.YNEIGEN_ADDRESS).deposit(IERC20(token), amount, user);
+        IynEigen(chainAddresses.ynEigen.YNEIGEN_ADDRESS).deposit(IERC20(token), amount, broadcaster);
     }
 
-    // function _send(uint256 amount, address token) internal { // @todo
-
-    // }
+    function _send(uint256 amount, address token) internal {
+        IERC20(token).transfer(actors.eoa.DEFAULT_SIGNER, amount);
+    }
 }

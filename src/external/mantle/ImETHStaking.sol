@@ -5,5 +5,6 @@ import {IERC20} from  "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.s
 
 interface ImETHStaking is IERC20 {
     function mETHToETH(uint256 mETHAmount) external view returns (uint256);
+    function ethToMETH(uint256 ethAmount) external view returns (uint256);
     function stake(uint256 minMETHAmount) external payable;
 }
