@@ -18,7 +18,7 @@ interface IRocketPoolDepositPool {
     function deposit() external payable;
 }
 
-contract DepositStETHToYnLSDe is BaseYnEigenScript {
+contract DepositToYnLSDe is BaseYnEigenScript {
 
     address public broadcaster;
 
@@ -32,7 +32,13 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
         return "YnLSDe";
     }
 
-    function run() external {
+    function run() public {
+        address token = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
+        uint256 path = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
+        run(path, token);
+    }
+
+    function run(uint256 path, address token) public {
 
         ContractAddresses contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
@@ -44,9 +50,6 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
         console.log("Default Signer Address:", broadcaster);
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
-
-        address token = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
-        uint256 path = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -68,7 +71,7 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
         if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("sfrxETH")) && block.chainid == 1) {
             return chainAddresses.lsd.SFRXETH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("wstETH"))) {
-            return chainAddresses.lsd.STETH_ADDRESS;
+            return chainAddresses.lsd.WSTETH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("mETH"))) {
             return chainAddresses.lsd.METH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("rETH")) && block.chainid == 17000) {
@@ -81,7 +84,7 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
     function _getToken(address token) internal returns (uint256 _amount) {
         if (token == chainAddresses.lsd.SFRXETH_ADDRESS) {
             _amount = _getSFRXETH();
-        } else if (token == chainAddresses.lsd.STETH_ADDRESS) {
+        } else if (token == chainAddresses.lsd.WSTETH_ADDRESS) {
             _amount = _getWSTETH();
         } else if (token == chainAddresses.lsd.METH_ADDRESS) {
             _amount = _getMETH();
@@ -94,10 +97,7 @@ contract DepositStETHToYnLSDe is BaseYnEigenScript {
 
     // NOTE: not deployed on holesky
     function _getSFRXETH() internal returns (uint256) {
-        IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138).submitAndDeposit{value: AMOUNT}(broadcaster);
-        IERC4626 frxeth = IERC4626(0x5E8422345238F34275888049021821E8E08CAa1f);
-        frxeth.approve(chainAddresses.lsd.SFRXETH_ADDRESS, AMOUNT);
-        return IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS).deposit(AMOUNT, broadcaster);
+        return IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138).submitAndDeposit{value: AMOUNT}(broadcaster);
     }
 
     function _getWSTETH() internal returns (uint256) {
