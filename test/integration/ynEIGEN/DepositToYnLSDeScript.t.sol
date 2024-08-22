@@ -8,14 +8,36 @@ import "forge-std/console.sol";
 
 contract DepositToYnLSDeScript is DepositToYnLSDe, Test {
 
-    function testSfrxETHDeposit() public {
-        // return;
-        run();
+    function setUp() public {
+        shouldInit = false;
+        _init();
     }
 
-    // function testSfrxETHSend()
-    // function testMETHDeposit
-    // function testMETHSend
-    // function testRETHDeposit
-    // function testRETHSend
+    function testSfrxETHDeposit() public {
+        if (block.chainid != 1) return;
+        run(0, chainAddresses.lsd.SFRXETH_ADDRESS);
+    }
+
+    function testSfrxETHSend() public {
+        if (block.chainid != 1) return;
+        run(1, chainAddresses.lsd.SFRXETH_ADDRESS);
+    }
+
+    function testMETHDeposit() public {
+        run(0, chainAddresses.lsd.METH_ADDRESS);
+    }
+
+    function testMETHSend() public {
+        run(1, chainAddresses.lsd.METH_ADDRESS);
+    }
+
+    function testRETHDeposit() public {
+        if (block.chainid != 17000) return;
+        run(0, chainAddresses.lsd.RETH_ADDRESS);
+    }
+
+    function testRETHSend() public {
+        if (block.chainid != 17000) return;
+        run(1, chainAddresses.lsd.RETH_ADDRESS);
+    }
 }

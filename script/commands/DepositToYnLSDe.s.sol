@@ -20,36 +20,37 @@ interface IRocketPoolDepositPool {
 
 contract DepositToYnLSDe is BaseYnEigenScript {
 
+    bool public shouldInit = true;
+
     address public broadcaster;
 
     Deployment deployment;
     ActorAddresses.Actors actors;
     ContractAddresses.ChainAddresses chainAddresses;
 
-    uint256 public constant AMOUNT = 0.01 ether;
+    uint256 public constant AMOUNT = 0.1 ether;
 
     function tokenName() internal override pure returns (string memory) {
         return "YnLSDe";
     }
 
     function run() public {
+
+        if (shouldInit) _init();
+
         address token = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
         uint256 path = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
         run(path, token);
     }
 
     function run(uint256 path, address token) public {
-
-        ContractAddresses contractAddresses = new ContractAddresses();
-        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        deployment = loadDeployment();
-        actors = getActors();
-
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         broadcaster = vm.addr(deployerPrivateKey);
         console.log("Default Signer Address:", broadcaster);
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
+        console.log("Token Address:", token);
+        console.log("Path:", path);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -110,6 +111,7 @@ contract DepositToYnLSDe is BaseYnEigenScript {
         return IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).wrap(amount);
     }
 
+    // NOTE: fails if AMOUNT < 0.1 ether
     function _getMETH() internal returns (uint256) {
         ImETHStaking mETHStaking = block.chainid == 1
             ? ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f)
@@ -135,5 +137,12 @@ contract DepositToYnLSDe is BaseYnEigenScript {
 
     function _send(uint256 amount, address token) internal {
         IERC20(token).transfer(actors.eoa.DEFAULT_SIGNER, amount);
+    }
+
+    function _init() internal {
+        ContractAddresses contractAddresses = new ContractAddresses();
+        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        deployment = loadDeployment();
+        actors = getActors();
     }
 }
