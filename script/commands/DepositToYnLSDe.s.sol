@@ -20,6 +20,8 @@ interface IRocketPoolDepositPool {
 
 contract DepositToYnLSDe is BaseYnEigenScript {
 
+    uint256 public privateKey; // dev: assigned in test setup
+
     bool public shouldInit = true;
 
     address public broadcaster;
@@ -44,7 +46,7 @@ contract DepositToYnLSDe is BaseYnEigenScript {
     }
 
     function run(uint256 path, address token) public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        uint256 deployerPrivateKey = privateKey == 0 ? vm.envUint("PRIVATE_KEY") : privateKey;
         broadcaster = vm.addr(deployerPrivateKey);
         console.log("Default Signer Address:", broadcaster);
         console.log("Current Block Number:", block.number);
