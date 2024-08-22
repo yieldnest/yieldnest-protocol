@@ -4,13 +4,15 @@ pragma solidity ^0.8.24;
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/ERC721Upgradeable.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC721EnumerableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
@@ -28,7 +30,7 @@ interface IWithdrawalQueueManagerEvents {
  * 
  */
 
-contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
     using SafeERC20 for IRedeemableAsset;
 
     //--------------------------------------------------------------------------------------
@@ -391,7 +393,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
         }
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721Upgradeable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721EnumerableUpgradeable) returns (bool) {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
     }
 
@@ -403,6 +405,27 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721Upgradeable, A
      */
     function withdrawalRequestExists(WithdrawalRequest memory request) internal view returns (bool) {
         return request.creationTimestamp > 0;
+    }
+
+    function withdrawalRequestsForOwner(address owner) public view returns (
+        uint256[] memory withdrawalIndexes,
+        WithdrawalRequest[] memory requests
+    ) {
+
+        uint256 tokenCount = balanceOf(owner);
+        if (tokenCount == 0) {
+            return (new uint256[](0), new WithdrawalRequest[](0));
+        } else {
+            
+            withdrawalIndexes = new uint256[](tokenCount);
+            requests = new WithdrawalRequest[](tokenCount);
+            for (uint256 i = 0; i < tokenCount; i++) {
+                uint256 tokenId = tokenOfOwnerByIndex(owner, i);
+                withdrawalIndexes[i] = tokenId;
+                requests[i] = withdrawalRequests[tokenId];
+            }
+            return (withdrawalIndexes, requests);
+        }
     }
 
     //--------------------------------------------------------------------------------------

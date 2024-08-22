@@ -666,4 +666,79 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), redemptionAssetsVault.UNPAUSER_ROLE()));
         redemptionAssetsVault.unpause();
     }
+
+    // ============================================================================================
+    // withdrawalRequestsForOwner
+    // ============================================================================================
+
+    function testWithdrawalRequestsForOwner() public {
+
+        address anotherUser = address(0x9876);
+        vm.deal(anotherUser, 100 ether);
+
+
+        // Mint initial ynETH tokens for users
+        redeemableAsset.mint(user, 100 ether);
+        redeemableAsset.mint(anotherUser, 100 ether);
+
+        // Setup: Create multiple withdrawal requests for different users with varying amounts
+        uint256[] memory requestAmounts = new uint256[](4);
+        requestAmounts[0] = 1 ether;
+        requestAmounts[1] = 2.5 ether;
+        requestAmounts[2] = 0.75 ether;
+        requestAmounts[3] = 3.2 ether;
+
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), 10 ether); // Approve enough for all transactions
+        uint256 request1 = manager.requestWithdrawal(requestAmounts[0]);
+        uint256 request2 = manager.requestWithdrawal(requestAmounts[1]);
+        uint256 request3 = manager.requestWithdrawal(requestAmounts[2]);
+        vm.stopPrank();
+        // Store the request IDs in an array for easy access and verification
+        uint256[] memory requestIds = new uint256[](3);
+        requestIds[0] = request1;
+        requestIds[1] = request2;
+        requestIds[2] = request3;
+
+        vm.startPrank(anotherUser);
+        redeemableAsset.approve(address(manager), requestAmounts[3]);
+        uint256 request4 = manager.requestWithdrawal(requestAmounts[3]);
+        vm.stopPrank();
+
+        // Test: Retrieve withdrawal requests for the main user
+        (uint256[] memory withdrawalIndexes, IWithdrawalQueueManager.WithdrawalRequest[] memory requests) = manager.withdrawalRequestsForOwner(user);
+
+        // Assertions
+        assertEq(withdrawalIndexes.length, requestIds.length, "Incorrect number of withdrawal indexes");
+        assertEq(requests.length, requestIds.length, "Incorrect number of withdrawal requests");
+
+        // Verify the content of each request
+        for (uint256 i = 0; i < requestIds.length; i++) {
+            assertEq(withdrawalIndexes[i], i, "Incorrect withdrawal index");
+            assertEq(requests[i].amount, requestAmounts[i], "Incorrect withdrawal amount");
+            assertTrue(requests[i].creationTimestamp > 0, "Invalid creation timestamp");
+            assertFalse(requests[i].processed, "Request should not be claimed");
+        }
+
+        // Test: Retrieve withdrawal requests for the other user
+        (withdrawalIndexes, requests) = manager.withdrawalRequestsForOwner(anotherUser);
+
+        // Assertions for the other user
+        assertEq(withdrawalIndexes.length, 1, "Incorrect number of withdrawal indexes for other user");
+        assertEq(requests.length, 1, "Incorrect number of withdrawal requests for other user");
+        assertEq(withdrawalIndexes[0], 3, "Incorrect withdrawal index for other user");
+        assertEq(requests[0].amount, requestAmounts[3], "Incorrect withdrawal amount for other user");
+
+        assertTrue(requests[0].creationTimestamp > 0, "Invalid creation timestamp for other user");
+        assertFalse(requests[0].processed, "Request should not be claimed for other user");
+
+        // Test: Retrieve withdrawal requests for an address with no requests
+        address noRequestUser = address(0x1111);
+        (withdrawalIndexes, requests) = manager.withdrawalRequestsForOwner(noRequestUser);
+
+        // Assertions for address with no requests
+        assertEq(withdrawalIndexes.length, 0, "Should be no withdrawal indexes for address with no requests");
+        assertEq(requests.length, 0, "Should be no withdrawal requests for address with no requests");
+    }
 }
