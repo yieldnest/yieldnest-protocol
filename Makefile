@@ -28,3 +28,8 @@ deploy-protocol 	:;	forge script script/DeployYieldNest.s.sol:DeployYieldNest --
 # Verify
 
 verify-roles 		:;	forge script script/Verify.s.sol --rpc-url ${rpc}
+
+# make ynEigen path=script/ynEigenDeployer/input/input-template.json    
+ynEigen :; ./script/ynEigenDeployer/bash/deployYnEigen.sh ${path}
+
+    
