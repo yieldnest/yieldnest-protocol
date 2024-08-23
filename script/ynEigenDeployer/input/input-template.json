@@ -1,5 +1,5 @@
 {
-    "chainId": "17000",
+    "chainId": "31337",
     "name": "YieldNest Restaked LSD - Eigenlayer",
     "symbol": "ynLSDe",
     "assets": [
