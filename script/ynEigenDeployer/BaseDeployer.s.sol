@@ -12,12 +12,13 @@ import "forge-std/console.sol";
 struct Asset {
     address addr;
     string name;
-    address strategyAddres;
+    address strategyAddress;
 }
 
 struct InputStruct {
     Asset[] assets;
     uint256 chainId;
+    string name;
     address rateProvider;
     string symbol;
 }
@@ -65,6 +66,12 @@ contract BaseDeployer is Script, BaseScript, ContractAddresses, ActorAddresses {
         InputStruct memory _inputs;
         bytes memory data = vm.parseJson(json);
         _inputs = abi.decode(data, (InputStruct));
+
+        // corrects wierd artifacts from decoding the struct
+        _inputs.chainId = json.readUint(string(abi.encodePacked(".chainId")));
+        _inputs.symbol = json.readString(string(abi.encodePacked(".symbol")));
+        _inputs.name = json.readString(string(abi.encodePacked(".name")));
+        _inputs.rateProvider = json.readAddress(string(abi.encodePacked(".rateProvider")));
         this.loadStructIntoMemory(_inputs);
     }
 

@@ -49,7 +49,7 @@ contract YnEigenDeployer is BaseDeployer {
         // verifyData();
         vm.broadcast(_privateKey);
         _deployBasket();
-        vm.startBroadcast();
+        vm.stopBroadcast();
     }
 
     function _deployBasket() internal {
