@@ -14,7 +14,7 @@ INFURA_PROJECT_ID=$(grep INFURA_PROJECT_ID .env | cut -d '=' -f2)
 DEPLOYER_ADDRESS=$(grep DEPLOYER_ADDRESS .env | cut -d '=' -f2)
 PRIVATE_KEY=""
 
-#verify env variables
+# verify env variables
 if [[ -z $ETHERSCAN_API_KEY || -z $INFURA_PROJECT_ID || -z $DEPLOYER_ADDRESS ]]; then
     echo "invalid .env vars"
     exit 1
@@ -34,15 +34,11 @@ function delimitier() {
 }
 
 function simulate() {
-    forge script $1 -s $2 --rpc-url $3
+    forge script $1 -s $2 --rpc-url $3 --account yieldnestDeployerKey --sender $DEPLOYER_ADDRESS
 }
 
 function broadcast() {
     forge script $1 -s $2 --rpc-url $3 --account yieldnestDeployerKey --sender $DEPLOYER_ADDRESS --broadcast --etherscan-api-key $ETHERSCAN_API_KEY --verify
-}
-
-function verify() {
-    forge script $1 -s $2 --rpc-url $3 --broadcast
 }
 
 function deploy() {
@@ -62,7 +58,7 @@ function deploy() {
         exit 1
     fi
 
-    broadcast script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $INFURA_ADDRESS
+    simulate script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $INFURA_ADDRESS
 
 }
 if [[ "$1" == "" ]]; then
