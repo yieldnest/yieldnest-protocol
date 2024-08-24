@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
+
 import {stdJson} from "lib/forge-std/src/StdJson.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
@@ -10,18 +11,16 @@ import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-
-import {Script} from "lib/forge-std/src/Script.sol";
-import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
 import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
-abstract contract BaseYnEigenScript is BaseScript {
+contract BaseYnEigenScript is BaseScript {
     using stdJson for string;
-    
+
     struct Deployment {
         ynEigen ynEigen;
         AssetRegistry assetRegistry;
@@ -34,9 +33,72 @@ abstract contract BaseYnEigenScript is BaseScript {
         ynEigenViewer viewer;
     }
 
-    function tokenName() internal virtual pure returns (string memory);
+    struct Asset {
+        string name;
+        address strategy;
+        address token;
+    }
 
-    function getDeploymentFile() internal virtual view returns (string memory) {
+    struct Input {
+        Asset[] assets;
+        uint256 chainId;
+        string name;
+        string symbol;
+    }
+
+    error IncorrectChainId(uint256 specifiedChainId, uint256 actualChainId);
+    error UnsupportedChainId(uint256 chainId);
+    error UnsupportedAsset(string asset, uint256 chainId);
+
+    Input public inputs;
+    ActorAddresses.Actors public actors;
+    ContractAddresses.ChainAddresses public chainAddresses;
+
+    address internal _deployer;
+    uint256 internal _privateKey;
+    uint256 internal _chainId;
+    string internal _network;
+
+    constructor() {
+        if (block.chainid == 31_337) {
+            _privateKey = vm.envUint("ANVIL_ONE");
+            _deployer = vm.addr(_privateKey);
+        } else {
+            _privateKey = vm.envUint("PRIVATE_KEY");
+            _deployer = vm.addr(_privateKey);
+        }
+
+        actors = getActors();
+        chainAddresses = getChainAddresses();
+    }
+
+    function _loadJson(string memory _path) internal {
+        string memory path = string(abi.encodePacked(vm.projectRoot(), "/", _path));
+        string memory json = vm.readFile(path);
+        bytes memory data = vm.parseJson(json);
+
+        Input memory _inputs = abi.decode(data, (Input));
+
+        this.loadInputs(_inputs);
+    }
+
+    /**
+     * @dev this function is required to load the JSON input struct into storage untill that feature is added to foundry
+     */
+    function loadInputs(Input calldata _inputs) external {
+        inputs = _inputs;
+    }
+
+    function _validateNetwork() internal virtual {
+        if (block.chainid != inputs.chainId) revert IncorrectChainId(inputs.chainId, block.chainid);
+        if (!isSupportedChainId(inputs.chainId)) revert UnsupportedChainId(inputs.chainId);
+    }
+
+    function tokenName() internal view returns (string memory) {
+        return inputs.symbol;
+    }
+
+    function getDeploymentFile() internal view virtual returns (string memory) {
         string memory root = vm.projectRoot();
 
         return string.concat(root, "/deployments/", tokenName(), "-", vm.toString(block.chainid), ".json");
@@ -46,7 +108,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         string memory json = "deployment";
 
         // contract addresses
-        serializeProxyElements(json, tokenName(), address(deployment.ynEigen)); 
+        serializeProxyElements(json, tokenName(), address(deployment.ynEigen));
         serializeProxyElements(json, "assetRegistry", address(deployment.assetRegistry));
         serializeProxyElements(json, "eigenStrategyManager", address(deployment.eigenStrategyManager));
         serializeProxyElements(json, "tokenStakingNodesManager", address(deployment.tokenStakingNodesManager));
@@ -56,8 +118,6 @@ abstract contract BaseYnEigenScript is BaseScript {
         serializeProxyElements(json, "ynEigenViewer", address(deployment.viewer));
         vm.serializeAddress(json, "upgradeTimelock", address(deployment.upgradeTimelock));
 
-
-        ActorAddresses.Actors memory actors = getActors();
         // actors
         vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address(actors.admin.PROXY_ADMIN_OWNER));
         vm.serializeAddress(json, "ADMIN", address(actors.admin.ADMIN));
@@ -71,7 +131,7 @@ abstract contract BaseYnEigenScript is BaseScript {
         vm.serializeAddress(json, "YnSecurityCouncil", address(actors.wallets.YNSecurityCouncil));
         vm.serializeAddress(json, "YNDev", address(actors.wallets.YNDev));
         string memory finalJson = vm.serializeAddress(json, "DEFAULT_SIGNER", address((actors.eoa.DEFAULT_SIGNER)));
-        
+
         vm.writeJson(finalJson, getDeploymentFile());
 
         console.log("Deployment JSON file written successfully:", getDeploymentFile());
@@ -81,12 +141,16 @@ abstract contract BaseYnEigenScript is BaseScript {
         string memory deploymentFile = getDeploymentFile();
         string memory jsonContent = vm.readFile(deploymentFile);
         Deployment memory deployment;
-        deployment.ynEigen = ynEigen(payable(jsonContent.readAddress(string.concat(".proxy-",  tokenName()))));
-        deployment.tokenStakingNodesManager = TokenStakingNodesManager(payable(jsonContent.readAddress(".proxy-tokenStakingNodesManager")));
+        deployment.ynEigen = ynEigen(payable(jsonContent.readAddress(string.concat(".proxy-", tokenName()))));
+        deployment.tokenStakingNodesManager =
+            TokenStakingNodesManager(payable(jsonContent.readAddress(".proxy-tokenStakingNodesManager")));
         deployment.assetRegistry = AssetRegistry(payable(jsonContent.readAddress(".proxy-assetRegistry")));
-        deployment.eigenStrategyManager = EigenStrategyManager(payable(jsonContent.readAddress(".proxy-eigenStrategyManager")));
-        deployment.tokenStakingNodeImplementation = TokenStakingNode(payable(jsonContent.readAddress(".tokenStakingNodeImplementation")));
-        deployment.ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(jsonContent.readAddress(".proxy-ynEigenDepositAdapter")));
+        deployment.eigenStrategyManager =
+            EigenStrategyManager(payable(jsonContent.readAddress(".proxy-eigenStrategyManager")));
+        deployment.tokenStakingNodeImplementation =
+            TokenStakingNode(payable(jsonContent.readAddress(".tokenStakingNodeImplementation")));
+        deployment.ynEigenDepositAdapterInstance =
+            ynEigenDepositAdapter(payable(jsonContent.readAddress(".proxy-ynEigenDepositAdapter")));
         deployment.rateProvider = IRateProvider(payable(jsonContent.readAddress(".proxy-rateProvider")));
         deployment.viewer = ynEigenViewer(payable(jsonContent.readAddress(".proxy-ynEigenViewer")));
         deployment.upgradeTimelock = TimelockController(payable(jsonContent.readAddress(".upgradeTimelock")));
@@ -100,6 +164,4 @@ abstract contract BaseYnEigenScript is BaseScript {
         string memory proxyKey = string.concat(".proxy-", contractName);
         return jsonContent.readAddress(proxyKey);
     }
-
 }
-
