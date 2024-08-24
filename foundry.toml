@@ -6,7 +6,8 @@ test = 'test'
 cache_path = 'cache'
 
 fs_permissions = [
-    { access = "read-write", path = "./" },
+    { access = "read-write", path = "./deployments" },
+    { access = "read", path = "./" },
 ]
 
 optimizer = true
