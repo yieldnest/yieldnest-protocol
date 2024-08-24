@@ -81,7 +81,7 @@ contract YnEigenDeployer is BaseYnEigenScript {
     }
 
     function _deploy() internal {
-        vm.startBroadcast(_privateKey);
+        vm.startBroadcast();
 
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);

@@ -55,18 +55,11 @@ contract BaseYnEigenScript is BaseScript {
     ContractAddresses.ChainAddresses public chainAddresses;
 
     address internal _deployer;
-    uint256 internal _privateKey;
     uint256 internal _chainId;
     string internal _network;
 
     constructor() {
-        if (block.chainid == 31_337) {
-            _privateKey = vm.envUint("ANVIL_ONE");
-            _deployer = vm.addr(_privateKey);
-        } else {
-            _privateKey = vm.envUint("PRIVATE_KEY");
-            _deployer = vm.addr(_privateKey);
-        }
+        _deployer = vm.envAddress("DEPLOYER_ADDRESS");
 
         actors = getActors();
         chainAddresses = getChainAddresses();
