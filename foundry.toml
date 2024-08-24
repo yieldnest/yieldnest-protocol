@@ -6,7 +6,7 @@ test = 'test'
 cache_path = 'cache'
 
 fs_permissions = [
-    { access = "read-write", path = "./deployments ./script/ynEigenDeployer" },
+    { access = "read-write", path = "./deployments" },
     { access = "read", path = "./" },
 ]
 
