@@ -10,10 +10,14 @@ import {ynETH} from "src/ynETH.sol";
 import {Script} from "lib/forge-std/src/Script.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
+
+    ActorAddresses private _actorAddresses = new ActorAddresses();
+    ContractAddresses private _contractAddresses = new ContractAddresses();
 
     function serializeActors(string memory json) public {
         ActorAddresses.Actors memory actors = getActors();
@@ -42,6 +46,14 @@ abstract contract BaseScript is Script, Utils {
     }
 
     function getActors() public returns (ActorAddresses.Actors memory actors) {
-        return (new ActorAddresses()).getActors(block.chainid);
+        return _actorAddresses.getActors(block.chainid);
+    }
+
+    function getChainAddresses() public returns (ContractAddresses.ChainAddresses memory chainAddresses) {
+        return _contractAddresses.getChainAddresses(block.chainid);
+    }
+
+    function isSupportedChainId(uint256 chainId) public returns (bool) {
+        return _contractAddresses.isSupportedChainId(chainId);
     }
 }
