@@ -29,7 +29,5 @@ deploy-protocol 	:;	forge script script/DeployYieldNest.s.sol:DeployYieldNest --
 
 verify-roles 		:;	forge script script/Verify.s.sol --rpc-url ${rpc}
 
-# make ynEigen path=script/ynEigenDeployer/input/input-template.json    
-ynEigen :; ./script/ynEigenDeployer/bash/deployYnEigen.sh ${path}
-
-    
+# make ynEigen path="script/ynEigen/input/lsd-mainnet.json" rpc="https://mainnet.infura.io/v3/your-key"
+ynEigen :; forge script YnEigenScript --rpc-url ${rpc}  --sig "run(string)" ${path}

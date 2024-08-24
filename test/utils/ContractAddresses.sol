@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+
 contract ContractAddresses {
+
     struct YnEigenAddresses {
         address YNEIGEN_ADDRESS;
         address TOKEN_STAKING_NODES_MANAGER_ADDRESS;
@@ -17,7 +19,7 @@ contract ContractAddresses {
         address STAKING_NODES_MANAGER_ADDRESS;
         address REWARDS_DISTRIBUTOR_ADDRESS;
         address EXECUTION_LAYER_RECEIVER_ADDRESS;
-        address CONSENSUS_LAYER_RECEIVER_ADDRESS;
+        address CONSENSUS_LAYER_RECEIVER_ADDRESS;  
     }
 
     struct EigenlayerAddresses {
@@ -72,9 +74,12 @@ contract ContractAddresses {
     }
 
     mapping(uint256 => ChainAddresses) public addresses;
-    ChainIds public chainIds = ChainIds({mainnet: 1, holeksy: 17000});
+    ChainIds public chainIds = ChainIds({
+        mainnet: 1,
+        holeksy: 17000
+    });
 
-    function _loadContractAddresses() internal {
+    constructor() {
         addresses[chainIds.mainnet] = ChainAddresses({
             ethereum: EthereumAddresses({
                 WETH_ADDRESS: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2,

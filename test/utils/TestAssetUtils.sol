@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ContractAddresses} from "script/ContractAddresses.sol";
+import {ContractAddresses} from "./ContractAddresses.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
@@ -11,7 +11,7 @@ import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
 import { ImETHStaking } from "src/external/mantle/ImETHStaking.sol";
 
-import "forge-std/console.sol";
+import "lib/forge-std/src/console.sol";
 
 interface IRocketPoolDepositPool {
     function deposit() external payable;
