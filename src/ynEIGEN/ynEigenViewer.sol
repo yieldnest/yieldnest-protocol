@@ -21,10 +21,12 @@ contract ynEigenViewer {
         uint256 totalBalance;
     }
     
+    /* solhint-disable immutable-vars-naming */
     AssetRegistry public immutable assetRegistry;
     IynEigen public immutable ynEIGEN;
     ITokenStakingNodesManager public immutable tokenStakingNodesManager;
     IRateProvider public immutable rateProvider;
+    /* solhint-enable immutable-vars-naming */
 
     uint256 public constant DECIMALS = 1_000_000;
     uint256 public constant UNIT = 1 ether;
