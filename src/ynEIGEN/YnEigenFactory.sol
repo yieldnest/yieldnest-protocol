@@ -73,7 +73,8 @@ contract YnEigenFactory is IYnEigenFactory {
             ynEigenDepositAdapter(_deployProxy(init.implementations.depositAdapter, init.timelock));
         rateProvider = IRateProvider(_deployProxy(init.implementations.rateProvider, init.timelock));
         timelock = TimelockController(payable(init.timelock));
-        viewer = ynEigenViewer(_deployProxy(address(init.implementations.viewer), init.timelock));
+        // proxy controller set to YNSecurityCouncil since ynEigenViewer does not run production on-chain SC logic
+        viewer = ynEigenViewer(_deployProxy(address(init.implementations.viewer), init.actors.YN_SECURITY_COUNCIL));
 
         // Initialize ynToken
         ynToken.initialize(
@@ -125,8 +126,8 @@ contract YnEigenFactory is IYnEigenFactory {
         // Initialize tokenStakingNodesManager
         tokenStakingNodesManager.initialize(
             TokenStakingNodesManager.Init({
-                admin: address(this), // Placeholder; change post-deployment
-                stakingAdmin: address(this), // Placeholder; change post-deployment
+                admin: address(this), // Placeholder; changed post tokenStakingNode registration
+                stakingAdmin: address(this), // Placeholder; changed post tokenStakingNode registration
                 strategyManager: IStrategyManager(init.chainAddresses.STRATEGY_MANAGER),
                 delegationManager: IDelegationManager(init.chainAddresses.DELEGATION_MANAGER),
                 yieldNestStrategyManager: address(eigenStrategyManager),
@@ -142,13 +143,13 @@ contract YnEigenFactory is IYnEigenFactory {
         // Register tokenStakingNode
         tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNode));
 
-        // Set roles post-deployment
+        // Reset roles post tokenStakingNode registration
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), init.actors.ADMIN);
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), init.timelock);
         tokenStakingNodesManager.revokeRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), address(this));
         tokenStakingNodesManager.revokeRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), address(this));
 
-        // ynEigenDepositAdapter
+        // Initialize ynEigenDepositAdapter
         ynEigenDepositAdapterInstance.initialize(
             ynEigenDepositAdapter.Init({
                 ynEigen: address(ynToken),
@@ -158,7 +159,7 @@ contract YnEigenFactory is IYnEigenFactory {
             })
         );
 
-        // ynEigenViewer
+        // Initialize ynEigenViewer
         viewer.initialize(
             address(assetRegistry), address(ynToken), address(tokenStakingNodesManager), address(rateProvider)
         );

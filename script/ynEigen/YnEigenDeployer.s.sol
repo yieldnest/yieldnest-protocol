@@ -96,7 +96,8 @@ contract YnEigenDeployer is BaseYnEigenScript {
                     EIGEN_STRATEGY_ADMIN: actors.admin.EIGEN_STRATEGY_ADMIN,
                     STAKING_NODE_CREATOR: actors.ops.STAKING_NODE_CREATOR,
                     STRATEGY_CONTROLLER: actors.ops.STRATEGY_CONTROLLER,
-                    TOKEN_STAKING_NODE_OPERATOR: actors.ops.TOKEN_STAKING_NODE_OPERATOR
+                    TOKEN_STAKING_NODE_OPERATOR: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+                    YN_SECURITY_COUNCIL: actors.wallets.YNSecurityCouncil
                 });
             }
 

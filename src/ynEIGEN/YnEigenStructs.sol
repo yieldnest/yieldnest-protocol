@@ -14,6 +14,7 @@ struct YnEigenActors {
     address STAKING_NODE_CREATOR;
     address STRATEGY_CONTROLLER;
     address TOKEN_STAKING_NODE_OPERATOR;
+    address YN_SECURITY_COUNCIL;
 }
 
 struct YnEigenChainAddresses {
