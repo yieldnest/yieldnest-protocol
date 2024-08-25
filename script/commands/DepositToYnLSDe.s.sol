@@ -10,7 +10,7 @@ import {IynEigen} from "../../src/interfaces/IynEigen.sol";
 import {ImETHStaking} from "../../src/external/mantle/ImETHStaking.sol";
 import {IfrxMinter} from "../../src/external/frax/IfrxMinter.sol";
 
-import {ContractAddresses} from "../ContractAddresses.sol";
+import {ContractAddresses as ContractAddressesOld} from "../../test/utils/ContractAddresses.sol";
 
 import "../BaseYnEigenScript.s.sol";
 
@@ -19,27 +19,15 @@ interface IRocketPoolDepositPool {
 }
 
 contract DepositToYnLSDe is BaseYnEigenScript {
-
     uint256 public privateKey; // dev: assigned in test setup
-
-    bool public shouldInit = true;
 
     address public broadcaster;
 
-    Deployment deployment;
-    ActorAddresses.Actors actors;
-    ContractAddresses.ChainAddresses chainAddresses;
-
     uint256 public constant AMOUNT = 0.1 ether;
 
-    function tokenName() internal override pure returns (string memory) {
-        return "YnLSDe";
-    }
+    ContractAddressesOld.ChainAddresses chainAddressesOld = (new ContractAddressesOld()).getChainAddresses(block.chainid);
 
     function run() public {
-
-        if (shouldInit) _init();
-
         address token = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
         uint256 path = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
         run(path, token);
@@ -70,28 +58,28 @@ contract DepositToYnLSDe is BaseYnEigenScript {
         console.log("Deposit successful");
     }
 
-    function _getTokenAddress(string memory n) internal returns (address) {
+    function _getTokenAddress(string memory n) internal view returns (address) {
         if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("sfrxETH")) && block.chainid == 1) {
-            return chainAddresses.lsd.SFRXETH_ADDRESS;
+            return chainAddressesOld.lsd.SFRXETH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("wstETH"))) {
-            return chainAddresses.lsd.WSTETH_ADDRESS;
+            return chainAddressesOld.lsd.WSTETH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("mETH"))) {
-            return chainAddresses.lsd.METH_ADDRESS;
+            return chainAddressesOld.lsd.METH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("rETH")) && block.chainid == 17000) {
-            return chainAddresses.lsd.RETH_ADDRESS;
+            return chainAddressesOld.lsd.RETH_ADDRESS;
         } else {
             revert("Invalid token name");
         }
     }
 
     function _getToken(address token) internal returns (uint256 _amount) {
-        if (token == chainAddresses.lsd.SFRXETH_ADDRESS) {
+        if (token == chainAddressesOld.lsd.SFRXETH_ADDRESS) {
             _amount = _getSFRXETH();
-        } else if (token == chainAddresses.lsd.WSTETH_ADDRESS) {
+        } else if (token == chainAddressesOld.lsd.WSTETH_ADDRESS) {
             _amount = _getWSTETH();
-        } else if (token == chainAddresses.lsd.METH_ADDRESS) {
+        } else if (token == chainAddressesOld.lsd.METH_ADDRESS) {
             _amount = _getMETH();
-        } else if (token == chainAddresses.lsd.RETH_ADDRESS) {
+        } else if (token == chainAddressesOld.lsd.RETH_ADDRESS) {
             _amount = _getRETH();
         } else {
             revert("Invalid token address");
@@ -104,13 +92,13 @@ contract DepositToYnLSDe is BaseYnEigenScript {
     }
 
     function _getWSTETH() internal returns (uint256) {
-        uint256 balanceBefore = IERC20(chainAddresses.lsd.STETH_ADDRESS).balanceOf(broadcaster);
-        (bool sent, ) = chainAddresses.lsd.STETH_ADDRESS.call{value: AMOUNT}("");
+        uint256 balanceBefore = IERC20(chainAddressesOld.lsd.STETH_ADDRESS).balanceOf(broadcaster);
+        (bool sent, ) = chainAddressesOld.lsd.STETH_ADDRESS.call{value: AMOUNT}("");
         require(sent, "Failed to send Ether");
 
-        uint256 amount = IERC20(chainAddresses.lsd.STETH_ADDRESS).balanceOf(broadcaster) - balanceBefore;
-        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(chainAddresses.lsd.WSTETH_ADDRESS, amount);
-        return IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).wrap(amount);
+        uint256 amount = IERC20(chainAddressesOld.lsd.STETH_ADDRESS).balanceOf(broadcaster) - balanceBefore;
+        IERC20(chainAddressesOld.lsd.STETH_ADDRESS).approve(chainAddressesOld.lsd.WSTETH_ADDRESS, amount);
+        return IwstETH(chainAddressesOld.lsd.WSTETH_ADDRESS).wrap(amount);
     }
 
     // NOTE: fails if AMOUNT < 0.1 ether
@@ -118,7 +106,7 @@ contract DepositToYnLSDe is BaseYnEigenScript {
         ImETHStaking mETHStaking = block.chainid == 1
             ? ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f)
             : ImETHStaking(0xbe16244EAe9837219147384c8A7560BA14946262);
-        IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        IERC20 mETH = IERC20(chainAddressesOld.lsd.METH_ADDRESS);
         uint256 _balanceBefore = mETH.balanceOf(broadcaster);
         mETHStaking.stake{value: AMOUNT}(mETHStaking.ethToMETH(AMOUNT));
         return mETH.balanceOf(broadcaster) - _balanceBefore;
@@ -126,25 +114,18 @@ contract DepositToYnLSDe is BaseYnEigenScript {
 
     function _getRETH() internal returns (uint256) { // NOTE: only holesky
         IRocketPoolDepositPool depositPool = IRocketPoolDepositPool(0x320f3aAB9405e38b955178BBe75c477dECBA0C27);
-        uint256 _balanceBefore = IERC20(chainAddresses.lsd.RETH_ADDRESS).balanceOf(broadcaster);
+        uint256 _balanceBefore = IERC20(chainAddressesOld.lsd.RETH_ADDRESS).balanceOf(broadcaster);
         // NOTE: only works if pool is not at max capacity (it may be)
         depositPool.deposit{value: AMOUNT}();
-        return IERC20(chainAddresses.lsd.RETH_ADDRESS).balanceOf(broadcaster) - _balanceBefore;
+        return IERC20(chainAddressesOld.lsd.RETH_ADDRESS).balanceOf(broadcaster) - _balanceBefore;
     }
 
     function _deposit(uint256 amount, address token) internal {
-        IERC20(token).approve(chainAddresses.ynEigen.YNEIGEN_ADDRESS, amount);
-        IynEigen(chainAddresses.ynEigen.YNEIGEN_ADDRESS).deposit(IERC20(token), amount, broadcaster);
+        IERC20(token).approve(chainAddressesOld.ynEigen.YNEIGEN_ADDRESS, amount);
+        IynEigen(chainAddressesOld.ynEigen.YNEIGEN_ADDRESS).deposit(IERC20(token), amount, broadcaster);
     }
 
     function _send(uint256 amount, address token) internal {
         IERC20(token).transfer(actors.eoa.DEFAULT_SIGNER, amount);
-    }
-
-    function _init() internal {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        deployment = loadDeployment();
-        actors = getActors();
     }
 }
