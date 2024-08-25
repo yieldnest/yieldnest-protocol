@@ -18,10 +18,22 @@ import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
 
 import {BaseYnEigenScript} from "script/BaseYnEigenScript.s.sol";
 
-import {YnEigenFactory, YnEigenInit, YnEigenActors, YnEigenChainAddresses } from "src/ynEIGEN/YnEigenFactory.sol";
+import {YnEigenFactory} from "src/ynEIGEN/YnEigenFactory.sol";
+import {
+    YnEigenInit, YnEigenActors, YnEigenChainAddresses, YnEigenImplementations
+} from "src/ynEIGEN/YnEigenStructs.sol";
+
+import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
+import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
+import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
+import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
+import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
+import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 
 contract YnEigenDeployer is BaseYnEigenScript {
-    // TODO: update this new chains
+    // TODO: update this for new chains
     function _getTimelockDelay() internal view returns (uint256) {
         if (block.chainid == 17000) {
             // Holesky
@@ -84,8 +96,7 @@ contract YnEigenDeployer is BaseYnEigenScript {
                     EIGEN_STRATEGY_ADMIN: actors.admin.EIGEN_STRATEGY_ADMIN,
                     STAKING_NODE_CREATOR: actors.ops.STAKING_NODE_CREATOR,
                     STRATEGY_CONTROLLER: actors.ops.STRATEGY_CONTROLLER,
-                    TOKEN_STAKING_NODE_OPERATOR: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
-                    YN_SECURITY_COUNCIL: actors.wallets.YNSecurityCouncil
+                    TOKEN_STAKING_NODE_OPERATOR: actors.ops.TOKEN_STAKING_NODE_OPERATOR
                 });
             }
 
@@ -100,21 +111,47 @@ contract YnEigenDeployer is BaseYnEigenScript {
                 });
             }
 
+            vm.startBroadcast();
+            YnEigenImplementations memory implementations;
+            {
+                implementations = YnEigenImplementations({
+                    ynEigen: address(new ynEigen()),
+                    rateProvider: _getRateProviderImplementation(),
+                    eigenStrategyManager: address(new EigenStrategyManager()),
+                    tokenStakingNodesManager: address(new TokenStakingNodesManager()),
+                    tokenStakingNode: address(new TokenStakingNode()),
+                    assetRegistry: address(new AssetRegistry()),
+                    depositAdapter: address(new ynEigenDepositAdapter())
+                });
+            }
+
+            TimelockController timelock;
+            // Deploy timelock
+            {
+                address[] memory _proposers = new address[](1);
+                _proposers[0] = actors.wallets.YNSecurityCouncil;
+                address[] memory _executors = new address[](1);
+                _executors[0] = actors.wallets.YNSecurityCouncil;
+                timelock = new TimelockController(
+                    _getTimelockDelay(), _proposers, _executors, actors.wallets.YNSecurityCouncil
+                );
+            }
+
             init = YnEigenInit({
                 name: inputs.name,
                 symbol: inputs.symbol,
-                timeLockDelay: _getTimelockDelay(),
                 maxNodeCount: 10,
-                rateProviderImplementation: _getRateProviderImplementation(),
+                timelock: address(timelock),
                 assets: assets,
                 strategies: strategies,
                 actors: ynEigenActors,
-                chainAddresses: ynEigenChainAddresses
+                chainAddresses: ynEigenChainAddresses,
+                implementations: implementations
             });
         }
 
         {
-            vm.startBroadcast();
+            YnEigenFactory factory = new YnEigenFactory();
 
             (
                 ynEigen ynToken,
@@ -126,7 +163,7 @@ contract YnEigenDeployer is BaseYnEigenScript {
                 IRateProvider rateProvider,
                 TimelockController timelock,
                 ynEigenViewer viewer
-            ) = (new YnEigenFactory()).deploy(init);
+            ) = factory.deploy(init);
 
             vm.stopBroadcast();
 
