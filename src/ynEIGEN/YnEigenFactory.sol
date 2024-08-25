@@ -73,6 +73,7 @@ contract YnEigenFactory is IYnEigenFactory {
             ynEigenDepositAdapter(_deployProxy(init.implementations.depositAdapter, init.timelock));
         rateProvider = IRateProvider(_deployProxy(init.implementations.rateProvider, init.timelock));
         timelock = TimelockController(payable(init.timelock));
+        viewer = ynEigenViewer(_deployProxy(address(init.implementations.viewer), init.timelock));
 
         // Initialize ynToken
         ynToken.initialize(
@@ -158,12 +159,9 @@ contract YnEigenFactory is IYnEigenFactory {
         );
 
         // ynEigenViewer
-        {
-            ynEigenViewer viewerImplementation = new ynEigenViewer(
-                address(assetRegistry), address(ynToken), address(tokenStakingNodesManager), address(rateProvider)
-            );
-            viewer = ynEigenViewer(_deployProxy(address(viewerImplementation), init.timelock));
-        }
+        viewer.initialize(
+            address(assetRegistry), address(ynToken), address(tokenStakingNodesManager), address(rateProvider)
+        );
 
         emit YnEigenDeployed(
             ynToken,

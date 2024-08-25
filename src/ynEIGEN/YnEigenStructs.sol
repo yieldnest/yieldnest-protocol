@@ -25,12 +25,13 @@ struct YnEigenChainAddresses {
 
 struct YnEigenImplementations {
     address ynEigen;
-    address rateProvider;
     address eigenStrategyManager;
     address tokenStakingNodesManager;
     address tokenStakingNode;
     address assetRegistry;
     address depositAdapter;
+    address rateProvider;
+    address viewer;
 }
 
 struct YnEigenInit {
