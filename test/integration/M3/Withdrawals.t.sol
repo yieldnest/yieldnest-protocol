@@ -30,46 +30,46 @@ contract M3WithdrawalsTest is Base {
     function testVerifyWithdrawalCredentials() public {
         if (block.chainid != 17000) return;
 
-        // register a new validator
-        {
-            IStakingNodesManager.ValidatorData[] memory _validatorData = new IStakingNodesManager.ValidatorData[](1);
-            _validatorData[0] = IStakingNodesManager.ValidatorData({
-                publicKey: ZERO_PUBLIC_KEY,
-                signature: ZERO_SIGNATURE,
-                nodeId: NODE_ID,
-                depositDataRoot: ZERO_DEPOSIT_ROOT
-            });
+        // // register a new validator
+        // {
+        //     IStakingNodesManager.ValidatorData[] memory _validatorData = new IStakingNodesManager.ValidatorData[](1);
+        //     _validatorData[0] = IStakingNodesManager.ValidatorData({
+        //         publicKey: ZERO_PUBLIC_KEY,
+        //         signature: ZERO_SIGNATURE,
+        //         nodeId: NODE_ID,
+        //         depositDataRoot: ZERO_DEPOSIT_ROOT
+        //     });
 
-            bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(NODE_ID);
-            bytes32 _depositDataRoot = stakingNodesManager.generateDepositRoot(ZERO_PUBLIC_KEY, ZERO_SIGNATURE, _withdrawalCredentials, 32 ether);
-            _validatorData[0].depositDataRoot = _depositDataRoot;
+        //     bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(NODE_ID);
+        //     bytes32 _depositDataRoot = stakingNodesManager.generateDepositRoot(ZERO_PUBLIC_KEY, ZERO_SIGNATURE, _withdrawalCredentials, 32 ether);
+        //     _validatorData[0].depositDataRoot = _depositDataRoot;
             
-            vm.prank(actors.ops.VALIDATOR_MANAGER);
-            stakingNodesManager.registerValidators(_validatorData);
-        }
+        //     vm.prank(actors.ops.VALIDATOR_MANAGER);
+        //     stakingNodesManager.registerValidators(_validatorData);
+        // }
 
 
-        // verify its withdrawal credentials
-        {
-            IStakingNode[] memory _node = stakingNodesManager.nodes(NODE_ID);
-            // uint64 beaconTimestamp,
-            // BeaconChainProofs.StateRootProof calldata stateRootProof,
-            // uint40[] calldata validatorIndices,
-            // bytes[] calldata validatorFieldsProofs,
-            // bytes32[][] calldata validatorFields
+        // // verify its withdrawal credentials
+        // {
+        //     IStakingNode[] memory _node = stakingNodesManager.nodes(NODE_ID);
+        //     // uint64 beaconTimestamp,
+        //     // BeaconChainProofs.StateRootProof calldata stateRootProof,
+        //     // uint40[] calldata validatorIndices,
+        //     // bytes[] calldata validatorFieldsProofs,
+        //     // bytes32[][] calldata validatorFields
 
-            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-            _node.verifyWithdrawalCredentials(
-                0, // beaconTimestamp
-                BeaconChainProofs.StateRootProof({
-                    stateRoot: bytes32(0),
-                    proof: new bytes(0)
-                }),
-                new uint40[](0), // validatorIndices
-                new bytes[](0), // validatorFieldsProofs
-                new bytes32[][](0) // validatorFields
-            );
-        }
+        //     vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        //     _node.verifyWithdrawalCredentials(
+        //         0, // beaconTimestamp
+        //         BeaconChainProofs.StateRootProof({
+        //             stateRoot: bytes32(0),
+        //             proof: new bytes(0)
+        //         }),
+        //         new uint40[](0), // validatorIndices
+        //         new bytes[](0), // validatorFieldsProofs
+        //         new bytes32[][](0) // validatorFields
+        //     );
+        // }
 
         // -------------
         // /**

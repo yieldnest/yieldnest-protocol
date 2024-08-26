@@ -8,6 +8,9 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 // import {IEigenPodManager} from "@eigenlayer-contracts/interfaces/IEigenPodManager.sol";
 // import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategy.sol";
 // import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+// import "src/test/integration/mocks/BeaconChainMock.t.sol";
+// @eigenlayer-contracts/=lib/eigenlayer-contracts/src/
+import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
@@ -60,6 +63,10 @@ contract Base is Test, Utils {
     // IEigenPodManager public eigenPodManager;
     // IDelegationManager public delegationManager;
     // IStrategyManager public strategyManager;
+
+    // Mock Contracts to deploy
+    // ETHPOSDepositMock ethPOSDeposit;
+    // BeaconChainMock public beaconChain;
 
     // Ethereum
     IDepositContract public depositContractEth2;
