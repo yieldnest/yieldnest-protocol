@@ -146,7 +146,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         nodeId = init.nodeId;
     }
 
-    function initializeV2(uint256 initialUnverifiedStakedETH) external onlyStakingNodesManager reinitializer(2) {
+    // @todo - johnny M3 tests PR --> changed `reinitializer(2)` to `reinitializer(3)`
+    function initializeV2(uint256 initialUnverifiedStakedETH) external onlyStakingNodesManager reinitializer(3) {
         unverifiedStakedETH = initialUnverifiedStakedETH;
     }
 

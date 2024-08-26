@@ -5,12 +5,11 @@ import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openze
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 // import {IStrategyManager} from "@eigenlayer-contracts/interfaces/IStrategyManager.sol";
-// import {IEigenPodManager} from "@eigenlayer-contracts/interfaces/IEigenPodManager.sol";
+import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+// import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
 // import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategy.sol";
 // import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-// import "src/test/integration/mocks/BeaconChainMock.t.sol";
-// @eigenlayer-contracts/=lib/eigenlayer-contracts/src/
-import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
+import {BeaconChainMock, BeaconChainProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
@@ -60,19 +59,21 @@ contract Base is Test, Utils {
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
 
     // // EigenLayer
-    // IEigenPodManager public eigenPodManager;
+    IEigenPodManager public eigenPodManager;
     // IDelegationManager public delegationManager;
     // IStrategyManager public strategyManager;
 
     // Mock Contracts to deploy
     // ETHPOSDepositMock ethPOSDeposit;
-    // BeaconChainMock public beaconChain;
+    BeaconChainMock public beaconChain;
 
     // Ethereum
     IDepositContract public depositContractEth2;
 
     // address GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
-    address GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
+    address public constant GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
+
+    uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
     function setUp() public virtual {
         assignContracts();
@@ -85,7 +86,7 @@ contract Base is Test, Utils {
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
 
-        // Assign YieldNest addresses
+        // assign YieldNest addresses
         {
             yneth = ynETH(payable(chainAddresses.yn.YNETH_ADDRESS));
             stakingNodesManager = StakingNodesManager(payable(chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS));
@@ -94,17 +95,25 @@ contract Base is Test, Utils {
             consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
         }
 
-        // Assign Ethereum addresses
+        // assign Ethereum addresses
         {
             depositContractEth2 = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
         }
 
-        // // Assign Eigenlayer addresses
-        // {
-        //     eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
-        //     delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        //     strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
-        // }
+        // assign Eigenlayer addresses
+        {
+            eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
+            // delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+            // strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        }
+
+        // deploy EigenLayer mocks
+        {
+            vm.warp(GENESIS_TIME_LOCAL);
+            // timeMachine = new TimeMachine();
+            beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
+            // beaconChain = new BeaconChainMock();
+        }
     }
 
     function upgradeYnToM3() internal {

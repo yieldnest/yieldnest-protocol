@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+// import {EigenPod} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
+
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 
 import "./Base.t.sol";
+
+interface IPod {
+    function verifyWithdrawalCredentials(
+        uint64 beaconTimestamp,
+        BeaconChainProofs.StateRootProof calldata stateRootProof,
+        uint40[] calldata validatorIndices,
+        bytes[] calldata validatorFieldsProofs,
+        bytes32[][] calldata validatorFields
+    ) external;
+}
 
 contract M3WithdrawalsTest is Base {
 
@@ -28,7 +40,30 @@ contract M3WithdrawalsTest is Base {
 
     // todo - mock the BEACON_ROOTS_ADDRESS and update it's address in the EL eigenpod contract
     function testVerifyWithdrawalCredentials() public {
-        if (block.chainid != 17000) return;
+        bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(NODE_ID);
+        uint40 _validatorIndex = beaconChain.newValidator{ value: AMOUNT }(_withdrawalCredentials);
+        beaconChain.advanceEpoch_NoRewards();
+
+        uint40[] memory _validators = new uint40[](1);
+        _validators[0] = _validatorIndex;
+        CredentialProofs memory proofs = beaconChain.getCredentialProofs(_validators);
+
+        IStakingNode _node = stakingNodesManager.nodes(NODE_ID);
+        {
+            vm.prank(address(_node.stakingNodesManager()));
+            _node.initializeV2(AMOUNT);
+        }
+
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        IPod(address(_node)).verifyWithdrawalCredentials({
+            beaconTimestamp: proofs.beaconTimestamp,
+            stateRootProof: proofs.stateRootProof,
+            validatorIndices: _validators,
+            validatorFieldsProofs: proofs.validatorFieldsProofs,
+            validatorFields: proofs.validatorFields
+        });
+
+        // if (block.chainid != 17000) return;
 
         // // register a new validator
         // {
