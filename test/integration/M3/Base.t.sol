@@ -4,10 +4,10 @@ pragma solidity ^0.8.24;
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import {IStrategyManager} from "@eigenlayer-contracts/interfaces/IStrategyManager.sol";
-import {IEigenPodManager} from "@eigenlayer-contracts/interfaces/IEigenPodManager.sol";
-import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategy.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+// import {IStrategyManager} from "@eigenlayer-contracts/interfaces/IStrategyManager.sol";
+// import {IEigenPodManager} from "@eigenlayer-contracts/interfaces/IEigenPodManager.sol";
+// import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategy.sol";
+// import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
@@ -56,14 +56,15 @@ contract Base is Test, Utils {
     WithdrawalQueueManager public ynETHWithdrawalQueueManager;
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
 
-    // EigenLayer
-    IEigenPodManager public eigenPodManager;
-    IDelegationManager public delegationManager;
-    IStrategyManager public strategyManager;
+    // // EigenLayer
+    // IEigenPodManager public eigenPodManager;
+    // IDelegationManager public delegationManager;
+    // IStrategyManager public strategyManager;
 
     // Ethereum
     IDepositContract public depositContractEth2;
 
+    // address GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
     address GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
 
     function setUp() public virtual {
@@ -91,12 +92,12 @@ contract Base is Test, Utils {
             depositContractEth2 = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
         }
 
-        // Assign Eigenlayer addresses
-        {
-            eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
-            delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-            strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
-        }
+        // // Assign Eigenlayer addresses
+        // {
+        //     eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
+        //     delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+        //     strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        // }
     }
 
     function upgradeYnToM3() internal {
@@ -104,7 +105,7 @@ contract Base is Test, Utils {
 
         // upgrade stakingNodesManager
         {
-            vm.prank(GLOBAL_ADMIN);
+            vm.startPrank(ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).owner());
             ProxyAdmin(
                 getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
             ).upgradeAndCall(
@@ -112,11 +113,12 @@ contract Base is Test, Utils {
                 address(new StakingNodesManager()),
                 ""
             );
+            vm.stopPrank();
         }
 
         // upgrade ynETH
         {
-            vm.prank(GLOBAL_ADMIN);
+            vm.startPrank(ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).owner());
             ProxyAdmin(
                 getTransparentUpgradeableProxyAdminAddress(address(yneth))
             ).upgradeAndCall(
@@ -124,6 +126,7 @@ contract Base is Test, Utils {
                 address(new ynETH()),
                 ""
             );
+            vm.stopPrank();
         }
 
         // deploy ynETHRedemptionAssetsVault
@@ -173,29 +176,6 @@ contract Base is Test, Utils {
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
 
-        // initialize stakingNodesManager
-        {
-            StakingNodesManager.Init memory _init = StakingNodesManager.Init({
-                admin: GLOBAL_ADMIN,
-                stakingAdmin: GLOBAL_ADMIN,
-                stakingNodesOperator: GLOBAL_ADMIN,
-                stakingNodesDelegator: GLOBAL_ADMIN,
-                validatorManager: GLOBAL_ADMIN,
-                stakingNodeCreatorRole: GLOBAL_ADMIN,
-                pauser: GLOBAL_ADMIN,
-                unpauser: GLOBAL_ADMIN,
-                maxNodeCount: stakingNodesManager.maxNodeCount(),
-                ynETH: IynETH(address(yneth)),
-                rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
-                depositContract: IDepositContract(address(depositContractEth2)),
-                eigenPodManager: IEigenPodManager(address(eigenPodManager)),
-                delegationManager: IDelegationManager(address(delegationManager)),
-                strategyManager: IStrategyManager(address(strategyManager))
-            });
-            vm.prank(GLOBAL_ADMIN);
-            stakingNodesManager.initialize(_init);
-        }
-
         // initialize stakingNodesManager withdrawal contracts
         {
             StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
@@ -217,14 +197,16 @@ contract Base is Test, Utils {
 
         // grant burner role
         {
-            vm.prank(GLOBAL_ADMIN);
+            vm.startPrank(actors.admin.STAKING_ADMIN);
             yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
+            vm.stopPrank();
         }
 
         // unpause ynETH transfers, in case they are paused
         {
-            vm.prank(GLOBAL_ADMIN);
+            vm.startPrank(actors.admin.STAKING_ADMIN);
             yneth.unpauseTransfers();
+            vm.stopPrank();
         }
     }
 }
