@@ -7,6 +7,7 @@ import {console} from "lib/forge-std/src/console.sol";
 
 contract YnEigenScript is YnEigenDeployer, YnEigenVerifier {
     function run(string memory _filePath) public {
+        _initDeployer();
         _loadJson(_filePath);
         _validateNetwork();
 

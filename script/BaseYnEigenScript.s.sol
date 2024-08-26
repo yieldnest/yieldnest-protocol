@@ -55,14 +55,14 @@ contract BaseYnEigenScript is BaseScript {
     ContractAddresses.ChainAddresses public chainAddresses;
 
     address internal _deployer;
-    uint256 internal _chainId;
-    string internal _network;
 
     constructor() {
-        _deployer = vm.envAddress("DEPLOYER_ADDRESS");
-
         actors = getActors();
         chainAddresses = getChainAddresses();
+    }
+
+    function _initDeployer() internal {
+        _deployer = msg.sender; // set by --sender when running the script
     }
 
     function _loadJson(string memory _path) internal {

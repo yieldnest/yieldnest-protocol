@@ -119,7 +119,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
 
-        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty)))));
+        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
 
         // register as operator
         vm.prank(operatorAddress);
@@ -151,7 +151,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
 
-        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty)))));
+        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
 
         // Register as operator and delegate
         vm.prank(operatorAddress);
