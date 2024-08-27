@@ -18,10 +18,8 @@ import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 
-import {YnEigenFactory} from "src/ynEIGEN/YnEigenFactory.sol";
-import {
-    YnEigenInit, YnEigenActors, YnEigenChainAddresses, YnEigenImplementations
-} from "src/ynEIGEN/YnEigenStructs.sol";
+import {YnEigenFactory} from "./YnEigenFactory.sol";
+import {YnEigenInit, YnEigenActors, YnEigenChainAddresses, YnEigenImplementations} from "./YnEigenStructs.sol";
 
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
