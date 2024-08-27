@@ -33,6 +33,7 @@ contract M3WithdrawalsTest is Base {
     }
 
     function testVerifyWithdrawalCredentials() public {
+        if (block.chainid != 17000) return;
 
         // create staking node
         {
@@ -85,6 +86,7 @@ contract M3WithdrawalsTest is Base {
     }
 
     function testVerifyCheckpoints() public {
+        if (block.chainid != 17000) return;
 
         // setup env
         {
@@ -113,6 +115,7 @@ contract M3WithdrawalsTest is Base {
     }
 
     function testWithdraw() public {
+        if (block.chainid != 17000) return;
 
         // setup env
         {
