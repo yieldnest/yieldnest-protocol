@@ -13,8 +13,7 @@ interface IPod {
 
 contract M3WithdrawalsTest is Base {
 
-    uint40 validatorIndex;
-
+    uint40 public validatorIndex;
     uint256 public nodeId;
 
     uint256 public constant AMOUNT = 32 ether;
@@ -129,7 +128,7 @@ contract M3WithdrawalsTest is Base {
             vm.stopPrank();
         }
 
-        // Create Withdrawal struct
+        // create Withdrawal struct
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
         {
             uint256[] memory _shares = new uint256[](1);
