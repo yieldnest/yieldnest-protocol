@@ -105,7 +105,7 @@ else
     delimitier
     read -p "Would you like to VERIFY an existing deployment or DEPLOY a new ynLSD?  VERIFY/DEPLOY " DEPLOY
     case $DEPLOY in
-    [DEPLOYdeployDeployDd]*)
+    deploy | DEPLOY | [Dd]*)
         delimitier
         read -p "Would you like to simulate this transaction before deployment? y/n " CONFIRMATION
 
@@ -131,9 +131,13 @@ else
             ;;
         esac
         ;;
-    [VERIFYverifyVerifyVv]*)
+    [vV] | VERIFY | verify)
         echo "Verifying..."
         verify $1
+        ;;
+    *)
+        echo "Invalid input"
+        exit 1
         ;;
     esac
 fi
