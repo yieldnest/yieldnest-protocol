@@ -433,7 +433,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         );
 
         require(
-            address(deployment.ynEigenDepositAdapterInstance.wstETH()) == address(chainAddresses.ynEigen.WSTETH_ADDRESS),
+            address(deployment.ynEigenDepositAdapterInstance.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
             "ynEigenDepositAdapter: wstETH INVALID"
         );
         console.log(
@@ -441,7 +441,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         );
 
         require(
-            address(deployment.ynEigenDepositAdapterInstance.woETH()) == address(chainAddresses.ynEigen.WOETH_ADDRESS),
+            address(deployment.ynEigenDepositAdapterInstance.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
             "ynEigenDepositAdapter: woETH INVALID"
         );
         console.log(
@@ -563,13 +563,13 @@ contract YnEigenVerifier is BaseYnEigenScript {
         );
 
         require(
-            address(deployment.eigenStrategyManager.wstETH()) == address(chainAddresses.ynEigen.WSTETH_ADDRESS),
+            address(deployment.eigenStrategyManager.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
             "eigenStrategyManager: wstETH INVALID"
         );
         console.log("\u2705 eigenStrategyManager: wstETH - Value:", address(deployment.eigenStrategyManager.wstETH()));
 
         require(
-            address(deployment.eigenStrategyManager.woETH()) == address(chainAddresses.ynEigen.WOETH_ADDRESS),
+            address(deployment.eigenStrategyManager.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
             "eigenStrategyManager: woETH INVALID"
         );
         console.log("\u2705 eigenStrategyManager: woETH - Value:", address(deployment.eigenStrategyManager.woETH()));

@@ -16,29 +16,29 @@ contract DepositToYnLSDeScript is DepositToYnLSDe, Test {
 
     function testSfrxETHDeposit() public {
         if (block.chainid != 1) return;
-        run(0, chainAddressesOld.lsd.SFRXETH_ADDRESS);
+        run(0, chainAddresses.lsd.SFRXETH_ADDRESS);
     }
 
     function testSfrxETHSend() public {
         if (block.chainid != 1) return;
-        run(1, chainAddressesOld.lsd.SFRXETH_ADDRESS);
+        run(1, chainAddresses.lsd.SFRXETH_ADDRESS);
     }
 
     function testMETHDeposit() public {
-        run(0, chainAddressesOld.lsd.METH_ADDRESS);
+        run(0, chainAddresses.lsd.METH_ADDRESS);
     }
 
     function testMETHSend() public {
-        run(1, chainAddressesOld.lsd.METH_ADDRESS);
+        run(1, chainAddresses.lsd.METH_ADDRESS);
     }
 
     function testRETHDeposit() public {
         if (block.chainid != 17000) return;
-        run(0, chainAddressesOld.lsd.RETH_ADDRESS);
+        run(0, chainAddresses.lsd.RETH_ADDRESS);
     }
 
     function testRETHSend() public {
         if (block.chainid != 17000) return;
-        run(1, chainAddressesOld.lsd.RETH_ADDRESS);
+        run(1, chainAddresses.lsd.RETH_ADDRESS);
     }
 }

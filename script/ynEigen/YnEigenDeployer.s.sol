@@ -105,8 +105,8 @@ contract YnEigenDeployer is BaseYnEigenScript {
 
             {
                 ynEigenChainAddresses = YnEigenChainAddresses({
-                    WSTETH_ADDRESS: chainAddresses.ynEigen.WSTETH_ADDRESS,
-                    WOETH_ADDRESS: chainAddresses.ynEigen.WOETH_ADDRESS,
+                    WSTETH_ADDRESS: chainAddresses.lsd.WSTETH_ADDRESS,
+                    WOETH_ADDRESS: chainAddresses.lsd.WOETH_ADDRESS,
                     STRATEGY_MANAGER: chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS,
                     DELEGATION_MANAGER: chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS
                 });

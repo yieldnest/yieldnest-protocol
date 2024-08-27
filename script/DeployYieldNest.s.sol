@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {TransparentUpgradeableProxy} from
-    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
@@ -26,6 +26,7 @@ import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 contract DeployYieldNest is BaseYnETHScript {
+
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;
     TransparentUpgradeableProxy public rewardsDistributorProxy;
@@ -49,6 +50,7 @@ contract DeployYieldNest is BaseYnETHScript {
     ActorAddresses.Actors actors;
 
     function run() external {
+
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         address publicKey = vm.addr(deployerPrivateKey);
@@ -81,12 +83,8 @@ contract DeployYieldNest is BaseYnETHScript {
         RewardsReceiver executionLayerReceiverImplementation = new RewardsReceiver();
         RewardsReceiver consensusLayerReceiverImplementation = new RewardsReceiver();
 
-        executionLayerReceiverProxy = new TransparentUpgradeableProxy(
-            address(executionLayerReceiverImplementation), actors.admin.PROXY_ADMIN_OWNER, ""
-        );
-        consensusLayerReceiverProxy = new TransparentUpgradeableProxy(
-            address(consensusLayerReceiverImplementation), actors.admin.PROXY_ADMIN_OWNER, ""
-        );
+        executionLayerReceiverProxy = new TransparentUpgradeableProxy(address(executionLayerReceiverImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
+        consensusLayerReceiverProxy = new TransparentUpgradeableProxy(address(consensusLayerReceiverImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
 
         executionLayerReceiver = RewardsReceiver(payable(executionLayerReceiverProxy));
         consensusLayerReceiver = RewardsReceiver(payable(consensusLayerReceiverProxy));
@@ -94,19 +92,16 @@ contract DeployYieldNest is BaseYnETHScript {
         stakingNodeImplementation = new StakingNode();
 
         RewardsDistributor rewardsDistributorImplementation = new RewardsDistributor();
-        rewardsDistributorProxy = new TransparentUpgradeableProxy(
-            address(rewardsDistributorImplementation), actors.admin.PROXY_ADMIN_OWNER, ""
-        );
+        rewardsDistributorProxy = new TransparentUpgradeableProxy(address(rewardsDistributorImplementation), actors.admin.PROXY_ADMIN_OWNER, "");
         rewardsDistributor = RewardsDistributor(payable(rewardsDistributorProxy));
 
         // Deploy proxies
         ynethProxy = new TransparentUpgradeableProxy(address(yneth), actors.admin.PROXY_ADMIN_OWNER, "");
-        stakingNodesManagerProxy =
-            new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
+        stakingNodesManagerProxy = new TransparentUpgradeableProxy(address(stakingNodesManager), actors.admin.PROXY_ADMIN_OWNER, "");
 
         yneth = ynETH(payable(ynethProxy));
         stakingNodesManager = StakingNodesManager(payable(stakingNodesManagerProxy));
-
+    
         // Initialize ynETH with example parameters
         address[] memory pauseWhitelist = new address[](1);
         pauseWhitelist[0] = actors.ops.PAUSE_ADMIN;
@@ -154,8 +149,10 @@ contract DeployYieldNest is BaseYnETHScript {
         rewardsDistributor.initialize(rewardsDistributorInit);
 
         // Initialize RewardsReceiver with example parameters
-        RewardsReceiver.Init memory rewardsReceiverInit =
-            RewardsReceiver.Init({admin: actors.admin.ADMIN, withdrawer: address(rewardsDistributor)});
+        RewardsReceiver.Init memory rewardsReceiverInit = RewardsReceiver.Init({
+            admin: actors.admin.ADMIN,
+            withdrawer: address(rewardsDistributor)
+        });
         executionLayerReceiver.initialize(rewardsReceiverInit);
         consensusLayerReceiver.initialize(rewardsReceiverInit); // Initializing consensusLayerReceiver
 
@@ -173,7 +170,9 @@ contract DeployYieldNest is BaseYnETHScript {
             rewardsDistributor: rewardsDistributor,
             stakingNodeImplementation: stakingNodeImplementation
         });
-
+        
         saveDeployment(deployment);
+
     }
 }
+
