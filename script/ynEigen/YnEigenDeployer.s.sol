@@ -16,7 +16,7 @@ import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
 
-import {BaseYnEigenScript} from "script/BaseYnEigenScript.s.sol";
+import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 
 import {YnEigenFactory} from "src/ynEIGEN/YnEigenFactory.sol";
 import {

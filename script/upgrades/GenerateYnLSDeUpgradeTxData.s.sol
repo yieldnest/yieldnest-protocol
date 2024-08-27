@@ -5,7 +5,7 @@ import {console} from "lib/forge-std/src/console.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import {BaseYnEigenScript} from "script/BaseYnEigenScript.s.sol";
+import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 
 contract GenerateYnLSDeUpgradeTxData is BaseYnEigenScript {
     Deployment deployment;

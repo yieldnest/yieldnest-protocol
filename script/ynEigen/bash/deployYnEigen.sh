@@ -12,7 +12,7 @@ PRIVATE_KEY=""
 DEPLOYER_ACCOUNT_NAME=${DEPLOYER_ACCOUNT_NAME:-"yieldnestDeployerKey"}
 
 # verify env variables
-if [[ -z $ETHERSCAN_API_KEY || -z $INFURA_PROJECT_ID || -z $DEPLOYER_ADDRESS ]]; then
+if [[ -z $ETHERSCAN_API_KEY || -z $RPC_URL || -z $DEPLOYER_ADDRESS ]]; then
     echo "invalid .env vars"
     exit 1
 fi
@@ -42,57 +42,24 @@ function simulator() {
     INPUT_JSON=$1
     CHAIN=$(jq -r ".chainId" "$INPUT_JSON")
     CALLDATA=$(cast calldata "run(string)" "/$INPUT_JSON")
-    INFURA_ADDRESS=""
 
-    if [[ $CHAIN == 1 ]]; then
-        INFURA_ADDRESS=https://mainnet.infura.io/v3/$INFURA_PROJECT_ID
-    elif [[ $CHAIN == 17000 ]]; then
-        INFURA_ADDRESS=https://holesky.infura.io/v3/$INFURA_PROJECT_ID
-    elif [[ $CHAIN == 31337 ]]; then
-        INFURA_ADDRESS=http://127.0.0.1:8545
-    else
-        exit 1
-    fi
-
-    simulate script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $INFURA_ADDRESS
+    simulate script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $RPC_URL
 }
 function verify() {
     # the first argument should be the path to the JSON input file
     INPUT_JSON=$1
     CHAIN=$(jq -r ".chainId" "$INPUT_JSON")
     CALLDATA=$(cast calldata "verify(string)" "/$INPUT_JSON")
-    INFURA_ADDRESS=""
 
-    if [[ $CHAIN == 1 ]]; then
-        INFURA_ADDRESS=https://mainnet.infura.io/v3/$INFURA_PROJECT_ID
-    elif [[ $CHAIN == 17000 ]]; then
-        INFURA_ADDRESS=https://holesky.infura.io/v3/$INFURA_PROJECT_ID
-    elif [[ $CHAIN == 31337 ]]; then
-        INFURA_ADDRESS=http://127.0.0.1:8545
-    else
-        exit 1
-    fi
-
-    broadcast script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $INFURA_ADDRESS
+    broadcast script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $RPC_URL
 }
 function deploy() {
     # the first argument should be the path to the JSON input file
     INPUT_JSON=$1
     CHAIN=$(jq -r ".chainId" "$INPUT_JSON")
     CALLDATA=$(cast calldata "run(string)" "/$INPUT_JSON")
-    INFURA_ADDRESS=""
 
-    if [[ $CHAIN == 1 ]]; then
-        INFURA_ADDRESS=https://mainnet.infura.io/v3/$INFURA_PROJECT_ID
-    elif [[ $CHAIN == 17000 ]]; then
-        INFURA_ADDRESS=https://holesky.infura.io/v3/$INFURA_PROJECT_ID
-    elif [[ $CHAIN == 31337 ]]; then
-        INFURA_ADDRESS=http://127.0.0.1:8545
-    else
-        exit 1
-    fi
-
-    broadcast script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $INFURA_ADDRESS
+    broadcast script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $RPC_URL
 }
 if [[ "$1" == "" ]]; then
     echo "$1"

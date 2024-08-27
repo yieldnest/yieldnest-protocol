@@ -7,7 +7,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
-import {BaseYnEigenScript} from "script/BaseYnEigenScript.s.sol";
+import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 import {Utils} from "script/Utils.sol";
 
 import {console} from "lib/forge-std/src/console.sol";

@@ -12,7 +12,7 @@ import {IfrxMinter} from "../../src/external/frax/IfrxMinter.sol";
 
 import {ContractAddresses as ContractAddressesOld} from "../../test/utils/ContractAddresses.sol";
 
-import "../BaseYnEigenScript.s.sol";
+import "../ynEigen/BaseYnEigenScript.s.sol";
 
 interface IRocketPoolDepositPool {
     function deposit() external payable;
