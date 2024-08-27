@@ -33,4 +33,16 @@ contract YnEigenScript is YnEigenDeployer, YnEigenVerifier {
         _deploy();
         _verify();
     }
+
+    function verify(string memory _filePath) public {
+        console.log("Verifying deployment in ", _filePath);
+        _initDeployer();
+        _loadJson(_filePath);
+        _validateNetwork();
+        console.log("Block Number:", block.number);
+        console.log("ChainId:", inputs.chainId);
+        console.log("Name:", inputs.name);
+        console.log("Symbol:", inputs.symbol);
+        _verify();
+    }
 }

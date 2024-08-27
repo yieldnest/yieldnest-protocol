@@ -32,8 +32,11 @@ verify-roles 		:;	forge script script/Verify.s.sol --rpc-url ${rpc}
 # to set up cast wallet run:  cast wallet import yieldnestDeployerKey --interactive
 # then import the private key with which you wish to deploy, create a password and add the public address of that key to the .env under DEPLOYER_ADDRESS.
 
-# make ynEigen path=script/ynEigen/input/lsd-mainnet.json rpc=https://mainnet.infura.io/v3/your-key deployer=0xYourPublicKeyThatCorrespondsToYourSavedPrivateKeyInyieldnestDeployerKey api=etherscanApiKey
+# make ynEigen path=script/ynEigen/input/lsd-mainnet.json rpc=https://mainnet.infura.io/v3/your-key deployer=0xYourPublicAddressThatCorrespondsToYourSavedPrivateKeyInyieldnestDeployerKey api=etherscanApiKey
 ynEigen :; forge script script/ynEigen/YnEigenScript.s.sol:YnEigenScript --rpc-url ${rpc}  --sig "run(string)" ${path} --account yieldnestDeployerKey --sender ${deployer} --broadcast --etherscan-api-key ${api} --verify
+
+# make ynEignen-verify path=script/ynEigen/input/lsd-mainnet.json rpc=https://mainnet.infura.io/v3/your-key
+ynEignen-verify :; forge script script/ynEigen/YnEigenScript.s.sol:YnEigenScript --rpc-url ${rpc}  --sig "verify(string)" ${path} --broadcast
 
 # alternative bash script with less inputs
 # make ynEigen-bash path=script/ynEigen/input/lsd-mainnet.json
