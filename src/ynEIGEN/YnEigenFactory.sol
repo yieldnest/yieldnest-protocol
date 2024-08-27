@@ -73,8 +73,6 @@ contract YnEigenFactory is IYnEigenFactory {
             ynEigenDepositAdapter(_deployProxy(init.implementations.depositAdapter, init.timelock));
         rateProvider = IRateProvider(_deployProxy(init.implementations.rateProvider, init.timelock));
         timelock = TimelockController(payable(init.timelock));
-        // proxy controller set to YNSecurityCouncil since ynEigenViewer does not run production on-chain SC logic
-        viewer = ynEigenViewer(_deployProxy(address(init.implementations.viewer), init.actors.YN_SECURITY_COUNCIL));
 
         // Initialize ynToken
         ynToken.initialize(
@@ -143,13 +141,13 @@ contract YnEigenFactory is IYnEigenFactory {
         // Register tokenStakingNode
         tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNode));
 
-        // Reset roles post tokenStakingNode registration
+        // Set roles post tokenStakingNode registration
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), init.actors.ADMIN);
         tokenStakingNodesManager.grantRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), init.timelock);
         tokenStakingNodesManager.revokeRole(tokenStakingNodesManager.STAKING_ADMIN_ROLE(), address(this));
         tokenStakingNodesManager.revokeRole(tokenStakingNodesManager.DEFAULT_ADMIN_ROLE(), address(this));
 
-        // Initialize ynEigenDepositAdapter
+        // ynEigenDepositAdapter
         ynEigenDepositAdapterInstance.initialize(
             ynEigenDepositAdapter.Init({
                 ynEigen: address(ynToken),
@@ -159,10 +157,13 @@ contract YnEigenFactory is IYnEigenFactory {
             })
         );
 
-        // Initialize ynEigenViewer
-        viewer.initialize(
-            address(assetRegistry), address(ynToken), address(tokenStakingNodesManager), address(rateProvider)
-        );
+        // ynEigenViewer
+        {
+            ynEigenViewer viewerImplementation = new ynEigenViewer(
+                address(assetRegistry), address(ynToken), address(tokenStakingNodesManager), address(rateProvider)
+            );
+            viewer = ynEigenViewer(_deployProxy(address(viewerImplementation), init.actors.YN_SECURITY_COUNCIL));
+        }
 
         emit YnEigenDeployed(
             ynToken,

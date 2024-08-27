@@ -117,13 +117,12 @@ contract YnEigenDeployer is BaseYnEigenScript {
             {
                 implementations = YnEigenImplementations({
                     ynEigen: address(new ynEigen()),
+                    rateProvider: _getRateProviderImplementation(),
                     eigenStrategyManager: address(new EigenStrategyManager()),
                     tokenStakingNodesManager: address(new TokenStakingNodesManager()),
                     tokenStakingNode: address(new TokenStakingNode()),
                     assetRegistry: address(new AssetRegistry()),
-                    depositAdapter: address(new ynEigenDepositAdapter()),
-                    rateProvider: _getRateProviderImplementation(),
-                    viewer: address(new ynEigenViewer())
+                    depositAdapter: address(new ynEigenDepositAdapter())
                 });
             }
 
