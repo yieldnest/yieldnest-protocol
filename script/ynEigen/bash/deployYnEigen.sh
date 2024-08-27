@@ -7,12 +7,9 @@ set -e
 ## GLOBAL VARIABLES ##
 ######################
 
-# Read the Etherscan API key from .env file
-ETHERSCAN_API_KEY=$(grep ETHERSCAN_API_KEY .env | cut -d '=' -f2)
-# Read the RPC URL from .env file
-INFURA_PROJECT_ID=$(grep INFURA_PROJECT_ID .env | cut -d '=' -f2)
-DEPLOYER_ADDRESS=$(grep DEPLOYER_ADDRESS .env | cut -d '=' -f2)
+# unset private key as we are reading it from cast wallet
 PRIVATE_KEY=""
+DEPLOYER_ACCOUNT_NAME=${DEPLOYER_ACCOUNT_NAME:-"yieldnestDeployerKey"}
 
 # verify env variables
 if [[ -z $ETHERSCAN_API_KEY || -z $INFURA_PROJECT_ID || -z $DEPLOYER_ADDRESS ]]; then
@@ -34,11 +31,11 @@ function delimitier() {
 }
 
 function simulate() {
-    forge script $1 -s $2 --rpc-url $3 --account yieldnestDeployerKey --sender $DEPLOYER_ADDRESS
+    forge script $1 -s $2 --rpc-url $3 --account $DEPLOYER_ACCOUNT_NAME --sender $DEPLOYER_ADDRESS
 }
 
 function broadcast() {
-    forge script $1 -s $2 --rpc-url $3 --account yieldnestDeployerKey --sender $DEPLOYER_ADDRESS --broadcast --etherscan-api-key $ETHERSCAN_API_KEY --verify
+    forge script $1 -s $2 --rpc-url $3 --account $DEPLOYER_ACCOUNT_NAME --sender $DEPLOYER_ADDRESS --broadcast --etherscan-api-key $ETHERSCAN_API_KEY --verify
 }
 function simulator() {
     # the first argument should be the path to the JSON input file
@@ -96,7 +93,6 @@ function deploy() {
     fi
 
     broadcast script/ynEigen/YnEigenScript.s.sol:YnEigenScript $CALLDATA $INFURA_ADDRESS
-
 }
 if [[ "$1" == "" ]]; then
     echo "$1"
