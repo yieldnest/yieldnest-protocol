@@ -19,6 +19,7 @@ interface IynEigen {
 
 contract YnEigenVerifier is BaseYnEigenScript {
     Deployment private deployment;
+
     using Strings for uint256;
 
     function _verify() internal {
@@ -376,7 +377,10 @@ contract YnEigenVerifier is BaseYnEigenScript {
             IERC20 token = IERC20(asset.token);
             IStrategy strategy = IStrategy(asset.strategy);
 
-            require(deployment.assetRegistry.assets(i) == token, string.concat("assetRegistry: asset ", i.toString(), " INVALID"));
+            require(
+                deployment.assetRegistry.assets(i) == token,
+                string.concat("assetRegistry: asset ", i.toString(), " INVALID")
+            );
             console.log(
                 string.concat("\u2705 assetRegistry: asset ", i.toString(), " - Value:"),
                 address(deployment.assetRegistry.assets(i))
