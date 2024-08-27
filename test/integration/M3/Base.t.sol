@@ -9,7 +9,7 @@ import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interface
 // import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
 // import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategy.sol";
 // import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {BeaconChainMock, BeaconChainProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
+import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
@@ -23,7 +23,7 @@ import {IRewardsDistributor} from "../../../src/interfaces/IRewardsDistributor.s
 import {IynETH} from "../../../src/interfaces/IynETH.sol";
 
 import {ynETH} from "../../../src/ynETH.sol";
-import {StakingNodesManager} from "../../../src/StakingNodesManager.sol";
+import {StakingNodesManager, IStakingNodesManager} from "../../../src/StakingNodesManager.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
 import {RewardsReceiver} from "../../../src/RewardsReceiver.sol";
 import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
@@ -60,7 +60,7 @@ contract Base is Test, Utils {
 
     // // EigenLayer
     IEigenPodManager public eigenPodManager;
-    // IDelegationManager public delegationManager;
+    IDelegationManager public delegationManager;
     // IStrategyManager public strategyManager;
 
     // Mock Contracts to deploy
@@ -103,7 +103,7 @@ contract Base is Test, Utils {
         // assign Eigenlayer addresses
         {
             eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
-            // delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+            delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
             // strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
         }
 
