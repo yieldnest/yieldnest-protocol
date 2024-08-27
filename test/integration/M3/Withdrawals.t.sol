@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-// import {EigenPod} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
-
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 
@@ -17,9 +15,10 @@ contract M3WithdrawalsTest is Base {
 
     uint40 validatorIndex;
 
-    uint256 AMOUNT = 32 ether;
-    uint256 NODE_ID = 0;
-    bytes constant  ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    uint256 public nodeId;
+
+    uint256 public constant AMOUNT = 32 ether;
+    bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
 
     function setUp() public override {
         super.setUp();
@@ -35,9 +34,16 @@ contract M3WithdrawalsTest is Base {
 
     function testVerifyWithdrawalCredentials() public {
 
+        // create staking node
+        {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            stakingNodesManager.createStakingNode();
+            nodeId = stakingNodesManager.nodesLength() - 1;
+        }
+
         // create validator
         {
-            bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(NODE_ID);
+            bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
             validatorIndex = beaconChain.newValidator{ value: AMOUNT }(_withdrawalCredentials);
             beaconChain.advanceEpoch_NoRewards();
         }
@@ -52,10 +58,10 @@ contract M3WithdrawalsTest is Base {
                 depositDataRoot: stakingNodesManager.generateDepositRoot(
                     _dummyPubkey,
                     ZERO_SIGNATURE,
-                    stakingNodesManager.getWithdrawalCredentials(NODE_ID),
+                    stakingNodesManager.getWithdrawalCredentials(nodeId),
                     AMOUNT
                 ),
-                nodeId: NODE_ID
+                nodeId: nodeId
             });
             vm.prank(actors.ops.VALIDATOR_MANAGER);
             stakingNodesManager.registerValidators(_data);
@@ -67,7 +73,7 @@ contract M3WithdrawalsTest is Base {
             _validators[0] = validatorIndex;
             CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            IPod(address(stakingNodesManager.nodes(NODE_ID))).verifyWithdrawalCredentials({
+            IPod(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
                 beaconTimestamp: _proofs.beaconTimestamp,
                 stateRootProof: _proofs.stateRootProof,
                 validatorIndices: _validators,
@@ -89,7 +95,7 @@ contract M3WithdrawalsTest is Base {
         // start checkpoint
         {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(NODE_ID).startCheckpoint(true);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
             vm.stopPrank();
         }
 
@@ -97,7 +103,7 @@ contract M3WithdrawalsTest is Base {
         {
             uint40[] memory _validators = new uint40[](1);
             _validators[0] = validatorIndex;
-            IStakingNode _node = stakingNodesManager.nodes(NODE_ID);
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
             CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
             IPod(address(_node.eigenPod())).verifyCheckpointProofs({
                 balanceContainerProof: _cpProofs.balanceContainerProof,
@@ -116,38 +122,78 @@ contract M3WithdrawalsTest is Base {
         // queue withdrawals
         {
             vm.startPrank(GLOBAL_ADMIN);
-            stakingNodesManager.nodes(NODE_ID).queueWithdrawals(AMOUNT);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(AMOUNT);
             vm.stopPrank();
         }
 
-        // exit validators and complete checkpoints
+        // Create Withdrawal struct
+        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
         {
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
-            // _exitValidators(getActiveValidators());
-            // beaconChain.advanceEpoch_NoRewards();
-            // _startCheckpoint();
-            // if (pod.activeValidatorCount() != 0) {
-            //     _completeCheckpoint();
-            // }
+            uint256[] memory _shares = new uint256[](1);
+            _shares[0] = AMOUNT;
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+            address _stakingNode = address(stakingNodesManager.nodes(nodeId));
+            _withdrawals[0] = IDelegationManager.Withdrawal({
+                staker: _stakingNode,
+                delegatedTo: delegationManager.delegatedTo(_stakingNode),
+                withdrawer: _stakingNode,
+                nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
+                startBlock: uint32(block.number),
+                strategies: _strategies,
+                shares: _shares
+            });   
         }
 
-        // // complete queued withdrawals
-        // {
-        //     vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
-        // }
+        // exit validators
+        {
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            beaconChain.exitValidator(validatorIndex);
+            beaconChain.advanceEpoch_NoRewards();
+        }
 
-        // // process principal withdrawals
-        // {
-        //     IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
-        //     _actions[0] = IStakingNodesManager.WithdrawalAction({
-        //         nodeId: NODE_ID,
-        //         amountToReinvest: AMOUNT / 2, // 16 ETH
-        //         amountToQueue: AMOUNT / 2 // 16 ETH
-        //     });
-        //     vm.prank(GLOBAL_ADMIN);
-        //     stakingNodesManager.processPrincipalWithdrawals({
-        //         actions: _actions
-        //     });
-        // }
+        // start checkpoint
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            vm.stopPrank();
+        }
+
+        // verify checkpoints
+        {
+            uint40[] memory _validators = new uint40[](1);
+            _validators[0] = validatorIndex;
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
+            IPod(address(_node.eigenPod())).verifyCheckpointProofs({
+                balanceContainerProof: _cpProofs.balanceContainerProof,
+                proofs: _cpProofs.balanceProofs
+            });
+        }
+
+        // complete queued withdrawals
+        {
+            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
+            _middlewareTimesIndexes[0] = 0;
+            vm.startPrank(GLOBAL_ADMIN);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            vm.stopPrank();
+        }
+
+        // process principal withdrawals
+        {
+            IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
+            _actions[0] = IStakingNodesManager.WithdrawalAction({
+                nodeId: nodeId,
+                amountToReinvest: AMOUNT / 2, // 16 ETH
+                amountToQueue: AMOUNT / 2 // 16 ETH
+            });
+            vm.prank(GLOBAL_ADMIN);
+            stakingNodesManager.processPrincipalWithdrawals({
+                actions: _actions
+            });
+        }
     }
 }

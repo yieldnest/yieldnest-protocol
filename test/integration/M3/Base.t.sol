@@ -4,11 +4,9 @@ pragma solidity ^0.8.24;
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-// import {IStrategyManager} from "@eigenlayer-contracts/interfaces/IStrategyManager.sol";
+import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategyManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-// import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
-// import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategy.sol";
-// import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {Utils} from "../../../script/Utils.sol";
@@ -19,7 +17,6 @@ import {IDepositContract} from "../../../src/external/ethereum/IDepositContract.
 
 import {IRedeemableAsset} from "../../../src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "../../../src/interfaces/IRedemptionAssetsVault.sol";
-import {IRewardsDistributor} from "../../../src/interfaces/IRewardsDistributor.sol";
 import {IynETH} from "../../../src/interfaces/IynETH.sol";
 
 import {ynETH} from "../../../src/ynETH.sol";
@@ -58,19 +55,16 @@ contract Base is Test, Utils {
     WithdrawalQueueManager public ynETHWithdrawalQueueManager;
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
 
-    // // EigenLayer
+    // EigenLayer
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    // IStrategyManager public strategyManager;
 
     // Mock Contracts to deploy
-    // ETHPOSDepositMock ethPOSDeposit;
     BeaconChainMock public beaconChain;
 
     // Ethereum
     IDepositContract public depositContractEth2;
 
-    // address GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
     address public constant GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
 
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
@@ -104,15 +98,12 @@ contract Base is Test, Utils {
         {
             eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
             delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-            // strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
         }
 
         // deploy EigenLayer mocks
         {
             vm.warp(GENESIS_TIME_LOCAL);
-            // timeMachine = new TimeMachine();
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
-            // beaconChain = new BeaconChainMock();
         }
     }
 
