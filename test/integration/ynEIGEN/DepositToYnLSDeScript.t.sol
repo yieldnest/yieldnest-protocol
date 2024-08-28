@@ -12,9 +12,6 @@ contract DepositToYnLSDeScript is DepositToYnLSDe, Test {
         address _deployer;
         (_deployer, privateKey) = makeAddrAndKey("deployer");
         vm.deal({ account: _deployer, newBalance: 100 ether });
-
-        shouldInit = false;
-        _init();
     }
 
     function testSfrxETHDeposit() public {

@@ -20,7 +20,7 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
 
-import { BaseYnEigenScript } from "script/BaseYnEigenScript.s.sol";
+import { BaseYnEigenScript } from "script/ynEigen/BaseYnEigenScript.s.sol";
 
 
 contract GenerateGrantRoleTxData is BaseScript {

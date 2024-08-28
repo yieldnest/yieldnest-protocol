@@ -191,4 +191,8 @@ contract ContractAddresses {
     function getChainAddresses(uint256 chainId) external view returns (ChainAddresses memory) {
         return addresses[chainId];
     }
+
+    function isSupportedChainId(uint256 chainId) external view returns (bool) {
+        return chainId == chainIds.mainnet || chainId == chainIds.holeksy;
+    }
 }

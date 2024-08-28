@@ -10,36 +10,20 @@ import {IynEigen} from "../../src/interfaces/IynEigen.sol";
 import {ImETHStaking} from "../../src/external/mantle/ImETHStaking.sol";
 import {IfrxMinter} from "../../src/external/frax/IfrxMinter.sol";
 
-import {ContractAddresses} from "../ContractAddresses.sol";
-
-import "../BaseYnEigenScript.s.sol";
+import "../ynEigen/BaseYnEigenScript.s.sol";
 
 interface IRocketPoolDepositPool {
     function deposit() external payable;
 }
 
 contract DepositToYnLSDe is BaseYnEigenScript {
-
     uint256 public privateKey; // dev: assigned in test setup
-
-    bool public shouldInit = true;
 
     address public broadcaster;
 
-    Deployment deployment;
-    ActorAddresses.Actors actors;
-    ContractAddresses.ChainAddresses chainAddresses;
-
     uint256 public constant AMOUNT = 0.1 ether;
 
-    function tokenName() internal override pure returns (string memory) {
-        return "YnLSDe";
-    }
-
     function run() public {
-
-        if (shouldInit) _init();
-
         address token = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
         uint256 path = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
         run(path, token);
@@ -70,7 +54,7 @@ contract DepositToYnLSDe is BaseYnEigenScript {
         console.log("Deposit successful");
     }
 
-    function _getTokenAddress(string memory n) internal returns (address) {
+    function _getTokenAddress(string memory n) internal view returns (address) {
         if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("sfrxETH")) && block.chainid == 1) {
             return chainAddresses.lsd.SFRXETH_ADDRESS;
         } else if (keccak256(abi.encodePacked(n)) == keccak256(abi.encodePacked("wstETH"))) {
@@ -139,12 +123,5 @@ contract DepositToYnLSDe is BaseYnEigenScript {
 
     function _send(uint256 amount, address token) internal {
         IERC20(token).transfer(actors.eoa.DEFAULT_SIGNER, amount);
-    }
-
-    function _init() internal {
-        ContractAddresses contractAddresses = new ContractAddresses();
-        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
-        deployment = loadDeployment();
-        actors = getActors();
     }
 }
