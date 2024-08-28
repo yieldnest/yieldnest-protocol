@@ -7,8 +7,7 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {IStrategy} from "@eigenlayer-contracts/interfaces/IStrategyManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-
-import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "../../mocks/BeaconChainMock.t.sol";
+import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
