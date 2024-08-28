@@ -98,6 +98,7 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).startCheckpoint(true);
             vm.stopPrank();
+            // _testStartCheckpointBeforeWithdrawalRequest(); // @todo
         }
 
         // verify checkpoints
@@ -110,6 +111,7 @@ contract M3WithdrawalsTest is Base {
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
+            // _testVerifyCheckpointsBeforeWithdrawalRequest(); // @todo
         }
     }
 
@@ -126,6 +128,7 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(GLOBAL_ADMIN);
             stakingNodesManager.nodes(nodeId).queueWithdrawals(AMOUNT);
             vm.stopPrank();
+            // _testQueueWithdrawals(); // @todo
         }
 
         // create Withdrawal struct
@@ -161,6 +164,7 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).startCheckpoint(true);
             vm.stopPrank();
+            // _testStartCheckpointAfterWithdrawalRequest(); // @todo
         }
 
         // verify checkpoints
@@ -173,6 +177,7 @@ contract M3WithdrawalsTest is Base {
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
+            // _testVerifyCheckpointsAfterWithdrawalRequest(); // @todo
         }
 
         // complete queued withdrawals
@@ -182,6 +187,7 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(GLOBAL_ADMIN);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
+            // _testCompleteQueuedWithdrawals(); // @todo
         }
 
         // process principal withdrawals
@@ -196,6 +202,7 @@ contract M3WithdrawalsTest is Base {
             stakingNodesManager.processPrincipalWithdrawals({
                 actions: _actions
             });
+            // _testProcessPrincipalWithdrawals(); // @todo
         }
     }
 }
