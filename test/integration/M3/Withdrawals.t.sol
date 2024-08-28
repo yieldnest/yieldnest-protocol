@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
 
@@ -9,6 +11,10 @@ import "./Base.t.sol";
 interface IPod {
     function verifyWithdrawalCredentials(uint64 beaconTimestamp, BeaconChainProofs.StateRootProof calldata stateRootProof, uint40[] calldata validatorIndices, bytes[] calldata validatorFieldsProofs, bytes32[][] calldata validatorFields) external;
     function verifyCheckpointProofs(BeaconChainProofs.BalanceContainerProof calldata balanceContainerProof, BeaconChainProofs.BalanceProof[] calldata proofs) external;
+}
+
+interface IStakingNodeVars {
+    function queuedSharesAmount() external view returns (uint256);
 }
 
 contract M3WithdrawalsTest is Base {
@@ -81,6 +87,9 @@ contract M3WithdrawalsTest is Base {
                 validatorFields: _proofs.validatorFields
             });
             vm.stopPrank();
+
+            // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
+            _testVerifyWithdrawalCredentials();
         }
     }
 
@@ -98,7 +107,9 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).startCheckpoint(true);
             vm.stopPrank();
-            // _testStartCheckpointBeforeWithdrawalRequest(); // @todo
+
+            // make sure startCheckpoint cant be called again, which means that the checkpoint has started
+            _testStartCheckpoint();
         }
 
         // verify checkpoints
@@ -111,7 +122,9 @@ contract M3WithdrawalsTest is Base {
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
-            // _testVerifyCheckpointsBeforeWithdrawalRequest(); // @todo
+
+            // check that proofsRemaining is 0 and podOwnerShares is still 32 ETH (AMOUNT)
+            _testVerifyCheckpointsBeforeWithdrawalRequest();
         }
     }
 
@@ -128,7 +141,9 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(GLOBAL_ADMIN);
             stakingNodesManager.nodes(nodeId).queueWithdrawals(AMOUNT);
             vm.stopPrank();
-            // _testQueueWithdrawals(); // @todo
+
+            // check that queuedSharesAmount is 32 ETH (AMOUNT)
+            _testQueueWithdrawals();
         }
 
         // create Withdrawal struct
@@ -164,7 +179,9 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).startCheckpoint(true);
             vm.stopPrank();
-            // _testStartCheckpointAfterWithdrawalRequest(); // @todo
+
+            // make sure startCheckpoint cant be called again, which means that the checkpoint has started
+            _testStartCheckpoint();
         }
 
         // verify checkpoints
@@ -177,7 +194,9 @@ contract M3WithdrawalsTest is Base {
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
-            // _testVerifyCheckpointsAfterWithdrawalRequest(); // @todo
+
+            // check that proofsRemaining is 0 and podOwnerShares is 0 ETH (it will actually be 1000000000 bc of EL accounting tricks)
+            _testVerifyCheckpointsAfterWithdrawalRequest();
         }
 
         // complete queued withdrawals
@@ -204,5 +223,37 @@ contract M3WithdrawalsTest is Base {
             });
             // _testProcessPrincipalWithdrawals(); // @todo
         }
+    }
+
+    //
+    // internal helpers
+    //
+
+    function _testVerifyWithdrawalCredentials() internal {
+        assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
+        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
+    }
+
+    function _testStartCheckpoint() internal {
+        IStakingNode _node = stakingNodesManager.nodes(nodeId);
+        vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        _node.startCheckpoint(true);
+    }
+
+    function _testVerifyCheckpointsBeforeWithdrawalRequest() internal {
+        IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
+        assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+        assertApproxEqAbs(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, 1000000000, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
+    }
+
+    function _testQueueWithdrawals() internal {
+        assertEq(IStakingNodeVars(address(stakingNodesManager.nodes(nodeId))).queuedSharesAmount(), AMOUNT, "_testQueueWithdrawals: E0");
+    }
+
+    function _testVerifyCheckpointsAfterWithdrawalRequest() internal {
+        IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
+        assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsAfterWithdrawalRequest: E0");
+        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), 1000000000, "_testVerifyCheckpointsAfterWithdrawalRequest: E1");
     }
 }
