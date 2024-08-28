@@ -8,7 +8,7 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
-import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
+import {LSDRateProvider} from "src/ynEIGEN/providers/LSDRateProvider.sol";
 import {HoleskyLSDRateProvider} from "src/testnet/HoleksyLSDRateProvider.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";

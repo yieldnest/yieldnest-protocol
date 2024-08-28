@@ -21,7 +21,7 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
-import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
+import {LSDRateProvider} from "src/ynEIGEN/providers/LSDRateProvider.sol";
 
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
