@@ -10,6 +10,11 @@ import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {LSDRateProvider} from "src/ynEIGEN/providers/LSDRateProvider.sol";
 import {HoleskyLSDRateProvider} from "src/testnet/HoleksyLSDRateProvider.sol";
+import {USDRateProvider} from "src/ynEIGEN/providers/USDRateProvider.sol";
+import {BTCRateProvider} from "src/ynEIGEN/providers/BTCRateProvider.sol";
+import {HoleskyBTCRateProvider} from "src/testnet/HoleskyBTCRateProvider.sol";
+import {HoleskyUSDRateProvider} from "src/testnet/HoleskyUSDRateProvider.sol";
+
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
@@ -51,6 +56,10 @@ contract YnEigenDeployer is BaseYnEigenScript {
             // Holesky
             if (hashedSymbol == keccak256(abi.encodePacked("ynLSDe"))) {
                 rateProviderImplementation = address(new HoleskyLSDRateProvider());
+            } else if (hashedSymbol == keccak256(abi.encodePacked("ynBTCe"))) {
+                rateProviderImplementation = address(new HoleskyBTCRateProvider());
+            } else if (hashedSymbol == keccak256(abi.encodePacked("ynUSDe"))) {
+                rateProviderImplementation = address(new HoleskyUSDRateProvider());
             } else {
                 revert UnsupportedAsset(inputs.symbol, block.chainid);
             }
@@ -58,6 +67,10 @@ contract YnEigenDeployer is BaseYnEigenScript {
             // Mainnet
             if (hashedSymbol == keccak256(abi.encodePacked("ynLSDe"))) {
                 rateProviderImplementation = address(new LSDRateProvider());
+            } else if (hashedSymbol == keccak256(abi.encodePacked("ynBTCe"))) {
+                rateProviderImplementation = address(new BTCRateProvider());
+            } else if (hashedSymbol == keccak256(abi.encodePacked("ynUSDe"))) {
+                rateProviderImplementation = address(new USDRateProvider());
             } else {
                 revert UnsupportedAsset(inputs.symbol, block.chainid);
             }
