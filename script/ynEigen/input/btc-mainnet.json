@@ -1,0 +1,23 @@
+{
+    "chainId": 1,
+    "name": "YieldNest Restaked BTC - Eigenlayer",
+    "symbol": "ynBTCe",
+    "assets": [
+      {
+        "name": "wBTC",
+        "token": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        "strategy": "0x0000000000000000000000000000000000000000"
+      },
+      {
+        "name": "tBTC",
+        "token": "0x18084fbA666a33d37592fA2633fD49a74DD93a88",
+        "strategy": "0x0000000000000000000000000000000000000000"
+      },
+      {
+        "name": "dlcBTC",
+        "token": "0x0000000000000000000000000000000000000000",
+        "strategy": "0x0000000000000000000000000000000000000000"
+      }
+    ]
+  }
+  
