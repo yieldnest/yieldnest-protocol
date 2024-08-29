@@ -1,0 +1,17 @@
+{
+    "chainId": 17000,
+    "name": "YieldNest Restaked BTC - Eigenlayer",
+    "symbol": "ynBTCe",
+    "assets": [
+        {
+            "name": "YnBTC",
+            "token": "0x810615698eeAEE37efA98F821411aACe4e0d14e5",
+            "strategy": "0x6C50dfEdD1AFfEB9610b91e4A73a4424D6CB3494"
+        },
+        {
+            "name": "YnSBTC",
+            "token": "0xf1BD6f0da70926d0d4c9Ed76ef4DBF6963972a13",
+            "strategy": "0x1b4F6959f073F5eD89b1169cC365A2279B3e45DE"
+        }
+    ]
+}
