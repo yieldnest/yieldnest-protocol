@@ -57,10 +57,8 @@ contract ActorAddresses {
                 YNDelegator: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913,
                 YNDev: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
                 YNValidatorService: 0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39,
-                // TODO: replace with concrete deployment
-                YNStrategyController: 0x1234567890123456789012345678901234567890,
-                // TODO: replace with concrete deployment
-                YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890
+                YNStrategyController: 0x447F34933D3Eeac79a8E22352BaC976A1701aee0,
+                YNTokenStakingNodeOperator: 0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913 // same as YNSecurityCouncil
             });
 
             actors[17000] = Actors({
