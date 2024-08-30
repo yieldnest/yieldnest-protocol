@@ -16,7 +16,7 @@ import {TokenStakingNode} from "../../../src/ynEIGEN/TokenStakingNode.sol";
 import {ynEigen} from "../../../src/ynEIGEN/ynEigen.sol";
 import {AssetRegistry} from "../../../src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "../../../src/ynEIGEN/EigenStrategyManager.sol";
-import {LSDRateProvider} from "../../../src/ynEIGEN/LSDRateProvider.sol";
+import {LSDRateProvider} from "../../../src/ynEIGEN/providers/LSDRateProvider.sol";
 import {ynEigenDepositAdapter} from "../../../src/ynEIGEN/ynEigenDepositAdapter.sol";
 
 import {Test} from "forge-std/Test.sol";

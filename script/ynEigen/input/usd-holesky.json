@@ -1,0 +1,19 @@
+{
+    "chainId": 17000,
+    "name": "YieldNest Restaked USD - Eigenlayer",
+    "symbol": "ynUSDe",
+    "assets": [
+        {
+            "name": "YnUSD",
+            "token": "0x40a87fF2d853290157bcB3E3494e53784524651a",
+            "strategy": "0x4aCa3463bcAE02f2D6EC9e2dfAe6db370DDf6Cd2"
+        },
+        {
+            "name": "YnSUSD",
+            "token": "0x6bd62ECCddd48a1d42ED04D9b19592f07cCC5794",
+            "strategy": "0xa70eF7A5ba2049502e541C95439901c789f2EC9A"
+        }
+    ]
+}
+
+
