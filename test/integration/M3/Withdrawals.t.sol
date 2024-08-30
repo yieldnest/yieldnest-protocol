@@ -15,6 +15,7 @@ interface IPod {
 
 interface IStakingNodeVars {
     function queuedSharesAmount() external view returns (uint256);
+    function withdrawnETH() external view returns (uint256);
 }
 
 contract M3WithdrawalsTest is Base {
@@ -24,6 +25,10 @@ contract M3WithdrawalsTest is Base {
 
     uint256 public constant AMOUNT = 32 ether;
     bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+
+    //
+    // setup
+    //
 
     function setUp() public override {
         super.setUp();
@@ -36,6 +41,10 @@ contract M3WithdrawalsTest is Base {
             yneth.depositETH{value: AMOUNT}(_user);
         }
     }
+
+    //
+    // setup user withdrawal tests
+    //
 
     function testVerifyWithdrawalCredentials() public {
         if (block.chainid != 17000) return;
@@ -206,10 +215,13 @@ contract M3WithdrawalsTest is Base {
             vm.startPrank(GLOBAL_ADMIN);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
-            // _testCompleteQueuedWithdrawals(); // @todo
+
+            // check that queuedSharesAmount is 0, and withdrawnETH is 32 ETH (AMOUNT), and staking pod balance is 32 ETH (AMOUNT)
+            _testCompleteQueuedWithdrawals();
         }
 
         // process principal withdrawals
+        uint256 _ynethBalanceBefore = address(yneth).balance;
         {
             IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
             _actions[0] = IStakingNodesManager.WithdrawalAction({
@@ -221,9 +233,17 @@ contract M3WithdrawalsTest is Base {
             stakingNodesManager.processPrincipalWithdrawals({
                 actions: _actions
             });
-            // _testProcessPrincipalWithdrawals(); // @todo
+
+            // check that totalDepositedInPool is 16 ETH, ynETH balance is 16 ETH, and ynETHRedemptionAssetsVault balance is 16 ETH
+            _testProcessPrincipalWithdrawals(_ynethBalanceBefore);
         }
     }
+
+    //
+    // user withdrawal tests
+    //
+
+    // @todo ?
 
     //
     // internal helpers
@@ -255,5 +275,17 @@ contract M3WithdrawalsTest is Base {
         IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
         assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsAfterWithdrawalRequest: E0");
         assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), 1000000000, "_testVerifyCheckpointsAfterWithdrawalRequest: E1");
+    }
+
+    function _testCompleteQueuedWithdrawals() internal {
+        assertEq(address(stakingNodesManager.nodes(nodeId)).balance, AMOUNT, "_testCompleteQueuedWithdrawals: E0");
+        assertEq(IStakingNodeVars(address(stakingNodesManager.nodes(nodeId))).queuedSharesAmount(), 0, "_testCompleteQueuedWithdrawals: E1");
+        assertEq(IStakingNodeVars(address(stakingNodesManager.nodes(nodeId))).withdrawnETH(), AMOUNT, "_testCompleteQueuedWithdrawals: E2");
+    }
+
+    function _testProcessPrincipalWithdrawals(uint256 _ynethBalanceBefore) internal {
+        assertEq(yneth.totalDepositedInPool(), _ynethBalanceBefore + (AMOUNT / 2), "_testProcessPrincipalWithdrawals: E0");
+        assertEq(address(yneth).balance, _ynethBalanceBefore + (AMOUNT / 2), "_testProcessPrincipalWithdrawals: E1");
+        assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, AMOUNT / 2, "_testProcessPrincipalWithdrawals: E2");
     }
 }
