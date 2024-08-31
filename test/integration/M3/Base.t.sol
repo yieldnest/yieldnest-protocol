@@ -110,7 +110,7 @@ contract Base is Test, Utils {
 
         // upgrade stakingNodesManager
         {
-            vm.startPrank(ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).owner());
+            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
             ProxyAdmin(
                 getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
             ).upgradeAndCall(
@@ -123,7 +123,7 @@ contract Base is Test, Utils {
 
         // upgrade ynETH
         {
-            vm.startPrank(ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).owner());
+            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
             ProxyAdmin(
                 getTransparentUpgradeableProxyAdminAddress(address(yneth))
             ).upgradeAndCall(
