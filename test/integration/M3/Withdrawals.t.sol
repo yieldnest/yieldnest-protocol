@@ -5,6 +5,7 @@ import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEige
 
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {IWithdrawalQueueManager} from "../../../src/interfaces/IWithdrawalQueueManager.sol";
 
 import "./Base.t.sol";
 
@@ -19,6 +20,8 @@ interface IStakingNodeVars {
 }
 
 contract M3WithdrawalsTest is Base {
+
+    address public user;
 
     uint40 public validatorIndex;
     uint256 public nodeId;
@@ -35,10 +38,10 @@ contract M3WithdrawalsTest is Base {
 
         // deposit 32 ETH into ynETH
         {
-            address _user = vm.addr(420);
-            vm.deal(_user, AMOUNT);
-            vm.prank(_user);
-            yneth.depositETH{value: AMOUNT}(_user);
+            user = vm.addr(420);
+            vm.deal(user, AMOUNT);
+            vm.prank(user);
+            yneth.depositETH{value: AMOUNT}(user);
         }
     }
 
@@ -243,7 +246,62 @@ contract M3WithdrawalsTest is Base {
     // user withdrawal tests
     //
 
-    // @todo ?
+    function testRequestWithdrawal(uint256 _amount) public returns (uint256 _tokenId) {
+        if (block.chainid != 17000) return 0;
+
+        uint256 _userAmountBefore = yneth.balanceOf(user);
+        vm.assume(_amount <= _userAmountBefore / 2 && _amount > 0); // `/ 2` bc we distribute only half of what the user has deposited
+
+        uint256 _pendingRequestedRedemptionAmountBefore = ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount();
+        uint256 _withdrawalQueueManagerBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
+        vm.startPrank(user);
+        yneth.approve(address(ynETHWithdrawalQueueManager), _amount);
+        _tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(_amount);
+        vm.stopPrank();
+
+        assertEq(yneth.balanceOf(user), _userAmountBefore - _amount, "testRequestWithdrawal: E0");
+        assertEq(yneth.balanceOf(address(ynETHWithdrawalQueueManager)), _withdrawalQueueManagerBalanceBefore + _amount, "testRequestWithdrawal: E1");
+
+        IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = ynETHWithdrawalQueueManager.withdrawalRequest(_tokenId);
+        assertEq(_withdrawalRequest.amount, _amount, "testRequestWithdrawal: E2");
+        assertEq(_withdrawalRequest.redemptionRateAtRequestTime, ynETHRedemptionAssetsVaultInstance.redemptionRate(), "testRequestWithdrawal: E3");
+        assertEq(_withdrawalRequest.creationTimestamp, block.timestamp, "testRequestWithdrawal: E4");
+        assertEq(_withdrawalRequest.processed, false, "testRequestWithdrawal: E5");
+        assertEq(_withdrawalRequest.feeAtRequestTime, ynETHWithdrawalQueueManager.withdrawalFee(), "testRequestWithdrawal: E6");
+        assertEq(ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount(), _pendingRequestedRedemptionAmountBefore + ynETHWithdrawalQueueManager.calculateRedemptionAmount(_amount, ynETHRedemptionAssetsVaultInstance.redemptionRate()), "testRequestWithdrawal: E6");
+    }
+
+    function testClaimWithdrawal(uint256 _amount) public {
+        vm.assume(_amount > 1 ether);
+        if (block.chainid != 17000) return;
+
+        uint256 _tokenId = testRequestWithdrawal(_amount);
+        uint256 _userETHBalanceBefore = address(user).balance;
+        uint256 _expectedAmountOut = yneth.previewRedeem(_amount);
+        uint256 _expectedAmountOutUser = _expectedAmountOut;
+        uint256 _expectedAmountOutFeeReceiver;
+        if (ynETHWithdrawalQueueManager.withdrawalFee() > 0) {
+            uint256 _feeAmount = _expectedAmountOut * ynETHWithdrawalQueueManager.withdrawalFee() / ynETHWithdrawalQueueManager.FEE_PRECISION();
+            _expectedAmountOutUser = _expectedAmountOut - _feeAmount;
+            _expectedAmountOutFeeReceiver = _feeAmount;
+
+        }
+        uint256 _feeReceiverETHBalanceBefore = ynETHWithdrawalQueueManager.feeReceiver().balance;
+        uint256 _withdrawalQueueManagerBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
+
+        testWithdraw(); // process the withdrawal
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
+
+        vm.prank(user);
+        ynETHWithdrawalQueueManager.claimWithdrawal(_tokenId, user);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = ynETHWithdrawalQueueManager.withdrawalRequest(_tokenId);
+        assertEq(_withdrawalRequest.processed, true, "testClaimWithdrawal: E0");
+        assertEq(yneth.balanceOf(address(ynETHWithdrawalQueueManager)), _withdrawalQueueManagerBalanceBefore - _amount, "testClaimWithdrawal: E1");
+        assertApproxEqAbs(address(user).balance, _userETHBalanceBefore + _expectedAmountOutUser, 10, "testClaimWithdrawal: E2");
+        assertApproxEqAbs(ynETHWithdrawalQueueManager.feeReceiver().balance, _feeReceiverETHBalanceBefore + _expectedAmountOutFeeReceiver, 10, "testClaimWithdrawal: E3");
+    }
 
     //
     // internal helpers
