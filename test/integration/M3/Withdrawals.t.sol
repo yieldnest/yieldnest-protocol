@@ -147,7 +147,7 @@ contract M3WithdrawalsTest is Base {
 
         // queue withdrawals
         {
-            vm.startPrank(GLOBAL_ADMIN);
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).queueWithdrawals(AMOUNT);
             vm.stopPrank();
 
@@ -212,7 +212,7 @@ contract M3WithdrawalsTest is Base {
         {
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(GLOBAL_ADMIN);
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
 
@@ -229,7 +229,7 @@ contract M3WithdrawalsTest is Base {
                 amountToReinvest: AMOUNT / 2, // 16 ETH
                 amountToQueue: AMOUNT / 2 // 16 ETH
             });
-            vm.prank(GLOBAL_ADMIN);
+            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
             stakingNodesManager.processPrincipalWithdrawals({
                 actions: _actions
             });

@@ -65,8 +65,6 @@ contract Base is Test, Utils {
     // Ethereum
     IDepositContract public depositContractEth2;
 
-    address public constant GLOBAL_ADMIN = 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5;
-
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
     function setUp() public virtual {
@@ -140,7 +138,7 @@ contract Base is Test, Utils {
         {
             TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
                 address(new ynETHRedemptionAssetsVault()),
-                GLOBAL_ADMIN,
+                actors.admin.PROXY_ADMIN_OWNER,
                 ""
             );
             ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
@@ -150,7 +148,7 @@ contract Base is Test, Utils {
         {
             TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
                 address(new WithdrawalQueueManager()),
-                GLOBAL_ADMIN,
+                actors.admin.PROXY_ADMIN_OWNER,
                 ""
             );
             ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
@@ -159,7 +157,7 @@ contract Base is Test, Utils {
         // initialize ynETHRedemptionAssetsVault
         {
             ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
-                admin: GLOBAL_ADMIN,
+                admin: actors.admin.PROXY_ADMIN_OWNER,
                 redeemer: address(ynETHWithdrawalQueueManager),
                 ynETH: IynETH(address(yneth))
             });
@@ -173,12 +171,12 @@ contract Base is Test, Utils {
                 symbol: "ynETHWM",
                 redeemableAsset: IRedeemableAsset(address(yneth)),
                 redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
-                admin: GLOBAL_ADMIN,
-                withdrawalQueueAdmin: GLOBAL_ADMIN,
-                redemptionAssetWithdrawer: GLOBAL_ADMIN,
-                requestFinalizer:  GLOBAL_ADMIN,
+                admin: actors.admin.PROXY_ADMIN_OWNER,
+                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
                 withdrawalFee: 500, // 0.05%
-                feeReceiver: GLOBAL_ADMIN
+                feeReceiver: actors.admin.FEE_RECEIVER
             });
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
@@ -187,18 +185,18 @@ contract Base is Test, Utils {
         {
             StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
                 redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-                withdrawalManager: GLOBAL_ADMIN,
-                stakingNodesWithdrawer: GLOBAL_ADMIN
+                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
+                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
             });
             
-            vm.prank(GLOBAL_ADMIN);
+            vm.prank(actors.admin.ADMIN);
             stakingNodesManager.initializeV2(initParams);
         }
 
         // upgrade StakingNodeImplementation
         {
             stakingNodeImplementation = new StakingNode();
-            vm.prank(GLOBAL_ADMIN);
+            vm.prank(actors.admin.STAKING_ADMIN);
             stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
         }
 
