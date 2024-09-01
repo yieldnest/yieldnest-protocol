@@ -55,6 +55,8 @@ contract StakingNodesManager is
     error NoValidatorsProvided();
     error ValidatorRegistrationPaused();
     error InvalidRewardsType(RewardsType rewardsType);
+    error ValidatorUnused(bytes publicKey);
+    error ValidatorNotWithdrawn(bytes publicKey, IEigenPod.VALIDATOR_STATUS status);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -557,6 +559,7 @@ contract StakingNodesManager is
         // Deallocate the specified total amount of ETH from the staking node
         node.deallocateStakedETH(totalAmount);
 
+
         // If there is an amount specified to reinvest, process it through ynETH
         if (amountToReinvest > 0) {
             ynETH.processWithdrawnETH{value: amountToReinvest}();
@@ -571,6 +574,32 @@ contract StakingNodesManager is
         }
         // Emit an event to log the processed principal withdrawal details
         emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue);
+    }
+
+    function calculateWithdrawnPrincipal(bytes[] memory validatorPubKeysWithdrawn, IEigenPod eigenPod) public view returns (uint256 totalWithdrawnPrincipal) {
+        // Iterate through the validator public keys supplied in the action
+        for (uint256 i = 0; i < validatorPubKeysWithdrawn.length; i++) {
+            bytes memory pubKey = validatorPubKeysWithdrawn[i];
+
+            // Check if the validator has been used
+            if (!usedValidators[pubKey]) {
+                revert ValidatorUnused(pubKey);
+            }
+
+            // Retrieve the validator information from the eigenPod
+            IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyToInfo(pubKey);
+
+            // Ensure the validator's status is WITHDRAWN
+            if (validatorInfo.status != IEigenPod.VALIDATOR_STATUS.WITHDRAWN) {
+                revert ValidatorNotWithdrawn(pubKey, validatorInfo.status);
+            }
+
+            // Extract the principal amount from the validator information
+            uint256 principal = validatorInfo.restakedBalanceGwei;
+
+            // Sum the principal for all validators
+            totalWithdrawnPrincipal += principal;
+        }
     }
 
 
