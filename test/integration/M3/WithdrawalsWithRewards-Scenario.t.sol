@@ -24,6 +24,7 @@ contract M3WithdrawalsTest is Base {
     address public user;
 
     uint40 public validatorIndex;
+    uint40[] validatorIndices;
     uint256 public nodeId;
 
     uint256 public amount;
@@ -53,62 +54,64 @@ contract M3WithdrawalsTest is Base {
             nodeId = stakingNodesManager.nodesLength() - 1;
         }
 
-        // create validator
+        // Calculate validator count based on amount
+        uint256 validatorCount = amount / 32 ether;
+
+        // create and register validators validator
         {
-            bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
-            validatorIndex = beaconChain.newValidator{ value: 32 ether }(_withdrawalCredentials);
+            // Create an array of nodeIds with length equal to validatorCount
+            uint256[] memory nodeIds = new uint256[](validatorCount);
+            for (uint256 i = 0; i < validatorCount; i++) {
+                nodeIds[i] = nodeId;
+            }
+
+            // Call createValidators with the nodeIds array and validatorCount
+            validatorIndices = createValidators(nodeIds, 1);
+
+            beaconChain.advanceEpoch_NoRewards();
+
+            registerValidators(nodeIds);
+        }
+
+        // verify withdrawal credentials
+        {
+
+            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(validatorIndices);
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            IPod(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
+                beaconTimestamp: _proofs.beaconTimestamp,
+                stateRootProof: _proofs.stateRootProof,
+                validatorIndices: validatorIndices,
+                validatorFieldsProofs: _proofs.validatorFieldsProofs,
+                validatorFields: _proofs.validatorFields
+            });
+            vm.stopPrank();
+
+            // check that unverifiedStakedETH is 0 and podOwnerShares is 100 ETH (amount)
+            // _testVerifyWithdrawalCredentials();
+        }
+
+
+        // exit validators
+        {
+            // IStrategy[] memory _strategies = new IStrategy[](1);
+            // _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+            // vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+
+            for (uint256 i = 0; i < validatorIndices.length; i++) {
+                beaconChain.exitValidator(validatorIndices[i]);
+            }
             beaconChain.advanceEpoch_NoRewards();
         }
 
-        // register validator
+        // start checkpoint
         {
-            bytes memory _dummyPubkey = new bytes(48);
-            IStakingNodesManager.ValidatorData[] memory _data = new IStakingNodesManager.ValidatorData[](1);
-            _data[0] = IStakingNodesManager.ValidatorData({
-                publicKey: _dummyPubkey,
-                signature: ZERO_SIGNATURE,
-                depositDataRoot: stakingNodesManager.generateDepositRoot(
-                    _dummyPubkey,
-                    ZERO_SIGNATURE,
-                    stakingNodesManager.getWithdrawalCredentials(nodeId),
-                    32 ether
-                ),
-                nodeId: nodeId
-            });
-            vm.prank(actors.ops.VALIDATOR_MANAGER);
-            stakingNodesManager.registerValidators(_data);
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            vm.stopPrank();
         }
 
-        // // verify withdrawal credentials
-        // {
-        //     uint40[] memory _validators = new uint40[](1);
-        //     _validators[0] = validatorIndex;
-        //     CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
-        //     vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-        //     IPod(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
-        //         beaconTimestamp: _proofs.beaconTimestamp,
-        //         stateRootProof: _proofs.stateRootProof,
-        //         validatorIndices: _validators,
-        //         validatorFieldsProofs: _proofs.validatorFieldsProofs,
-        //         validatorFields: _proofs.validatorFields
-        //     });
-        //     vm.stopPrank();
-
-        //     // check that unverifiedStakedETH is 0 and podOwnerShares is 100 ETH (amount)
-        //     _testVerifyWithdrawalCredentials();
-        // }
-
-        // // start checkpoint
-        // {
-        //     vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-        //     stakingNodesManager.nodes(nodeId).startCheckpoint(true);
-        //     vm.stopPrank();
-
-        //     // make sure startCheckpoint cant be called again, which means that the checkpoint has started
-        //     _testStartCheckpoint();
-        // }
-
-        // // verify checkpoints
+        // verify checkpoints
         // {
         //     uint40[] memory _validators = new uint40[](1);
         //     _validators[0] = validatorIndex;
@@ -119,8 +122,6 @@ contract M3WithdrawalsTest is Base {
         //         proofs: _cpProofs.balanceProofs
         //     });
 
-        //     // check that proofsRemaining is 0 and podOwnerShares is still 100 ETH (amount)
-        //     _testVerifyCheckpointsBeforeWithdrawalRequest();
         // }
 
         // // queue withdrawals

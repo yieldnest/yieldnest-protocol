@@ -233,7 +233,7 @@ contract Base is Test, Utils {
         return validatorIndices;
     }
 
-    function registerValidators(uint256[] memory validatorNodeIds, uint256 depositAmount) public {
+    function registerValidators(uint256[] memory validatorNodeIds) public {
         IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorNodeIds.length);
         
         for (uint256 i = 0; i < validatorNodeIds.length; i++) {
@@ -248,7 +248,7 @@ contract Base is Test, Utils {
         }
 
         for (uint256 i = 0; i < validatorData.length; i++) {
-            uint256 amount = depositAmount / validatorData.length;
+            uint256 amount = 32 ether;
             bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
             bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
             validatorData[i].depositDataRoot = depositDataRoot;
