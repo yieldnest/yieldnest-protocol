@@ -551,9 +551,24 @@ contract StakingNodesManager is
         uint256 nodeId = action.nodeId;
         uint256 amountToReinvest = action.amountToReinvest;
         uint256 amountToQueue = action.amountToQueue;
+
+        // The rewardsAmount is trusted off-chain input provided in the WithdrawalAction struct.
+        // It represents the portion of the withdrawn amount that is considered as rewards.
+        // This value is determined off-chain by analyzing the difference between
+        // the initial stake and the total withdrawn amount.
+        //
+        // This design trade-off is a result of how Eigenlayer M3 pepe no long providees
+        // clear separation between principal and rewards amount and they both exit through the 
+        // Queued Withdrawals mechanism.
+        // 
+        // SECURITY NOTE:
+        // The accuracy and integrity of this value relies on the off-chain process
+        // that calculates it. There's an implicit trust that the WITHDRAWAL_MANAGER_ROLE
+        // will provide correct and verified data and that principal is not counted as Rewards
+        // and applied a fee.
         uint256 rewardsAmount = action.rewardsAmount;
 
-        // Calculate the total amount to be processed by summing reinvestment and queuing amounts
+        // Calculate the total amount to be processed by summing reinvestment, rewards and queuing amounts
         uint256 totalAmount = amountToReinvest + amountToQueue + rewardsAmount;
 
         // Retrieve the staking node object using the nodeId
