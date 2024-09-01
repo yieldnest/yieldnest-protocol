@@ -46,6 +46,10 @@ contract M3WithdrawalsTest is Base {
             vm.deal(user, amount);
             vm.prank(user);
             yneth.depositETH{value: amount}(user);
+
+            // Log ynETH balance for user
+            uint256 userYnETHBalance = yneth.balanceOf(user);
+            console.log("User ynETH balance after deposit:", userYnETHBalance);
         }
         // create staking node
         {
@@ -166,8 +170,6 @@ contract M3WithdrawalsTest is Base {
         uint256 userWithdrawalAmount = 90 ether;
         uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount;
 
-        // process principal withdrawals
-        uint256 _ynethBalanceBefore = address(yneth).balance;
         {
             IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
             _actions[0] = IStakingNodesManager.WithdrawalAction({
@@ -181,5 +183,25 @@ contract M3WithdrawalsTest is Base {
                 actions: _actions
             });
         }
+
+        // Calculate user ynETH amount to redeem
+        uint256 userYnETHToRedeem = yneth.previewDeposit(userWithdrawalAmount);
+        
+        // Ensure user has enough ynETH balance
+        require(yneth.balanceOf(user) >= userYnETHToRedeem, "User doesn't have enough ynETH balance");
+
+        uint256 _pendingRequestedRedemptionAmountBefore = ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount();
+        uint256 _withdrawalQueueManagerBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
+        vm.startPrank(user);
+        yneth.approve(address(ynETHWithdrawalQueueManager), userYnETHToRedeem);
+        uint256 _tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userYnETHToRedeem);
+        vm.stopPrank();
+
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
+
+        vm.prank(user);
+        ynETHWithdrawalQueueManager.claimWithdrawal(_tokenId, user);
+
     }
 }
