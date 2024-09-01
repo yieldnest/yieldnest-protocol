@@ -161,5 +161,25 @@ contract M3WithdrawalsTest is Base {
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
         }
+
+
+        uint256 userWithdrawalAmount = 90 ether;
+        uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount;
+
+        // process principal withdrawals
+        uint256 _ynethBalanceBefore = address(yneth).balance;
+        {
+            IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
+            _actions[0] = IStakingNodesManager.WithdrawalAction({
+                nodeId: nodeId,
+                amountToReinvest: amountToReinvest,
+                amountToQueue: userWithdrawalAmount,
+                rewardsAmount: 0
+            });
+            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+            stakingNodesManager.processPrincipalWithdrawals({
+                actions: _actions
+            });
+        }
     }
 }
