@@ -27,7 +27,7 @@ interface StakingNodesManagerEvents {
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
-    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
+    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue, uint256 rewardsAmount);
     event ETHReceived(address sender, uint256 amount);
 }
 
@@ -509,8 +509,10 @@ contract StakingNodesManager is
         if (address(nodes[nodeId]) != msg.sender) {
             revert NotStakingNode(msg.sender, nodeId);
         }
+        _processRewards(nodeId, rewardsType, msg.value);
+    }
 
-        uint256 rewards = msg.value;
+    function _processRewards(uint256 nodeId, RewardsType rewardsType, uint256 rewards) internal {
         IRewardsReceiver receiver;
 
         if (rewardsType == RewardsType.ConsensusLayer) {
@@ -526,7 +528,7 @@ contract StakingNodesManager is
             revert TransferFailed();
         }
 
-        emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, msg.value);
+        emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, rewards);
     }
 
     /**
@@ -549,9 +551,10 @@ contract StakingNodesManager is
         uint256 nodeId = action.nodeId;
         uint256 amountToReinvest = action.amountToReinvest;
         uint256 amountToQueue = action.amountToQueue;
+        uint256 rewardsAmount = action.rewardsAmount;
 
         // Calculate the total amount to be processed by summing reinvestment and queuing amounts
-        uint256 totalAmount = amountToReinvest + amountToQueue;
+        uint256 totalAmount = amountToReinvest + amountToQueue + rewardsAmount;
 
         // Retrieve the staking node object using the nodeId
         IStakingNode node = nodes[nodeId];
@@ -572,36 +575,15 @@ contract StakingNodesManager is
                 revert TransferFailed();
             }
         }
-        // Emit an event to log the processed principal withdrawal details
-        emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue);
-    }
 
-    function calculateWithdrawnPrincipal(bytes[] memory validatorPubKeysWithdrawn, IEigenPod eigenPod) public view returns (uint256 totalWithdrawnPrincipal) {
-        // Iterate through the validator public keys supplied in the action
-        for (uint256 i = 0; i < validatorPubKeysWithdrawn.length; i++) {
-            bytes memory pubKey = validatorPubKeysWithdrawn[i];
-
-            // Check if the validator has been used
-            if (!usedValidators[pubKey]) {
-                revert ValidatorUnused(pubKey);
-            }
-
-            // Retrieve the validator information from the eigenPod
-            IEigenPod.ValidatorInfo memory validatorInfo = eigenPod.validatorPubkeyToInfo(pubKey);
-
-            // Ensure the validator's status is WITHDRAWN
-            if (validatorInfo.status != IEigenPod.VALIDATOR_STATUS.WITHDRAWN) {
-                revert ValidatorNotWithdrawn(pubKey, validatorInfo.status);
-            }
-
-            // Extract the principal amount from the validator information
-            uint256 principal = validatorInfo.restakedBalanceGwei;
-
-            // Sum the principal for all validators
-            totalWithdrawnPrincipal += principal;
+        // If there is an amount of rewards specified, handle that
+        if (rewardsAmount > 0) {
+            _processRewards(nodeId, RewardsType.ConsensusLayer, totalAmount);
         }
-    }
 
+        // Emit an event to log the processed principal withdrawal details
+        emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue, rewardsAmount);
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------

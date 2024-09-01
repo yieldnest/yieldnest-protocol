@@ -190,7 +190,8 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         _actions[0] = IStakingNodesManager.WithdrawalAction({
             nodeId: nodeId,
             amountToReinvest: 0,
-            amountToQueue: withdrawalAmount
+            amountToQueue: withdrawalAmount,
+            rewardsAmount: 0
         });
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
@@ -210,7 +211,8 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         _actions[0] = IStakingNodesManager.WithdrawalAction({
             nodeId: nodeId,
             amountToReinvest: 0,
-            amountToQueue: withdrawalAmount
+            amountToQueue: withdrawalAmount,
+            rewardsAmount: 0
         });
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), stakingNodesManager.WITHDRAWAL_MANAGER_ROLE()));

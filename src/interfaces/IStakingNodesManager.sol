@@ -28,6 +28,7 @@ interface IStakingNodesManager {
         uint256 nodeId;
         uint256 amountToReinvest;
         uint256 amountToQueue;
+        uint256 rewardsAmount;
     }
 
     function eigenPodManager() external view returns (IEigenPodManager);
