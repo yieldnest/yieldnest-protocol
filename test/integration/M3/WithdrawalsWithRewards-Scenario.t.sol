@@ -112,127 +112,41 @@ contract M3WithdrawalsTest is Base {
         }
 
         // verify checkpoints
-        // {
-        //     uint40[] memory _validators = new uint40[](1);
-        //     _validators[0] = validatorIndex;
-        //     IStakingNode _node = stakingNodesManager.nodes(nodeId);
-        //     CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
-        //     IPod(address(_node.eigenPod())).verifyCheckpointProofs({
-        //         balanceContainerProof: _cpProofs.balanceContainerProof,
-        //         proofs: _cpProofs.balanceProofs
-        //     });
+        {
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(validatorIndices, _node.eigenPod().currentCheckpointTimestamp());
+            IPod(address(_node.eigenPod())).verifyCheckpointProofs({
+                balanceContainerProof: _cpProofs.balanceContainerProof,
+                proofs: _cpProofs.balanceProofs
+            });
+        }
 
-        // }
+        uint256 withdrawnAmount = 32 ether * validatorIndices.length;
 
-        // // queue withdrawals
-        // {
-        //     vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-        //     stakingNodesManager.nodes(nodeId).queueWithdrawals(amount);
-        //     vm.stopPrank();
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
+            vm.stopPrank();
+        }
 
-        //     // check that queuedSharesAmount is 100 ETH (amount)
-        //     _testQueueWithdrawals();
-        // }
-
-        // // create Withdrawal struct
-        // IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
-        // {
-        //     uint256[] memory _shares = new uint256[](1);
-        //     _shares[0] = amount;
-        //     IStrategy[] memory _strategies = new IStrategy[](1);
-        //     _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-        //     address _stakingNode = address(stakingNodesManager.nodes(nodeId));
-        //     _withdrawals[0] = IDelegationManager.Withdrawal({
-        //         staker: _stakingNode,
-        //         delegatedTo: delegationManager.delegatedTo(_stakingNode),
-        //         withdrawer: _stakingNode,
-        //         nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
-        //         startBlock: uint32(block.number),
-        //         strategies: _strategies,
-        //         shares: _shares
-        //     });   
-        // }
-
-        // // exit validators
-        // {
-        //     IStrategy[] memory _strategies = new IStrategy[](1);
-        //     _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-        //     vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
-        //     beaconChain.exitValidator(validatorIndex);
-        //     beaconChain.advanceEpoch_NoRewards();
-        // }
-
-        // // start checkpoint
-        // {
-        //     vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-        //     stakingNodesManager.nodes(nodeId).startCheckpoint(true);
-        //     vm.stopPrank();
-
-        //     // make sure startCheckpoint cant be called again, which means that the checkpoint has started
-        //     _testStartCheckpoint();
-        // }
-
-        // // verify checkpoints after withdrawal request
-        // {
-        //     uint40[] memory _validators = new uint40[](1);
-        //     _validators[0] = validatorIndex;
-        //     IStakingNode _node = stakingNodesManager.nodes(nodeId);
-        //     CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
-        //     IPod(address(_node.eigenPod())).verifyCheckpointProofs({
-        //         balanceContainerProof: _cpProofs.balanceContainerProof,
-        //         proofs: _cpProofs.balanceProofs
-        //     });
-
-        //     // check that proofsRemaining is 0 and podOwnerShares is still 100 ETH (amount)
-        //     _testVerifyCheckpointsAfterWithdrawalRequest();
-        // }
-
-        // // complete queued withdrawals
-        // {
-        //     vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-        //     stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals();
-        //     vm.stopPrank();
-
-        //     // check that balance is 100 ETH (amount) and queuedSharesAmount is 0
-        //     _testCompleteQueuedWithdrawals();
-        // }
-
-        // // process principal withdrawals
-        // {
-        //     uint256 _ynethBalanceBefore = yneth.totalDepositedInPool();
-        //     stakingNodesManager.processPrincipalWithdrawals(_withdrawals);
-
-        //     // check that yneth balance and ynETHRedemptionAssetsVaultInstance balance are updated correctly
-        //     _testProcessPrincipalWithdrawals(_ynethBalanceBefore);
-        // }
-
-        // // finalize requests and claim withdrawal
-        // {
-        //     uint256 _tokenId = testRequestWithdrawal(amount);
-        //     uint256 _userETHBalanceBefore = address(user).balance;
-        //     uint256 _expectedAmountOut = yneth.previewRedeem(amount);
-        //     uint256 _expectedAmountOutUser = _expectedAmountOut;
-        //     uint256 _expectedAmountOutFeeReceiver;
-        //     if (ynETHWithdrawalQueueManager.withdrawalFee() > 0) {
-        //         uint256 _feeAmount = _expectedAmountOut * ynETHWithdrawalQueueManager.withdrawalFee() / ynETHWithdrawalQueueManager.FEE_PRECISION();
-        //         _expectedAmountOutUser = _expectedAmountOut - _feeAmount;
-        //         _expectedAmountOutFeeReceiver = _feeAmount;
-        //     }
-        //     uint256 _feeReceiverETHBalanceBefore = ynETHWithdrawalQueueManager.feeReceiver().balance;
-        //     uint256 _withdrawalQueueManagerBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
-
-        //     testWithdraw(); // process the withdrawal
-        //     vm.prank(actors.ops.REQUEST_FINALIZER);
-        //     ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
-
-        //     vm.prank(user);
-        //     ynETHWithdrawalQueueManager.claimWithdrawal(_tokenId, user);
-
-        //     IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = ynETHWithdrawalQueueManager.withdrawalRequest(_tokenId);
-        //     assertEq(_withdrawalRequest.processed, true, "testClaimWithdrawal: E0");
-        //     assertEq(yneth.balanceOf(address(ynETHWithdrawalQueueManager)), _withdrawalQueueManagerBalanceBefore - amount, "testClaimWithdrawal: E1");
-        //     assertApproxEqAbs(address(user).balance, _userETHBalanceBefore + _expectedAmountOutUser, 10_000, "testClaimWithdrawal: E2");
-        //     assertApproxEqAbs(ynETHWithdrawalQueueManager.feeReceiver().balance, _feeReceiverETHBalanceBefore + _expectedAmountOutFeeReceiver, 10_000, "testClaimWithdrawal: E3");
-        // }
+        // create Withdrawal struct
+        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
+        {
+            uint256[] memory _shares = new uint256[](1);
+            _shares[0] = withdrawnAmount;
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+            address _stakingNode = address(stakingNodesManager.nodes(nodeId));
+            _withdrawals[0] = IDelegationManager.Withdrawal({
+                staker: _stakingNode,
+                delegatedTo: delegationManager.delegatedTo(_stakingNode),
+                withdrawer: _stakingNode,
+                nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
+                startBlock: uint32(block.number),
+                strategies: _strategies,
+                shares: _shares
+            });   
+        }
     }
 }
