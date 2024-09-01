@@ -578,7 +578,7 @@ contract StakingNodesManager is
 
         // If there is an amount of rewards specified, handle that
         if (rewardsAmount > 0) {
-            _processRewards(nodeId, RewardsType.ConsensusLayer, totalAmount);
+            _processRewards(nodeId, RewardsType.ConsensusLayer, rewardsAmount);
         }
 
         // Emit an event to log the processed principal withdrawal details

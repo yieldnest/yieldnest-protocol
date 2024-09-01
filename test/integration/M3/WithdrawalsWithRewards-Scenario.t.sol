@@ -68,7 +68,7 @@ contract M3WithdrawalsTest is Base {
             // Call createValidators with the nodeIds array and validatorCount
             validatorIndices = createValidators(nodeIds, 1);
 
-            beaconChain.advanceEpoch();
+            beaconChain.advanceEpoch_NoRewards();
 
             registerValidators(nodeIds);
         }
@@ -91,6 +91,20 @@ contract M3WithdrawalsTest is Base {
             // _testVerifyWithdrawalCredentials();
         }
 
+        uint256 accumulatedRewards;
+        {
+            uint256 epochCount = 30;
+            // Advance the beacon chain by 100 epochs to simulate rewards accumulation
+            for (uint256 i = 0; i < epochCount; i++) {
+                beaconChain.advanceEpoch();
+            }
+
+            accumulatedRewards += validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
+        }
+
+        // Log accumulated rewards
+        console.log("Accumulated rewards:", accumulatedRewards);
+
 
         // exit validators
         {
@@ -99,6 +113,7 @@ contract M3WithdrawalsTest is Base {
             }
             beaconChain.advanceEpoch();
         }
+
 
         // start checkpoint
         {
@@ -117,7 +132,7 @@ contract M3WithdrawalsTest is Base {
             });
         }
 
-        uint256 withdrawnAmount = 32 ether * validatorIndices.length;
+        uint256 withdrawnAmount = 32 ether * validatorIndices.length + accumulatedRewards;
 
         // queue withdrawals
         {
@@ -164,7 +179,7 @@ contract M3WithdrawalsTest is Base {
 
 
         uint256 userWithdrawalAmount = 90 ether;
-        uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount;
+        uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount - accumulatedRewards;
 
         {
             IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
@@ -172,7 +187,7 @@ contract M3WithdrawalsTest is Base {
                 nodeId: nodeId,
                 amountToReinvest: amountToReinvest,
                 amountToQueue: userWithdrawalAmount,
-                rewardsAmount: 0
+                rewardsAmount: accumulatedRewards
             });
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
             stakingNodesManager.processPrincipalWithdrawals({
