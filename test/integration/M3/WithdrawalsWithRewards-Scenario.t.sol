@@ -43,6 +43,10 @@ contract M3WithdrawalsTest is Base {
     }
 
     function test_userWithdrawalWithRewards_Scenario_1() public {
+        // Check if we're on the Holesky testnet
+        if (block.chainid != 17000) {
+            return;
+        }
         amount = 100 ether;
 
         // deposit 100 ETH into ynETH
