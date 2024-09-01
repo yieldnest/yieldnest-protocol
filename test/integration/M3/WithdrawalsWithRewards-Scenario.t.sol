@@ -29,10 +29,6 @@ contract M3WithdrawalsTest is Base {
 
     uint256 public amount;
 
-    //
-    // setup
-    //
-
     function setUp() public override {
         super.setUp();
     }
@@ -72,7 +68,7 @@ contract M3WithdrawalsTest is Base {
             // Call createValidators with the nodeIds array and validatorCount
             validatorIndices = createValidators(nodeIds, 1);
 
-            beaconChain.advanceEpoch_NoRewards();
+            beaconChain.advanceEpoch();
 
             registerValidators(nodeIds);
         }
@@ -101,7 +97,7 @@ contract M3WithdrawalsTest is Base {
             for (uint256 i = 0; i < validatorIndices.length; i++) {
                 beaconChain.exitValidator(validatorIndices[i]);
             }
-            beaconChain.advanceEpoch_NoRewards();
+            beaconChain.advanceEpoch();
         }
 
         // start checkpoint
