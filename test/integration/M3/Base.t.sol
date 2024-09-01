@@ -27,6 +27,8 @@ import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
 import {WithdrawalQueueManager} from "../../../src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "../../../src/ynETHRedemptionAssetsVault.sol";
+import {IStakingNode} from "../../../src/interfaces/IStakingNodesManager.sol";
+
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
@@ -257,4 +259,28 @@ contract Base is Test, Utils {
         vm.prank(actors.ops.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(validatorData);
     }
+
+    function runSystemStateInvariants(
+        uint256 previousTotalAssets,
+        uint256 previousTotalSupply,
+        uint256[] memory previousStakingNodeBalances
+    ) public {  
+        assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
+        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            assertEq(currentStakingNodeBalance, previousStakingNodeBalances[i], "Staking node balance integrity check failed for node ID: ");
+        }
+	}
+
+    function getAllStakingNodeBalances() public view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](stakingNodesManager.nodesLength());
+        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            IStakingNode stakingNode = stakingNodesManager.nodes(i);
+            balances[i] = stakingNode.getETHBalance();
+        }
+        return balances;
+    }
+
 }

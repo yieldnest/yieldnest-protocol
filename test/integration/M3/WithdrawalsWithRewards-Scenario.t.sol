@@ -29,6 +29,15 @@ contract M3WithdrawalsTest is Base {
 
     uint256 public amount;
 
+    struct TestState {
+        uint256 totalAssetsBefore;
+        uint256 totalSupplyBefore;
+        uint256[] stakingNodeBalancesBefore;
+        uint256 previousYnETHRedemptionAssetsVaultBalance;
+        uint256 previousYnETHBalance;
+    }
+
+
     function setUp() public override {
         super.setUp();
     }
@@ -47,12 +56,22 @@ contract M3WithdrawalsTest is Base {
             uint256 userYnETHBalance = yneth.balanceOf(user);
             console.log("User ynETH balance after deposit:", userYnETHBalance);
         }
+
         // create staking node
         {
             vm.prank(actors.ops.STAKING_NODE_CREATOR);
             stakingNodesManager.createStakingNode();
             nodeId = stakingNodesManager.nodesLength() - 1;
         }
+
+
+        TestState memory state = TestState({
+            totalAssetsBefore: yneth.totalAssets(),
+            totalSupplyBefore: yneth.totalSupply(),
+            stakingNodeBalancesBefore: getAllStakingNodeBalances(),
+            previousYnETHRedemptionAssetsVaultBalance: ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(),
+            previousYnETHBalance: address(yneth).balance
+        });
 
         // Calculate validator count based on amount
         uint256 validatorCount = amount / 32 ether;
@@ -73,6 +92,9 @@ contract M3WithdrawalsTest is Base {
             registerValidators(nodeIds);
         }
 
+        state.stakingNodeBalancesBefore[nodeId] += validatorCount * 32 ether;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
         // verify withdrawal credentials
         {
 
@@ -91,6 +113,8 @@ contract M3WithdrawalsTest is Base {
             // _testVerifyWithdrawalCredentials();
         }
 
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
         uint256 accumulatedRewards;
         {
             uint256 epochCount = 30;
@@ -102,9 +126,6 @@ contract M3WithdrawalsTest is Base {
             accumulatedRewards += validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
         }
 
-        // Log accumulated rewards
-        console.log("Accumulated rewards:", accumulatedRewards);
-
 
         // exit validators
         {
@@ -114,6 +135,8 @@ contract M3WithdrawalsTest is Base {
             beaconChain.advanceEpoch();
         }
 
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
 
         // start checkpoint
         {
@@ -121,6 +144,8 @@ contract M3WithdrawalsTest is Base {
             stakingNodesManager.nodes(nodeId).startCheckpoint(true);
             vm.stopPrank();
         }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         // verify checkpoints
         {
@@ -131,6 +156,11 @@ contract M3WithdrawalsTest is Base {
                 proofs: _cpProofs.balanceProofs
             });
         }
+
+        // Rewards accumulated after verifying the checkpoint
+        state.totalAssetsBefore += accumulatedRewards;
+        state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         uint256 withdrawnAmount = 32 ether * validatorIndices.length + accumulatedRewards;
 
