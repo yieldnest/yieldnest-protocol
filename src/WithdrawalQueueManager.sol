@@ -214,7 +214,14 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         }
 
         withdrawalRequests[tokenId].processed = true;
-        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+
+        // Redemption rate at claim time is the minimum between
+        // the redemption rate at request time and the current redemption Rate
+        uint256 currentRate = redemptionAssetsVault.redemptionRate();
+        uint256 redemptionRate = request.redemptionRateAtRequestTime < currentRate ? request.redemptionRateAtRequestTime : currentRate;
+
+        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
+
         pendingRequestedRedemptionAmount -= unitOfAccountAmount;
 
         _burn(tokenId);
@@ -286,14 +293,14 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     /**
      * @notice Calculates the redemption amount based on the provided amount and the redemption rate at the time of request.
      * @param amount The amount of the redeemable asset.
-     * @param redemptionRateAtRequestTime The redemption rate at the time the request was made, expressed in the same unit of decimals as the redeemable asset.
+     * @param redemptionRate The redemption rate expressed in the same unit of decimals as the redeemable asset.
      * @return The calculated redemption amount, adjusted for the decimal places of the redeemable asset.
      */
     function calculateRedemptionAmount(
         uint256 amount,
-        uint256 redemptionRateAtRequestTime
+        uint256 redemptionRate
     ) public view returns (uint256) {
-        return amount * redemptionRateAtRequestTime / (10 ** redeemableAsset.decimals());
+        return amount * redemptionRate / (10 ** redeemableAsset.decimals());
     }
 
     /**
