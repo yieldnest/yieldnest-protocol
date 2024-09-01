@@ -33,6 +33,9 @@ import "forge-std/Test.sol";
 
 contract Base is Test, Utils {
 
+    bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
+
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
@@ -213,5 +216,45 @@ contract Base is Test, Utils {
             yneth.unpauseTransfers();
             vm.stopPrank();
         }
+    }
+
+    function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
+        uint40[] memory validatorIndices = new uint40[](count * nodeIds.length);
+        uint256 index = 0;
+
+        for (uint256 j = 0; j < nodeIds.length; j++) {
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeIds[j]);
+
+            for (uint256 i = 0; i < count; i++) {
+                validatorIndices[index] = beaconChain.newValidator{value: 32 ether}(withdrawalCredentials);
+                index++;
+            }
+        }
+        return validatorIndices;
+    }
+
+    function registerValidators(uint256[] memory validatorNodeIds, uint256 depositAmount) public {
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorNodeIds.length);
+        
+        for (uint256 i = 0; i < validatorNodeIds.length; i++) {
+            bytes memory publicKey = abi.encodePacked(uint256(i));
+            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
+            validatorData[i] = IStakingNodesManager.ValidatorData({
+                publicKey: publicKey,
+                signature: ZERO_SIGNATURE,
+                nodeId: validatorNodeIds[i],
+                depositDataRoot: bytes32(0)
+            });
+        }
+
+        for (uint256 i = 0; i < validatorData.length; i++) {
+            uint256 amount = depositAmount / validatorData.length;
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+        
+        vm.prank(actors.ops.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(validatorData);
     }
 }
