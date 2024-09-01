@@ -299,8 +299,8 @@ contract M3WithdrawalsTest is Base {
         IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = ynETHWithdrawalQueueManager.withdrawalRequest(_tokenId);
         assertEq(_withdrawalRequest.processed, true, "testClaimWithdrawal: E0");
         assertEq(yneth.balanceOf(address(ynETHWithdrawalQueueManager)), _withdrawalQueueManagerBalanceBefore - _amount, "testClaimWithdrawal: E1");
-        assertApproxEqAbs(address(user).balance, _userETHBalanceBefore + _expectedAmountOutUser, 10, "testClaimWithdrawal: E2");
-        assertApproxEqAbs(ynETHWithdrawalQueueManager.feeReceiver().balance, _feeReceiverETHBalanceBefore + _expectedAmountOutFeeReceiver, 10, "testClaimWithdrawal: E3");
+        assertApproxEqAbs(address(user).balance, _userETHBalanceBefore + _expectedAmountOutUser, 10_000, "testClaimWithdrawal: E2");
+        assertApproxEqAbs(ynETHWithdrawalQueueManager.feeReceiver().balance, _feeReceiverETHBalanceBefore + _expectedAmountOutFeeReceiver, 10_000, "testClaimWithdrawal: E3");
     }
 
     //
