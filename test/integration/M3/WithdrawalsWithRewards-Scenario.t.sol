@@ -94,10 +94,6 @@ contract M3WithdrawalsTest is Base {
 
         // exit validators
         {
-            // IStrategy[] memory _strategies = new IStrategy[](1);
-            // _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-            // vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
-
             for (uint256 i = 0; i < validatorIndices.length; i++) {
                 beaconChain.exitValidator(validatorIndices[i]);
             }
@@ -147,6 +143,23 @@ contract M3WithdrawalsTest is Base {
                 strategies: _strategies,
                 shares: _shares
             });   
+        }
+
+        {
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+
+            // advance time to allow competion
+            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        }
+
+        // complete queued withdrawals
+        {
+            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
+            _middlewareTimesIndexes[0] = 0;
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            vm.stopPrank();
         }
     }
 }
