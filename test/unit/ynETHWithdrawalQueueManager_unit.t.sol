@@ -386,7 +386,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         // Log the fee percentage
         uint256 feePercentage = manager.withdrawalFee();
-        
+
         uint256 initialAmount = 100 ether;
 
         // Deal ETH to redemptionAssetsVault
@@ -739,7 +739,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.ContractPaused.selector));
         vm.prank(address(manager));
-        redemptionAssetsVault.transferRedemptionAssets(user, 1 ether);
+        redemptionAssetsVault.transferRedemptionAssets(user, 1 ether, "");
 
         vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.ContractPaused.selector));
         vm.prank(address(manager));

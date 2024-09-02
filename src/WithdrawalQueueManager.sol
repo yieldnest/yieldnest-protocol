@@ -153,14 +153,26 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+
+    /**
+     * @notice Requests a withdrawal of a specified amount of redeemable assets without additional data.
+     * @dev This is a convenience function that calls the main requestWithdrawal function with empty data.
+     * @param amount The amount of redeemable assets to withdraw.
+     * @return tokenId The token ID associated with the withdrawal request.
+     */
+    function requestWithdrawal(uint256 amount) external returns (uint256 tokenId) {
+        return requestWithdrawal(amount, "");
+    }
+
     /**
      * @notice Requests a withdrawal of a specified amount of redeemable assets.
      * @dev Transfers the specified amount of redeemable assets from the sender to this contract, creates a withdrawal request,
      *      and mints a token representing this request. Emits a WithdrawalRequested event upon success.
      * @param amount The amount of redeemable assets to withdraw.
+     * @param data Extra data payload associated with the request
      * @return tokenId The token ID associated with the withdrawal request.
      */
-    function requestWithdrawal(uint256 amount) external nonReentrant returns (uint256 tokenId) {
+    function requestWithdrawal(uint256 amount, bytes memory data) public nonReentrant returns (uint256 tokenId) {
         if (amount == 0) {
             revert AmountMustBeGreaterThanZero();
         }
@@ -174,7 +186,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             feeAtRequestTime: withdrawalFee,
             redemptionRateAtRequestTime: currentRate,
             creationTimestamp: block.timestamp,
-            processed: false
+            processed: false,
+            data: data
         });
 
         pendingRequestedRedemptionAmount += calculateRedemptionAmount(amount, currentRate);
@@ -235,10 +248,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         }
 
         // Transfer net amount (unitOfAccountAmount - feeAmount) to the receiver
-        redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount);
+        redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount, request.data);
         
         if (feeAmount > 0) {
-            redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount);
+            redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
         }
 
         emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
