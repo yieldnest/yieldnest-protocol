@@ -594,6 +594,13 @@ contract StakingNodesManager is
         // If there is an amount of rewards specified, handle that
         if (rewardsAmount > 0) {
 
+            // IMPORTANT: Impact on totalAssets()
+            // After charging the rewards fee, the totalAssets() of the system may decrease.
+            // Steps:
+            // 1. The full rewardsAmount is removed from the staking node's balance (which is part of totalAssets).
+            // 2. Only the remainingRewards (after fees) are reinvested back to the system.
+            // 3. The fees are sent to a separate fee receiver and are no longer part of the system's totalAssets.
+
             (bool sent, ) = address(rewardsDistributor.consensusLayerReceiver()).call{value: rewardsAmount}("");
             if (!sent) {
                 revert TransferFailed();
