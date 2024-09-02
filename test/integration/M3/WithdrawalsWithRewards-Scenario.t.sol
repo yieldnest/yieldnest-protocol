@@ -20,7 +20,7 @@ interface IStakingNodeVars {
     function withdrawnETH() external view returns (uint256);
 }
 
-contract M3WithdrawalsTest is Base {
+contract M3WithdrawalsWithRewardsTest is Base {
 
     address public user;
 
@@ -256,8 +256,6 @@ contract M3WithdrawalsTest is Base {
         // Ensure user has enough ynETH balance
         require(yneth.balanceOf(user) >= userYnETHToRedeem, "User doesn't have enough ynETH balance");
 
-        uint256 _pendingRequestedRedemptionAmountBefore = ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount();
-        uint256 _withdrawalQueueManagerBalanceBefore = yneth.balanceOf(address(ynETHWithdrawalQueueManager));
         vm.startPrank(user);
         yneth.approve(address(ynETHWithdrawalQueueManager), userYnETHToRedeem);
         uint256 _tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userYnETHToRedeem);
@@ -266,8 +264,16 @@ contract M3WithdrawalsTest is Base {
         vm.prank(actors.ops.REQUEST_FINALIZER);
         ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
 
+        uint256 userBalanceBefore = user.balance;
         vm.prank(user);
         ynETHWithdrawalQueueManager.claimWithdrawal(_tokenId, user);
+        uint256 userBalanceAfter = user.balance;
+        uint256 actualWithdrawnAmount = userBalanceAfter - userBalanceBefore;
+        // Calculate expected withdrawal amount after fee
+        uint256 withdrawalFee = ynETHWithdrawalQueueManager.withdrawalFee();
+        uint256 expectedWithdrawnAmount = userWithdrawalAmount - (userWithdrawalAmount * withdrawalFee / ynETHWithdrawalQueueManager.FEE_PRECISION());
+        
+        assertApproxEqAbs(actualWithdrawnAmount, expectedWithdrawnAmount, 1e9, "User did not receive expected ETH amount after fee");
 
     }
 }
