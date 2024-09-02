@@ -27,7 +27,6 @@ contract M3WithdrawalsTest is Base {
     uint256 public nodeId;
 
     uint256 public constant AMOUNT = 32 ether;
-    bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
 
     //
     // setup
@@ -230,7 +229,8 @@ contract M3WithdrawalsTest is Base {
             _actions[0] = IStakingNodesManager.WithdrawalAction({
                 nodeId: nodeId,
                 amountToReinvest: AMOUNT / 2, // 16 ETH
-                amountToQueue: AMOUNT / 2 // 16 ETH
+                amountToQueue: AMOUNT / 2, // 16 ETH
+                rewardsAmount: 0
             });
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
             stakingNodesManager.processPrincipalWithdrawals({

@@ -10,9 +10,11 @@ interface IWithdrawalQueueManager {
         uint256 redemptionRateAtRequestTime;
         uint256 creationTimestamp;
         bool processed;
+        bytes data;
     }
 
     function requestWithdrawal(uint256 amount) external returns (uint256);
+    function requestWithdrawal(uint256 amount, bytes calldata data) external returns (uint256);
     function claimWithdrawal(uint256 tokenId, address receiver) external;
     function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external;
 }

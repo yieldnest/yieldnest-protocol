@@ -190,7 +190,8 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         _actions[0] = IStakingNodesManager.WithdrawalAction({
             nodeId: nodeId,
             amountToReinvest: 0,
-            amountToQueue: withdrawalAmount
+            amountToQueue: withdrawalAmount,
+            rewardsAmount: 0
         });
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
@@ -210,7 +211,8 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         _actions[0] = IStakingNodesManager.WithdrawalAction({
             nodeId: nodeId,
             amountToReinvest: 0,
-            amountToQueue: withdrawalAmount
+            amountToQueue: withdrawalAmount,
+            rewardsAmount: 0
         });
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), stakingNodesManager.WITHDRAWAL_MANAGER_ROLE()));
@@ -253,7 +255,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         vm.expectRevert(abi.encodeWithSelector(ERC721NonexistentToken.selector, tokenId));
         ynETHWithdrawalQueueManager.ownerOf(tokenId);
 
-        (uint256 _reqAmount, uint256 _feeAtRequestTime,,, bool _processed) = ynETHWithdrawalQueueManager.withdrawalRequests(tokenId);
+        (uint256 _reqAmount, uint256 _feeAtRequestTime,,, bool _processed,) = ynETHWithdrawalQueueManager.withdrawalRequests(tokenId);
         assertTrue(_processed, "testClaimWithdrawal: E0");
 
         uint256 _feeAmount = ynETHWithdrawalQueueManager.calculateFee(amountOut, _feeAtRequestTime);
@@ -558,7 +560,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         if (_balanceBefore >= _amount) {
             vm.prank(address(ynETHWithdrawalQueueManager));
-            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
+            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount, "");
             assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _balanceBefore - _amount, "testTransferRedemptionAssets: E0");
             assertEq(address(_to).balance - _toBalanceBefore, _amount, "testTransferRedemptionAssets: E1");
         }
@@ -572,7 +574,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         if (_balanceBefore < _amount) {
             vm.expectRevert(abi.encodeWithSelector(InsufficientAssetBalance.selector, ETH_ASSET, _amount, _balanceBefore));
             vm.prank(address(ynETHWithdrawalQueueManager));
-            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
+            ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount, "");
         }
     }
 
@@ -580,7 +582,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         if (!isHolesky) return;
 
         vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.NotRedeemer.selector, address(this)));
-        ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount);
+        ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount, "");
     }
 
     function testWithdrawRedemptionAssets(uint256 _amount) public {
@@ -616,7 +618,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         vm.expectRevert(bytes4(keccak256("ContractPaused()")));
         vm.prank(address(ynETHWithdrawalQueueManager));
-        ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(address(this), 1 ether);
+        ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(address(this), 1 ether, "");
 
         vm.expectRevert(bytes4(keccak256("ContractPaused()")));
         vm.prank(address(ynETHWithdrawalQueueManager));

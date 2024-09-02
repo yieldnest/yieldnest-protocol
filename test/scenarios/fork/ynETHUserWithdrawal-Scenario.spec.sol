@@ -149,7 +149,8 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         actions[0] = IStakingNodesManager.WithdrawalAction({
             nodeId: state.nodeId,
             amountToReinvest: amountToReinvest,
-            amountToQueue: amountToQueue
+            amountToQueue: amountToQueue,
+            rewardsAmount: 0
         });
         stakingNodesManager.processPrincipalWithdrawals(actions);
 

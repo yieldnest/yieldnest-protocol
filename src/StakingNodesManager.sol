@@ -27,7 +27,7 @@ interface StakingNodesManagerEvents {
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
-    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
+    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue, uint256 rewardsAmount);
     event ETHReceived(address sender, uint256 amount);
 }
 
@@ -55,6 +55,8 @@ contract StakingNodesManager is
     error NoValidatorsProvided();
     error ValidatorRegistrationPaused();
     error InvalidRewardsType(RewardsType rewardsType);
+    error ValidatorUnused(bytes publicKey);
+    error ValidatorNotWithdrawn(bytes publicKey, IEigenPod.VALIDATOR_STATUS status);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -507,8 +509,10 @@ contract StakingNodesManager is
         if (address(nodes[nodeId]) != msg.sender) {
             revert NotStakingNode(msg.sender, nodeId);
         }
+        _processRewards(nodeId, rewardsType, msg.value);
+    }
 
-        uint256 rewards = msg.value;
+    function _processRewards(uint256 nodeId, RewardsType rewardsType, uint256 rewards) internal {
         IRewardsReceiver receiver;
 
         if (rewardsType == RewardsType.ConsensusLayer) {
@@ -524,7 +528,7 @@ contract StakingNodesManager is
             revert TransferFailed();
         }
 
-        emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, msg.value);
+        emit WithdrawnETHRewardsProcessed(nodeId, rewardsType, rewards);
     }
 
     /**
@@ -548,14 +552,31 @@ contract StakingNodesManager is
         uint256 amountToReinvest = action.amountToReinvest;
         uint256 amountToQueue = action.amountToQueue;
 
-        // Calculate the total amount to be processed by summing reinvestment and queuing amounts
-        uint256 totalAmount = amountToReinvest + amountToQueue;
+        // The rewardsAmount is trusted off-chain input provided in the WithdrawalAction struct.
+        // It represents the portion of the withdrawn amount that is considered as rewards.
+        // This value is determined off-chain by analyzing the difference between
+        // the initial stake and the total withdrawn amount.
+        //
+        // This design trade-off is a result of how Eigenlayer M3 pepe no long providees
+        // clear separation between principal and rewards amount and they both exit through the 
+        // Queued Withdrawals mechanism.
+        // 
+        // SECURITY NOTE:
+        // The accuracy and integrity of this value relies on the off-chain process
+        // that calculates it. There's an implicit trust that the WITHDRAWAL_MANAGER_ROLE
+        // will provide correct and verified data and that principal is not counted as Rewards
+        // and applied a fee.
+        uint256 rewardsAmount = action.rewardsAmount;
+
+        // Calculate the total amount to be processed by summing reinvestment, rewards and queuing amounts
+        uint256 totalAmount = amountToReinvest + amountToQueue + rewardsAmount;
 
         // Retrieve the staking node object using the nodeId
         IStakingNode node = nodes[nodeId];
 
         // Deallocate the specified total amount of ETH from the staking node
         node.deallocateStakedETH(totalAmount);
+
 
         // If there is an amount specified to reinvest, process it through ynETH
         if (amountToReinvest > 0) {
@@ -569,10 +590,28 @@ contract StakingNodesManager is
                 revert TransferFailed();
             }
         }
-        // Emit an event to log the processed principal withdrawal details
-        emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue);
-    }
 
+        // If there is an amount of rewards specified, handle that
+        if (rewardsAmount > 0) {
+
+            // IMPORTANT: Impact on totalAssets()
+            // After charging the rewards fee, the totalAssets() of the system may decrease.
+            // Steps:
+            // 1. The full rewardsAmount is removed from the staking node's balance (which is part of totalAssets).
+            // 2. Only the remainingRewards (after fees) are reinvested back to the system.
+            // 3. The fees are sent to a separate fee receiver and are no longer part of the system's totalAssets.
+
+            (bool sent, ) = address(rewardsDistributor.consensusLayerReceiver()).call{value: rewardsAmount}("");
+            if (!sent) {
+                revert TransferFailed();
+            }
+            // process rewards immediately to avoid large totalAssets() fluctuations
+            rewardsDistributor.processRewards();
+        }
+
+        // Emit an event to log the processed principal withdrawal details
+        emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue, rewardsAmount);
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------

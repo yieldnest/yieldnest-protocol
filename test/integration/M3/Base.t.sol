@@ -27,11 +27,16 @@ import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
 import {StakingNode} from "../../../src/StakingNode.sol";
 import {WithdrawalQueueManager} from "../../../src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "../../../src/ynETHRedemptionAssetsVault.sol";
+import {IStakingNode} from "../../../src/interfaces/IStakingNodesManager.sol";
+
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 
 contract Base is Test, Utils {
+
+    bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -214,4 +219,68 @@ contract Base is Test, Utils {
             vm.stopPrank();
         }
     }
+
+    function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
+        uint40[] memory validatorIndices = new uint40[](count * nodeIds.length);
+        uint256 index = 0;
+
+        for (uint256 j = 0; j < nodeIds.length; j++) {
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeIds[j]);
+
+            for (uint256 i = 0; i < count; i++) {
+                validatorIndices[index] = beaconChain.newValidator{value: 32 ether}(withdrawalCredentials);
+                index++;
+            }
+        }
+        return validatorIndices;
+    }
+
+    function registerValidators(uint256[] memory validatorNodeIds) public {
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorNodeIds.length);
+        
+        for (uint256 i = 0; i < validatorNodeIds.length; i++) {
+            bytes memory publicKey = abi.encodePacked(uint256(i));
+            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
+            validatorData[i] = IStakingNodesManager.ValidatorData({
+                publicKey: publicKey,
+                signature: ZERO_SIGNATURE,
+                nodeId: validatorNodeIds[i],
+                depositDataRoot: bytes32(0)
+            });
+        }
+
+        for (uint256 i = 0; i < validatorData.length; i++) {
+            uint256 amount = 32 ether;
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+        
+        vm.prank(actors.ops.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(validatorData);
+    }
+
+    function runSystemStateInvariants(
+        uint256 previousTotalAssets,
+        uint256 previousTotalSupply,
+        uint256[] memory previousStakingNodeBalances
+    ) public {  
+        assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
+        assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
+        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            assertEq(currentStakingNodeBalance, previousStakingNodeBalances[i], "Staking node balance integrity check failed for node ID: ");
+        }
+	}
+
+    function getAllStakingNodeBalances() public view returns (uint256[] memory) {
+        uint256[] memory balances = new uint256[](stakingNodesManager.nodesLength());
+        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            IStakingNode stakingNode = stakingNodesManager.nodes(i);
+            balances[i] = stakingNode.getETHBalance();
+        }
+        return balances;
+    }
+
 }

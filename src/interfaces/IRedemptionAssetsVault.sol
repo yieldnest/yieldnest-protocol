@@ -14,7 +14,8 @@ interface IRedemptionAssetsVault {
     /// @dev This is only for INTERNAL USE
     /// @param to The address to which the assets will be transferred.
     /// @param amount The amount in unit of account
-    function transferRedemptionAssets(address to, uint256 amount) external;
+    /// @param data Extra data payload for redemption request
+    function transferRedemptionAssets(address to, uint256 amount, bytes calldata data) external;
 
     /// @notice Withdraws redemption assets from the queue's balance
     /// @param amount The amount in unit of account

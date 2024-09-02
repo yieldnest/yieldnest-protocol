@@ -92,7 +92,7 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
      * @param amount The amount of assets to transfer.
      * @dev Requires the caller to be the redeemer and the contract to not be paused.
      */
-    function transferRedemptionAssets(address to, uint256 amount) public onlyRedeemer whenNotPaused nonReentrant {
+    function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */) public onlyRedeemer whenNotPaused nonReentrant {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) {
             revert InsufficientAssetBalance(ETH_ASSET, amount, balance);

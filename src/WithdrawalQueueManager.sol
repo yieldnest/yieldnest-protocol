@@ -153,14 +153,26 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+
+    /**
+     * @notice Requests a withdrawal of a specified amount of redeemable assets without additional data.
+     * @dev This is a convenience function that calls the main requestWithdrawal function with empty data.
+     * @param amount The amount of redeemable assets to withdraw.
+     * @return tokenId The token ID associated with the withdrawal request.
+     */
+    function requestWithdrawal(uint256 amount) external returns (uint256 tokenId) {
+        return requestWithdrawal(amount, "");
+    }
+
     /**
      * @notice Requests a withdrawal of a specified amount of redeemable assets.
      * @dev Transfers the specified amount of redeemable assets from the sender to this contract, creates a withdrawal request,
      *      and mints a token representing this request. Emits a WithdrawalRequested event upon success.
      * @param amount The amount of redeemable assets to withdraw.
+     * @param data Extra data payload associated with the request
      * @return tokenId The token ID associated with the withdrawal request.
      */
-    function requestWithdrawal(uint256 amount) external nonReentrant returns (uint256 tokenId) {
+    function requestWithdrawal(uint256 amount, bytes memory data) public nonReentrant returns (uint256 tokenId) {
         if (amount == 0) {
             revert AmountMustBeGreaterThanZero();
         }
@@ -174,7 +186,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             feeAtRequestTime: withdrawalFee,
             redemptionRateAtRequestTime: currentRate,
             creationTimestamp: block.timestamp,
-            processed: false
+            processed: false,
+            data: data
         });
 
         pendingRequestedRedemptionAmount += calculateRedemptionAmount(amount, currentRate);
@@ -214,7 +227,14 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         }
 
         withdrawalRequests[tokenId].processed = true;
-        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+
+        // Redemption rate at claim time is the minimum between
+        // the redemption rate at request time and the current redemption Rate
+        uint256 currentRate = redemptionAssetsVault.redemptionRate();
+        uint256 redemptionRate = request.redemptionRateAtRequestTime < currentRate ? request.redemptionRateAtRequestTime : currentRate;
+
+        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
+
         pendingRequestedRedemptionAmount -= unitOfAccountAmount;
 
         _burn(tokenId);
@@ -228,10 +248,10 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         }
 
         // Transfer net amount (unitOfAccountAmount - feeAmount) to the receiver
-        redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount);
+        redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount, request.data);
         
         if (feeAmount > 0) {
-            redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount);
+            redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
         }
 
         emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
@@ -286,14 +306,14 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     /**
      * @notice Calculates the redemption amount based on the provided amount and the redemption rate at the time of request.
      * @param amount The amount of the redeemable asset.
-     * @param redemptionRateAtRequestTime The redemption rate at the time the request was made, expressed in the same unit of decimals as the redeemable asset.
+     * @param redemptionRate The redemption rate expressed in the same unit of decimals as the redeemable asset.
      * @return The calculated redemption amount, adjusted for the decimal places of the redeemable asset.
      */
     function calculateRedemptionAmount(
         uint256 amount,
-        uint256 redemptionRateAtRequestTime
+        uint256 redemptionRate
     ) public view returns (uint256) {
-        return amount * redemptionRateAtRequestTime / (10 ** redeemableAsset.decimals());
+        return amount * redemptionRate / (10 ** redeemableAsset.decimals());
     }
 
     /**
