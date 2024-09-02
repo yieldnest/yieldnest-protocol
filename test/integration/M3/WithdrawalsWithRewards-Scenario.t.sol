@@ -165,7 +165,7 @@ contract M3WithdrawalsTest is Base {
             });
         }
 
-        // Rewards accumulated after verifying the checkpoint
+        // Rewards accumulated are accounted after verifying the checkpoint
         state.totalAssetsBefore += accumulatedRewards;
         state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
@@ -241,31 +241,12 @@ contract M3WithdrawalsTest is Base {
             uint256 feesBasisPoints = rewardsDistributor.feesBasisPoints();
             uint256 _BASIS_POINTS_DENOMINATOR = 10_000; // Assuming this is the denominator used in RewardsDistributor
             uint256 fees = Math.mulDiv(feesBasisPoints, accumulatedRewards, _BASIS_POINTS_DENOMINATOR);
-            // You may want to use these values for further calculations or assertions
             
+            // Fees on accumulated rewards are substracted from the totalAssets and set to feeReceiver
             state.totalAssetsBefore -= fees;
+            // The Balance of the stakingNode decreases by the total amount withdrawn
             state.stakingNodeBalancesBefore[nodeId] -= (amountToReinvest + userWithdrawalAmount + accumulatedRewards);
         }
-
-        // Log totalAssetsBefore and current totalAssets
-        console.log("Total assets before:", state.totalAssetsBefore);
-        console.log("Current total assets:", yneth.totalAssets());
-        // Calculate and log the difference between total assets before and current total assets
-        uint256 totalAssetsDifference = yneth.totalAssets() > state.totalAssetsBefore 
-            ? yneth.totalAssets() - state.totalAssetsBefore 
-            : state.totalAssetsBefore - yneth.totalAssets();
-        
-        console.log("Difference in total assets:", totalAssetsDifference);
-
-        // Log balance of staking node before
-        uint256 stakingNodeBalanceBefore = address(stakingNodesManager.nodes(nodeId)).balance;
-        console.log("Staking node balance before:", stakingNodeBalanceBefore);
-
-        // Log what's in the staking node before
-        IStakingNodeVars stakingNode = IStakingNodeVars(address(stakingNodesManager.nodes(nodeId)));
-        uint256 withdrawnETH = stakingNode.withdrawnETH();
-        console.log("Staking node stakingNodeBalancesBefore:", state.stakingNodeBalancesBefore[nodeId]);
-        console.log("Staking node withdrawn ETH:", withdrawnETH);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
