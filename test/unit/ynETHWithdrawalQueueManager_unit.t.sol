@@ -382,6 +382,57 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(feeReceiver.balance, expectedFeeAmount, "Fee receiver should receive correct fee amount");
     }
 
+    function testClaimWithdrawalsWithDecreasedRedemptionRate() public {
+
+        // Log the fee percentage
+        uint256 feePercentage = manager.withdrawalFee();
+        
+        uint256 initialAmount = 100 ether;
+
+        // Deal ETH to redemptionAssetsVault
+        uint256 vaultBalance = 1000 ether;
+        vm.deal(address(redemptionAssetsVault), vaultBalance);
+
+        // User requests withdrawal
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), initialAmount);
+        uint256 tokenId = manager.requestWithdrawal(initialAmount);
+        vm.stopPrank();
+
+        uint256 initialRedemptionRate = redemptionAssetsVault.redemptionRate();
+        assertEq(initialRedemptionRate, 1e18, "Initial redemption rate should be 1:1");
+
+        finalizeRequest(tokenId);
+
+        // Decrease total assets, which should decrease the redemption rate
+        uint256 currentTotalAssets = redeemableAsset.totalAssets();
+        uint256 decreasedAmount = currentTotalAssets - (currentTotalAssets * 20 / 100);
+        redeemableAsset.setTotalAssets(decreasedAmount);
+
+        uint256 newRedemptionRate = redemptionAssetsVault.redemptionRate();
+        assertLt(newRedemptionRate, initialRedemptionRate, "Redemption rate should have decreased");
+
+        uint256 userBalanceBefore = user.balance;
+
+        vm.prank(user);
+        manager.claimWithdrawal(tokenId, user);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
+        assertTrue(request.processed, "Request should be processed");
+
+        // Calculate expected amounts
+        (uint256 expectedNetEthAmount, uint256 expectedFeeAmount) = calculateNetEthAndFee(initialAmount,newRedemptionRate, feePercentage);
+
+        // Verify that the user received the correct amount based on the new (lower) redemption rate
+        assertEq(user.balance - userBalanceBefore, expectedNetEthAmount, "User should receive ETH based on new (lower) redemption rate");
+
+        // Verify that the manager's balance of redeemable asset is zero
+        assertEq(redeemableAsset.balanceOf(address(manager)), 0, "Manager should have no redeemable assets left");
+
+        // Verify that the fee receiver received the correct fee
+        assertEq(feeReceiver.balance, expectedFeeAmount, "Fee receiver should receive correct fee amount");
+    }
+
     // ============================================================================================
     // withdrawalQueueManager.surplusRedemptionAssets
     // ============================================================================================
