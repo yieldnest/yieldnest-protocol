@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
@@ -60,6 +61,9 @@ contract M3WithdrawalsTest is Base {
             uint256 userYnETHBalance = yneth.balanceOf(user);
             console.log("User ynETH balance after deposit:", userYnETHBalance);
         }
+
+        // Process rewards
+        rewardsDistributor.processRewards();
 
         // create staking node
         {
@@ -231,6 +235,39 @@ contract M3WithdrawalsTest is Base {
                 actions: _actions
             });
         }
+
+        {
+            // Calculate fee for accumulated rewards
+            uint256 feesBasisPoints = rewardsDistributor.feesBasisPoints();
+            uint256 _BASIS_POINTS_DENOMINATOR = 10_000; // Assuming this is the denominator used in RewardsDistributor
+            uint256 fees = Math.mulDiv(feesBasisPoints, accumulatedRewards, _BASIS_POINTS_DENOMINATOR);
+            // You may want to use these values for further calculations or assertions
+            
+            state.totalAssetsBefore -= fees;
+            state.stakingNodeBalancesBefore[nodeId] -= (amountToReinvest + userWithdrawalAmount + accumulatedRewards);
+        }
+
+        // Log totalAssetsBefore and current totalAssets
+        console.log("Total assets before:", state.totalAssetsBefore);
+        console.log("Current total assets:", yneth.totalAssets());
+        // Calculate and log the difference between total assets before and current total assets
+        uint256 totalAssetsDifference = yneth.totalAssets() > state.totalAssetsBefore 
+            ? yneth.totalAssets() - state.totalAssetsBefore 
+            : state.totalAssetsBefore - yneth.totalAssets();
+        
+        console.log("Difference in total assets:", totalAssetsDifference);
+
+        // Log balance of staking node before
+        uint256 stakingNodeBalanceBefore = address(stakingNodesManager.nodes(nodeId)).balance;
+        console.log("Staking node balance before:", stakingNodeBalanceBefore);
+
+        // Log what's in the staking node before
+        IStakingNodeVars stakingNode = IStakingNodeVars(address(stakingNodesManager.nodes(nodeId)));
+        uint256 withdrawnETH = stakingNode.withdrawnETH();
+        console.log("Staking node stakingNodeBalancesBefore:", state.stakingNodeBalancesBefore[nodeId]);
+        console.log("Staking node withdrawn ETH:", withdrawnETH);
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         // Calculate user ynETH amount to redeem
         uint256 userYnETHToRedeem = yneth.previewDeposit(userWithdrawalAmount);

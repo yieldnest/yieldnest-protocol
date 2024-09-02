@@ -593,7 +593,13 @@ contract StakingNodesManager is
 
         // If there is an amount of rewards specified, handle that
         if (rewardsAmount > 0) {
-            _processRewards(nodeId, RewardsType.ConsensusLayer, rewardsAmount);
+
+            (bool sent, ) = address(rewardsDistributor.consensusLayerReceiver()).call{value: rewardsAmount}("");
+            if (!sent) {
+                revert TransferFailed();
+            }
+            // process rewards immediately to avoid large totalAssets() fluctuations
+            rewardsDistributor.processRewards();
         }
 
         // Emit an event to log the processed principal withdrawal details
