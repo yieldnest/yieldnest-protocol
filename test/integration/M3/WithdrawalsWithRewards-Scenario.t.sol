@@ -175,6 +175,8 @@ contract M3WithdrawalsTest is Base {
             vm.stopPrank();
         }
 
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
         // create Withdrawal struct
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
         {
@@ -211,6 +213,7 @@ contract M3WithdrawalsTest is Base {
             vm.stopPrank();
         }
 
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         uint256 userWithdrawalAmount = 90 ether;
         uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount - accumulatedRewards;
