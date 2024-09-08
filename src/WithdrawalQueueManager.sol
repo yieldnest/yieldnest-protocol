@@ -207,6 +207,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //--------------------------------------------------------------------------------------
 
 
+    /**
+     * @notice Claims a withdrawal for a specific token ID and transfers the assets to the specified receiver.
+     * @dev This function burns the token representing the withdrawal request and transfers the net amount
+            after fees to the receiver.
+     *      It also transfers the fee to the fee receiver.
+     *      It automatically finds the finalization ID for the given token ID.
+     * @param tokenId The ID of the token representing the withdrawal request.
+     * @param receiver The address to which the withdrawn assets will be sent.
+     */
     function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
         WithdrawalClaim memory claim = WithdrawalClaim({
             tokenId: tokenId,
