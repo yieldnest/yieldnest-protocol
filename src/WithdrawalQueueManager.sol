@@ -485,6 +485,38 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         lastFinalizedIndex = _lastFinalizedIndex;
     }
 
+    /**
+     * @notice Finds the finalization ID for a given token ID using binary search.
+     * @param tokenId The token ID to find the finalization for.
+     * @return finalizationId The ID of the finalization that includes the given token ID.
+     * @dev The complexity of this algorithm is Math.log2(n) and it is UNBOUNDED
+     */
+    function findFinalizationForTokenId(uint256 tokenId) public view returns (uint256 finalizationId) {
+
+        uint256 finalizationsLength = finalizations.length;
+        if (finalizationsLength == 0) {
+            revert NotFinalized(tokenId);
+        }
+
+        uint256 left = 0;
+        uint256 right = finalizationsLength - 1;
+
+        while (left <= right) {
+            uint256 mid = (left + right) / 2;
+            Finalization memory finalization = finalizations[mid];
+
+            if (tokenId >= finalization.startIndex && tokenId < finalization.endIndex) {
+                return mid;
+            } else if (tokenId < finalization.startIndex) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+
+        revert NotFinalized(tokenId);
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -554,38 +586,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      */
     function finalizationsCount() public view returns (uint256 count) {
         return finalizations.length;
-    }
-
-    /**
-     * @notice Finds the finalization ID for a given token ID using binary search.
-     * @param tokenId The token ID to find the finalization for.
-     * @return finalizationId The ID of the finalization that includes the given token ID.
-     * @dev The complexity of this algorithm is Math.log2(n) and it is UNBOUNDED
-     */
-    function findFinalizationForTokenId(uint256 tokenId) public view returns (uint256 finalizationId) {
-
-        uint256 finalizationsLength = finalizations.length;
-        if (finalizationsLength == 0) {
-            revert NotFinalized(tokenId);
-        }
-
-        uint256 left = 0;
-        uint256 right = finalizationsLength - 1;
-
-        while (left <= right) {
-            uint256 mid = (left + right) / 2;
-            Finalization memory finalization = finalizations[mid];
-
-            if (tokenId >= finalization.startIndex && tokenId < finalization.endIndex) {
-                return mid;
-            } else if (tokenId < finalization.startIndex) {
-                right = mid - 1;
-            } else {
-                left = mid + 1;
-            }
-        }
-
-        revert NotFinalized(tokenId);
     }
 
     //--------------------------------------------------------------------------------------
