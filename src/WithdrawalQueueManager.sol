@@ -16,7 +16,13 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
-    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
+    event WithdrawalClaimed(
+        uint256 indexed tokenId,
+        address claimer,
+        address receiver,
+        IWithdrawalQueueManager.WithdrawalRequest request,
+        uint256 finalizationId
+    );
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
     event SecondsToFinalizationUpdated(uint256 previousValue, uint256 newValue);
@@ -304,7 +310,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
         }
 
-        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
+        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId);
     }
 
     /**

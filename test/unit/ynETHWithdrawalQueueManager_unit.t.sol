@@ -872,8 +872,8 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.finalizeRequestsUpToIndex(2);  // Finalization 0: tokenIds 0-1
         manager.finalizeRequestsUpToIndex(5);  // Finalization 1: tokenIds 2-4
         manager.finalizeRequestsUpToIndex(8);  // Finalization 2: tokenIds 5-7
-        manager.finalizeRequestsUpToIndex(10); // Finalization 3: tokenIds 8-9
-        manager.finalizeRequestsUpToIndex(12); // Finalization 4: tokenIds 10-11
+        manager.finalizeRequestsUpToIndex(9); // Finalization 3: tokenIds 8-8
+        manager.finalizeRequestsUpToIndex(12); // Finalization 4: tokenIds 9-11
         vm.stopPrank();
 
         // Test finding finalization for each token ID
@@ -887,7 +887,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         expectedFinalizationIds[6] = 2;
         expectedFinalizationIds[7] = 2;
         expectedFinalizationIds[8] = 3;
-        expectedFinalizationIds[9] = 3;
+        expectedFinalizationIds[9] = 4;
         expectedFinalizationIds[10] = 4;
         expectedFinalizationIds[11] = 4;
         for (uint256 i = 0; i < 12; i++) {
