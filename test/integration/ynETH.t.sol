@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IEigenPod} from "@eigenlayer-contracts/interfaces/IEigenPod.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 
 import {IStakingNode} from "../../src/interfaces/IStakingNode.sol";
 
