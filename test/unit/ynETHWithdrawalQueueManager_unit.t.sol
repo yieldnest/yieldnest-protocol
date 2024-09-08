@@ -476,6 +476,90 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(feeReceiver.balance, expectedFeeAmount, "Fee receiver should receive correct fee amount");
     }
 
+
+    function testclaimWithdrawalWithComputedFinalizationId(
+            uint256 _amount
+        ) public {
+        vm.assume(_amount > 0 && _amount < 10_000 ether);
+        uint256 _amount = 1 ether;
+
+        vm.deal(address(redemptionAssetsVault), _amount);
+
+        uint256 extraWithdrawalsBefore = 3;
+        {
+            address anotherUser = address(0x9876);
+            vm.deal(anotherUser, 100 ether);
+            redeemableAsset.mint(anotherUser, 100 ether);
+            // Increase total assets of redeemableAsset by 100 ether to maintain ratio
+            vm.prank(admin);
+            redeemableAsset.setTotalAssets(redeemableAsset.totalAssets() + 100 ether);
+
+            // Perform 3 withdrawal requests of 1 ether each for anotherUser
+            for (uint256 i = 0; i < extraWithdrawalsBefore; i++) {
+                vm.startPrank(anotherUser);
+                redeemableAsset.approve(address(manager), 1 ether);
+                manager.requestWithdrawal(1 ether);
+                vm.stopPrank();
+
+                // finalize immediately
+                finalizeRequest(i);
+            }
+        }
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), _amount);
+        uint256 tokenId = manager.requestWithdrawal(_amount);
+        vm.stopPrank();
+
+        uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
+
+        uint256 finalizationId = finalizeRequest(tokenId);
+
+
+        uint256 extraWithdrawalsAfter = 2;
+        {
+            address anotherUser = address(0x9876);
+            vm.deal(anotherUser, 100 ether);
+            redeemableAsset.mint(anotherUser, 100 ether);
+            // Increase total assets of redeemableAsset by 100 ether to maintain ratio
+            vm.prank(admin);
+            redeemableAsset.setTotalAssets(redeemableAsset.totalAssets() + 100 ether);
+
+            // Perform 3 withdrawal requests of 1 ether each for anotherUser
+            for (uint256 i = 0; i < extraWithdrawalsAfter; i++) {
+                vm.startPrank(anotherUser);
+                redeemableAsset.approve(address(manager), 1 ether);
+                manager.requestWithdrawal(1 ether);
+                vm.stopPrank();
+
+                // finalize immediately
+                finalizeRequest(i + tokenId + 1);
+            }
+        }
+
+        uint256 _userBalanceBefore = user.balance;
+        uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
+
+        vm.prank(user);
+        manager.claimWithdrawal(tokenId, user);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
+        assertTrue(request.processed, "testclaimWithdrawals: E0");
+        assertEq(request.amount, _amount, "testclaimWithdrawals: E1");
+        assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testclaimWithdrawals: E2");
+        assertEq(request.redemptionRateAtRequestTime, _redemptionRateAtRequestTime, "testclaimWithdrawals: E3");
+
+        uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
+        uint256 expectedNetEthAmount = (_amount * request.redemptionRateAtRequestTime) / 1e18 - expectedFeeAmount;
+        assertEq(user.balance, expectedNetEthAmount, "testclaimWithdrawals: E5");
+        assertEq(redeemableAsset.balanceOf(address(manager)), (extraWithdrawalsBefore + extraWithdrawalsAfter) * 1 ether, "testclaimWithdrawals: E6");
+        assertEq(feeReceiver.balance, expectedFeeAmount, "testclaimWithdrawals: E7");
+        assertApproxEqAbs(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, 1000, "testclaimWithdrawals: E8");
+        assertEq(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, "testclaimWithdrawals: E8");
+        assertEq(manager.balanceOf(user), 0, "testclaimWithdrawals: E9");
+        assertEq(user.balance - _userBalanceBefore, expectedNetEthAmount, "testclaimWithdrawals: E10");
+    }
+
     // ============================================================================================
     // withdrawalQueueManager.surplusRedemptionAssets
     // ============================================================================================
