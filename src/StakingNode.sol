@@ -12,7 +12,6 @@ import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
@@ -169,26 +168,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         return eigenPod;
     }
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  SURPLUS WITHDRAWAL   ---------------------------
-    //--------------------------------------------------------------------------------------
-
-    /**
-     * @notice Processes extra ETH residing in the StakingNode that is not accounted as withdrawnETH as rewards.
-     * @dev 
-     */
-    function processETHSurplus() public nonReentrant onlyOperator {
-
-        // Delayed withdrawals that do not count as validator principal are handled as rewards
-        uint256 balance = address(this).balance - withdrawnETH;
-        if (balance == 0) {
-            revert NoBalanceToProcess();
-        }
-        stakingNodesManager.processRewards{value: balance}(nodeId, RewardsType.ConsensusLayer);
-        emit NonBeaconChainETHWithdrawalsProcessed(balance);
-    }
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------

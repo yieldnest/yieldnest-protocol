@@ -81,9 +81,9 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         redeemableAsset.setTotalAssets(initialMintAmount);
     }
 
-    function finalizeRequest(uint256 tokenId) internal {
+    function finalizeRequest(uint256 tokenId) internal returns (uint256) {
         vm.prank(requestFinalizer);
-        manager.finalizeRequestsUpToIndex(tokenId + 1);
+        return manager.finalizeRequestsUpToIndex(tokenId + 1);
     }
 
     function calculateNetEthAndFee(
@@ -176,12 +176,16 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
-        finalizeRequest(tokenId);
+        uint256 finalizationId = finalizeRequest(tokenId);
 
         uint256 _userBalanceBefore = user.balance;
         uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
         vm.prank(user);
-        manager.claimWithdrawal(tokenId, user);
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: tokenId, receiver: user , finalizationId: finalizationId }
+            )
+        );
 
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertTrue(request.processed, "testClaimWithdrawal: E0");
@@ -207,7 +211,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         uint256 tokenId = manager.requestWithdrawal(amount);
 
-        finalizeRequest(tokenId);
+        uint256 finalizationId = finalizeRequest(tokenId);
 
         // Ensure vault has insufficient balance
         uint256 insufficientAmount = amount - 1;
@@ -222,10 +226,15 @@ contract ynETHWithdrawalQueueManagerTest is Test {
                 amount
             )
         );
-        manager.claimWithdrawal(0, user);
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: 0, receiver: user , finalizationId: finalizationId }
+            )
+        );
+
     }
 
-    function testClaimWithdrawalNotFinalized() public {
+    function testClaimOneWithdrawalNotFinalized() public {
         uint256 amount = 1 ether;
         vm.prank(user);
         redeemableAsset.approve(address(manager), amount);
@@ -233,16 +242,25 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 tokenId = manager.requestWithdrawal(amount);
 
         // Attempt to claim before time is up
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, tokenId, block.timestamp, block.timestamp));
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.InvalidFinalizationId.selector, 0));
         vm.prank(user);
-        manager.claimWithdrawal(tokenId, user);
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: tokenId, receiver: user , finalizationId: 0 }
+            )
+        );
     }
 
     function testClaimWithdrawalForNonExistentTokenId() public {
         uint256 nonExistentTokenId = 9999; // Assuming this tokenId does not exist
         vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, nonExistentTokenId, user));
-        manager.claimWithdrawal(nonExistentTokenId, user);
+
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: nonExistentTokenId, receiver: user , finalizationId: 0 }
+            )
+        );
     }
 
     function testClaimWithdrawalForAlreadyProcessedWithdrawal() public {
@@ -255,7 +273,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         vm.prank(user);
         uint256 tokenId = manager.requestWithdrawal(amount);
 
-        finalizeRequest(tokenId);
+        uint256 finalizationId = finalizeRequest(tokenId);
 
         // Send exact Ether to vault
         (bool success, ) = address(redemptionAssetsVault).call{value: availableRedemptionAmount}("");
@@ -263,12 +281,20 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         // Attempt to claim the withdrawal
         vm.prank(user);
-        manager.claimWithdrawal(tokenId, user);
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: tokenId, receiver: user , finalizationId: finalizationId }
+            )
+        );
 
         // Attempt to claim the withdrawal again to ensure it cannot be processed twice
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, tokenId, user));
         vm.prank(user);
-        manager.claimWithdrawal(tokenId, user);
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: tokenId, receiver: user , finalizationId: finalizationId }
+            )
+        );
     }
     
     function testtestClaimWithdrawalNotOwner() public {
@@ -278,7 +304,11 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         vm.prank(notOwner);
         vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.CallerNotOwnerNorApproved.selector, tokenId, notOwner));
-        manager.claimWithdrawal(tokenId, notOwner);
+        manager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                tokenId: tokenId, receiver: notOwner, finalizationId: 0 }
+            )
+        );
     }
 
     // ============================================================================================
@@ -297,17 +327,19 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
-        finalizeRequest(tokenId);
+        uint256 finalizationId = finalizeRequest(tokenId);
 
         uint256 _userBalanceBefore = user.balance;
         uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
-        uint256[] memory tokenIds = new uint256[](1);
-        address[] memory receivers = new address[](1);
-        tokenIds[0] = tokenId;
-        receivers[0] = user;
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: finalizationId,
+            receiver: user
+        });
 
         vm.prank(user);
-        manager.claimWithdrawals(tokenIds, receivers);
+        manager.claimWithdrawals(claims);
 
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertTrue(request.processed, "testclaimWithdrawals: E0");
@@ -326,14 +358,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         assertEq(user.balance - _userBalanceBefore, expectedNetEthAmount, "testclaimWithdrawals: E10");
     }
 
-    function testclaimWithdrawalsArrayLengthMismatch() public {
-        uint256[] memory tokenIds = new uint256[](1);
-        address[] memory receivers = new address[](2);
-        vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.ArrayLengthMismatch.selector, tokenIds.length, receivers.length));
-        manager.claimWithdrawals(tokenIds, receivers);
-    }
-
     function testClaimWithdrawalsWithIncreasedRedemptionRate() public {
         uint256 initialAmount = 100 ether;
 
@@ -350,7 +374,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 initialRedemptionRate = redemptionAssetsVault.redemptionRate();
         assertEq(initialRedemptionRate, 1e18, "Initial redemption rate should be 1:1");
 
-        finalizeRequest(tokenId);
+        uint256 finalizationId = finalizeRequest(tokenId);
 
         // Increase total assets, which should increase the redemption rate
         uint256 currentTotalAssets = redeemableAsset.totalAssets();
@@ -363,7 +387,13 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 userBalanceBefore = user.balance;
 
         vm.prank(user);
-        manager.claimWithdrawal(tokenId, user);
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            receiver: user,
+            finalizationId: finalizationId
+        });
+        manager.claimWithdrawals(claims);
 
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertTrue(request.processed, "Request should be processed");
@@ -402,7 +432,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 initialRedemptionRate = redemptionAssetsVault.redemptionRate();
         assertEq(initialRedemptionRate, 1e18, "Initial redemption rate should be 1:1");
 
-        finalizeRequest(tokenId);
 
         // Decrease total assets, which should decrease the redemption rate
         uint256 currentTotalAssets = redeemableAsset.totalAssets();
@@ -412,10 +441,24 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 newRedemptionRate = redemptionAssetsVault.redemptionRate();
         assertLt(newRedemptionRate, initialRedemptionRate, "Redemption rate should have decreased");
 
+        // finalize request at the new rate
+        uint256 finalizationId = finalizeRequest(tokenId);
+        {
+            // Assert finalization fields
+            IWithdrawalQueueManager.Finalization memory finalization = manager.getFinalization(finalizationId);
+            assertEq(finalization.startIndex, 0, "Start index should be 0");
+            assertEq(finalization.endIndex, tokenId + 1, "End index should be tokenId + 1");
+            assertEq(finalization.redemptionRate, newRedemptionRate, "Finalization redemption rate should match new rate");
+        }
+
         uint256 userBalanceBefore = user.balance;
 
         vm.prank(user);
-        manager.claimWithdrawal(tokenId, user);
+        manager.claimWithdrawal(IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: finalizationId,
+            receiver: user
+        }));
 
         IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
         assertTrue(request.processed, "Request should be processed");
@@ -431,6 +474,90 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         // Verify that the fee receiver received the correct fee
         assertEq(feeReceiver.balance, expectedFeeAmount, "Fee receiver should receive correct fee amount");
+    }
+
+
+    function testclaimWithdrawalWithComputedFinalizationId(
+            uint256 _amount
+        ) public {
+        vm.assume(_amount > 0 && _amount < 10_000 ether);
+        uint256 _amount = 1 ether;
+
+        vm.deal(address(redemptionAssetsVault), _amount);
+
+        uint256 extraWithdrawalsBefore = 3;
+        {
+            address anotherUser = address(0x9876);
+            vm.deal(anotherUser, 100 ether);
+            redeemableAsset.mint(anotherUser, 100 ether);
+            // Increase total assets of redeemableAsset by 100 ether to maintain ratio
+            vm.prank(admin);
+            redeemableAsset.setTotalAssets(redeemableAsset.totalAssets() + 100 ether);
+
+            // Perform 3 withdrawal requests of 1 ether each for anotherUser
+            for (uint256 i = 0; i < extraWithdrawalsBefore; i++) {
+                vm.startPrank(anotherUser);
+                redeemableAsset.approve(address(manager), 1 ether);
+                manager.requestWithdrawal(1 ether);
+                vm.stopPrank();
+
+                // finalize immediately
+                finalizeRequest(i);
+            }
+        }
+
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), _amount);
+        uint256 tokenId = manager.requestWithdrawal(_amount);
+        vm.stopPrank();
+
+        uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
+
+        uint256 finalizationId = finalizeRequest(tokenId);
+
+
+        uint256 extraWithdrawalsAfter = 2;
+        {
+            address anotherUser = address(0x9876);
+            vm.deal(anotherUser, 100 ether);
+            redeemableAsset.mint(anotherUser, 100 ether);
+            // Increase total assets of redeemableAsset by 100 ether to maintain ratio
+            vm.prank(admin);
+            redeemableAsset.setTotalAssets(redeemableAsset.totalAssets() + 100 ether);
+
+            // Perform 3 withdrawal requests of 1 ether each for anotherUser
+            for (uint256 i = 0; i < extraWithdrawalsAfter; i++) {
+                vm.startPrank(anotherUser);
+                redeemableAsset.approve(address(manager), 1 ether);
+                manager.requestWithdrawal(1 ether);
+                vm.stopPrank();
+
+                // finalize immediately
+                finalizeRequest(i + tokenId + 1);
+            }
+        }
+
+        uint256 _userBalanceBefore = user.balance;
+        uint256 _vaultBalanceBefore = address(redemptionAssetsVault).balance;
+
+        vm.prank(user);
+        manager.claimWithdrawal(tokenId, user);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = manager.withdrawalRequest(tokenId);
+        assertTrue(request.processed, "testclaimWithdrawals: E0");
+        assertEq(request.amount, _amount, "testclaimWithdrawals: E1");
+        assertEq(request.feeAtRequestTime, manager.withdrawalFee(), "testclaimWithdrawals: E2");
+        assertEq(request.redemptionRateAtRequestTime, _redemptionRateAtRequestTime, "testclaimWithdrawals: E3");
+
+        uint256 expectedFeeAmount = (_amount * request.feeAtRequestTime) / manager.FEE_PRECISION();
+        uint256 expectedNetEthAmount = (_amount * request.redemptionRateAtRequestTime) / 1e18 - expectedFeeAmount;
+        assertEq(user.balance, expectedNetEthAmount, "testclaimWithdrawals: E5");
+        assertEq(redeemableAsset.balanceOf(address(manager)), (extraWithdrawalsBefore + extraWithdrawalsAfter) * 1 ether, "testclaimWithdrawals: E6");
+        assertEq(feeReceiver.balance, expectedFeeAmount, "testclaimWithdrawals: E7");
+        assertApproxEqAbs(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, 1000, "testclaimWithdrawals: E8");
+        assertEq(address(redemptionAssetsVault).balance, _vaultBalanceBefore - _amount, "testclaimWithdrawals: E8");
+        assertEq(manager.balanceOf(user), 0, "testclaimWithdrawals: E9");
+        assertEq(user.balance - _userBalanceBefore, expectedNetEthAmount, "testclaimWithdrawals: E10");
     }
 
     // ============================================================================================
@@ -682,6 +809,29 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     }
 
     function testFinalizeRequestsNotAdvanced() public {
+
+        // Make a withdrawal request
+        uint256 amount = 1 ether;
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
+        vm.stopPrank();
+
+        // Ensure the request was made successfully
+        assertEq(manager._tokenIdCounter(), 1, "Token counter should be incremented");
+        
+        // Finalize the request
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(1);
+
+        // Check if the request is finalized
+        bool isFinalized = manager.withdrawalRequestIsFinalized(0);
+        assertTrue(isFinalized, "Request should be finalized");
+
+        // Verify lastFinalizedIndex
+        assertEq(manager.lastFinalizedIndex(), 1, "lastFinalizedIndex should be updated");
+
+
         uint256 initialFinalizedIndex = manager.lastFinalizedIndex();
         uint256 requestIndex = initialFinalizedIndex; // Same as the last finalized index to trigger IndexNotAdvanced error
 
@@ -724,6 +874,108 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.finalizeRequestsUpToIndex(requestIndex);
     }
 
+    function testFinalizeRequestsUpToIndexWithNoExistingRequests() public {
+        // Check initial state
+        assertEq(manager.lastFinalizedIndex(), 0, "Initial lastFinalizedIndex should be 0");
+        assertEq(manager._tokenIdCounter(), 0, "Initial _tokenIdCounter should be 0");
+        
+        uint256 requestIndex = 0;
+        // Attempt to finalize (should revert)
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.IndexNotAdvanced.selector, requestIndex, requestIndex));
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+    }
+
+    // ============================================================================================
+    // ynETHRedemptionAssetsVault.findFinalizationForTokenId
+    // ============================================================================================
+
+    function testFindFinalizationForTokenId() public {
+        // Create 12 withdrawal requests
+        uint256[] memory amounts = new uint256[](12);
+        uint256[] memory tokenIds = new uint256[](12);
+        for (uint256 i = 0; i < 12; i++) {
+            amounts[i] = 1 ether * (i + 1);
+            vm.startPrank(user);
+            redeemableAsset.approve(address(manager), amounts[i]);
+            tokenIds[i] = manager.requestWithdrawal(amounts[i]);
+            vm.stopPrank();
+        }
+
+        // Finalize requests in 5 batches
+        vm.startPrank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(2);  // Finalization 0: tokenIds 0-1
+        manager.finalizeRequestsUpToIndex(5);  // Finalization 1: tokenIds 2-4
+        manager.finalizeRequestsUpToIndex(8);  // Finalization 2: tokenIds 5-7
+        manager.finalizeRequestsUpToIndex(9); // Finalization 3: tokenIds 8-8
+        manager.finalizeRequestsUpToIndex(12); // Finalization 4: tokenIds 9-11
+        vm.stopPrank();
+
+        // Test finding finalization for each token ID
+        uint256[] memory expectedFinalizationIds = new uint256[](12);
+        expectedFinalizationIds[0] = 0;
+        expectedFinalizationIds[1] = 0;
+        expectedFinalizationIds[2] = 1;
+        expectedFinalizationIds[3] = 1;
+        expectedFinalizationIds[4] = 1;
+        expectedFinalizationIds[5] = 2;
+        expectedFinalizationIds[6] = 2;
+        expectedFinalizationIds[7] = 2;
+        expectedFinalizationIds[8] = 3;
+        expectedFinalizationIds[9] = 4;
+        expectedFinalizationIds[10] = 4;
+        expectedFinalizationIds[11] = 4;
+        for (uint256 i = 0; i < 12; i++) {
+            uint256 actualFinalizationId = manager.findFinalizationForTokenId(tokenIds[i]);
+            assertEq(actualFinalizationId, expectedFinalizationIds[i], string(abi.encodePacked("Incorrect finalization ID for token ", vm.toString(tokenIds[i]))));
+        }
+
+        // Test finding finalization for non-existent token ID
+        uint256 nonExistentTokenId = 100;
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, nonExistentTokenId));
+        manager.findFinalizationForTokenId(nonExistentTokenId);
+    }
+
+    function testFindFinalizationForTokenIdWithOneFinalization() public {
+        // Create 3 withdrawal requests
+        uint256[] memory amounts = new uint256[](3);
+        uint256[] memory tokenIds = new uint256[](3);
+        for (uint256 i = 0; i < 3; i++) {
+            amounts[i] = 1 ether * (i + 1);
+            vm.startPrank(user);
+            redeemableAsset.approve(address(manager), amounts[i]);
+            tokenIds[i] = manager.requestWithdrawal(amounts[i]);
+            vm.stopPrank();
+        }
+
+        // Finalize all requests in one batch
+        vm.startPrank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(3);  // Finalization 0: tokenIds 0-2
+        vm.stopPrank();
+
+        // Test finding finalization for each token ID
+        for (uint256 i = 0; i < 3; i++) {
+            uint256 actualFinalizationId = manager.findFinalizationForTokenId(tokenIds[i]);
+            assertEq(actualFinalizationId, 0, string(abi.encodePacked("Incorrect finalization ID for token ", vm.toString(tokenIds[i]))));
+        }
+
+        // Test finding finalization for non-existent token ID
+        uint256 nonExistentTokenId = 100;
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, nonExistentTokenId));
+        manager.findFinalizationForTokenId(nonExistentTokenId);
+    }
+
+    function testFindFinalizationForTokenIdWithNoFinalizations() public {
+        // Create a withdrawal request
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), 1 ether);
+        uint256 tokenId = manager.requestWithdrawal(1 ether);
+        vm.stopPrank();
+
+        // Attempt to find finalization for the token ID without any finalizations
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, tokenId));
+        manager.findFinalizationForTokenId(tokenId);
+    }
 
     // ============================================================================================
     // ynETHRedemptionAssetsVault.pause

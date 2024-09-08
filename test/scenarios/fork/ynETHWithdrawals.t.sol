@@ -238,7 +238,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         testProcessPrincipalWithdrawalsForNode();
 
-        finalizeRequest(tokenId);
+        uint256 finalizationIndex = finalizeRequest(tokenId);
 
         uint256 _pendingRequestedRedemptionAmountBefore = ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount();
         uint256 _totalSupplyBefore = yneth.totalSupply();
@@ -246,11 +246,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         uint256 _feeReceiverBalanceBefore = address(ynETHWithdrawalQueueManager.feeReceiver()).balance;
 
         vm.prank(user);
-        uint256[] memory _tokenIds = new uint256[](1);
-        address[] memory _receivers = new address[](1);
-        _tokenIds[0] = tokenId;
-        _receivers[0] = receiver;
-        ynETHWithdrawalQueueManager.claimWithdrawals(_tokenIds, _receivers);
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: finalizationIndex,
+            receiver: receiver
+        });
+        ynETHWithdrawalQueueManager.claimWithdrawals(claims);
 
         vm.expectRevert(abi.encodeWithSelector(ERC721NonexistentToken.selector, tokenId));
         ynETHWithdrawalQueueManager.ownerOf(tokenId);
@@ -271,7 +273,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         if (!isHolesky) return;
 
         vm.expectRevert(abi.encodeWithSelector(CallerNotOwnerNorApproved.selector, tokenId, address(this)));
-        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: 0, // Assuming 0 as we don't have a specific finalizationId in this context
+            receiver: receiver
+        });
+        ynETHWithdrawalQueueManager.claimWithdrawals(claims);
     }
 
     function testClaimWithdrawalNotFinalized() public {
@@ -281,7 +289,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
 
         vm.expectRevert(abi.encodeWithSelector(NotFinalized.selector, tokenId, block.timestamp, block.timestamp));
         vm.prank(user);
-        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: 0, // Assuming 0 as we don't have a specific finalizationId in this context
+            receiver: receiver
+        });
+        ynETHWithdrawalQueueManager.claimWithdrawals(claims);
     }
 
     // ------------------------------------------

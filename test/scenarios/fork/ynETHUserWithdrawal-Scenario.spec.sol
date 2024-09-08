@@ -30,6 +30,8 @@ import {Utils} from "script/Utils.sol";
 import {beaconChainETHStrategy} from "src/Constants.sol";
 import { StakingNodeTestBase } from "test/utils/StakingNodeTestBase.sol";
 import {Vm} from "lib/forge-std/src/Vm.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
+
 
 import "forge-std/console.sol";
 
@@ -164,13 +166,17 @@ contract ynETHUserWithdrawalScenarioOnHolesky is StakingNodeTestBase {
         );
 
         // Mark witdrawals as finalized up to tokenId index
-        finalizeRequest(tokenId);
+        uint256 finalizationId = finalizeRequest(tokenId);
 
         uint256 userEthBalanceBefore = receivalAddress.balance;
         uint256 ynETHRedemptionAssetsVaultBalanceBefore = ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets();
 
         vm.prank(userAddress);
-        ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receivalAddress);
+        ynETHWithdrawalQueueManager.claimWithdrawal(IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            receiver: receivalAddress,
+            finalizationId: finalizationId
+        }));
         
         uint256 userEthBalanceAfter = receivalAddress.balance;
 

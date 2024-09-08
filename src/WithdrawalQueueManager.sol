@@ -12,15 +12,21 @@ import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol"
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC721EnumerableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
-    event WithdrawalClaimed(uint256 indexed tokenId, address claimer, address receiver, IWithdrawalQueueManager.WithdrawalRequest request);
+    event WithdrawalClaimed(
+        uint256 indexed tokenId,
+        address claimer,
+        address receiver,
+        IWithdrawalQueueManager.WithdrawalRequest request,
+        uint256 finalizationId
+    );
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
     event SecondsToFinalizationUpdated(uint256 previousValue, uint256 newValue);
-    event RequestsFinalized(uint256 newFinalizedIndex, uint256 previousFinalizedIndex);
+    event RequestsFinalized(uint256 indexed finalizationIndex, uint256 newFinalizedIndex, uint256 previousFinalizedIndex, uint256 redemptionRate);
 }
 
 /**
@@ -37,7 +43,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  ERRORS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error NotFinalized(uint256 tokenId, uint256 currentTimestamp, uint256 requestTimestamp);
+    error NotFinalized(uint256 tokenId);
     error ZeroAddress();
     error WithdrawalAlreadyProcessed(uint256 tokenId);
     error InsufficientBalance(uint256 currentBalance, uint256 requestedBalance);
@@ -50,6 +56,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     error WithdrawalRequestDoesNotExist(uint256 tokenId);
     error IndexExceedsTokenCount(uint256 index, uint256 tokenCount);
     error IndexNotAdvanced(uint256 newIndex, uint256 currentIndex);
+    error InvalidFinalizationId(uint256 finalizationId);
+    error TokenIdNotInFinalizationRange(uint256 tokenId, uint256 finalizationId, uint256 startIndex, uint256 endIndex);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -103,6 +111,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     uint256 public pendingRequestedRedemptionAmount;
 
     uint256 public lastFinalizedIndex;
+
+    /// @notice Array to store finalization data
+    Finalization[] public finalizations;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -201,17 +212,62 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  CLAIMS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
+
+    /**
+     * @notice Claims a withdrawal for a specific token ID and transfers the assets to the specified receiver.
+     * @dev This function burns the token representing the withdrawal request and transfers the net amount
+            after fees to the receiver.
+     *      It also transfers the fee to the fee receiver.
+     *      It automatically finds the finalization ID for the given token ID.
+     * @param tokenId The ID of the token representing the withdrawal request.
+     * @param receiver The address to which the withdrawn assets will be sent.
+     */
+    function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
+        WithdrawalClaim memory claim = WithdrawalClaim({
+            tokenId: tokenId,
+            receiver: receiver,
+            finalizationId: findFinalizationForTokenId(tokenId)
+        });
+        _claimWithdrawal(claim);
+    }
+
     /**
      * @notice Claims a withdrawal by transferring the requested assets to the specified receiver, less any applicable fees.
      * @dev This function burns the token representing the withdrawal request and transfers the net amount after fees to the receiver.
      *      It also transfers the fee to the fee receiver.
-     * @param tokenId The ID of the token representing the withdrawal request.
-     * @param receiver The address to which the net amount of the withdrawal will be sent.
+     * @param claim The claim struct contains:
+     *        the tokenId The ID of the token representing the withdrawal request,
+     *        the receiver as the address to which the net amount of the withdrawal will be sent.
+     *        the finalizationId for the particular finalization which denotes the rate at finalization time.
      */
-    function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
-        if (_ownerOf(tokenId) != msg.sender && _getApproved(tokenId) != msg.sender) {
-            revert CallerNotOwnerNorApproved(tokenId, msg.sender);
+    function claimWithdrawal(WithdrawalClaim memory claim) public nonReentrant {
+        _claimWithdrawal(claim);
+    }
+
+    function _claimWithdrawal(WithdrawalClaim memory claim) internal {
+
+        uint256 tokenId = claim.tokenId;
+        uint256 finalizationId = claim.finalizationId;
+        address receiver = claim.receiver;
+
+        if (_ownerOf(claim.tokenId) != msg.sender && _getApproved(claim.tokenId) != msg.sender) {
+            revert CallerNotOwnerNorApproved(claim.tokenId, msg.sender);
         }
+
+        // Check if the finalization ID is valid
+        if (finalizationId >= finalizations.length) {
+            revert InvalidFinalizationId(finalizationId);
+        }
+
+        Finalization memory finalization = finalizations[finalizationId];
+
+        // Check if the token ID is within the finalized range
+        if (tokenId < finalization.startIndex || tokenId >= finalization.endIndex) {
+            revert TokenIdNotInFinalizationRange(tokenId, finalizationId, finalization.startIndex, finalization.endIndex);
+        }
+
+        // Update the redemption rate to use the one from the finalization
+        uint256 redemptionRateAtFinalization = finalization.redemptionRate;
 
         WithdrawalRequest memory request = withdrawalRequests[tokenId];
         if (!withdrawalRequestExists(request)) {
@@ -223,15 +279,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         }
 
         if (!withdrawalRequestIsFinalized(tokenId)) {
-            revert NotFinalized(tokenId, block.timestamp, request.creationTimestamp);
+            revert NotFinalized(tokenId);
         }
 
         withdrawalRequests[tokenId].processed = true;
-
-        // Redemption rate at claim time is the minimum between
-        // the redemption rate at request time and the current redemption Rate
-        uint256 currentRate = redemptionAssetsVault.redemptionRate();
-        uint256 redemptionRate = request.redemptionRateAtRequestTime < currentRate ? request.redemptionRateAtRequestTime : currentRate;
+        uint256 redemptionRate = (
+            request.redemptionRateAtRequestTime < redemptionRateAtFinalization
+            ? request.redemptionRateAtRequestTime
+            : redemptionRateAtFinalization
+        );
 
         uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
 
@@ -254,20 +310,33 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
         }
 
-        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request);
+        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId);
     }
 
     /**
      * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
-     * @param tokenIds An array of token IDs representing the withdrawal requests to be claimed.
+     * @param tokenIds An array of token IDs corresponding to the withdrawal requests to be claimed.
+     * @param receivers An array of addresses to receive the claimed withdrawals.
+     * @dev The length of tokenIds and receivers must be the same.
      */
     function claimWithdrawals(uint256[] calldata tokenIds, address[] calldata receivers) external {
-
         if (tokenIds.length != receivers.length) {
             revert ArrayLengthMismatch(tokenIds.length, receivers.length);
         }
+
         for (uint256 i = 0; i < tokenIds.length; i++) {
             claimWithdrawal(tokenIds[i], receivers[i]);
+        }
+    }
+
+    /**
+     * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
+     * @param claims An array of claims corresponding to the withdrawal requests to be claimed.
+     */
+    function claimWithdrawals(WithdrawalClaim[] calldata claims) external {
+        for (uint256 i = 0; i < claims.length; i++) {
+            WithdrawalClaim memory claim = claims[i];
+            claimWithdrawal(claim);
         }
     }
 
@@ -381,20 +450,72 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
     /**
      * @notice Marks all requests whose index is less than lastFinalizedIndex as finalized.
+               The current redemptionRate rated is recorded as the finalization redemption rate.
      * @param _lastFinalizedIndex The index up to which withdrawal requests are considered finalized.
      * @dev A lastFinalizedIndex = 0 means no requests are processed. lastFinalizedIndex = 2 means
             requests 0 and 1 are processed.
      */
-    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external onlyRole(REQUEST_FINALIZER_ROLE) {
+    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex)
+        external
+        onlyRole(REQUEST_FINALIZER_ROLE)
+        returns (uint256 finalizationIndex)
+    {
+
+        uint256 currentRate = redemptionAssetsVault.redemptionRate();
+        
+        // Create a new Finalization struct
+        Finalization memory newFinalization = Finalization({
+            startIndex: SafeCast.toUint64(lastFinalizedIndex),
+            endIndex: SafeCast.toUint64(_lastFinalizedIndex),
+            redemptionRate: SafeCast.toUint96(currentRate)
+        });
+
+        finalizationIndex = finalizations.length;
+        
+        // Add the new Finalization to the array
+        finalizations.push(newFinalization);
+
         if (_lastFinalizedIndex > _tokenIdCounter) {
             revert IndexExceedsTokenCount(_lastFinalizedIndex, _tokenIdCounter);
         }
         if (_lastFinalizedIndex <= lastFinalizedIndex) {
             revert IndexNotAdvanced(_lastFinalizedIndex, lastFinalizedIndex);
         }
-        emit RequestsFinalized(_lastFinalizedIndex, lastFinalizedIndex);
+        emit RequestsFinalized(finalizationIndex, _lastFinalizedIndex, lastFinalizedIndex, currentRate);
 
         lastFinalizedIndex = _lastFinalizedIndex;
+    }
+
+    /**
+     * @notice Finds the finalization ID for a given token ID using binary search.
+     * @param tokenId The token ID to find the finalization for.
+     * @return finalizationId The ID of the finalization that includes the given token ID.
+     * @dev The complexity of this algorithm is Math.log2(n) and it is UNBOUNDED
+     */
+    function findFinalizationForTokenId(uint256 tokenId) public view returns (uint256 finalizationId) {
+
+        uint256 finalizationsLength = finalizations.length;
+        if (finalizationsLength == 0) {
+            revert NotFinalized(tokenId);
+        }
+
+        uint256 left = 0;
+        uint256 right = finalizationsLength - 1;
+
+        while (left <= right) {
+            uint256 mid = (left + right) / 2;
+            Finalization memory finalization = finalizations[mid];
+
+            if (tokenId >= finalization.startIndex && tokenId < finalization.endIndex) {
+                return mid;
+            } else if (tokenId < finalization.startIndex) {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
+            }
+        }
+
+        revert NotFinalized(tokenId);
     }
 
     //--------------------------------------------------------------------------------------
@@ -446,6 +567,26 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             }
             return (withdrawalIndexes, requests);
         }
+    }
+
+    /**
+     * @notice Returns the details of a finalization.
+     * @param finalizationId The ID of the finalization.
+     * @return finalization The finalization details.
+     */
+    function getFinalization(uint256 finalizationId) public view returns (Finalization memory finalization) {
+        if (finalizationId >= finalizations.length) {
+            revert InvalidFinalizationId(finalizationId);
+        }
+        finalization = finalizations[finalizationId];
+    }
+
+    /**
+     * @notice Returns the total number of finalizations.
+     * @return count The number of finalizations.
+     */
+    function finalizationsCount() public view returns (uint256 count) {
+        return finalizations.length;
     }
 
     //--------------------------------------------------------------------------------------

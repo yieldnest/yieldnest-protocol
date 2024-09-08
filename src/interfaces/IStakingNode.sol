@@ -45,8 +45,6 @@ interface IStakingNode {
     ) external;
     function undelegate() external;
 
-    function processETHSurplus() external;
-
     function implementation() external view returns (address);
 
     function allocateStakedETH(uint256 amount) external payable;   

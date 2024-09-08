@@ -291,10 +291,17 @@ contract M3WithdrawalsTest is Base {
 
         testWithdraw(); // process the withdrawal
         vm.prank(actors.ops.REQUEST_FINALIZER);
-        ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
+        uint256 finalizationId = ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
 
+
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: _tokenId,
+            finalizationId: finalizationId,
+            receiver: user
+        });
         vm.prank(user);
-        ynETHWithdrawalQueueManager.claimWithdrawal(_tokenId, user);
+        ynETHWithdrawalQueueManager.claimWithdrawals(claims);
 
         IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = ynETHWithdrawalQueueManager.withdrawalRequest(_tokenId);
         assertEq(_withdrawalRequest.processed, true, "testClaimWithdrawal: E0");
