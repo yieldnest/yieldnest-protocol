@@ -171,26 +171,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  SURPLUS WITHDRAWAL   ---------------------------
-    //--------------------------------------------------------------------------------------
-
-    /**
-     * @notice Processes extra ETH residing in the StakingNode that is not accounted as withdrawnETH as rewards.
-     * @dev 
-     */
-    function processETHSurplus() public nonReentrant onlyOperator {
-
-        // Delayed withdrawals that do not count as validator principal are handled as rewards
-        uint256 balance = address(this).balance - withdrawnETH;
-        if (balance == 0) {
-            revert NoBalanceToProcess();
-        }
-        stakingNodesManager.processRewards{value: balance}(nodeId, RewardsType.ConsensusLayer);
-        emit NonBeaconChainETHWithdrawalsProcessed(balance);
-    }
-
-
-    //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
     
