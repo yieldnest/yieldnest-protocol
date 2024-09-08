@@ -13,8 +13,20 @@ interface IWithdrawalQueueManager {
         bytes data;
     }
 
+    struct Finalization {
+        uint256 startIndex;
+        uint256 endIndex;
+        uint256 redemptionRate;
+    }
+
+    struct WithdrawalClaim {
+        uint256 tokenId;
+        uint256 finalizationId;
+        address receiver;
+    }
+
     function requestWithdrawal(uint256 amount) external returns (uint256);
     function requestWithdrawal(uint256 amount, bytes calldata data) external returns (uint256);
-    function claimWithdrawal(uint256 tokenId, address receiver) external;
-    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external;
+    function claimWithdrawal(WithdrawalClaim memory claim) external;
+    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external returns (uint256);
 }

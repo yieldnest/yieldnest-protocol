@@ -259,8 +259,8 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
     //     }
     // }
 
-    function finalizeRequest(uint256 tokenId) public {
+    function finalizeRequest(uint256 tokenId) public returns (uint256) {
         vm.prank(actors.ops.REQUEST_FINALIZER);
-        ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);
+        return ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);
     }
 }

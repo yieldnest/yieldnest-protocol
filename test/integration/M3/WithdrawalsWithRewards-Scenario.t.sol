@@ -262,11 +262,18 @@ contract M3WithdrawalsWithRewardsTest is Base {
         vm.stopPrank();
 
         vm.prank(actors.ops.REQUEST_FINALIZER);
-        ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
+        uint256 finalizationId = ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
 
         uint256 userBalanceBefore = user.balance;
         vm.prank(user);
-        ynETHWithdrawalQueueManager.claimWithdrawal(_tokenId, user);
+
+        ynETHWithdrawalQueueManager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                finalizationId: finalizationId,
+                tokenId: _tokenId,
+                receiver: user
+            })
+        );
         uint256 userBalanceAfter = user.balance;
         uint256 actualWithdrawnAmount = userBalanceAfter - userBalanceBefore;
         // Calculate expected withdrawal amount after fee
