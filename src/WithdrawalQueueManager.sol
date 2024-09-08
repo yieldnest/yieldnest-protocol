@@ -560,7 +560,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      * @notice Finds the finalization ID for a given token ID using binary search.
      * @param tokenId The token ID to find the finalization for.
      * @return finalizationId The ID of the finalization that includes the given token ID.
-     * @dev The complexity of this algorithm is log(n) and it is UNBOUNDED.
+     * @dev The complexity of this algorithm is Math.log2(n) and it is UNBOUNDED
      */
     function findFinalizationForTokenId(uint256 tokenId) public view returns (uint256 finalizationId) {
 
