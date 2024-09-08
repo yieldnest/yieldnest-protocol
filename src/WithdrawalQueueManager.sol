@@ -12,7 +12,7 @@ import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol"
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC721EnumerableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
@@ -464,9 +464,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         
         // Create a new Finalization struct
         Finalization memory newFinalization = Finalization({
-            startIndex: lastFinalizedIndex,
-            endIndex: _lastFinalizedIndex,
-            redemptionRate: currentRate
+            startIndex: SafeCast.toUint64(lastFinalizedIndex),
+            endIndex: SafeCast.toUint64(_lastFinalizedIndex),
+            redemptionRate: SafeCast.toUint96(currentRate)
         });
 
         finalizationIndex = finalizations.length;

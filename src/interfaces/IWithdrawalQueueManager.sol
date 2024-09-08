@@ -14,9 +14,9 @@ interface IWithdrawalQueueManager {
     }
 
     struct Finalization {
-        uint256 startIndex;
-        uint256 endIndex;
-        uint256 redemptionRate;
+        uint64 startIndex;
+        uint64 endIndex;
+        uint96 redemptionRate;
     }
 
     struct WithdrawalClaim {
