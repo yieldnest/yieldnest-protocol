@@ -450,6 +450,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
     /**
      * @notice Marks all requests whose index is less than lastFinalizedIndex as finalized.
+               The current redemptionRate rated is recorded as the finalization redemption rate.
      * @param _lastFinalizedIndex The index up to which withdrawal requests are considered finalized.
      * @dev A lastFinalizedIndex = 0 means no requests are processed. lastFinalizedIndex = 2 means
             requests 0 and 1 are processed.

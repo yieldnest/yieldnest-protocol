@@ -809,6 +809,29 @@ contract ynETHWithdrawalQueueManagerTest is Test {
     }
 
     function testFinalizeRequestsNotAdvanced() public {
+
+        // Make a withdrawal request
+        uint256 amount = 1 ether;
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), amount);
+        uint256 tokenId = manager.requestWithdrawal(amount);
+        vm.stopPrank();
+
+        // Ensure the request was made successfully
+        assertEq(manager._tokenIdCounter(), 1, "Token counter should be incremented");
+        
+        // Finalize the request
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(1);
+
+        // Check if the request is finalized
+        bool isFinalized = manager.withdrawalRequestIsFinalized(0);
+        assertTrue(isFinalized, "Request should be finalized");
+
+        // Verify lastFinalizedIndex
+        assertEq(manager.lastFinalizedIndex(), 1, "lastFinalizedIndex should be updated");
+
+
         uint256 initialFinalizedIndex = manager.lastFinalizedIndex();
         uint256 requestIndex = initialFinalizedIndex; // Same as the last finalized index to trigger IndexNotAdvanced error
 
@@ -847,6 +870,18 @@ contract ynETHWithdrawalQueueManagerTest is Test {
                 requestIndex
             )
         );
+        vm.prank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(requestIndex);
+    }
+
+    function testFinalizeRequestsUpToIndexWithNoExistingRequests() public {
+        // Check initial state
+        assertEq(manager.lastFinalizedIndex(), 0, "Initial lastFinalizedIndex should be 0");
+        assertEq(manager._tokenIdCounter(), 0, "Initial _tokenIdCounter should be 0");
+        
+        uint256 requestIndex = 0;
+        // Attempt to finalize (should revert)
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.IndexNotAdvanced.selector, requestIndex, requestIndex));
         vm.prank(requestFinalizer);
         manager.finalizeRequestsUpToIndex(requestIndex);
     }
