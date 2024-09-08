@@ -1,0 +1,32 @@
+{
+  "chainId": 17000,
+  "name": "YieldNest Restaked LSD - Eigenlayer",
+  "symbol": "YnLSDe",
+  "assets": [
+    {
+      "name": "WSTETH",
+      "token": "0x8d09a4502Cc8Cf1547aD300E066060D043f6982D",
+      "strategy": "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
+    },
+    {
+      "name": "SFRXETH",
+      "token": "0xa63f56985F9C7F3bc9fFc5685535649e0C1a55f3",
+      "strategy": "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c"
+    },
+    {
+      "name": "RETH",
+      "token": "0x7322c24752f79c05FFD1E2a6FCB97020C1C264F1",
+      "strategy": "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0"
+    },
+    {
+      "name": "METH",
+      "token": "0xe3C063B1BEe9de02eb28352b55D49D85514C67FF",
+      "strategy": "0xaccc5A86732BE85b5012e8614AF237801636F8e5"
+    },
+    {
+      "name": "STADER",
+      "token": "0xB4F5fc289a778B80392b86fa70A7111E5bE0F859",
+      "strategy": "0x31B6F59e1627cEfC9fA174aD03859fC337666af7"
+    }
+  ]
+}

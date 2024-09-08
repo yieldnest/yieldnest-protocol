@@ -10,7 +10,6 @@ interface IynETH is IERC20, IRedeemableAsset {
     function receiveRewards() external payable;
     function pauseDeposits() external;
     function unpauseDeposits() external;
-
     
     /// @notice Allows depositing ETH into the contract in exchange for shares.
     /// @param receiver The address to receive the minted shares.

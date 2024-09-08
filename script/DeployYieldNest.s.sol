@@ -20,10 +20,12 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
+import {BaseYnETHScript} from "script/BaseYnETHScript.s.sol";
 import {ActorAddresses} from "script/Actors.sol";
+
 import {console} from "lib/forge-std/src/console.sol";
 
-contract DeployYieldNest is BaseScript {
+contract DeployYieldNest is BaseYnETHScript {
 
     TransparentUpgradeableProxy public ynethProxy;
     TransparentUpgradeableProxy public stakingNodesManagerProxy;

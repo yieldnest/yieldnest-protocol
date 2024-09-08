@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {ContractAddresses} from "script/ContractAddresses.sol";
-import {BaseScript} from "script/BaseScript.s.sol";
+import {BaseYnETHScript} from "script/BaseYnETHScript.s.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -11,7 +11,7 @@ import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
-contract Verify is BaseScript {
+contract Verify is BaseYnETHScript {
 
     Deployment deployment;
     ActorAddresses.Actors actors;

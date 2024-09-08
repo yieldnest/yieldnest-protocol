@@ -51,6 +51,8 @@ contract ReferralDepositAdapter is
     //--------------------------------------------------------------------------------------
 
     function initialize(Init memory init) public initializer {
+        require(address(init._ynETH) != address(0), "ynETH cannot be zero");
+        require(init.referralPublisher != address(0), "Referral Publisher cannot be zero");
         ynETH = init._ynETH;
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(REFERRAL_PUBLISHER_ROLE, init.referralPublisher);
@@ -85,7 +87,7 @@ contract ReferralDepositAdapter is
     /// @notice Publishes multiple referral information using the existing event.
     /// @param referrals Array of ReferralInfo structs containing referral details.
     function publishReferrals(ReferralInfo[] calldata referrals) external  onlyRole(REFERRAL_PUBLISHER_ROLE)  {
-        for (uint256 i = 0; i < referrals.length; i++) {
+        for (uint i = 0; i < referrals.length; i++) {
             emit ReferralDepositProcessed(
                 referrals[i].depositor,
                 referrals[i].referee,
