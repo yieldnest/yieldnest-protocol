@@ -767,6 +767,96 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         manager.finalizeRequestsUpToIndex(requestIndex);
     }
 
+    // ============================================================================================
+    // ynETHRedemptionAssetsVault.findFinalizationForTokenId
+    // ============================================================================================
+
+    function testFindFinalizationForTokenId() public {
+        // Create 12 withdrawal requests
+        uint256[] memory amounts = new uint256[](12);
+        uint256[] memory tokenIds = new uint256[](12);
+        for (uint256 i = 0; i < 12; i++) {
+            amounts[i] = 1 ether * (i + 1);
+            vm.startPrank(user);
+            redeemableAsset.approve(address(manager), amounts[i]);
+            tokenIds[i] = manager.requestWithdrawal(amounts[i]);
+            vm.stopPrank();
+        }
+
+        // Finalize requests in 5 batches
+        vm.startPrank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(2);  // Finalization 0: tokenIds 0-1
+        manager.finalizeRequestsUpToIndex(5);  // Finalization 1: tokenIds 2-4
+        manager.finalizeRequestsUpToIndex(8);  // Finalization 2: tokenIds 5-7
+        manager.finalizeRequestsUpToIndex(10); // Finalization 3: tokenIds 8-9
+        manager.finalizeRequestsUpToIndex(12); // Finalization 4: tokenIds 10-11
+        vm.stopPrank();
+
+        // Test finding finalization for each token ID
+        uint256[] memory expectedFinalizationIds = new uint256[](12);
+        expectedFinalizationIds[0] = 0;
+        expectedFinalizationIds[1] = 0;
+        expectedFinalizationIds[2] = 1;
+        expectedFinalizationIds[3] = 1;
+        expectedFinalizationIds[4] = 1;
+        expectedFinalizationIds[5] = 2;
+        expectedFinalizationIds[6] = 2;
+        expectedFinalizationIds[7] = 2;
+        expectedFinalizationIds[8] = 3;
+        expectedFinalizationIds[9] = 3;
+        expectedFinalizationIds[10] = 4;
+        expectedFinalizationIds[11] = 4;
+        for (uint256 i = 0; i < 12; i++) {
+            uint256 actualFinalizationId = manager.findFinalizationForTokenId(tokenIds[i]);
+            assertEq(actualFinalizationId, expectedFinalizationIds[i], string(abi.encodePacked("Incorrect finalization ID for token ", vm.toString(tokenIds[i]))));
+        }
+
+        // Test finding finalization for non-existent token ID
+        uint256 nonExistentTokenId = 100;
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, nonExistentTokenId));
+        manager.findFinalizationForTokenId(nonExistentTokenId);
+    }
+
+    function testFindFinalizationForTokenIdWithOneFinalization() public {
+        // Create 3 withdrawal requests
+        uint256[] memory amounts = new uint256[](3);
+        uint256[] memory tokenIds = new uint256[](3);
+        for (uint256 i = 0; i < 3; i++) {
+            amounts[i] = 1 ether * (i + 1);
+            vm.startPrank(user);
+            redeemableAsset.approve(address(manager), amounts[i]);
+            tokenIds[i] = manager.requestWithdrawal(amounts[i]);
+            vm.stopPrank();
+        }
+
+        // Finalize all requests in one batch
+        vm.startPrank(requestFinalizer);
+        manager.finalizeRequestsUpToIndex(3);  // Finalization 0: tokenIds 0-2
+        vm.stopPrank();
+
+        // Test finding finalization for each token ID
+        for (uint256 i = 0; i < 3; i++) {
+            uint256 actualFinalizationId = manager.findFinalizationForTokenId(tokenIds[i]);
+            assertEq(actualFinalizationId, 0, string(abi.encodePacked("Incorrect finalization ID for token ", vm.toString(tokenIds[i]))));
+        }
+
+        // Test finding finalization for non-existent token ID
+        uint256 nonExistentTokenId = 100;
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, nonExistentTokenId));
+        manager.findFinalizationForTokenId(nonExistentTokenId);
+    }
+
+    function testFindFinalizationForTokenIdWithNoFinalizations() public {
+        // Create a withdrawal request
+        vm.startPrank(user);
+        redeemableAsset.approve(address(manager), 1 ether);
+        uint256 tokenId = manager.requestWithdrawal(1 ether);
+        vm.stopPrank();
+
+        // Attempt to find finalization for the token ID without any finalizations
+        vm.expectRevert(abi.encodeWithSelector(WithdrawalQueueManager.NotFinalized.selector, tokenId));
+        manager.findFinalizationForTokenId(tokenId);
+    }
 
     // ============================================================================================
     // ynETHRedemptionAssetsVault.pause
