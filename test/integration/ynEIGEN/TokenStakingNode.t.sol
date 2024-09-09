@@ -121,11 +121,12 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
 
+        // TODO: handle operatorAddress as payments receiver in PaymentsReceiver
         // register as operator
         vm.prank(operatorAddress);
         delegationManager.registerAsOperator(
             IDelegationManager.OperatorDetails({
-                earningsReceiver: operatorAddress,
+                __deprecated_earningsReceiver: operatorAddress, // deprecated
                 delegationApprover: address(0),
                 stakerOptOutWindowBlocks: 1
             }), 
@@ -153,11 +154,13 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
 
+        // TODO: handle operatorAddress as payments receiver in PaymentsReceiver
+
         // Register as operator and delegate
         vm.prank(operatorAddress);
         delegationManager.registerAsOperator(
             IDelegationManager.OperatorDetails({
-                earningsReceiver: operatorAddress,
+                __deprecated_earningsReceiver: operatorAddress,
                 delegationApprover: address(0),
                 stakerOptOutWindowBlocks: 1
             }), 
