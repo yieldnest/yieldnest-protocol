@@ -242,6 +242,44 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     }
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS  -------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    struct WithdrawalAction {
+        uint256 nodeId;
+        uint256 amountToReinvest;
+        uint256 amountToQueue;
+        address asset;
+    }
+
+    function processPrincipalWithdrawals(
+        WithdrawalAction[] calldata _actions
+    ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
+        uint256 _len = _actions.length;
+        for (uint256 i = 0; i < _len; ++i) {
+            _processPrincipalWithdrawalForNode(_actions[i]);
+        }
+    }
+
+    function _processPrincipalWithdrawalForNode(WithdrawalAction calldata _action) internal {
+
+        uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
+
+        nodes[_action.nodeId].deallocateTokens(_totalAmount);
+
+        IynEigen _ynEigen = strategyManager.ynEigen();
+        if (_action.amountToReinvest > 0) _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
+
+        IRedemptionVault _redemptionVault = redemptionVault;
+        if (_action.amountToQueue > 0) _redemptionVault.deposit(_action.amountToQueue, _action.asset); // @todo - here
+
+        IERC20(_action.asset).safeTransfer(address(_ynEigen), _action.amountToReinvest);
+        IERC20(_action.asset).safeTransfer(address(_redemptionVault), _action.amountToQueue);
+
+        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  TokenStakingNode Roles  --------------------------
     //--------------------------------------------------------------------------------------
 
