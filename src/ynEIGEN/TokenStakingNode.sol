@@ -53,6 +53,9 @@ contract TokenStakingNode is
     ITokenStakingNodesManager public override tokenStakingNodesManager;
     uint256 public nodeId;
 
+    mapping(IERC20 => uint256) public queuedShares;
+    mapping(IERC20 => uint256) public withdrawn;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -106,6 +109,84 @@ contract TokenStakingNode is
             );
             emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
         }
+    }
+
+    //--------------------------------------------------------------------------------------
+    //-------------------------------- EIGENLAYER WITHDRAWALS  -----------------------------
+    //--------------------------------------------------------------------------------------
+
+    function queueWithdrawals(
+        IStrategy[] calldata _strategies,
+        uint256[] calldata _shares
+    ) external onlyTokenStakingNodesWithdrawer returns (bytes32[] memory _fullWithdrawalRoots) {
+
+        IDelegationManager.QueuedWithdrawalParams[] memory _params = new IDelegationManager.QueuedWithdrawalParams[](1);
+        _params[0] = IDelegationManager.QueuedWithdrawalParams({
+            strategies: _strategies,
+            shares: _shares,
+            withdrawer: address(this)
+        });
+
+        _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(params);
+
+        uint256 _strategiesLength = _strategies.length;
+        for (uint256 i = 0; i < _strategiesLength; ++i) queuedShares[_strategies[i].underlyingToken()] += _shares[i]; // @todo - handle stETH/oETH
+
+        emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots);
+    }
+
+    // function completeQueuedWithdrawalsMultipleTokens // @todo
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory _withdrawals,
+        uint256[] memory _middlewareTimesIndexes
+    ) external onlyTokenStakingNodesWithdrawer {
+
+        uint256 _withdrawalsLength = _withdrawals.length;
+        bool[] memory _receiveAsTokens = new bool[](_withdrawalsLength);
+        IERC20[][] memory _tokens = new IERC20[](_withdrawalsLength)[];
+
+        uint256 _expectedAmountOut;
+        IERC20 _allowedToken = _withdrawals[0].strategies[0].underlyingToken();
+        for (uint256 i = 0; i < _withdrawalsLength; ++i) {
+            _receiveAsTokens[i] = true;
+
+            uint256 _len = _withdrawals[i].strategies.length;
+            if (_len != 1 || _withdrawals[i].shares.length != _len) revert OnlyOneStrategyPerWithdrawalAllowed();
+
+            if (_withdrawals[i].strategies[0].underlyingToken() != _allowedToken) revert DifferentTokensNotAllowed();
+
+            uint256 _shares = _withdrawals[i].shares[0];
+            if (_shares == 0) revert ZeroShares();
+            _expectedAmountOut += _shares;
+
+            _tokens[i] = new IERC20[](_len);
+            _tokens[i][0] = _allowedToken;
+        }
+
+        uint256 _balanceBefore = _allowedToken.balanceOf(address(this)); // @todo - handle stETH/oETH
+
+        tokenStakingNodesManager.delegationManager().completeQueuedWithdrawals(
+            _withdrawals,
+            _tokens,
+            _middlewareTimesIndexes,
+            _receiveAsTokens
+        );
+
+        if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert WithdrawalAmountMismatch();
+
+        queuedShares[_allowedToken] -= _expectedAmountOut;
+        withdrawn[_allowedToken] += _expectedAmountOut;
+
+        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
+    }
+
+    function deallocateTokens(IERC20 token, uint256 amount) external payable onlyTokenStakingNodesManager {
+
+        withdrawn[token] -= amount;
+        token.safeTransfer(address(tokenStakingNodesManager), amount);
+
+        emit DeallocatedTokens(amount, token);
     }
 
     //--------------------------------------------------------------------------------------

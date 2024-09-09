@@ -255,6 +255,10 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         IERC20[] calldata assetsToRetrieve,
         uint256[] calldata amounts
     ) public onlyStrategyManager {
+        // if (!(msg.sender == address(stakingNodesManager)
+        //     || msg.sender == (address(stakingNodesManager.redemptionAssetsVault())))) {
+        //     revert CallerNotAuthorized(msg.sender);
+        // }
 
         uint256 assetsToRetrieveLength = assetsToRetrieve.length;
         if (assetsToRetrieveLength != amounts.length) {
@@ -278,6 +282,19 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             IERC20(asset).safeTransfer(strategyManagerAddress, amounts[i]);
             emit AssetRetrieved(asset, amounts[i], strategyManagerAddress);
         }
+    }
+
+    function processWithdrawn(uint256 _amount, address _asset) public {
+        if (_amount == 0) revert ZeroAmount();
+        if (
+            msg.sender != address(tokenStakingNodesManager) ||
+            msg.sender != address(tokenStakingNodesManager.redemptionAssetsVault())
+        ) revert CallerNotAuthorized(msg.sender);
+
+        uint256 _newBalance = assets[_asset].balance + _amount;
+        assets[_asset].balance = _newBalance;
+
+        emit WithdrawProcessed(_amount, _newBalance, _asset);
     }
 
     //--------------------------------------------------------------------------------------
