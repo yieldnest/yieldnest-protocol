@@ -242,6 +242,33 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     }
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS  -------------------------------------
+    //-------------------------------------------------------------------------------------- // @johnny
+
+    function processPrincipalWithdrawals(WithdrawalAction[] memory _actions) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
+        uint256 _len = _actions.length;
+        for (uint256 i = 0; i < _len; ++i) {
+            _processPrincipalWithdrawalForNode(_actions[i]);
+        }
+    }
+
+    function _processPrincipalWithdrawalForNode(WithdrawalAction memory _action) internal {
+
+        uint256 _totalAmount = action.amountToReinvest + action.amountToQueue;
+        nodes[_action.nodeId].deallocateTokens(_totalAmount);
+
+        if (action.amountToReinvest > 0) ynEigen.processWithdrawnTokens{value: action.amountToReinvest}();
+        if (action.amountToQueue > 0) {
+            (bool success, ) = address(redemptionAssetsVault).call{value: amountToQueue}("");
+            if (!success) {
+                revert TransferFailed();
+            }
+        }
+
+        emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue, rewardsAmount);
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  TokenStakingNode Roles  --------------------------
     //--------------------------------------------------------------------------------------
 

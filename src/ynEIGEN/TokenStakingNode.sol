@@ -109,6 +109,80 @@ contract TokenStakingNode is
     }
 
     //--------------------------------------------------------------------------------------
+    //-------------------------------- EIGENLAYER WITHDRAWALS  -----------------------------
+    //-------------------------------------------------------------------------------------- // @johnny
+
+    function queueWithdrawals(
+        IStrategy[] calldata _strategies,
+        uint256[] calldata _shares
+    ) external onlyTokenStakingNodesWithdrawer returns (bytes32[] memory _fullWithdrawalRoots) {
+
+        IDelegationManager.QueuedWithdrawalParams[] memory _params = new IDelegationManager.QueuedWithdrawalParams[](1);
+        _params[0] = IDelegationManager.QueuedWithdrawalParams({
+            strategies: _strategies,
+            shares: _shares,
+            withdrawer: address(this)
+        });
+
+        _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(params);
+
+        // queuedSharesAmount += sharesAmount;
+        emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots);
+    }
+
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory _withdrawals,
+        uint256[] memory _middlewareTimesIndexes
+        ) external onlyStakingNodesWithdrawer {
+
+        uint256 _withdrawalsLength = _withdrawals.length;
+        bool[] memory _receiveAsTokens = new bool[](_withdrawalsLength);
+        IERC20[][] memory _tokens = new IERC20[][];
+        for (uint256 i = 0; i < _withdrawalsLength; ++i) {
+            _receiveAsTokens[i] = true;
+            for (uint256 j = 0; j < _withdrawals[i].strategies.length; ++j) {
+                _tokens[i][j] = _withdrawals[i].strategies[j].underlyingToken();
+            }
+        }
+
+        tokenStakingNodesManager.delegationManager().completeQueuedWithdrawals(
+            _withdrawals,
+            _tokens,
+            _middlewareTimesIndexes,
+            _receiveAsTokens
+        );
+
+        // uint256 finalETHBalance = address(this).balance;
+        // uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
+        // if (actualWithdrawalAmount != totalWithdrawalAmount) {
+        //     revert MismatchInExpectedETHBalanceAfterWithdrawals(actualWithdrawalAmount, totalWithdrawalAmount);
+        // }
+
+        // // Shares are no longer queued
+        // queuedSharesAmount -= actualWithdrawalAmount;
+
+        // // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
+        // withdrawnETH += actualWithdrawalAmount;
+
+        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
+    }
+
+    function deallocateTokens(uint256 amount) external payable onlyStakingNodesManager {
+        if (amount > withdrawnETH) {
+            revert InsufficientWithdrawnETH(amount, withdrawnETH);
+        }
+
+        emit DeallocatedStakedETH(amount, withdrawnETH);
+
+        withdrawnETH -= amount;
+
+        (bool success, ) = address(stakingNodesManager).call{value: amount}("");
+        if (!success) {
+            revert TransferFailed();
+        }
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  DELEGATION  --------------------------------------
     //--------------------------------------------------------------------------------------
 
