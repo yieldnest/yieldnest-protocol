@@ -37,4 +37,6 @@ interface ITokenStakingNode {
     ) external;
 
     function undelegate() external;
+
+    function deallocateTokens(IERC20 _token, uint256 _amount) external;
 }

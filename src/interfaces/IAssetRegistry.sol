@@ -21,5 +21,6 @@ interface IAssetRegistry {
     function deleteAsset(IERC20 asset) external;
     function totalAssets() external view returns (uint256);
     function convertToUnitOfAccount(IERC20 asset, uint256 amount) external view returns (uint256);
+    function convertFromUnitOfAccount(IERC20 asset, uint256 amount) external view returns (uint256);
     function assetIsSupported(IERC20 asset) external view returns (bool);
 }

@@ -315,6 +315,14 @@ interface IAssetRegistryEvents {
             : assetRate * amount / 1e18;
     }
 
+    function convertFromUnitOfAccount(IERC20 asset, uint256 amount) public view returns (uint256) {
+        uint256 assetRate = rateProvider.rate(address(asset));
+        uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
+        return assetDecimals != 18
+            ? amount * (10 ** assetDecimals) / assetRate
+            : amount * 1e18 / assetRate;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  PAUSING  -----------------------------------------
     //--------------------------------------------------------------------------------------
