@@ -42,6 +42,12 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     error ZeroShares();
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES --------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -204,6 +210,37 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     }
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
+        _burn(msg.sender, amount);
+    }
+
+    function previewRedeem(IERC20 asset, uint256 shares) external view returns (uint256 assets) {
+       return convertToAssets(asset, shares);
+    }
+
+    function convertToAssets(IERC20 asset, uint256 shares) public view returns (uint256) {
+        if(assetIsSupported(asset)) {
+           return assetRegistry.convertFromUnitOfAccount(
+            asset,
+            _convertToAssets(shares, Math.Rounding.Floor)
+        );
+        } else {
+            revert UnsupportedAsset(asset);
+        }
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
+
+        uint256 supply = totalSupply();
+        if (supply == 0) return shares;
+
+        return Math.mulDiv(shares, totalAssets(), supply, rounding);
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  TOTAL ASSETS   -----------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -286,15 +323,15 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
     function processWithdrawn(uint256 _amount, address _asset) public {
         if (_amount == 0) revert ZeroAmount();
-        if (
-            msg.sender != address(tokenStakingNodesManager) ||
-            msg.sender != address(tokenStakingNodesManager.redemptionAssetsVault())
-        ) revert CallerNotAuthorized(msg.sender);
+        // if (
+        //     msg.sender != address(tokenStakingNodesManager) ||
+        //     msg.sender != address(tokenStakingNodesManager.redemptionAssetsVault())
+        // ) revert CallerNotAuthorized(msg.sender); // @todo
 
         uint256 _newBalance = assets[_asset].balance + _amount;
         assets[_asset].balance = _newBalance;
 
-        emit WithdrawProcessed(_amount, _newBalance, _asset);
+        // emit WithdrawProcessed(_amount, _newBalance, _asset); // @todo
     }
 
     //--------------------------------------------------------------------------------------

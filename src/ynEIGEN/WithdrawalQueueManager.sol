@@ -8,11 +8,11 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
-import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC721EnumerableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IRedemptionAssetsVault} from "./interfaces/IRedemptionAssetsVault.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
@@ -81,7 +81,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
-    //--------------------------------------------------------------------------------------
+    //-------------------------------------------------------------------------------------- // @todo - move all mappings to a struct
 
     /// @notice The asset that can be redeemed through withdrawal requests.
     IRedeemableAsset public redeemableAsset;
@@ -90,13 +90,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     IRedemptionAssetsVault public redemptionAssetsVault;
 
     /// @notice Counter for tracking the next token ID to be assigned.
-    uint256 public _tokenIdCounter;
+    // uint256 public _tokenIdCounter;
+    mapping(IERC20 => uint256) public _tokenIdCounter;
 
     /// @notice Mapping of token IDs to their corresponding withdrawal requests.
-    mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
+    // mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
+    mapping(IERC20 => mapping(uint256 => WithdrawalRequest)) public withdrawalRequests;
 
     /// @notice The required duration in seconds between a withdrawal request and when it can be finalized.
-    uint256 public secondsToFinalization;
+    // uint256 public secondsToFinalization; // not used
 
     /// @notice The fee percentage charged on withdrawals.
     uint256 public withdrawalFee;
@@ -108,12 +110,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     address public requestFinalizer;
 
     /// @notice pending requested redemption amount in redemption unit of account
-    uint256 public pendingRequestedRedemptionAmount;
+    // uint256 public pendingRequestedRedemptionAmount;
+    mapping(IERC20 => uint256) public pendingRequestedRedemptionAmount;
 
-    uint256 public lastFinalizedIndex;
+    // uint256 public lastFinalizedIndex;
+    mapping(IERC20 => uint256) public lastFinalizedIndex;
 
     /// @notice Array to store finalization data
-    Finalization[] public finalizations;
+    // Finalization[] public finalizations;
+    mapping(IERC20 => Finalization[]) public finalizations;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -164,181 +169,105 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+    // @todo - make sure we have enough balance of _asset that is restaked (maxRedeem(asset,amount))
+    function requestWithdrawal(
+        IERC20 _asset,
+        uint256 _amount,
+        bytes calldata _data
+    ) public nonReentrant returns (uint256 _tokenId) {
+        if (_amount == 0) revert AmountMustBeGreaterThanZero();
 
-    /**
-     * @notice Requests a withdrawal of a specified amount of redeemable assets without additional data.
-     * @dev This is a convenience function that calls the main requestWithdrawal function with empty data.
-     * @param amount The amount of redeemable assets to withdraw.
-     * @return tokenId The token ID associated with the withdrawal request.
-     */
-    function requestWithdrawal(uint256 amount) external returns (uint256 tokenId) {
-        return requestWithdrawal(amount, "");
-    }
+        redeemableAsset.safeTransferFrom(msg.sender, address(this), _amount);
 
-    /**
-     * @notice Requests a withdrawal of a specified amount of redeemable assets.
-     * @dev Transfers the specified amount of redeemable assets from the sender to this contract, creates a withdrawal request,
-     *      and mints a token representing this request. Emits a WithdrawalRequested event upon success.
-     * @param amount The amount of redeemable assets to withdraw.
-     * @param data Extra data payload associated with the request
-     * @return tokenId The token ID associated with the withdrawal request.
-     */
-    function requestWithdrawal(uint256 amount, bytes memory data) public nonReentrant returns (uint256 tokenId) {
-        if (amount == 0) {
-            revert AmountMustBeGreaterThanZero();
-        }
-        
-        redeemableAsset.safeTransferFrom(msg.sender, address(this), amount);
-
-        uint256 currentRate = redemptionAssetsVault.redemptionRate();
-        tokenId = _tokenIdCounter++;
-        withdrawalRequests[tokenId] = WithdrawalRequest({
-            amount: amount,
+        uint256 _currentRate = redemptionAssetsVault.redemptionRate(_asset);
+        _tokenId = _tokenIdCounter[_asset]++;
+        withdrawalRequests[_asset][_tokenId] = WithdrawalRequest({
+            amount: _amount,
             feeAtRequestTime: withdrawalFee,
-            redemptionRateAtRequestTime: currentRate,
+            redemptionRateAtRequestTime: _currentRate,
             creationTimestamp: block.timestamp,
             processed: false,
-            data: data
+            data: _data
         });
 
-        pendingRequestedRedemptionAmount += calculateRedemptionAmount(amount, currentRate);
+        pendingRequestedRedemptionAmount[_asset] += calculateRedemptionAmount(_amount, _currentRate);
 
-        _mint(msg.sender, tokenId);
+        _mint(msg.sender, _tokenId);
 
-        emit WithdrawalRequested(tokenId, msg.sender, amount);
+        emit WithdrawalRequested(_tokenId, msg.sender, _amount);
     }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CLAIMS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
+    function claimWithdrawal(IERC20 _asset, uint256 _tokenId, address _receiver) public nonReentrant {
+        if (msg.sender != _ownerOf(_tokenId) && msg.sender != _getApproved(_tokenId))
+            revert CallerNotOwnerNorApproved(_tokenId, msg.sender);
 
-    /**
-     * @notice Claims a withdrawal for a specific token ID and transfers the assets to the specified receiver.
-     * @dev This function burns the token representing the withdrawal request and transfers the net amount
-            after fees to the receiver.
-     *      It also transfers the fee to the fee receiver.
-     *      It automatically finds the finalization ID for the given token ID.
-     * @param tokenId The ID of the token representing the withdrawal request.
-     * @param receiver The address to which the withdrawn assets will be sent.
-     */
-    function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
-        WithdrawalClaim memory claim = WithdrawalClaim({
-            tokenId: tokenId,
-            receiver: receiver,
-            finalizationId: findFinalizationForTokenId(tokenId)
-        });
-        _claimWithdrawal(claim);
-    }
+        uint256 _finalizationId = findFinalizationForTokenId(_asset, _tokenId);
+        if (_finalizationId >= finalizations[_asset].length) revert InvalidFinalizationId(_finalizationId);
 
-    /**
-     * @notice Claims a withdrawal by transferring the requested assets to the specified receiver, less any applicable fees.
-     * @dev This function burns the token representing the withdrawal request and transfers the net amount after fees to the receiver.
-     *      It also transfers the fee to the fee receiver.
-     * @param claim The claim struct contains:
-     *        the tokenId The ID of the token representing the withdrawal request,
-     *        the receiver as the address to which the net amount of the withdrawal will be sent.
-     *        the finalizationId for the particular finalization which denotes the rate at finalization time.
-     */
-    function claimWithdrawal(WithdrawalClaim memory claim) public nonReentrant {
-        _claimWithdrawal(claim);
-    }
+        Finalization memory _finalization = finalizations[_asset][_finalizationId];
+        if (_tokenId < _finalization.startIndex || _tokenId >= _finalization.endIndex)
+            revert TokenIdNotInFinalizationRange(_tokenId, _finalizationId, _finalization.startIndex, _finalization.endIndex);
 
-    function _claimWithdrawal(WithdrawalClaim memory claim) internal {
+        WithdrawalRequest memory _request = withdrawalRequests[_asset][_tokenId];
+        if (!withdrawalRequestExists(_request)) revert WithdrawalRequestDoesNotExist(_tokenId);
+        if (_request.processed) revert WithdrawalAlreadyProcessed(_tokenId);
 
-        uint256 tokenId = claim.tokenId;
-        uint256 finalizationId = claim.finalizationId;
-        address receiver = claim.receiver;
+        if (!withdrawalRequestIsFinalized(_asset, _tokenId)) revert NotFinalized(_tokenId);
 
-        if (_ownerOf(claim.tokenId) != msg.sender && _getApproved(claim.tokenId) != msg.sender) {
-            revert CallerNotOwnerNorApproved(claim.tokenId, msg.sender);
-        }
-
-        // Check if the finalization ID is valid
-        if (finalizationId >= finalizations.length) {
-            revert InvalidFinalizationId(finalizationId);
-        }
-
-        Finalization memory finalization = finalizations[finalizationId];
-
-        // Check if the token ID is within the finalized range
-        if (tokenId < finalization.startIndex || tokenId >= finalization.endIndex) {
-            revert TokenIdNotInFinalizationRange(tokenId, finalizationId, finalization.startIndex, finalization.endIndex);
-        }
-
-        // Update the redemption rate to use the one from the finalization
-        uint256 redemptionRateAtFinalization = finalization.redemptionRate;
-
-        WithdrawalRequest memory request = withdrawalRequests[tokenId];
-        if (!withdrawalRequestExists(request)) {
-            revert WithdrawalRequestDoesNotExist(tokenId);
-        }
-
-        if (request.processed) {
-            revert WithdrawalAlreadyProcessed(tokenId);
-        }
-
-        if (!withdrawalRequestIsFinalized(tokenId)) {
-            revert NotFinalized(tokenId);
-        }
-
-        withdrawalRequests[tokenId].processed = true;
-        uint256 redemptionRate = (
-            request.redemptionRateAtRequestTime < redemptionRateAtFinalization
-            ? request.redemptionRateAtRequestTime
-            : redemptionRateAtFinalization
+        uint256 _unitOfAccountAmount = calculateRedemptionAmount(
+            _request.amount,
+            _request.redemptionRateAtRequestTime < _finalization.redemptionRate
+            ? _request.redemptionRateAtRequestTime
+            : _finalization.redemptionRate
         );
 
-        uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
+        withdrawalRequests[_asset][_tokenId].processed = true;
+        pendingRequestedRedemptionAmount[_asset] -= _unitOfAccountAmount;
 
-        pendingRequestedRedemptionAmount -= unitOfAccountAmount;
+        _burn(_tokenId);
+        redeemableAsset.burn(_request.amount);
 
-        _burn(tokenId);
-        redeemableAsset.burn(request.amount);
+        uint256 _feeAmount = calculateFee(_unitOfAccountAmount, _request.feeAtRequestTime);
 
-        uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
+        uint256 _currentBalance = redemptionAssetsVault.availableRedemptionAssets(address(_asset));
+        if (_currentBalance < _unitOfAccountAmount) revert InsufficientBalance(_currentBalance, _unitOfAccountAmount);
 
-        uint256 currentBalance = redemptionAssetsVault.availableRedemptionAssets();
-        if (currentBalance < unitOfAccountAmount) {
-            revert InsufficientBalance(currentBalance, unitOfAccountAmount);
-        }
+        redemptionAssetsVault.transferRedemptionAssets(address(_asset), _receiver, _unitOfAccountAmount - _feeAmount, _request.data);
+        if (_feeAmount > 0) redemptionAssetsVault.transferRedemptionAssets(address(_asset), feeReceiver, _feeAmount, _request.data);
 
-        // Transfer net amount (unitOfAccountAmount - feeAmount) to the receiver
-        redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount, request.data);
-        
-        if (feeAmount > 0) {
-            redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
-        }
-
-        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId);
+        // emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId); // @todo
     }
 
-    /**
-     * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
-     * @param tokenIds An array of token IDs corresponding to the withdrawal requests to be claimed.
-     * @param receivers An array of addresses to receive the claimed withdrawals.
-     * @dev The length of tokenIds and receivers must be the same.
-     */
-    function claimWithdrawals(uint256[] calldata tokenIds, address[] calldata receivers) external {
-        if (tokenIds.length != receivers.length) {
-            revert ArrayLengthMismatch(tokenIds.length, receivers.length);
-        }
+    // /**
+    //  * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
+    //  * @param tokenIds An array of token IDs corresponding to the withdrawal requests to be claimed.
+    //  * @param receivers An array of addresses to receive the claimed withdrawals.
+    //  * @dev The length of tokenIds and receivers must be the same.
+    //  */
+    // function claimWithdrawals(uint256[] calldata tokenIds, address[] calldata receivers) external {
+    //     if (tokenIds.length != receivers.length) {
+    //         revert ArrayLengthMismatch(tokenIds.length, receivers.length);
+    //     }
 
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            claimWithdrawal(tokenIds[i], receivers[i]);
-        }
-    }
+    //     for (uint256 i = 0; i < tokenIds.length; i++) {
+    //         claimWithdrawal(tokenIds[i], receivers[i]);
+    //     }
+    // }
 
-    /**
-     * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
-     * @param claims An array of claims corresponding to the withdrawal requests to be claimed.
-     */
-    function claimWithdrawals(WithdrawalClaim[] calldata claims) external {
-        for (uint256 i = 0; i < claims.length; i++) {
-            WithdrawalClaim memory claim = claims[i];
-            claimWithdrawal(claim);
-        }
-    }
+    // /**
+    //  * @notice Allows a batch of withdrawals to be claimed by their respective token IDs.
+    //  * @param claims An array of claims corresponding to the withdrawal requests to be claimed.
+    //  */
+    // function claimWithdrawals(WithdrawalClaim[] calldata claims) external {
+    //     for (uint256 i = 0; i < claims.length; i++) {
+    //         WithdrawalClaim memory claim = claims[i];
+    //         claimWithdrawal(claim);
+    //     }
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ADMIN  -------------------------------------------
@@ -399,42 +328,26 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  REDEMPTION ASSETS  -------------------------------
     //--------------------------------------------------------------------------------------
 
-    /** 
-     * @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
-     * @return surplus The amount of surplus redemption assets in the unit of account.
-     */
-    function surplusRedemptionAssets() public view returns (uint256) {
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
-        if (availableAmount > pendingRequestedRedemptionAmount) {
-            return availableAmount - pendingRequestedRedemptionAmount;
-        } 
-        
+    function surplusRedemptionAssets(IERC20 _asset) public view returns (uint256) {
+        uint256 _availableAmount = redemptionAssetsVault.availableRedemptionAssets(address(_asset));
+        uint256 _pendingRequestedAmount = pendingRequestedRedemptionAmount[_asset];
+        if (_availableAmount > _pendingRequestedAmount) return _availableAmount - _pendingRequestedAmount;
         return 0;
     }
 
-    /** 
-     * @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
-     * @return deficit The amount of deficit redemption assets in the unit of account.
-     */
-    function deficitRedemptionAssets() public view returns (uint256) {
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
-        if (pendingRequestedRedemptionAmount > availableAmount) {
-            return pendingRequestedRedemptionAmount - availableAmount;
-        }
-        
+    function deficitRedemptionAssets(IERC20 _asset) external view returns (uint256) {
+        uint256 _availableAmount = redemptionAssetsVault.availableRedemptionAssets(address(_asset));
+        uint256 _pendingRequestedAmount = pendingRequestedRedemptionAmount[_asset];
+        if (_pendingRequestedAmount > _availableAmount) return _pendingRequestedAmount - _availableAmount;
         return 0;
     }
 
-    /** 
-     * @notice Withdraws surplus redemption assets to a specified address.
-     */
-    function withdrawSurplusRedemptionAssets(uint256 amount) external onlyRole(REDEMPTION_ASSET_WITHDRAWER_ROLE) {
-        uint256 surplus = surplusRedemptionAssets();
-        if (amount > surplus) {
-            revert AmountExceedsSurplus(amount, surplus);
-        }
-        redemptionAssetsVault.withdrawRedemptionAssets(amount);
+    function withdrawSurplusRedemptionAssets(IERC20 _asset, uint256 _amount) external onlyRole(REDEMPTION_ASSET_WITHDRAWER_ROLE) {
+        uint256 _surplus = surplusRedemptionAssets(_asset);
+        if (_amount > _surplus) revert AmountExceedsSurplus(_amount, _surplus);
+        redemptionAssetsVault.withdrawRedemptionAssets(_asset, _amount);
     }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  FINALITY  ----------------------------------------
     //--------------------------------------------------------------------------------------
@@ -444,57 +357,40 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      * @param index The index of the withdrawal request.
      * @return True if the request is finalized, false otherwise.
      */
-    function withdrawalRequestIsFinalized(uint256 index) public view returns (bool) {
-        return index < lastFinalizedIndex;
+    function withdrawalRequestIsFinalized(IERC20 asset, uint256 index) public view returns (bool) {
+        return index < lastFinalizedIndex[asset];
     }
 
-    /**
-     * @notice Marks all requests whose index is less than lastFinalizedIndex as finalized.
-               The current redemptionRate rated is recorded as the finalization redemption rate.
-     * @param _lastFinalizedIndex The index up to which withdrawal requests are considered finalized.
-     * @dev A lastFinalizedIndex = 0 means no requests are processed. lastFinalizedIndex = 2 means
-            requests 0 and 1 are processed.
-     */
-    function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex)
-        external
-        onlyRole(REQUEST_FINALIZER_ROLE)
-        returns (uint256 finalizationIndex)
-    {
+    function finalizeRequestsUpToIndex(
+        IERC20 _asset,
+        uint256 _lastFinalizedIndex
+    ) external onlyRole(REQUEST_FINALIZER_ROLE) returns (uint256 _finalizationIndex) {
 
-        uint256 currentRate = redemptionAssetsVault.redemptionRate();
+        uint256 _currentRate = redemptionAssetsVault.redemptionRate(_asset);
         
         // Create a new Finalization struct
-        Finalization memory newFinalization = Finalization({
-            startIndex: SafeCast.toUint64(lastFinalizedIndex),
+        Finalization memory _newFinalization = Finalization({
+            startIndex: SafeCast.toUint64(lastFinalizedIndex[_asset]),
             endIndex: SafeCast.toUint64(_lastFinalizedIndex),
-            redemptionRate: SafeCast.toUint96(currentRate)
+            redemptionRate: SafeCast.toUint96(_currentRate)
         });
 
-        finalizationIndex = finalizations.length;
+        _finalizationIndex = finalizations[_asset].length;
         
         // Add the new Finalization to the array
-        finalizations.push(newFinalization);
+        finalizations[_asset].push(_newFinalization);
 
-        if (_lastFinalizedIndex > _tokenIdCounter) {
-            revert IndexExceedsTokenCount(_lastFinalizedIndex, _tokenIdCounter);
-        }
-        if (_lastFinalizedIndex <= lastFinalizedIndex) {
-            revert IndexNotAdvanced(_lastFinalizedIndex, lastFinalizedIndex);
-        }
-        emit RequestsFinalized(finalizationIndex, _lastFinalizedIndex, lastFinalizedIndex, currentRate);
+        if (_lastFinalizedIndex > _tokenIdCounter[_asset]) revert IndexExceedsTokenCount(_lastFinalizedIndex, _tokenIdCounter[_asset]);
+        if (_lastFinalizedIndex <= lastFinalizedIndex[_asset]) revert IndexNotAdvanced(_lastFinalizedIndex, lastFinalizedIndex[_asset]);
 
-        lastFinalizedIndex = _lastFinalizedIndex;
+        emit RequestsFinalized(_finalizationIndex, _lastFinalizedIndex, lastFinalizedIndex[_asset], _currentRate);
+
+        lastFinalizedIndex[_asset] = _lastFinalizedIndex;
     }
 
-    /**
-     * @notice Finds the finalization ID for a given token ID using binary search.
-     * @param tokenId The token ID to find the finalization for.
-     * @return finalizationId The ID of the finalization that includes the given token ID.
-     * @dev The complexity of this algorithm is Math.log2(n) and it is UNBOUNDED
-     */
-    function findFinalizationForTokenId(uint256 tokenId) public view returns (uint256 finalizationId) {
+    function findFinalizationForTokenId(IERC20 _asset, uint256 tokenId) public view returns (uint256 finalizationId) {
 
-        uint256 finalizationsLength = finalizations.length;
+        uint256 finalizationsLength = finalizations[_asset].length;
         if (finalizationsLength == 0) {
             revert NotFinalized(tokenId);
         }
@@ -504,7 +400,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
         while (left <= right) {
             uint256 mid = (left + right) / 2;
-            Finalization memory finalization = finalizations[mid];
+            Finalization memory finalization = finalizations[_asset][mid];
 
             if (tokenId >= finalization.startIndex && tokenId < finalization.endIndex) {
                 return mid;
@@ -522,13 +418,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  VIEWS  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /**
-     * @notice Returns the details of a withdrawal request.
-     * @param tokenId The token ID of the withdrawal request.
-     * @return request The withdrawal request details.
-     */
-    function withdrawalRequest(uint256 tokenId) public view returns (WithdrawalRequest memory request) {
-        request = withdrawalRequests[tokenId];
+    function withdrawalRequest(IERC20 _asset, uint256 tokenId) public view returns (WithdrawalRequest memory request) {
+        request = withdrawalRequests[_asset][tokenId];
         if (!withdrawalRequestExists(request)) {
             revert WithdrawalRequestDoesNotExist(tokenId);
         }
@@ -548,7 +439,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         return request.creationTimestamp > 0;
     }
 
-    function withdrawalRequestsForOwner(address owner) public view returns (
+    function withdrawalRequestsForOwner(IERC20 asset, address owner) public view returns (
         uint256[] memory withdrawalIndexes,
         WithdrawalRequest[] memory requests
     ) {
@@ -563,7 +454,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             for (uint256 i = 0; i < tokenCount; i++) {
                 uint256 tokenId = tokenOfOwnerByIndex(owner, i);
                 withdrawalIndexes[i] = tokenId;
-                requests[i] = withdrawalRequests[tokenId];
+                requests[i] = withdrawalRequests[asset][tokenId];
             }
             return (withdrawalIndexes, requests);
         }
@@ -574,19 +465,19 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      * @param finalizationId The ID of the finalization.
      * @return finalization The finalization details.
      */
-    function getFinalization(uint256 finalizationId) public view returns (Finalization memory finalization) {
-        if (finalizationId >= finalizations.length) {
+    function getFinalization(IERC20 _asset, uint256 finalizationId) public view returns (Finalization memory finalization) {
+        if (finalizationId >= finalizations[_asset].length) {
             revert InvalidFinalizationId(finalizationId);
         }
-        finalization = finalizations[finalizationId];
+        finalization = finalizations[_asset][finalizationId];
     }
 
     /**
      * @notice Returns the total number of finalizations.
      * @return count The number of finalizations.
      */
-    function finalizationsCount() public view returns (uint256 count) {
-        return finalizations.length;
+    function finalizationsCount(IERC20 _asset) public view returns (uint256 count) {
+        return finalizations[_asset].length;
     }
 
     //--------------------------------------------------------------------------------------

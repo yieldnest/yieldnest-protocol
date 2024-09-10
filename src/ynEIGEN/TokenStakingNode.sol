@@ -127,12 +127,12 @@ contract TokenStakingNode is
             withdrawer: address(this)
         });
 
-        _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(params);
+        _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(_params);
 
         uint256 _strategiesLength = _strategies.length;
-        for (uint256 i = 0; i < _strategiesLength; ++i) queuedShares[_strategies[i].underlyingToken()] += _shares[i]; // @todo - handle stETH/oETH
+        for (uint256 i = 0; i < _strategiesLength; ++i) queuedShares[_strategies[i].underlyingToken()] += _shares[i];
 
-        emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots);
+        // emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots); // @todo
     }
 
     // function completeQueuedWithdrawalsMultipleTokens // @todo
@@ -151,20 +151,26 @@ contract TokenStakingNode is
         for (uint256 i = 0; i < _withdrawalsLength; ++i) {
             _receiveAsTokens[i] = true;
 
-            uint256 _len = _withdrawals[i].strategies.length;
-            if (_len != 1 || _withdrawals[i].shares.length != _len) revert OnlyOneStrategyPerWithdrawalAllowed();
+            uint256 _strategiesLength = _withdrawals[i].strategies.length;
+            if (
+                _strategiesLength != 1 ||
+                _withdrawals[i].shares.length != _strategiesLength
+            ) revert("OnlyOneStrategyPerWithdrawalAllowed");
+            // ) revert OnlyOneStrategyPerWithdrawalAllowed(); // @todo
 
-            if (_withdrawals[i].strategies[0].underlyingToken() != _allowedToken) revert DifferentTokensNotAllowed();
+            // if (_withdrawals[i].strategies[0].underlyingToken() != _allowedToken) revert DifferentTokensNotAllowed(); // @todo
+            if (_withdrawals[i].strategies[0].underlyingToken() != _allowedToken) revert("DifferentTokensNotAllowed");
 
             uint256 _shares = _withdrawals[i].shares[0];
-            if (_shares == 0) revert ZeroShares();
+            // if (_shares == 0) revert ZeroShares(); // @todo
+            if (_shares == 0) revert("ZeroShares");
             _expectedAmountOut += _shares;
 
-            _tokens[i] = new IERC20[](_len);
+            _tokens[i] = new IERC20[](_strategiesLength);
             _tokens[i][0] = _allowedToken;
         }
 
-        uint256 _balanceBefore = _allowedToken.balanceOf(address(this)); // @todo - handle stETH/oETH
+        uint256 _balanceBefore = _allowedToken.balanceOf(address(this));
 
         tokenStakingNodesManager.delegationManager().completeQueuedWithdrawals(
             _withdrawals,
@@ -173,20 +179,21 @@ contract TokenStakingNode is
             _receiveAsTokens
         );
 
-        if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert WithdrawalAmountMismatch();
+        // if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert WithdrawalAmountMismatch(); // @todo
+        if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert("WithdrawalAmountMismatch");
 
         queuedShares[_allowedToken] -= _expectedAmountOut;
         withdrawn[_allowedToken] += _expectedAmountOut;
 
-        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
+        // emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount); // @todo
     }
 
-    function deallocateTokens(IERC20 token, uint256 amount) external payable onlyTokenStakingNodesManager {
+    function deallocateTokens(IERC20 _token, uint256 _amount) external onlyTokenStakingNodesManager {
 
-        withdrawn[token] -= amount;
-        token.safeTransfer(address(tokenStakingNodesManager), amount);
+        withdrawn[_token] -= _amount;
+        _token.safeTransfer(address(tokenStakingNodesManager), _amount);
 
-        emit DeallocatedTokens(amount, token);
+        // emit DeallocatedTokens(_amount, _token); // @todo
     }
 
     //--------------------------------------------------------------------------------------
@@ -247,6 +254,18 @@ contract TokenStakingNode is
         if (!tokenStakingNodesManager.hasYieldNestStrategyManagerRole(msg.sender)) {
             revert NotStrategyManager();
         }
+        _;
+    }
+
+    modifier onlyTokenStakingNodesWithdrawer() {
+        // if (!tokenStakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert NotTokenStakingNodesWithdrawer(); // @todo
+        if (!tokenStakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert("NotTokenStakingNodesWithdrawer");
+        _;
+    }
+
+    modifier onlyTokenStakingNodesManager() {
+        // if(msg.sender != address(tokenStakingNodesManager)) revert NotTokenStakingNodesManager(); // @todo
+        if(msg.sender != address(tokenStakingNodesManager)) revert("NotTokenStakingNodesManager");
         _;
     }
 

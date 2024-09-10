@@ -10,6 +10,9 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 
 interface ITokenStakingNodesManagerEvents {
 
@@ -21,6 +24,10 @@ interface ITokenStakingNodesManagerEvents {
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
+}
+
+interface IRedemptionAssetsVaultExt is IRedemptionAssetsVault {
+    function deposit(uint256 amount, address asset) external;
 }
 
 contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNodesManager, ITokenStakingNodesManagerEvents {
@@ -51,6 +58,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     bytes32 public constant TOKEN_STAKING_NODE_CREATOR_ROLE = keccak256("TOKEN_STAKING_NODE_CREATOR_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
+    bytes32 public constant STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -69,6 +78,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
      */
     ITokenStakingNode[] public nodes;
     uint256 public maxNodeCount;
+
+    IRedemptionAssetsVaultExt public redemptionAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
@@ -265,18 +276,18 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
         uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
 
-        nodes[_action.nodeId].deallocateTokens(_totalAmount);
+        nodes[_action.nodeId].deallocateTokens(IERC20(_action.asset), _totalAmount);
 
-        IynEigen _ynEigen = strategyManager.ynEigen();
+        IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
         if (_action.amountToReinvest > 0) _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
 
-        IRedemptionVault _redemptionVault = redemptionVault;
-        if (_action.amountToQueue > 0) _redemptionVault.deposit(_action.amountToQueue, _action.asset); // @todo - here
+        IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
+        if (_action.amountToQueue > 0) _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
 
         IERC20(_action.asset).safeTransfer(address(_ynEigen), _action.amountToReinvest);
-        IERC20(_action.asset).safeTransfer(address(_redemptionVault), _action.amountToQueue);
+        IERC20(_action.asset).safeTransfer(address(_redemptionAssetsVault), _action.amountToQueue);
 
-        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
+        // emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue); // @todo
     }
 
     //--------------------------------------------------------------------------------------
@@ -341,6 +352,15 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
             revert NodeIdOutOfRange(nodeId);
         }
         return nodes[nodeId];
+    }
+
+    /**
+     * @notice Checks if the given address has the STAKING_NODES_WITHDRAWER_ROLE.
+     * @param _address The address to check.
+     * @return True if the address has the STAKING_NODES_WITHDRAWER_ROLE, false otherwise.
+     */
+    function isStakingNodesWithdrawer(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_WITHDRAWER_ROLE, _address);
     }
 
     //--------------------------------------------------------------------------------------
