@@ -113,6 +113,10 @@ contract Base is Test, Utils {
     function upgradeYnToM3() internal {
         if (block.chainid != 17000) return;
 
+
+        uint256 totalAssets = yneth.totalAssets();
+        uint256 totalSupply = yneth.totalSupply();
+
         // upgrade stakingNodesManager
         {
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
@@ -185,6 +189,14 @@ contract Base is Test, Utils {
             });
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
+
+        assertEq(totalAssets, yneth.totalAssets(), "totalAssets should remain unchanged");
+        assertEq(totalSupply, yneth.totalSupply(), "totalSupply should remain unchanged");
+        // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
+        assertEq(address(stakingNodesManager.redemptionAssetsVault()), address(0), "redemptionAssetsVault should initially be set to the zero address in StakingNodesManager");
+        // Assert that previewRedeem returns a non-zero value
+        uint256 previewRedeemAmount = yneth.previewRedeem(1 ether);
+        assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
 
         // initialize stakingNodesManager withdrawal contracts
         {
