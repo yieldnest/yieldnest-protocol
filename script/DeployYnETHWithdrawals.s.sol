@@ -80,6 +80,15 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
+        // Deploy implementation contracts
+        StakingNodesManager stakingNodesManagerImplementation = new StakingNodesManager();
+        console.log("StakingNodesManager implementation deployed at:", address(stakingNodesManagerImplementation));
+
+        StakingNode stakingNodeImplementation = new StakingNode();
+        console.log("StakingNode implementation deployed at:", address(stakingNodeImplementation));
+
+        ynETH ynETHImplementation = new ynETH();
+        console.log("ynETH implementation deployed at:", address(ynETHImplementation));
 
         // deploy ynETHRedemptionAssetsVault
         {
