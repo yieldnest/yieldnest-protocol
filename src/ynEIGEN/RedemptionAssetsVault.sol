@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
-import {IRedemptionAssetsVault} from "./interfaces/IRedemptionAssetsVault.sol";
-import {YNETH_UNIT} from "src/Constants.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import {ETH_ASSET, YNETH_UNIT} from "src/Constants.sol";
 
-contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
-
-    using SafeERC20 for IERC20;
+contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -35,25 +32,25 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    IynEigen public ynEIGEN;
+    IynEigen public ynEigen;
+    IAssetRegistry public assetRegistry;
     bool public paused;
     address public redeemer;
-    address public tokenStakingNodesManager;
-
-    mapping(address asset => uint256 balance) private _assets;
 
     // Initializer with Init struct and roles
     struct Init {
         address admin;
         address redeemer;
-        IynEigen ynEIGEN;
+        IynEigen ynEigen;
+        IAsetRegistry assetRegistry;
     }
 
     function initialize(Init memory init)
         external
         notZeroAddress(init.admin)
         notZeroAddress(init.redeemer)
-        notZeroAddress(address(init.ynEIGEN))
+        notZeroAddress(address(init.ynEigen))
+        notZeroAddress(address(init.assetRegistry))
         initializer {
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
@@ -61,58 +58,106 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         _grantRole(UNPAUSER_ROLE, init.admin);
 
         redeemer = init.redeemer;
-        ynEIGEN = init.ynEIGEN;
+        ynEigen = init.ynEigen;
+        assetRegistry = init.assetRegistry;
         paused = false;
-    }
-
-    //--------------------------------------------------------------------------------------
-    //------------------------------------  DEPOSIT  ---------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    function deposit(uint256 _amount, address _asset) external {
-        // if (msg.sender != address(tokenStakingNodesManager)) revert InvalidCaller(); // @todo
-        if (msg.sender != address(tokenStakingNodesManager)) revert("InvalidCaller");
-
-        _assets[_asset] += _amount;
-
-        // emit AssetDeposited(_amount, _asset); // @todo
     }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  REDEMPTION  --------------------------------------
     //--------------------------------------------------------------------------------------
 
-    function redemptionRate(IERC20 _asset) public view returns (uint256) {
-        return ynEIGEN.previewRedeem(_asset, YNETH_UNIT); // ynEIGEN to Asset (sfrxETH/stETH...)
+    function deposit(uint256 amount, address asset) external {
+        if (!assetRegistry.assetIsSupported(asset)) revert AssetNotSupported();
+
+        balances[asset] += amount;
+        IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
+
+        emit AssetDeposited(asset, msg.sender, amount);
     }
 
-    function availableRedemptionAssets(address _asset) public view returns (uint256) {
-        return _assets[_asset];
+    /** 
+     * @notice Calculates the current redemption rate of ynETH to ETH.
+     * @return The current redemption rate as a uint256.
+     */
+    function redemptionRate() public view returns (uint256) {
+        return ynEigen.previewRedeem(YNETH_UNIT);
     }
 
-    function transferRedemptionAssets(
-        address _asset,
-        address _to,
-        uint256 _amount,
-        bytes calldata /* data */
-    ) public onlyRedeemer whenNotPaused nonReentrant {
+    /** 
+     * @notice Returns the total amount of ETH available for redemption.
+     * @return The available ETH balance as a uint256.
+     */
+    function availableRedemptionAssets() public view returns (uint256 _availableRedemptionAssets) {
 
-        _assets[_asset] -= _amount;
-        IERC20(_asset).safeTransfer(_to, _amount);
+        IERC20[] memory assets = assetRegistry.getAssets();
 
-        emit AssetTransferred(_asset, msg.sender, _to, _amount);
+        uint256 len = assets.length;
+        for (uint256 i = 0; i < len; ++i) {
+            IERC20 asset = assets[i];
+            uint256 balance = balances[address(asset)];
+            if (balance > 0) _availableRedemptionAssets += assetRegistry.convertToUnitOfAccount(asset, balance);
+        }
     }
 
-    function withdrawRedemptionAssets(
-        IERC20 _asset,
-        uint256 _amount
-    ) public onlyRedeemer whenNotPaused nonReentrant {
+    /** 
+     * @notice Transfers a specified amount of redemption assets to a given address.
+     * @param to The recipient address of the assets.
+     * @param amount The amount of assets to transfer.
+     * @dev Requires the caller to be the redeemer and the contract to not be paused.
+     */
+    function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */) public onlyRedeemer whenNotPaused nonReentrant {
+        uint256 balance = availableRedemptionAssets();
+        if (balance < amount) {
+            revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
+        }
 
-        IynEigen _ynEIGEN = ynEIGEN;
-        _ynEIGEN.processWithdrawn(_amount, _asset);
-        _asset.safeTransfer(address(_ynEIGEN), _amount);
+        IERC20[] memory assets = assetRegistry.getAssets();
+        for (uint256 i = 0; i < assets.length; ++i) {
+            IERC20 asset = assets[i];
+            uint256 assetBalance = balances[address(asset)];
+            if (assetBalance > 0) {
+                uint256 assetBalanceInUnit = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
+                if (assetBalanceInUnit >= amount) {
+                    uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
+                    IERC20(asset).safeTransfer(to, reqAmountInAsset);
+                    balances[address(asset)] -= reqAmountInAsset;
+                    break;
+                } else {
+                    IERC20(asset).safeTransfer(to, assetBalance);
+                    balances[address(asset)] = 0;
+                    amount -= assetBalanceInUnit;
+                }
+            }
+        }
 
-        // emit AssetWithdrawn(_assetsToRetrieve, _amounts, msg.sender); // @todo
+        emit AssetTransferred(ETH_ASSET, msg.sender, to, amount);
+    }
+
+    /** 
+     * @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
+     * @param amount The amount of ETH to withdraw and process.
+     * @dev Requires the caller to be the redeemer and the contract to not be paused.
+     */
+    function withdrawRedemptionAssets(uint256 amount) public onlyRedeemer whenNotPaused nonReentrant {
+        IERC20[] memory assets = assetRegistry.getAssets();
+        for (uint256 i = 0; i < assets.length; ++i) {
+            IERC20 asset = assets[i];
+            uint256 assetBalance = balances[address(asset)];
+            if (assetBalance > 0) {
+                uint256 unitAmount = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
+                if (unitAmount >= amount) {
+                    ynEigen.processWithdrawn(amount, address(asset));
+                    balances[address(asset)] -= assetBalance;
+                    break;
+                } else {
+                    ynEigen.processWithdrawn(amount, address(asset));
+                    balances[address(asset)] = 0;
+                    amount -= unitAmount;
+                }
+            }
+        }
+        emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);
     }
 
     //--------------------------------------------------------------------------------------
@@ -149,12 +194,6 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         }
         _;
     }
-
-    //--------------------------------------------------------------------------------------
-    //------------------------------------  SWEEP ------------------------------------------
-    //--------------------------------------------------------------------------------------
-
-    // function sweep // @todo
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  PAUSE FUNCTIONS  ---------------------------------

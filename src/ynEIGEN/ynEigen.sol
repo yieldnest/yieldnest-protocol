@@ -217,8 +217,12 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
         _burn(msg.sender, amount);
     }
 
-    function previewRedeem(IERC20 asset, uint256 shares) external view returns (uint256 assets) {
+    function previewRedeem(IERC20 asset, uint256 shares) external view returns (uint256) {
        return convertToAssets(asset, shares);
+    }
+
+    function previewRedeem(uint256 shares) external view returns (uint256) {
+       return convertToAssets(IERC20(address(0)), shares);
     }
 
     function convertToAssets(IERC20 asset, uint256 shares) public view returns (uint256) {
@@ -228,7 +232,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             _convertToAssets(shares, Math.Rounding.Floor)
         );
         } else {
-            revert UnsupportedAsset(asset);
+            return _convertToAssets(shares, Math.Rounding.Floor);
         }
     }
 
