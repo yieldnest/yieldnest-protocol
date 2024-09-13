@@ -144,7 +144,7 @@ contract TokenStakingNode is
 
         uint256 _withdrawalsLength = _withdrawals.length;
         bool[] memory _receiveAsTokens = new bool[](_withdrawalsLength);
-        IERC20[][] memory _tokens = new IERC20[](_withdrawalsLength)[];
+        IERC20[][] memory _tokens = new IERC20[][](_withdrawalsLength);
 
         uint256 _expectedAmountOut;
         IERC20 _allowedToken = _withdrawals[0].strategies[0].underlyingToken();
