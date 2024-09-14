@@ -191,7 +191,7 @@ contract TokenStakingNode is
     function deallocateTokens(IERC20 _token, uint256 _amount) external onlyTokenStakingNodesManager {
 
         withdrawn[_token] -= _amount;
-        _token.safeTransfer(address(tokenStakingNodesManager), _amount);
+        _token.approve(address(tokenStakingNodesManager), _amount);
 
         // emit DeallocatedTokens(_amount, _token); // @todo
     }

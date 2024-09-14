@@ -256,13 +256,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //----------------------------------  WITHDRAWALS  -------------------------------------
     //--------------------------------------------------------------------------------------
 
-    struct WithdrawalAction {
-        uint256 nodeId;
-        uint256 amountToReinvest;
-        uint256 amountToQueue;
-        address asset;
-    }
-
     function processPrincipalWithdrawals(
         WithdrawalAction[] calldata _actions
     ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
@@ -276,16 +269,24 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
         uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
 
-        nodes[_action.nodeId].deallocateTokens(IERC20(_action.asset), _totalAmount);
+        // Update the node's asset balance and pull the assets to this contract
+        ITokenStakingNode _node = nodes[_action.nodeId];
+        _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
+        IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
 
-        IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
-        if (_action.amountToReinvest > 0) _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
+        // Update ynEigen's balance and approve it to pull the assets
+        if (_action.amountToReinvest > 0) {
+            IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
+            IERC20(_action.asset).approve(address(_ynEigen), _action.amountToReinvest);
+            _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
+        }
 
-        IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
-        if (_action.amountToQueue > 0) _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
-
-        IERC20(_action.asset).safeTransfer(address(_ynEigen), _action.amountToReinvest);
-        IERC20(_action.asset).safeTransfer(address(_redemptionAssetsVault), _action.amountToQueue);
+        // Update the redemption assets vault's balance and approve it to pull the assets
+        if (_action.amountToQueue > 0) {
+            IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
+            IERC20(_action.asset).approve(address(_redemptionAssetsVault), _action.amountToQueue);
+            _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
+        }
 
         // emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue); // @todo
     }

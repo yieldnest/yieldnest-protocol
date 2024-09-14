@@ -8,6 +8,13 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 
 interface ITokenStakingNodesManager {
 
+    struct WithdrawalAction {
+        uint256 nodeId;
+        uint256 amountToReinvest;
+        uint256 amountToQueue;
+        address asset;
+    }
+
     function createTokenStakingNode() external returns (ITokenStakingNode);
     function registerTokenStakingNode(address _implementationContract) external;
     function upgradeTokenStakingNode(address _implementationContract) external;
