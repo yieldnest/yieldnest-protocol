@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
@@ -10,6 +12,8 @@ import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol"
 import {ETH_ASSET, YNETH_UNIT} from "src/Constants.sol";
 
 contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+
+    using SafeERC20 for IERC20;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
@@ -37,12 +41,14 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     bool public paused;
     address public redeemer;
 
+    mapping(address asset => uint256 balance) public balances;
+
     // Initializer with Init struct and roles
     struct Init {
         address admin;
         address redeemer;
         IynEigen ynEigen;
-        IAsetRegistry assetRegistry;
+        IAssetRegistry assetRegistry;
     }
 
     function initialize(Init memory init)
@@ -68,12 +74,13 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     //--------------------------------------------------------------------------------------
 
     function deposit(uint256 amount, address asset) external {
-        if (!assetRegistry.assetIsSupported(asset)) revert AssetNotSupported();
+        // if (!assetRegistry.assetIsSupported(asset)) revert AssetNotSupported(); // @todo
+        if (!assetRegistry.assetIsSupported(IERC20(asset))) revert("AssetNotSupported");
 
         balances[asset] += amount;
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
 
-        emit AssetDeposited(asset, msg.sender, amount);
+        // emit AssetDeposited(asset, msg.sender, amount); // @todo
     }
 
     /** 
@@ -85,8 +92,8 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
     }
 
     /** 
-     * @notice Returns the total amount of ETH available for redemption.
-     * @return The available ETH balance as a uint256.
+     * @notice Returns the total amount of assets available for redemption.
+     * @return _availableRedemptionAssets The available unit-of-account-denominated balance as a uint256.
      */
     function availableRedemptionAssets() public view returns (uint256 _availableRedemptionAssets) {
 
@@ -145,19 +152,20 @@ contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, Ac
             IERC20 asset = assets[i];
             uint256 assetBalance = balances[address(asset)];
             if (assetBalance > 0) {
-                uint256 unitAmount = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
-                if (unitAmount >= amount) {
-                    ynEigen.processWithdrawn(amount, address(asset));
-                    balances[address(asset)] -= assetBalance;
+                uint256 assetBalanceInUnit = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
+                if (assetBalanceInUnit >= amount) {
+                    uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
+                    ynEigen.processWithdrawn(reqAmountInAsset, address(asset));
+                    balances[address(asset)] -= reqAmountInAsset;
                     break;
                 } else {
-                    ynEigen.processWithdrawn(amount, address(asset));
+                    ynEigen.processWithdrawn(assetBalance, address(asset));
                     balances[address(asset)] = 0;
-                    amount -= unitAmount;
+                    amount -= assetBalanceInUnit;
                 }
             }
         }
-        emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynETH), amount);
+        emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynEigen), amount);
     }
 
     //--------------------------------------------------------------------------------------

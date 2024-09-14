@@ -15,6 +15,7 @@ interface IAssetRegistry {
         AssetStatus status;
     }
 
+    function getAssets() external view returns (IERC20[] memory);
     function assetData(IERC20 asset) external view returns (AssetData memory);
     function addAsset(IERC20 asset) external;
     function disableAsset(IERC20 asset) external;
