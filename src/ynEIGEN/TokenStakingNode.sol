@@ -45,6 +45,7 @@ contract TokenStakingNode is
     error NotTokenStakingNodeOperator();
     error NotStrategyManager();
     error NotTokenStakingNodeDelegator();
+    error NotTokenStakingNodesWithdrawer();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -258,8 +259,7 @@ contract TokenStakingNode is
     }
 
     modifier onlyTokenStakingNodesWithdrawer() {
-        // if (!tokenStakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert NotTokenStakingNodesWithdrawer(); // @todo
-        if (!tokenStakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert("NotTokenStakingNodesWithdrawer");
+        if (!tokenStakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert NotTokenStakingNodesWithdrawer();
         _;
     }
 

@@ -15,6 +15,8 @@ interface ITokenStakingNodesManager {
         address asset;
     }
 
+    function initializeV2(address _redemptionAssetsVault, address _withdrawer) external;
+
     function createTokenStakingNode() external returns (ITokenStakingNode);
     function registerTokenStakingNode(address _implementationContract) external;
     function upgradeTokenStakingNode(address _implementationContract) external;
