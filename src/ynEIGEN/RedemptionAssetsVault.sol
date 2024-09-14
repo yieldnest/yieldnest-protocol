@@ -11,7 +11,7 @@ import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {ETH_ASSET, YNETH_UNIT} from "src/Constants.sol";
 
-contract ynETHRedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
+contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
 
     using SafeERC20 for IERC20;
 

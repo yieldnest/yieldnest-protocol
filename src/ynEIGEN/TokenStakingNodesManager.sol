@@ -137,6 +137,13 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         maxNodeCount = init.maxNodeCount;
     }
 
+    function initializeV2(
+        address _redemptionAssetsVault,
+        address _withdrawer
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) reinitializer(2) notZeroAddress(_redemptionAssetsVault) {
+        redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
+        _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------

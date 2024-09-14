@@ -38,5 +38,7 @@ interface ITokenStakingNode {
 
     function undelegate() external;
 
+    function queueWithdrawals(IStrategy[] calldata _strategies, uint256[] calldata _shares) external returns (bytes32[] memory _fullWithdrawalRoots);
+
     function deallocateTokens(IERC20 _token, uint256 _amount) external;
 }
