@@ -103,13 +103,23 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
         _strategies[1] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
         _strategies[2] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
 
+        uint256 _stethShares = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS).shares((address(tokenStakingNode)));
+        uint256 _oethShares = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS).shares((address(tokenStakingNode)));
+        uint256 _sfrxethShares = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS).shares((address(tokenStakingNode)));
         uint256[] memory _shares = new uint256[](3);
-        _shares[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS).userUnderlyingView((address(tokenStakingNode)));
-        _shares[1] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS).userUnderlyingView((address(tokenStakingNode)));
-        _shares[2] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS).userUnderlyingView((address(tokenStakingNode)));
+        _shares[0] = _stethShares;
+        _shares[1] = _oethShares;
+        _shares[2] = _sfrxethShares;
 
-        // vm.prank(actors.ops.TOKEN_STAKING_NODES_WITHDRAWER);
-        // tokenStakingNode.queueWithdrawals(_strategies, _shares); // @todo - here
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        tokenStakingNode.queueWithdrawals(_strategies, _shares);
+
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawals: E0");
+        assertEq(tokenStakingNode.queuedShares(IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS)), _stethShares, "testQueueWithdrawals: E1");
+        assertEq(tokenStakingNode.queuedShares(IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS)), _oethShares, "testQueueWithdrawals: E2");
+        assertEq(tokenStakingNode.queuedShares(IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS)), _sfrxethShares, "testQueueWithdrawals: E3");
     }
 
     function testQueueWithdrawalsWrongCaller() public {

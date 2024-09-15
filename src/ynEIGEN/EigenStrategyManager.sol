@@ -306,6 +306,14 @@ contract EigenStrategyManager is
                     asset,
                     strategies[asset].userUnderlyingView((address(node)))
                 );
+
+                // // //
+                // uint256 strategyExitQueueBalance = strategies[asset].sharesToUnderlyingView(node.queuedShares(strategies[asset]));
+                // uint256 strategyWithdrawnBalance = node.withdrawn(asset);
+
+                // stakedBalances[j] += strategyBalance + strategyExitQueueBalance + strategyWithdrawnBalance;
+                // // // @todo
+
                 stakedBalances[j] += strategyBalance;
             }
         }
