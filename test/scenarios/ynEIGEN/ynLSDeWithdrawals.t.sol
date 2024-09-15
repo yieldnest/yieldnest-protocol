@@ -13,26 +13,29 @@ import "./ynLSDeUpgradeScenario.sol";
 
 contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
 
+    bool private _setup = true;
+
     address public constant user = address(0x42069);
 
     ITokenStakingNode public tokenStakingNode;
     RedemptionAssetsVault public redemptionAssetsVault;
     WithdrawalQueueManager public withdrawalQueueManager;
 
+    uint256 public constant AMOUNT = 1 ether;
+
     function setUp() public override {
         super.setUp();
 
         // upgrades the contracts
         {
-            test_Upgrade_AllContracts_Batch();
             test_Upgrade_TokenStakingNodeImplementation_Scenario();
+            test_Upgrade_AllContracts_Batch();
         }
 
         // deal assets to user
         {
             deal({ token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1 ether });
             deal({ token: chainAddresses.lsd.WOETH_ADDRESS, to: user, give: 1 ether });
-            deal({ token: chainAddresses.lsd.RETH_ADDRESS, to: user, give: 1 ether });
             deal({ token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1 ether });
         }
 
@@ -95,48 +98,84 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
     // queueWithdrawals
     //
 
-    function testQueueWithdrawals() public {
-        _setupTokenStakingNode(1 ether);
+    function testQueueWithdrawalSTETH() public {
+        if (_setup) _setupTokenStakingNode(AMOUNT);
 
-        IStrategy[] memory _strategies = new IStrategy[](3);
-        _strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
-        _strategies[1] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
-        _strategies[2] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
-
-        uint256 _stethShares = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS).shares((address(tokenStakingNode)));
-        uint256 _oethShares = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS).shares((address(tokenStakingNode)));
-        uint256 _sfrxethShares = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS).shares((address(tokenStakingNode)));
-        uint256[] memory _shares = new uint256[](3);
-        _shares[0] = _stethShares;
-        _shares[1] = _oethShares;
-        _shares[2] = _sfrxethShares;
+        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
+        uint256 _shares = _strategy.shares((address(tokenStakingNode)));
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        tokenStakingNode.queueWithdrawals(_strategies, _shares);
+        tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
-        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawals: E0");
-        assertEq(tokenStakingNode.queuedShares(IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS)), _stethShares, "testQueueWithdrawals: E1");
-        assertEq(tokenStakingNode.queuedShares(IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS)), _oethShares, "testQueueWithdrawals: E2");
-        assertEq(tokenStakingNode.queuedShares(IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS)), _sfrxethShares, "testQueueWithdrawals: E3");
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalSTETH: E0");
+        assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "testQueueWithdrawalSTETH: E1");
+    }
+
+    function testQueueWithdrawalSFRXETH() public {
+        if (_setup) _setupTokenStakingNode(AMOUNT);
+
+        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+        uint256 _shares = _strategy.shares((address(tokenStakingNode)));
+
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        tokenStakingNode.queueWithdrawals(_strategy, _shares);
+
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalSFRXETH: E0");
+        assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "testQueueWithdrawalSFRXETH: E1");
+    }
+
+    function testQueueWithdrawalOETH() public {
+        if (_setup) _setupTokenStakingNode(AMOUNT);
+
+        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+        uint256 _shares = _strategy.shares((address(tokenStakingNode)));
+
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        tokenStakingNode.queueWithdrawals(_strategy, _shares);
+
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalOETH: E0");
+        assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "testQueueWithdrawalOETH: E1");
     }
 
     function testQueueWithdrawalsWrongCaller() public {
-        _setupTokenStakingNode(1 ether);
+        _setupTokenStakingNode(AMOUNT);
 
-        IStrategy[] memory _strategies = new IStrategy[](1);
-        _strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
-        uint256[] memory _shares = new uint256[](1);
-        _shares[0] = 1 ether;
+        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+        uint256 _shares = _strategy.shares((address(tokenStakingNode)));
 
         vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.NotTokenStakingNodesWithdrawer.selector));
-        tokenStakingNode.queueWithdrawals(_strategies, _shares);
+        tokenStakingNode.queueWithdrawals(_strategy, _shares);
     }
 
     //
     // completeQueuedWithdrawals
     //
+
+    function testCompleteQueuedWithdrawalsSTETH() public {
+        if (_setup) _setupTokenStakingNode(AMOUNT);
+
+        _setup = false;
+        testQueueWithdrawalSTETH();
+
+        uint256 _nonce = delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode)) - 1;
+        uint32 _startBlock = uint32(block.number);
+        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
+        uint256 _shares = tokenStakingNode.queuedShares(_strategy);
+        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
+        _middlewareTimesIndexes[0] = 0;
+
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes);
+    }
+
+    // function testCompleteQueuedWithdrawalsMultipleStratagies
+    // function testCompleteQueuedWithdrawalsWrongCaller
 
     //
     // processPrincipalWithdrawals
@@ -150,22 +189,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
     // claimWithdrawal
     //
 
-    // struct Withdrawal {
-    //     // The address that originated the Withdrawal
-    //     address staker;
-    //     // The address that the staker was delegated to at the time that the Withdrawal was created
-    //     address delegatedTo;
-    //     // The address that can complete the Withdrawal + will receive funds when completing the withdrawal
-    //     address withdrawer;
-    //     // Nonce used to guarantee that otherwise identical withdrawals have unique hashes
-    //     uint256 nonce;
-    //     // Block number when the Withdrawal was created
-    //     uint32 startBlock;
-    //     // Array of strategies that the Withdrawal contains
-    //     IStrategy[] strategies;
-    //     // Array containing the amount of shares in each Strategy in the `strategies` array
-    //     uint256[] shares;
-    // }
+    //
+    // internal helpers
+    //
 
     function _setupTokenStakingNode(uint256 _amount) private {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);

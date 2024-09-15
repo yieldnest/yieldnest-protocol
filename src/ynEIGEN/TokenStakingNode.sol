@@ -131,75 +131,147 @@ contract TokenStakingNode is
     //--------------------------------------------------------------------------------------
 
     function queueWithdrawals(
-        IStrategy[] calldata _strategies,
-        uint256[] calldata _shares
+        IStrategy _strategy,
+        uint256 _shares
     ) external onlyTokenStakingNodesWithdrawer returns (bytes32[] memory _fullWithdrawalRoots) {
 
+        IStrategy[] memory _strategiesArray = new IStrategy[](1);
+        _strategiesArray[0] = _strategy;
+        uint256[] memory _sharesArray = new uint256[](1);
+        _sharesArray[0] = _shares;
         IDelegationManager.QueuedWithdrawalParams[] memory _params = new IDelegationManager.QueuedWithdrawalParams[](1);
         _params[0] = IDelegationManager.QueuedWithdrawalParams({
-            strategies: _strategies,
-            shares: _shares,
+            strategies: _strategiesArray,
+            shares: _sharesArray,
             withdrawer: address(this)
         });
 
-        for (uint256 i = 0; i < _strategies.length; ++i) queuedShares[_strategies[i]] += _shares[i];
+        queuedShares[_strategy] += _shares;
 
         _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(_params);
 
-        emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots);
+        emit QueuedWithdrawals(_strategiesArray, _sharesArray, _fullWithdrawalRoots);
     }
 
-    // function completeQueuedWithdrawalsMultipleStratagies // @todo
-
+    // struct Withdrawal {
+    //     // The address that originated the Withdrawal
+    //     address staker;
+    //     // The address that the staker was delegated to at the time that the Withdrawal was created
+    //     address delegatedTo;
+    //     // The address that can complete the Withdrawal + will receive funds when completing the withdrawal
+    //     address withdrawer;
+    //     // Nonce used to guarantee that otherwise identical withdrawals have unique hashes
+    //     uint256 nonce;
+    //     // Block number when the Withdrawal was created
+    //     uint32 startBlock;
+    //     // Array of strategies that the Withdrawal contains
+    //     IStrategy[] strategies;
+    //     // Array containing the amount of shares in each Strategy in the `strategies` array
+    //     uint256[] shares;
+    // }
     function completeQueuedWithdrawals(
-        IDelegationManager.Withdrawal[] memory _withdrawals,
+        uint256 _nonce,
+        uint32 _startBlock,
+        uint256 _shares,
+        IStrategy _strategy,
         uint256[] memory _middlewareTimesIndexes
-    ) external onlyTokenStakingNodesWithdrawer {
+    ) public onlyTokenStakingNodesWithdrawer {
 
-        uint256 _withdrawalsLength = _withdrawals.length;
-        bool[] memory _receiveAsTokens = new bool[](_withdrawalsLength);
-        IERC20[][] memory _tokens = new IERC20[][](_withdrawalsLength);
+        IStrategy[] memory _strategiesArray = new IStrategy[](1);
+        _strategiesArray[0] = _strategy;
+        uint256[] memory _sharesArray = new uint256[](1);
+        _sharesArray[0] = _shares;
 
-        uint256 _totalShares;
-        IStrategy _allowedStrategy = _withdrawals[0].strategies[0];
-        IERC20 _allowedToken = _allowedStrategy.underlyingToken();
-        for (uint256 i = 0; i < _withdrawalsLength; ++i) {
-            if (_withdrawals[i].strategies[0] != _allowedStrategy) revert("DifferentTokensNotAllowed"); // @todo
-            if (_withdrawals[i].shares[0] == 0) revert("ZeroShares");// @todo
+        IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
 
-            uint256 _strategiesLength = _withdrawals[i].strategies.length;
-            if (
-                _strategiesLength != 1 ||
-                _withdrawals[i].shares.length != _strategiesLength
-            ) revert("OnlyOneStrategyPerWithdrawalAllowed"); // @todo
+        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
+        _withdrawals[0] = IDelegationManager.Withdrawal({
+            staker: address(this),
+            delegatedTo: _delegationManager.delegatedTo(address(this)),
+            withdrawer: address(this),
+            nonce: _nonce,
+            startBlock: _startBlock,
+            strategies: _strategiesArray,
+            shares: _sharesArray
+        });
 
-            _receiveAsTokens[i] = true;
+        uint256 _expectedAmountOut = _strategy.sharesToUnderlyingView(_shares);
 
-            _tokens[i] = new IERC20[](_strategiesLength);
-            _tokens[i][0] = _allowedToken;
+        IERC20 _token = _strategy.underlyingToken();
+        uint256 _balanceBefore = _token.balanceOf(address(this));
 
-            _totalShares += _withdrawals[i].shares[0];
-        }
+        bool[] memory _receiveAsTokens = new bool[](1);
+        _receiveAsTokens[0] = true;
+        IERC20[][] memory _tokens = new IERC20[][](1);
+        _tokens[0] = new IERC20[](1);
+        _tokens[0][0] = _token;
 
-        uint256 _expectedAmountOut = _allowedStrategy.sharesToUnderlyingView(_totalShares);
-        uint256 _balanceBefore = _allowedToken.balanceOf(address(this));
-
-        tokenStakingNodesManager.delegationManager().completeQueuedWithdrawals(
+        _delegationManager.completeQueuedWithdrawals(
             _withdrawals,
             _tokens,
             _middlewareTimesIndexes,
             _receiveAsTokens
         );
 
-        if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert("WithdrawalAmountMismatch"); // @todo
+        if (_token.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert("WithdrawalAmountMismatch"); // @todo
 
-        (_expectedAmountOut, _allowedToken) = _wrapIfNeeded(_expectedAmountOut, _allowedToken);
+        (_expectedAmountOut, _token) = _wrapIfNeeded(_expectedAmountOut, _token);
 
-        queuedShares[_allowedStrategy] -= _totalShares;
-        withdrawn[_allowedToken] += _expectedAmountOut;
+        queuedShares[_strategy] -= _shares;
+        withdrawn[_token] += _expectedAmountOut;
 
         // emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount); // @todo
     }
+
+    // function completeQueuedWithdrawals(
+    //     IDelegationManager.Withdrawal[] memory _withdrawals,
+    //     uint256[] memory _middlewareTimesIndexes
+    // ) public onlyTokenStakingNodesWithdrawer {
+
+    //     uint256 _withdrawalsLength = _withdrawals.length;
+    //     bool[] memory _receiveAsTokens = new bool[](_withdrawalsLength);
+    //     IERC20[][] memory _tokens = new IERC20[][](_withdrawalsLength);
+
+    //     uint256 _totalShares;
+    //     IStrategy _allowedStrategy = _withdrawals[0].strategies[0];
+    //     IERC20 _allowedToken = _allowedStrategy.underlyingToken();
+    //     for (uint256 i = 0; i < _withdrawalsLength; ++i) {
+    //         if (_withdrawals[i].strategies[0] != _allowedStrategy) revert("DifferentTokensNotAllowed"); // @todo
+    //         if (_withdrawals[i].shares[0] == 0) revert("ZeroShares");// @todo
+
+    //         uint256 _strategiesLength = _withdrawals[i].strategies.length;
+    //         if (
+    //             _strategiesLength != 1 ||
+    //             _withdrawals[i].shares.length != _strategiesLength
+    //         ) revert("OnlyOneStrategyPerWithdrawalAllowed"); // @todo
+
+    //         _receiveAsTokens[i] = true;
+
+    //         _tokens[i] = new IERC20[](_strategiesLength);
+    //         _tokens[i][0] = _allowedToken;
+
+    //         _totalShares += _withdrawals[i].shares[0];
+    //     }
+
+    //     uint256 _expectedAmountOut = _allowedStrategy.sharesToUnderlyingView(_totalShares);
+    //     uint256 _balanceBefore = _allowedToken.balanceOf(address(this));
+
+    //     tokenStakingNodesManager.delegationManager().completeQueuedWithdrawals(
+    //         _withdrawals,
+    //         _tokens,
+    //         _middlewareTimesIndexes,
+    //         _receiveAsTokens
+    //     );
+
+    //     if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert("WithdrawalAmountMismatch"); // @todo
+
+    //     (_expectedAmountOut, _allowedToken) = _wrapIfNeeded(_expectedAmountOut, _allowedToken);
+
+    //     queuedShares[_allowedStrategy] -= _totalShares;
+    //     withdrawn[_allowedToken] += _expectedAmountOut;
+
+    //     // emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount); // @todo
+    // }
     function _wrapIfNeeded(uint256 _amount, IERC20 _token) internal returns (uint256, IERC20) {
         IYieldNestStrategyManager _strategyManager =
             IYieldNestStrategyManager(IStrategyManagerExt(address(tokenStakingNodesManager)).yieldNestStrategyManager());

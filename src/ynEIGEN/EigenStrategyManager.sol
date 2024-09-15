@@ -16,7 +16,6 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
     event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
@@ -308,13 +307,17 @@ contract EigenStrategyManager is
                 );
 
                 // // //
-                // uint256 strategyExitQueueBalance = strategies[asset].sharesToUnderlyingView(node.queuedShares(strategies[asset]));
+                uint256 strategyWithdrawalQueueBalance;
+                uint256 queuedShares = node.queuedShares(strategies[asset]);
+                if (queuedShares > 0)
+                    strategyWithdrawalQueueBalance = toUserAssetAmount(asset, strategies[asset].sharesToUnderlyingView(queuedShares));
                 // uint256 strategyWithdrawnBalance = node.withdrawn(asset);
 
-                // stakedBalances[j] += strategyBalance + strategyExitQueueBalance + strategyWithdrawnBalance;
+                // stakedBalances[j] += strategyBalance + strategyWithdrawalQueueBalance + strategyWithdrawnBalance;
+                stakedBalances[j] += strategyBalance + strategyWithdrawalQueueBalance;
                 // // // @todo
 
-                stakedBalances[j] += strategyBalance;
+                // stakedBalances[j] += strategyBalance;
             }
         }
     }
