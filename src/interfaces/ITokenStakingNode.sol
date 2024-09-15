@@ -5,6 +5,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 interface ITokenStakingNode {
 
@@ -38,7 +39,8 @@ interface ITokenStakingNode {
 
     function undelegate() external;
 
-    function queueWithdrawals(IStrategy[] calldata _strategies, uint256[] calldata _shares) external returns (bytes32[] memory _fullWithdrawalRoots);
+    function queueWithdrawals(IStrategy _strategy, uint256 _shares) external returns (bytes32[] memory _fullWithdrawalRoots);
+    function completeQueuedWithdrawals(uint256 _nonce, uint32 _startBlock, uint256 _shares, IStrategy _strategy, uint256[] memory _middlewareTimesIndexes) external;
 
     function deallocateTokens(IERC20 _token, uint256 _amount) external;
 
