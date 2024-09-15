@@ -284,14 +284,14 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         // Update ynEigen's balance and approve it to pull the assets
         if (_action.amountToReinvest > 0) {
             IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
-            IERC20(_action.asset).approve(address(_ynEigen), _action.amountToReinvest);
+            IERC20(_action.asset).forceApprove(address(_ynEigen), _action.amountToReinvest);
             _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
         }
 
         // Update the redemption assets vault's balance and approve it to pull the assets
         if (_action.amountToQueue > 0) {
             IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
-            IERC20(_action.asset).approve(address(_redemptionAssetsVault), _action.amountToQueue);
+            IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
             _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
         }
 

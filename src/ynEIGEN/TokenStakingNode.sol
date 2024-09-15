@@ -12,6 +12,8 @@ import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfa
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(
@@ -22,6 +24,18 @@ interface ITokenStakingNodeEvents {
     );
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
+    event QueuedWithdrawals(IStrategy[] _strategies, uint256[] _shares, bytes32[] _fullWithdrawalRoots);
+}
+
+interface IYieldNestStrategyManager {
+    function wstETH() external view returns (IwstETH);
+    function stETH() external view returns (IERC20);
+    function woETH() external view returns (IERC4626);
+    function oETH() external view returns (IERC20);
+}
+
+interface IStrategyManagerExt {
+    function yieldNestStrategyManager() external view returns (address);
 }
 
 /**
@@ -54,7 +68,7 @@ contract TokenStakingNode is
     ITokenStakingNodesManager public override tokenStakingNodesManager;
     uint256 public nodeId;
 
-    mapping(IERC20 => uint256) public queuedShares;
+    mapping(IStrategy => uint256) public queuedShares;
     mapping(IERC20 => uint256) public withdrawn;
 
     //--------------------------------------------------------------------------------------
@@ -128,15 +142,14 @@ contract TokenStakingNode is
             withdrawer: address(this)
         });
 
+        for (uint256 i = 0; i < _strategies.length; ++i) queuedShares[_strategies[i]] += _shares[i];
+
         _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(_params);
 
-        uint256 _strategiesLength = _strategies.length;
-        for (uint256 i = 0; i < _strategiesLength; ++i) queuedShares[_strategies[i].underlyingToken()] += _shares[i];
-
-        // emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots); // @todo
+        emit QueuedWithdrawals(_strategies, _shares, _fullWithdrawalRoots);
     }
 
-    // function completeQueuedWithdrawalsMultipleTokens // @todo
+    // function completeQueuedWithdrawalsMultipleStratagies // @todo
 
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory _withdrawals,
@@ -147,30 +160,28 @@ contract TokenStakingNode is
         bool[] memory _receiveAsTokens = new bool[](_withdrawalsLength);
         IERC20[][] memory _tokens = new IERC20[][](_withdrawalsLength);
 
-        uint256 _expectedAmountOut;
-        IERC20 _allowedToken = _withdrawals[0].strategies[0].underlyingToken();
+        uint256 _totalShares;
+        IStrategy _allowedStrategy = _withdrawals[0].strategies[0];
+        IERC20 _allowedToken = _allowedStrategy.underlyingToken();
         for (uint256 i = 0; i < _withdrawalsLength; ++i) {
-            _receiveAsTokens[i] = true;
+            if (_withdrawals[i].strategies[0] != _allowedStrategy) revert("DifferentTokensNotAllowed"); // @todo
+            if (_withdrawals[i].shares[0] == 0) revert("ZeroShares");// @todo
 
             uint256 _strategiesLength = _withdrawals[i].strategies.length;
             if (
                 _strategiesLength != 1 ||
                 _withdrawals[i].shares.length != _strategiesLength
-            ) revert("OnlyOneStrategyPerWithdrawalAllowed");
-            // ) revert OnlyOneStrategyPerWithdrawalAllowed(); // @todo
+            ) revert("OnlyOneStrategyPerWithdrawalAllowed"); // @todo
 
-            // if (_withdrawals[i].strategies[0].underlyingToken() != _allowedToken) revert DifferentTokensNotAllowed(); // @todo
-            if (_withdrawals[i].strategies[0].underlyingToken() != _allowedToken) revert("DifferentTokensNotAllowed");
-
-            uint256 _shares = _withdrawals[i].shares[0];
-            // if (_shares == 0) revert ZeroShares(); // @todo
-            if (_shares == 0) revert("ZeroShares");
-            _expectedAmountOut += _shares;
+            _receiveAsTokens[i] = true;
 
             _tokens[i] = new IERC20[](_strategiesLength);
             _tokens[i][0] = _allowedToken;
+
+            _totalShares += _withdrawals[i].shares[0];
         }
 
+        uint256 _expectedAmountOut = _allowedStrategy.sharesToUnderlyingView(_totalShares);
         uint256 _balanceBefore = _allowedToken.balanceOf(address(this));
 
         tokenStakingNodesManager.delegationManager().completeQueuedWithdrawals(
@@ -180,19 +191,39 @@ contract TokenStakingNode is
             _receiveAsTokens
         );
 
-        // if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert WithdrawalAmountMismatch(); // @todo
-        if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert("WithdrawalAmountMismatch");
+        if (_allowedToken.balanceOf(address(this)) - _balanceBefore != _expectedAmountOut) revert("WithdrawalAmountMismatch"); // @todo
 
-        queuedShares[_allowedToken] -= _expectedAmountOut;
+        (_expectedAmountOut, _allowedToken) = _wrapIfNeeded(_expectedAmountOut, _allowedToken);
+
+        queuedShares[_allowedStrategy] -= _totalShares;
         withdrawn[_allowedToken] += _expectedAmountOut;
 
         // emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount); // @todo
+    }
+    function _wrapIfNeeded(uint256 _amount, IERC20 _token) internal returns (uint256, IERC20) {
+        IYieldNestStrategyManager _strategyManager =
+            IYieldNestStrategyManager(IStrategyManagerExt(address(tokenStakingNodesManager)).yieldNestStrategyManager());
+        IwstETH _wstETH = _strategyManager.wstETH();
+        IERC20 _stETH = _strategyManager.stETH();
+        IERC4626 _woETH = _strategyManager.woETH();
+        IERC20 _oETH = _strategyManager.oETH();
+        if (_token == _stETH) {
+            _stETH.forceApprove(address(_wstETH), _amount);
+            uint256 _wstETHAmount = _wstETH.wrap(_amount);
+            return (_wstETHAmount, IERC20(_wstETH));
+        } else if (_token == _oETH) {
+            _oETH.forceApprove(address(_woETH), _amount);
+            uint256 _woETHShares = _woETH.deposit(_amount, address(this));
+            return (_woETHShares, IERC20(_woETH));
+        } else {
+            return (_amount, _token);
+        }
     }
 
     function deallocateTokens(IERC20 _token, uint256 _amount) external onlyTokenStakingNodesManager {
 
         withdrawn[_token] -= _amount;
-        _token.approve(address(tokenStakingNodesManager), _amount);
+        _token.forceApprove(address(tokenStakingNodesManager), _amount);
 
         // emit DeallocatedTokens(_amount, _token); // @todo
     }
