@@ -232,9 +232,9 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     function convertToAssets(IERC20 asset, uint256 shares) public view returns (uint256) {
         if(assetIsSupported(asset)) {
            return assetRegistry.convertFromUnitOfAccount(
-            asset,
-            _convertToAssets(shares, Math.Rounding.Floor)
-        );
+                asset,
+                _convertToAssets(shares, Math.Rounding.Floor)
+            );
         } else {
             return _convertToAssets(shares, Math.Rounding.Floor);
         }

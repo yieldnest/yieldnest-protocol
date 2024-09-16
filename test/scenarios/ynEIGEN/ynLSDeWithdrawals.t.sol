@@ -93,6 +93,19 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
             });
             withdrawalQueueManager.initialize(_init);
         }
+
+        // unpause transfers
+        {
+            vm.prank(actors.admin.UNPAUSE_ADMIN);
+            yneigen.unpauseTransfers();
+        }
+
+        // grant burner role
+        {
+            vm.startPrank(actors.admin.STAKING_ADMIN);
+            yneigen.grantRole(yneigen.BURNER_ROLE(), address(withdrawalQueueManager));
+            vm.stopPrank();
+        }
     }
 
     //
@@ -300,15 +313,99 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore + _availableToWithdraw / 2, "testProcessPrincipalWithdrawals: E6");
     }
 
-    // testProcessPrincipalWithdrawalsNoReinvest // @todo - here
+    function testProcessPrincipalWithdrawalsNoReinvest(uint256 _amount) public {
+        testCompleteAllWithdrawals(_amount);
+
+        uint256 _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        ITokenStakingNodesManager.WithdrawalAction[] memory _actions = new ITokenStakingNodesManager.WithdrawalAction[](3);
+        _actions[0] = ITokenStakingNodesManager.WithdrawalAction({
+            nodeId: tokenStakingNode.nodeId(),
+            amountToReinvest: 0,
+            amountToQueue: _availableToWithdraw,
+            asset: chainAddresses.lsd.WSTETH_ADDRESS
+        });
+        _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+        _actions[1] = ITokenStakingNodesManager.WithdrawalAction({
+            nodeId: tokenStakingNode.nodeId(),
+            amountToReinvest: 0,
+            amountToQueue: _availableToWithdraw,
+            asset: chainAddresses.lsd.WOETH_ADDRESS
+        });
+        _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+        _actions[2] = ITokenStakingNodesManager.WithdrawalAction({
+            nodeId: tokenStakingNode.nodeId(),
+            amountToReinvest: 0,
+            amountToQueue: _availableToWithdraw,
+            asset: chainAddresses.lsd.SFRXETH_ADDRESS
+        });
+
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+        uint256 _ynEigenWSTETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
+        uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
+
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        tokenStakingNodesManager.processPrincipalWithdrawals(_actions);
+
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawalsNoReinvest: E0");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw, 5, "testProcessPrincipalWithdrawalsNoReinvest: E1");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw, 5, "testProcessPrincipalWithdrawalsNoReinvest: E2");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw, 5, "testProcessPrincipalWithdrawalsNoReinvest: E3");
+        assertEq(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E4");
+        assertEq(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E5");
+        assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E6");
+    }
 
     //
     // requestWithdrawal
     //
 
+    function testRequestWithdrawal(uint256 _amount) public {
+        testProcessPrincipalWithdrawalsNoReinvest(_amount);
+
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+
+        uint256 _userYnLSDeBalance = yneigen.balanceOf(user);
+        vm.startPrank(user);
+        yneigen.approve(address(withdrawalQueueManager), _userYnLSDeBalance);
+        uint256 _tokenId = withdrawalQueueManager.requestWithdrawal(_userYnLSDeBalance);
+        vm.stopPrank();
+
+        assertApproxEqAbs(
+            withdrawalQueueManager.pendingRequestedRedemptionAmount(),
+            assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), _amount) + assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WOETH_ADDRESS), _amount) + assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), _amount),
+            1000,
+            "testRequestWithdrawal: E0"
+        );
+        assertEq(_tokenId, 0, "testRequestWithdrawal: E1");
+        assertEq(_totalAssetsBefore, yneigen.totalAssets(), "testRequestWithdrawal: E2");
+    }
+
     //
     // claimWithdrawal
     //
+
+    function testClaimWithdrawal(uint256 _amount) public {
+        testRequestWithdrawal(_amount);
+
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        withdrawalQueueManager.finalizeRequestsUpToIndex(1);
+
+        uint256 _userWSTETHBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user);
+        uint256 _userWOETHBalanceBefore = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user);
+        uint256 _userSFRXETHBalanceBefore = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user);
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+        uint256 _redemptionRateBefore = redemptionAssetsVault.redemptionRate();
+
+        vm.prank(user);
+        withdrawalQueueManager.claimWithdrawal(0, user);
+
+        assertEq(IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user), _userWSTETHBalanceBefore + _amount, "testClaimWithdrawal: E0");
+        assertEq(IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user), _userWOETHBalanceBefore + _amount, "testClaimWithdrawal: E1");
+        assertEq(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user), _userSFRXETHBalanceBefore + _amount, "testClaimWithdrawal: E2");
+        assertLt(yneigen.totalAssets(), _totalAssetsBefore, "testClaimWithdrawal: E3");
+        assertEq(redemptionAssetsVault.redemptionRate(), _redemptionRateBefore, "testClaimWithdrawal: E4");
+    }
 
     //
     // internal helpers
