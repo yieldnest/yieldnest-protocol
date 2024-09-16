@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 interface IYieldNestStrategyManager {
 
@@ -12,5 +13,7 @@ interface IYieldNestStrategyManager {
     function getStakedAssetBalance(IERC20 asset) external view returns (uint256 stakedBalance);
 
     function supportsAsset(IERC20 asset) external view returns (bool);
+
+    function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);
 
 }

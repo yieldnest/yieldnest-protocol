@@ -9,9 +9,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
-import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {ITokenStakingNodesManager, IRedemptionAssetsVaultExt} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
-import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 
 interface ITokenStakingNodesManagerEvents {
@@ -24,10 +23,8 @@ interface ITokenStakingNodesManagerEvents {
     event RegisteredStakingNodeImplementationContract(address upgradeableBeaconAddress, address implementationContract);
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
-}
 
-interface IRedemptionAssetsVaultExt is IRedemptionAssetsVault {
-    function deposit(uint256 amount, address asset) external;
+    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
 }
 
 contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNodesManager, ITokenStakingNodesManagerEvents {
@@ -143,6 +140,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     ) external onlyRole(DEFAULT_ADMIN_ROLE) reinitializer(2) notZeroAddress(_redemptionAssetsVault) {
         redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
         _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
     }
 
     //--------------------------------------------------------------------------------------
@@ -276,26 +274,23 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
 
         uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
 
-        // Update the node's asset balance and pull the assets to this contract
         ITokenStakingNode _node = nodes[_action.nodeId];
         _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
         IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
 
-        // Update ynEigen's balance and approve it to pull the assets
         if (_action.amountToReinvest > 0) {
             IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
             IERC20(_action.asset).forceApprove(address(_ynEigen), _action.amountToReinvest);
             _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
         }
 
-        // Update the redemption assets vault's balance and approve it to pull the assets
         if (_action.amountToQueue > 0) {
             IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
             IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
             _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
         }
 
-        // emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue); // @todo
+        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
     }
 
     //--------------------------------------------------------------------------------------

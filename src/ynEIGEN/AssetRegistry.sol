@@ -10,7 +10,7 @@ import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
-
+import {IRedemptionAssetsVaultExt} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 interface IAssetRegistryEvents {
     event AssetAdded(address indexed asset);
@@ -286,8 +286,10 @@ interface IAssetRegistryEvents {
             revert LengthMismatch(assetsCount, stakedAssetBalances.length);
         }
 
+        IRedemptionAssetsVaultExt redemptionAssetsVault = strategyManager.tokenStakingNodesManager().redemptionAssetsVault();
         for (uint256 i = 0; i < assetsCount; i++) {
             assetBalances[i] += stakedAssetBalances[i];
+            if (address(redemptionAssetsVault) != address(0)) assetBalances[i] += redemptionAssetsVault.balances(address(assets[i]));
         }
     }
 
