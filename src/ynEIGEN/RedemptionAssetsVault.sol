@@ -121,9 +121,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
      */
     function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */) public onlyRedeemer whenNotPaused nonReentrant {
         uint256 balance = availableRedemptionAssets();
-        if (balance < amount) {
-            revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
-        }
+        if (balance < amount) revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
 
         IERC20[] memory assets = assetRegistry.getAssets();
         for (uint256 i = 0; i < assets.length; ++i) {

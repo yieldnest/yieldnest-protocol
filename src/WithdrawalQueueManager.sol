@@ -390,7 +390,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         uint256 amount,
         uint256 redemptionRate
     ) public view returns (uint256) {
-        return amount * redemptionRate / (10 ** redeemableAsset.decimals());
+        return amount * redemptionRate / (10 ** redeemableAsset.decimals()); // @todo
     }
 
     /**
