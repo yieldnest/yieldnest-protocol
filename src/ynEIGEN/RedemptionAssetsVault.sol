@@ -24,6 +24,13 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     error InsufficientAssetBalance(address asset, uint256 requestedAmount, uint256 balance);
     error ContractPaused();
     error NotRedeemer(address caller);
+    error AssetNotSupported();
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  EVENTS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    event AssetDeposited(address indexed asset, address indexed sender, uint256 amount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -74,13 +81,12 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     //--------------------------------------------------------------------------------------
 
     function deposit(uint256 amount, address asset) external {
-        // if (!assetRegistry.assetIsSupported(asset)) revert AssetNotSupported(); // @todo
-        if (!assetRegistry.assetIsSupported(IERC20(asset))) revert("AssetNotSupported");
+        if (!assetRegistry.assetIsSupported(IERC20(asset))) revert AssetNotSupported();
 
         balances[asset] += amount;
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
 
-        // emit AssetDeposited(asset, msg.sender, amount); // @todo
+        emit AssetDeposited(asset, msg.sender, amount);
     }
 
     /** 

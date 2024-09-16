@@ -7,6 +7,8 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
+import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 import {ynBase} from "src/ynBase.sol";
 
@@ -17,6 +19,7 @@ interface IynEigenEvents {
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
     event DepositsPausedUpdated(bool paused);
+    event WithdrawProcessed(uint256 amount, uint256 newBalance, address asset);
 }
 
 contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
@@ -40,6 +43,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     error NotStrategyManager(address msgSender);
     error InsufficientAssetBalance(IERC20 asset, uint256 balance, uint256 requestedAmount);
     error ZeroShares();
+    error CallerNotAuthorized();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES --------------------------------------------
@@ -323,17 +327,19 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
 
     function processWithdrawn(uint256 _amount, address _asset) public {
         if (_amount == 0) revert ZeroAmount();
-        // if (
-        //     msg.sender != address(tokenStakingNodesManager) ||
-        //     msg.sender != address(tokenStakingNodesManager.redemptionAssetsVault())
-        // ) revert CallerNotAuthorized(msg.sender); // @todo
+
+        ITokenStakingNodesManager _tokenStakingNodesManager = IEigenStrategyManager(yieldNestStrategyManager).tokenStakingNodesManager();
+        if (
+            msg.sender != address(_tokenStakingNodesManager) &&
+            msg.sender != address(_tokenStakingNodesManager.redemptionAssetsVault())
+        ) revert CallerNotAuthorized();
 
         uint256 _newBalance = assets[_asset].balance + _amount;
         assets[_asset].balance = _newBalance;
 
         IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);
 
-        // emit WithdrawProcessed(_amount, _newBalance, _asset); // @todo
+        emit WithdrawProcessed(_amount, _newBalance, _asset);
     }
 
     //--------------------------------------------------------------------------------------

@@ -5,6 +5,12 @@ import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beac
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+
+interface IRedemptionAssetsVaultExt is IRedemptionAssetsVault {
+    function deposit(uint256 amount, address asset) external;
+    function balances(address asset) external view returns (uint256 amount);
+}
 
 interface ITokenStakingNodesManager {
 
@@ -34,4 +40,5 @@ interface ITokenStakingNodesManager {
     function isStakingNodesWithdrawer(address _address) external view returns (bool);
 
     function getNodeById(uint256 nodeId) external view returns (ITokenStakingNode);
+    function redemptionAssetsVault() external view returns (IRedemptionAssetsVaultExt);
 }

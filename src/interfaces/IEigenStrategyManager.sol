@@ -6,6 +6,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 
 interface IEigenStrategyManager {
 
@@ -22,4 +23,5 @@ interface IEigenStrategyManager {
     function oETH() external view returns (IERC20);
     function stETH() external view returns (IERC20);
     function ynEigen() external view returns (IynEigen);
+    function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);
 }
