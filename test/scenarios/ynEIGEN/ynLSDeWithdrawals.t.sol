@@ -2,17 +2,20 @@
 pragma solidity ^0.8.24;
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 
-import "./ynLSDeUpgradeScenario.sol";
+import "./ynLSDeScenarioBaseTest.sol";
 
-contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
+contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
     bool private _setup = true;
 
@@ -25,14 +28,33 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
     uint256 public constant AMOUNT = 1 ether;
 
     function setUp() public override {
-        uint256 _blockNumber = 20768502;
-        vm.selectFork(vm.createFork("https://eth-mainnet.g.alchemy.com/v2/GWBlcyYZH65PHOKw_l-9pvqYdwJFPo4-", _blockNumber));
         super.setUp();
 
-        // upgrades the contracts
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+
+        // upgrade tokenStakingNode implementation
         {
-            test_Upgrade_TokenStakingNodeImplementation_Scenario();
-            test_Upgrade_AllContracts_Batch();
+            _upgradeTokenStakingNodeImplementation();
+        }
+
+        // upgrade ynLSDe
+        {
+            _upgradeContract(address(yneigen), address(new ynEigen()));
+        }
+
+        // upgrade EigenStrategyManager
+        {
+            _upgradeContract(address(eigenStrategyManager), address(new EigenStrategyManager()));
+        }
+
+        // upgrade AssetRegistry
+        {
+            _upgradeContract(address(assetRegistry), address(new AssetRegistry()));
+        }
+
+        // upgrade TokenStakingNodesManager
+        {
+            _upgradeContract(address(tokenStakingNodesManager), address(new TokenStakingNodesManager()));
         }
 
         // deal assets to user
@@ -109,6 +131,8 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
             yneigen.grantRole(yneigen.BURNER_ROLE(), address(withdrawalQueueManager));
             vm.stopPrank();
         }
+
+        assertApproxEqRel(yneigen.totalAssets(), _totalAssetsBefore, 1e17, "setUp: E0"); // NOTE - not best practice to have it here, but for the time being...
     }
 
     //
@@ -440,6 +464,106 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
 
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
+        vm.stopPrank();
+    }
+
+    function _upgradeTokenStakingNodeImplementation() private {
+
+        ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
+
+        uint256 previousTotalAssets = yneigen.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
+
+        TokenStakingNode testStakingNodeV2 = new TokenStakingNode();
+        {
+            bytes memory _data = abi.encodeWithSignature(
+                "upgradeTokenStakingNode(address)",
+                testStakingNodeV2
+            );
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
+            timelockController.schedule(
+                address(tokenStakingNodesManager), // target
+                0, // value
+                _data,
+                bytes32(0), // predecessor
+                bytes32(0), // salt
+                timelockController.getMinDelay() // delay
+            );
+            vm.stopPrank();
+
+            uint256 minDelay;
+            if (block.chainid == 1) { // Mainnet
+                minDelay = 3 days;
+            } else if (block.chainid == 17000) { // Holesky
+                minDelay = 15 minutes;
+            } else {
+                revert("Unsupported chain ID");
+            }
+            skip(minDelay);
+
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
+            timelockController.execute(
+                address(tokenStakingNodesManager), // target
+                0, // value
+                _data,
+                bytes32(0), // predecessor
+                bytes32(0) // salt
+            );
+            vm.stopPrank();
+        }
+
+    
+        UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
+        address upgradedImplementationAddress = beacon.implementation();
+        assertEq(upgradedImplementationAddress, address(testStakingNodeV2));
+
+        // check tokenStakingNodesManager.getAllNodes is the same as before
+        ITokenStakingNode[] memory tokenStakingNodesAfter = tokenStakingNodesManager.getAllNodes();
+        assertEq(tokenStakingNodesAfter.length, tokenStakingNodesBefore.length, "TokenStakingNodes length mismatch after upgrade");
+        for (uint i = 0; i < tokenStakingNodesAfter.length; i++) {
+            assertEq(address(tokenStakingNodesAfter[i]), address(tokenStakingNodesBefore[i]), "TokenStakingNode address mismatch after upgrade");
+        }
+
+        assertApproxEqRel(yneigen.totalAssets(), previousTotalAssets, 1e17, "Total assets mismatch after upgrade");
+        assertEq(yneigen.totalSupply(), previousTotalSupply, "Total supply mismatch after upgrade");
+    }
+
+    function _upgradeContract(address _proxyAddress, address _newImplementation) private {
+        bytes memory _data = abi.encodeWithSignature(
+            "upgradeAndCall(address,address,bytes)",
+            _proxyAddress, // proxy
+            _newImplementation, // implementation
+            "" // no data
+        );
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.schedule(
+            getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
+            0, // value
+            _data,
+            bytes32(0), // predecessor
+            bytes32(0), // salt
+            timelockController.getMinDelay() // delay
+        );
+        vm.stopPrank();
+
+        uint256 minDelay;
+        if (block.chainid == 1) { // Mainnet
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) { // Holesky
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
+
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.execute(
+            getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
+            0, // value
+            _data,
+            bytes32(0), // predecessor
+            bytes32(0) // salt
+        );
         vm.stopPrank();
     }
 }
