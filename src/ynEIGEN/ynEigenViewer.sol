@@ -48,8 +48,9 @@ contract ynEigenViewer {
         _assetsInfo = new AssetInfo[](_assetsLength);
 
         uint256 _totalAssets = ynEIGEN.totalAssets();
+        uint256[] memory _assetBalances = assetRegistry.getAllAssetBalances();
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], ynEIGEN.assetBalance(_assets[i]));
+            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], _assetBalances[_assets[i]]);
             _assetsInfo[i] = AssetInfo({
                 asset: address(_assets[i]),
                 name: IERC20Metadata(address(_assets[i])).name(),
