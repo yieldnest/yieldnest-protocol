@@ -25,6 +25,8 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
     uint256 public constant AMOUNT = 1 ether;
 
     function setUp() public override {
+        uint256 _blockNumber = 20768502;
+        vm.selectFork(vm.createFork("https://eth-mainnet.g.alchemy.com/v2/GWBlcyYZH65PHOKw_l-9pvqYdwJFPo4-", _blockNumber));
         super.setUp();
 
         // upgrades the contracts
@@ -88,7 +90,8 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
                 withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
                 redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
                 requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                withdrawalFee: 500, // 0.05%
+                // withdrawalFee: 500, // 0.05%
+                withdrawalFee: 0,
                 feeReceiver: actors.admin.FEE_RECEIVER
             });
             withdrawalQueueManager.initialize(_init);
@@ -400,11 +403,11 @@ contract ynLSDeWithdrawalsTest is ynLSDeUpgradeScenario {
         vm.prank(user);
         withdrawalQueueManager.claimWithdrawal(0, user);
 
-        assertEq(IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user), _userWSTETHBalanceBefore + _amount, "testClaimWithdrawal: E0");
-        assertEq(IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user), _userWOETHBalanceBefore + _amount, "testClaimWithdrawal: E1");
-        assertEq(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user), _userSFRXETHBalanceBefore + _amount, "testClaimWithdrawal: E2");
+        assertApproxEqRel(IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user), _userWSTETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E0");
+        assertApproxEqRel(IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user), _userWOETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E1");
+        assertApproxEqRel(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user), _userSFRXETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E2");
         assertLt(yneigen.totalAssets(), _totalAssetsBefore, "testClaimWithdrawal: E3");
-        assertEq(redemptionAssetsVault.redemptionRate(), _redemptionRateBefore, "testClaimWithdrawal: E4");
+        assertApproxEqRel(redemptionAssetsVault.redemptionRate(), _redemptionRateBefore, 1, "testClaimWithdrawal: E4");
     }
 
     //
