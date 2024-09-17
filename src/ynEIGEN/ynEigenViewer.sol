@@ -12,6 +12,12 @@ import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
 
 
 contract ynEigenViewer {
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    error ArrayLengthMismatch(uint256 expected, uint256 actual);
     
     struct AssetInfo {
         address asset;
@@ -47,9 +53,17 @@ contract ynEigenViewer {
         uint256 _assetsLength = _assets.length;
         _assetsInfo = new AssetInfo[](_assetsLength);
 
+
+        uint256[] memory assetBalances = assetRegistry.getAllAssetBalances();
+        // Assert that the lengths of _assets and assetBalances are the same
+        if (_assetsLength != assetBalances.length) {
+            revert ArrayLengthMismatch(_assetsLength, assetBalances.length);
+        }
+
+
         uint256 _totalAssets = ynEIGEN.totalAssets();
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], ynEIGEN.assetBalance(_assets[i]));
+            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], assetBalances[i]);
             _assetsInfo[i] = AssetInfo({
                 asset: address(_assets[i]),
                 name: IERC20Metadata(address(_assets[i])).name(),
