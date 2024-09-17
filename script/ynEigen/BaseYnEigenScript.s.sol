@@ -105,7 +105,7 @@ contract BaseYnEigenScript is BaseScript {
         if (!isSupportedChainId(inputs.chainId)) revert UnsupportedChainId(inputs.chainId);
     }
 
-    function tokenName() internal view returns (string memory) {
+    function tokenName() internal virtual view returns (string memory) {
         return inputs.symbol;
     }
 
