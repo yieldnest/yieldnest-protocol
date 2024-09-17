@@ -23,7 +23,7 @@
   "proxy-eigenStrategyManager": "0x92D904019A92B0Cafce3492Abb95577C285A68fC",
   "proxy-rateProvider": "0xb658Cf6F4C232Be5c6035f2b42b96393089F20D9",
   "proxy-tokenStakingNodesManager": "0x6B566CB6cDdf7d140C59F84594756a151030a0C3",
-  "proxy-ynEigenDepositAdapter": "0xA9CD5a5199177b704287e379e85af95F0f061Bf2",
+  "proxy-ynEigenDepositAdapter": "0x9e72155d301a6555dc565315be72D295c76753c0",
   "proxy-ynEigenViewer": "0x9B933D84Fac0782F3B275D76B64a0DBf6FBEf28F",
   "proxyAdmin-YnLSDe": "0x1bfF798A6072597c401f7C83A6a1096Ae5F0aFf7",
   "proxyAdmin-assetRegistry": "0xDf92BE359fB53846cCdaC8FFF1884314533949C7",
