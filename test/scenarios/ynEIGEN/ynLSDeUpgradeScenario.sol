@@ -19,6 +19,11 @@ import {console} from "forge-std/console.sol";
 
 
 contract ynLSDeUpgradeScenario is ynLSDeScenarioBaseTest {
+
+    function setUp() public virtual override {
+        super.setUp();
+        test_Upgrade_TokenStakingNodeImplementation_Scenario();
+    }
     
     function test_Upgrade_ynLSDe_Scenario() public {
 

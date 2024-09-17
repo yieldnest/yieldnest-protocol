@@ -299,6 +299,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
         uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
 
+        // zero out the last decimal place
+        unitOfAccountAmount = unitOfAccountAmount / 10 * 10 - 10; // @todo - is this safe? (maybe easier to just do `- 20`?)
+
         pendingRequestedRedemptionAmount -= unitOfAccountAmount;
 
         _burn(tokenId);
