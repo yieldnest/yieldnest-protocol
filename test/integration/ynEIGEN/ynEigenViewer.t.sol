@@ -4,16 +4,28 @@ pragma solidity 0.8.24;
 import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {ITokenStakingNodesManager,ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNodesManager.sol";
-
+import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {ynEigenViewer} from "../../../src/ynEIGEN/ynEigenViewer.sol";
 import {console} from "forge-std/console.sol";
 import "./ynEigenIntegrationBaseTest.sol";
+
+
 
 interface IAssetRegistryView {
     function assets() external view returns (IERC20Metadata[] memory);
 }
 
 contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
+
+    TestAssetUtils testAssetUtils;
+    address[10] public depositors;
+
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+        for (uint i = 0; i < 10; i++) {
+            depositors[i] = address(uint160(uint256(keccak256(abi.encodePacked("depositor", i)))));
+        }
+    }
 
     ynEigenViewer private _ynEigenViewer;
 
@@ -53,7 +65,7 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         uint256 rEthAmount = 0.75 ether;
 
         // Create a user for deposits
-        address user = makeAddr("user");
+        address user = makeAddr("userXYZ");
 
         // Make deposits to the user
         deal(address(chainAddresses.lsd.SFRXETH_ADDRESS), user, sfrxEthAmount);
@@ -79,9 +91,42 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         // Get asset info after deposits
         ynEigenViewer.AssetInfo[] memory assetsInfo = _ynEigenViewer.getYnEigenAssets();
 
+        {
+            vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
+            tokenStakingNodesManager.createTokenStakingNode();
+            tokenStakingNodesManager.createTokenStakingNode();
+            vm.stopPrank();
+
+            EigenStrategyManager.NodeAllocation[] memory allocations = new EigenStrategyManager.NodeAllocation[](2);
+            IERC20[] memory assets1 = new IERC20[](1);
+            uint256[] memory amounts1 = new uint256[](1);
+            assets1[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+            amounts1[0] = wstEthAmount / 4;
+
+            testAssetUtils.depositAsset(ynEigenToken, address(assets1[0]), amounts1[0], depositors[0]);
+
+            IERC20[] memory assets2 = new IERC20[](1);
+            uint256[] memory amounts2 = new uint256[](1);
+            assets2[0] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+            amounts2[0] = rEthAmount / 4;
+
+            testAssetUtils.depositAsset(ynEigenToken, address(assets2[0]), amounts2[0], depositors[1]);
+
+            allocations[0] = EigenStrategyManager.NodeAllocation(0, assets1, amounts1);
+            allocations[1] = EigenStrategyManager.NodeAllocation(1, assets2, amounts2);
+
+            uint256 totalAssetsBefore = ynEigenToken.totalAssets();
+
+            vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.stakeAssetsToNodes(allocations);
+            vm.stopPrank();
+
+            assertApproxEqRel(ynEigenToken.totalAssets(), totalAssetsBefore, 1e16, "Total assets should not change significantly after staking");
+        }
+
         // Calculate total assets
         uint256 totalAssets = ynEigenToken.totalAssets();
-        
+
         // Calculate the value of each deposit in ETH and its expected ratio
         uint256 sfrxEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), sfrxEthAmount);
         uint256 wstEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), wstEthAmount);
