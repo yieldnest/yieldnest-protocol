@@ -46,6 +46,71 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         }
     }
 
+    function testGetYnEigenAssetsAfterDeposits() public {
+        // Define deposit amounts
+        uint256 sfrxEthAmount = 1 ether;
+        uint256 wstEthAmount = 0.5 ether;
+        uint256 rEthAmount = 0.75 ether;
+
+        // Create a user for deposits
+        address user = makeAddr("user");
+
+        // Make deposits to the user
+        deal(address(chainAddresses.lsd.SFRXETH_ADDRESS), user, sfrxEthAmount);
+        deal(address(chainAddresses.lsd.WSTETH_ADDRESS), user, wstEthAmount);
+        deal(address(chainAddresses.lsd.RETH_ADDRESS), user, rEthAmount);
+
+        // Switch to user context
+        vm.startPrank(user);
+
+        // Approve and deposit tokens
+        IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).approve(address(ynEigenToken), sfrxEthAmount);
+        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(ynEigenToken), wstEthAmount);
+        IERC20(chainAddresses.lsd.RETH_ADDRESS).approve(address(ynEigenToken), rEthAmount);
+
+        ynEigenToken.deposit(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), sfrxEthAmount, user);
+        ynEigenToken.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), wstEthAmount, user);
+        ynEigenToken.deposit(IERC20(chainAddresses.lsd.RETH_ADDRESS), rEthAmount, user);
+        
+        // End user context
+        vm.stopPrank();
+
+
+        // Get asset info after deposits
+        ynEigenViewer.AssetInfo[] memory assetsInfo = _ynEigenViewer.getYnEigenAssets();
+
+        // Calculate total assets
+        uint256 totalAssets = ynEigenToken.totalAssets();
+        
+        // Calculate the value of each deposit in ETH and its expected ratio
+        uint256 sfrxEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), sfrxEthAmount);
+        uint256 wstEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), wstEthAmount);
+        uint256 rEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.RETH_ADDRESS), rEthAmount);
+        
+        uint256 totalValueInEth = sfrxEthValueInEth + wstEthValueInEth + rEthValueInEth;
+        
+        uint256 expectedSfrxEthRatio = (sfrxEthValueInEth * 1e6) / totalValueInEth;
+        uint256 expectedWstEthRatio = (wstEthValueInEth * 1e6) / totalValueInEth;
+        uint256 expectedREthRatio = (rEthValueInEth * 1e6) / totalValueInEth;
+
+        // Verify asset info
+        for (uint256 i = 0; i < assetsInfo.length; i++) {
+            if (assetsInfo[i].asset == address(chainAddresses.lsd.SFRXETH_ADDRESS)) {
+                assertEq(assetsInfo[i].totalBalance, sfrxEthValueInEth, "Incorrect sfrxETH balance");
+                assertApproxEqRel(assetsInfo[i].ratioOfTotalAssets, expectedSfrxEthRatio, 1e16, "Incorrect sfrxETH ratio");
+            } else if (assetsInfo[i].asset == address(chainAddresses.lsd.WSTETH_ADDRESS)) {
+                assertEq(assetsInfo[i].totalBalance, wstEthValueInEth, "Incorrect wstETH balance");
+                assertApproxEqRel(assetsInfo[i].ratioOfTotalAssets, expectedWstEthRatio, 1e16, "Incorrect wstETH ratio");
+            } else if (assetsInfo[i].asset == address(chainAddresses.lsd.RETH_ADDRESS)) {
+                assertEq(assetsInfo[i].totalBalance, rEthValueInEth, "Incorrect rETH balance");
+                assertApproxEqRel(assetsInfo[i].ratioOfTotalAssets, expectedREthRatio, 1e16, "Incorrect rETH ratio");
+            } else {
+                assertEq(assetsInfo[i].totalBalance, 0, "Non-zero balance for undeposited asset");
+                assertEq(assetsInfo[i].ratioOfTotalAssets, 0, "Non-zero ratio for undeposited asset");
+            }
+        }
+    }
+
     function testPreviewDepositStETH() public {
         // Set up test amount
         uint256 testAmount = 1 ether;
