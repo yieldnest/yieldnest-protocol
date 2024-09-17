@@ -23,8 +23,10 @@ contract ynEigenViewer {
         address asset;
         string name;
         string symbol;
+        uint256 rate;
         uint256 ratioOfTotalAssets;
-        uint256 totalBalance;
+        uint256 totalBalanceInUnitOfAccount;
+        uint256 totalBalanceInAsset;
     }
     
     /* solhint-disable immutable-vars-naming */
@@ -60,16 +62,19 @@ contract ynEigenViewer {
             revert ArrayLengthMismatch(_assetsLength, assetBalances.length);
         }
 
-
         uint256 _totalAssets = ynEIGEN.totalAssets();
+
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], assetBalances[i]);
+            uint256 assetBalance = assetBalances[i];
+            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], assetBalance);
             _assetsInfo[i] = AssetInfo({
                 asset: address(_assets[i]),
                 name: IERC20Metadata(address(_assets[i])).name(),
                 symbol: IERC20Metadata(address(_assets[i])).symbol(),
+                rate: rateProvider.rate(address(_assets[i])),
                 ratioOfTotalAssets: (_balance > 0 && _totalAssets > 0) ? _balance * DECIMALS / _totalAssets : 0,
-                totalBalance: _balance
+                totalBalanceInUnitOfAccount: _balance,
+                totalBalanceInAsset: assetBalance
             });
         }
     }
