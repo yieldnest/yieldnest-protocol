@@ -14,10 +14,8 @@ import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
 contract ynEigenViewer {
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  ERRORS  ------------------------------------------
+    //----------------------------------  STRUCTS  -----------------------------------------
     //--------------------------------------------------------------------------------------
-
-    error ArrayLengthMismatch(uint256 expected, uint256 actual);
     
     struct AssetInfo {
         address asset;
@@ -28,6 +26,23 @@ contract ynEigenViewer {
         uint256 totalBalanceInUnitOfAccount;
         uint256 totalBalanceInAsset;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    error ArrayLengthMismatch(uint256 expected, uint256 actual);
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint256 public constant DECIMALS = 1_000_000;
+    uint256 public constant UNIT = 1 ether;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
     
     /* solhint-disable immutable-vars-naming */
     AssetRegistry public immutable assetRegistry;
@@ -36,8 +51,9 @@ contract ynEigenViewer {
     IRateProvider public immutable rateProvider;
     /* solhint-enable immutable-vars-naming */
 
-    uint256 public constant DECIMALS = 1_000_000;
-    uint256 public constant UNIT = 1 ether;
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
     constructor(address _assetRegistry, address _ynEIGEN, address _tokenStakingNodesManager, address _rateProvider) {
         assetRegistry = AssetRegistry(_assetRegistry);
@@ -46,15 +62,25 @@ contract ynEigenViewer {
         rateProvider = IRateProvider(_rateProvider);
     }
 
+    /**
+     * @notice Retrieves all staking nodes from the TokenStakingNodesManager
+     * @dev This function calls the getAllNodes() function of the tokenStakingNodesManager contract
+     * @return An array of ITokenStakingNode interfaces representing all staking nodes
+     */
     function getAllStakingNodes() external view returns (ITokenStakingNode[] memory) {
         return tokenStakingNodesManager.getAllNodes();
     }
 
+    /**
+     * @notice Retrieves information about all assets in the ynEigen system
+     * @dev This function fetches asset data from the asset registry and ynEigen system
+     *      and computes various metrics for each asset
+     * @return _assetsInfo An array of AssetInfo structs containing detailed information about each asset
+     */
     function getYnEigenAssets() external view returns (AssetInfo[] memory _assetsInfo) {
         IERC20[] memory _assets = assetRegistry.getAssets();
         uint256 _assetsLength = _assets.length;
         _assetsInfo = new AssetInfo[](_assetsLength);
-
 
         uint256[] memory assetBalances = assetRegistry.getAllAssetBalances();
         // Assert that the lengths of _assets and assetBalances are the same
