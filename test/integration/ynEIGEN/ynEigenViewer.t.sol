@@ -125,9 +125,6 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
             assertApproxEqRel(ynEigenToken.totalAssets(), totalAssetsBefore, 1e16, "Total assets should not change significantly after staking");
         }
 
-        // Calculate total assets
-        uint256 totalAssets = ynEigenToken.totalAssets();
-
         // Calculate the value of each deposit in ETH and its expected ratio
         uint256 sfrxEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), sfrxEthAmount);
         uint256 wstEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), wstEthAmount);
@@ -138,6 +135,15 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         uint256 expectedSfrxEthRatio = (sfrxEthValueInEth * 1e6) / totalValueInEth;
         uint256 expectedWstEthRatio = (wstEthValueInEth * 1e6) / totalValueInEth;
         uint256 expectedREthRatio = (rEthValueInEth * 1e6) / totalValueInEth;
+
+        // Verify that the sum of total values in ETH matches totalAssets
+        uint256 summedTotalValueInEth = sfrxEthValueInEth + wstEthValueInEth + rEthValueInEth;
+        assertApproxEqRel(
+            summedTotalValueInEth,
+            ynEigenToken.totalAssets(),
+            1e18,
+            "Sum of asset values in ETH should approximately equal totalAssets"
+        );
 
         // Verify asset info
         for (uint256 i = 0; i < assetsInfo.length; i++) {
@@ -169,6 +175,15 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
                 assertEq(assetsInfo[i].rate, rateProvider.rate(assetsInfo[i].asset), "Rate mismatch with rateProvider for undeposited asset");
             }
         }
+
+        // Calculate the sum of all ratios
+        uint256 totalRatio = 0;
+        for (uint256 i = 0; i < assetsInfo.length; i++) {
+            totalRatio += assetsInfo[i].ratioOfTotalAssets;
+        }
+
+        // Assert that the sum of all ratios is approximately equal to 1e6 (100%)
+        assertApproxEqRel(totalRatio, 1e6, 1e18, "Sum of all asset ratios should be approximately 1e6 (100%)");
     }
 
     function testPreviewDepositStETH() public {
