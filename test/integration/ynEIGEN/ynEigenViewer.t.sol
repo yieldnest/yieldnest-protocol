@@ -54,7 +54,8 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
             assertEq(_assetsInfo[i].name, IERC20Metadata(address(_assets[i])).name(), "testGetYnEigenAssets: E2");
             assertEq(_assetsInfo[i].symbol, IERC20Metadata(address(_assets[i])).symbol(), "testGetYnEigenAssets: E3");
             assertEq(_assetsInfo[i].ratioOfTotalAssets, 0, "testGetYnEigenAssets: E4");
-            assertEq(_assetsInfo[i].totalBalance, 0, "testGetYnEigenAssets: E5");
+            assertEq(_assetsInfo[i].totalBalanceInUnitOfAccount, 0, "testGetYnEigenAssets: E5");
+            assertEq(_assetsInfo[i].totalBalanceInAsset, 0, "testGetYnEigenAssets: E5");
         }
     }
 
@@ -141,17 +142,31 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         // Verify asset info
         for (uint256 i = 0; i < assetsInfo.length; i++) {
             if (assetsInfo[i].asset == address(chainAddresses.lsd.SFRXETH_ADDRESS)) {
-                assertEq(assetsInfo[i].totalBalance, sfrxEthValueInEth, "Incorrect sfrxETH balance");
+                assertEq(assetsInfo[i].name, "Staked Frax Ether", "Incorrect sfrxETH name");
+                assertEq(assetsInfo[i].symbol, "sfrxETH", "Incorrect sfrxETH symbol");
+                assertEq(assetsInfo[i].totalBalanceInUnitOfAccount, sfrxEthValueInEth, "Incorrect sfrxETH balance in unit of account");
+                assertEq(assetsInfo[i].totalBalanceInAsset, sfrxEthAmount, "Incorrect sfrxETH balance in asset");
                 assertApproxEqRel(assetsInfo[i].ratioOfTotalAssets, expectedSfrxEthRatio, 1e16, "Incorrect sfrxETH ratio");
+                assertEq(assetsInfo[i].rate, rateProvider.rate(address(chainAddresses.lsd.SFRXETH_ADDRESS)), "sfrxETH rate mismatch with rateProvider");
             } else if (assetsInfo[i].asset == address(chainAddresses.lsd.WSTETH_ADDRESS)) {
-                assertEq(assetsInfo[i].totalBalance, wstEthValueInEth, "Incorrect wstETH balance");
+                assertEq(assetsInfo[i].name, "Wrapped liquid staked Ether 2.0", "Incorrect wstETH name");
+                assertEq(assetsInfo[i].symbol, "wstETH", "Incorrect wstETH symbol");
+                assertEq(assetsInfo[i].totalBalanceInUnitOfAccount, wstEthValueInEth, "Incorrect wstETH balance in unit of account");
+                assertEq(assetsInfo[i].totalBalanceInAsset, wstEthAmount, "Incorrect wstETH balance in asset");
                 assertApproxEqRel(assetsInfo[i].ratioOfTotalAssets, expectedWstEthRatio, 1e16, "Incorrect wstETH ratio");
+                assertEq(assetsInfo[i].rate, rateProvider.rate(address(chainAddresses.lsd.WSTETH_ADDRESS)), "wstETH rate mismatch with rateProvider");
             } else if (assetsInfo[i].asset == address(chainAddresses.lsd.RETH_ADDRESS)) {
-                assertEq(assetsInfo[i].totalBalance, rEthValueInEth, "Incorrect rETH balance");
+                assertEq(assetsInfo[i].name, "Rocket Pool ETH", "Incorrect rETH name");
+                assertEq(assetsInfo[i].symbol, "rETH", "Incorrect rETH symbol");
+                assertEq(assetsInfo[i].totalBalanceInUnitOfAccount, rEthValueInEth, "Incorrect rETH balance in unit of account");
+                assertEq(assetsInfo[i].totalBalanceInAsset, rEthAmount, "Incorrect rETH balance in asset");
                 assertApproxEqRel(assetsInfo[i].ratioOfTotalAssets, expectedREthRatio, 1e16, "Incorrect rETH ratio");
+                assertEq(assetsInfo[i].rate, rateProvider.rate(address(chainAddresses.lsd.RETH_ADDRESS)), "rETH rate mismatch with rateProvider");
             } else {
-                assertEq(assetsInfo[i].totalBalance, 0, "Non-zero balance for undeposited asset");
+                assertEq(assetsInfo[i].totalBalanceInUnitOfAccount, 0, "Non-zero balance for undeposited asset in unit of account");
+                assertEq(assetsInfo[i].totalBalanceInAsset, 0, "Non-zero balance for undeposited asset in asset");
                 assertEq(assetsInfo[i].ratioOfTotalAssets, 0, "Non-zero ratio for undeposited asset");
+                assertEq(assetsInfo[i].rate, rateProvider.rate(assetsInfo[i].asset), "Rate mismatch with rateProvider for undeposited asset");
             }
         }
     }
