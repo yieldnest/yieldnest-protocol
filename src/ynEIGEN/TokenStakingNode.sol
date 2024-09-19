@@ -34,10 +34,7 @@ interface IYieldNestStrategyManager {
     function stETH() external view returns (IERC20);
     function woETH() external view returns (IERC4626);
     function oETH() external view returns (IERC20);
-}
-
-interface IStrategyManagerExt {
-    function yieldNestStrategyManager() external view returns (address);
+    function isStakingNodesWithdrawer(address _address) external view returns (bool);
 }
 
 /**
@@ -217,17 +214,17 @@ contract TokenStakingNode is
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
     }
 
-    function deallocateTokens(IERC20 _token, uint256 _amount) external onlyTokenStakingNodesManager {
+    function deallocateTokens(IERC20 _token, uint256 _amount) external onlyYieldNestStrategyManager {
 
         withdrawn[_token] -= _amount;
-        _token.forceApprove(address(tokenStakingNodesManager), _amount);
+        _token.forceApprove(tokenStakingNodesManager.yieldNestStrategyManager(), _amount);
 
         emit DeallocatedTokens(_amount, _token);
     }
 
     function _wrapIfNeeded(uint256 _amount, IERC20 _token) internal returns (uint256, IERC20) {
         IYieldNestStrategyManager _strategyManager =
-            IYieldNestStrategyManager(IStrategyManagerExt(address(tokenStakingNodesManager)).yieldNestStrategyManager());
+            IYieldNestStrategyManager(ITokenStakingNodesManager(address(tokenStakingNodesManager)).yieldNestStrategyManager());
         IERC20 _stETH = _strategyManager.stETH();
         IERC20 _oETH = _strategyManager.oETH();
         if (_token == _stETH) {
@@ -307,13 +304,9 @@ contract TokenStakingNode is
     }
 
     modifier onlyTokenStakingNodesWithdrawer() {
-        if (!tokenStakingNodesManager.isStakingNodesWithdrawer(msg.sender)) revert NotTokenStakingNodesWithdrawer();
-        _;
-    }
-
-    modifier onlyTokenStakingNodesManager() {
-        // if(msg.sender != address(tokenStakingNodesManager)) revert NotTokenStakingNodesManager(); // @todo
-        if(msg.sender != address(tokenStakingNodesManager)) revert("NotTokenStakingNodesManager");
+        if (
+            !IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).isStakingNodesWithdrawer(msg.sender)
+        ) revert NotTokenStakingNodesWithdrawer();
         _;
     }
 

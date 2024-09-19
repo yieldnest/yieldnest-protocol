@@ -8,7 +8,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
-import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 
 import {ynBase} from "src/ynBase.sol";
 
@@ -328,10 +328,10 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     function processWithdrawn(uint256 _amount, address _asset) public {
         if (_amount == 0) revert ZeroAmount();
 
-        ITokenStakingNodesManager _tokenStakingNodesManager = IEigenStrategyManager(yieldNestStrategyManager).tokenStakingNodesManager();
+        IYieldNestStrategyManager _yieldNestStrategyManager = IYieldNestStrategyManager(yieldNestStrategyManager);
         if (
-            msg.sender != address(_tokenStakingNodesManager) &&
-            msg.sender != address(_tokenStakingNodesManager.redemptionAssetsVault())
+            msg.sender != address(_yieldNestStrategyManager) &&
+            msg.sender != address(_yieldNestStrategyManager.redemptionAssetsVault())
         ) revert CallerNotAuthorized();
 
         uint256 _newBalance = assets[_asset].balance + _amount;

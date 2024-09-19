@@ -9,7 +9,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
-import {ITokenStakingNodesManager, IRedemptionAssetsVaultExt} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 
@@ -24,7 +24,7 @@ interface ITokenStakingNodesManagerEvents {
     event UpgradedStakingNodeImplementationContract(address implementationContract, uint256 nodesCount);
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
 
-    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
+    // event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);//@todo
 }
 
 contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNodesManager, ITokenStakingNodesManagerEvents {
@@ -55,8 +55,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     bytes32 public constant TOKEN_STAKING_NODE_CREATOR_ROLE = keccak256("TOKEN_STAKING_NODE_CREATOR_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
-    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
-    bytes32 public constant STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");
+    // bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
+    // bytes32 public constant STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");@todo
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -76,7 +76,7 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     ITokenStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
-    IRedemptionAssetsVaultExt public redemptionAssetsVault;
+    // IRedemptionAssetsVaultExt public redemptionAssetsVault;@todo
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
@@ -134,14 +134,14 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         maxNodeCount = init.maxNodeCount;
     }
 
-    function initializeV2(
-        address _redemptionAssetsVault,
-        address _withdrawer
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) reinitializer(2) notZeroAddress(_redemptionAssetsVault) {
-        redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
-        _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
-        _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
-    }
+    // function initializeV2(@todo
+    //     address _redemptionAssetsVault,
+    //     address _withdrawer
+    // ) external reinitializer(2) notZeroAddress(_redemptionAssetsVault) {
+    //     redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
+    //     _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
+    //     _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
@@ -257,41 +257,41 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         emit MaxNodeCountUpdated(_maxNodeCount);
     }
 
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  WITHDRAWALS  -------------------------------------
-    //--------------------------------------------------------------------------------------
+    // //--------------------------------------------------------------------------------------@todo
+    // //----------------------------------  WITHDRAWALS  -------------------------------------
+    // //--------------------------------------------------------------------------------------
 
-    function processPrincipalWithdrawals(
-        WithdrawalAction[] calldata _actions
-    ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
-        uint256 _len = _actions.length;
-        for (uint256 i = 0; i < _len; ++i) {
-            _processPrincipalWithdrawalForNode(_actions[i]);
-        }
-    }
+    // function processPrincipalWithdrawals(
+    //     WithdrawalAction[] calldata _actions
+    // ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
+    //     uint256 _len = _actions.length;
+    //     for (uint256 i = 0; i < _len; ++i) {
+    //         _processPrincipalWithdrawalForNode(_actions[i]);
+    //     }
+    // }
 
-    function _processPrincipalWithdrawalForNode(WithdrawalAction calldata _action) internal {
+    // function _processPrincipalWithdrawalForNode(WithdrawalAction calldata _action) internal {
 
-        uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
+    //     uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
 
-        ITokenStakingNode _node = nodes[_action.nodeId];
-        _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
-        IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
+    //     ITokenStakingNode _node = nodes[_action.nodeId];
+    //     _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
+    //     IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
 
-        if (_action.amountToReinvest > 0) {
-            IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
-            IERC20(_action.asset).forceApprove(address(_ynEigen), _action.amountToReinvest);
-            _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
-        }
+    //     if (_action.amountToReinvest > 0) {
+    //         IynEigen _ynEigen = IEigenStrategyManager(yieldNestStrategyManager).ynEigen();
+    //         IERC20(_action.asset).forceApprove(address(_ynEigen), _action.amountToReinvest);
+    //         _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
+    //     }
 
-        if (_action.amountToQueue > 0) {
-            IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
-            IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
-            _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
-        }
+    //     if (_action.amountToQueue > 0) {
+    //         IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
+    //         IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
+    //         _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
+    //     }
 
-        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
-    }
+    //     emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  TokenStakingNode Roles  --------------------------
@@ -357,14 +357,14 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         return nodes[nodeId];
     }
 
-    /**
-     * @notice Checks if the given address has the STAKING_NODES_WITHDRAWER_ROLE.
-     * @param _address The address to check.
-     * @return True if the address has the STAKING_NODES_WITHDRAWER_ROLE, false otherwise.
-     */
-    function isStakingNodesWithdrawer(address _address) public view returns (bool) {
-        return hasRole(STAKING_NODES_WITHDRAWER_ROLE, _address);
-    }
+    // /**
+    //  * @notice Checks if the given address has the STAKING_NODES_WITHDRAWER_ROLE.
+    //  * @param _address The address to check.
+    //  * @return True if the address has the STAKING_NODES_WITHDRAWER_ROLE, false otherwise.
+    //  */
+    // function isStakingNodesWithdrawer(address _address) public view returns (bool) {
+    //     return hasRole(STAKING_NODES_WITHDRAWER_ROLE, _address);
+    // }@todo
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  MODIFIERS  ---------------------------------------
