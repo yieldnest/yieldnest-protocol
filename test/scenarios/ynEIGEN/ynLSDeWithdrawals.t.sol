@@ -28,6 +28,11 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     uint256 public constant AMOUNT = 1 ether;
 
     function setUp() public override {
+
+        vm.createSelectFork(
+            "https://eth-mainnet.g.alchemy.com/v2/GWBlcyYZH65PHOKw_l-9pvqYdwJFPo4-", // rpc url
+            20782621 // fork block number
+        );
         super.setUp();
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
@@ -129,6 +134,23 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         {
             vm.startPrank(actors.admin.STAKING_ADMIN);
             yneigen.grantRole(yneigen.BURNER_ROLE(), address(withdrawalQueueManager));
+            vm.stopPrank();
+        }
+
+        // top up redemptionAssetsVault
+        {
+            address _topper = address(0x420420);
+            uint256 _amount = 50; // 50 wei
+            deal({ token: chainAddresses.lsd.WSTETH_ADDRESS, to: _topper, give: _amount });
+            deal({ token: chainAddresses.lsd.WOETH_ADDRESS, to: _topper, give: _amount });
+            deal({ token: chainAddresses.lsd.SFRXETH_ADDRESS, to: _topper, give: _amount });
+            vm.startPrank(_topper);
+            IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+            redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WSTETH_ADDRESS);
+            IERC20(chainAddresses.lsd.WOETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+            redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WOETH_ADDRESS);
+            IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+            redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.SFRXETH_ADDRESS);
             vm.stopPrank();
         }
 
@@ -332,9 +354,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNodesManager.processPrincipalWithdrawals(_actions);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawals: E0");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E1");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E2");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E3");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E1");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E2");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E3");
         assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore + _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E4");
         assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore + _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E5");
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore + _availableToWithdraw / 2, "testProcessPrincipalWithdrawals: E6");
@@ -375,9 +397,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNodesManager.processPrincipalWithdrawals(_actions);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawalsNoReinvest: E0");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw, 5, "testProcessPrincipalWithdrawalsNoReinvest: E1");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw, 5, "testProcessPrincipalWithdrawalsNoReinvest: E2");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw, 5, "testProcessPrincipalWithdrawalsNoReinvest: E3");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E1");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E2");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E3");
         assertEq(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E4");
         assertEq(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E5");
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E6");
