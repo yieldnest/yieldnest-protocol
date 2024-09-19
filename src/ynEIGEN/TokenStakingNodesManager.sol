@@ -10,8 +10,6 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
-import {IynEigen} from "src/interfaces/IynEigen.sol";
-import {IEigenStrategyManager} from "src/interfaces/IEigenStrategyManager.sol";
 
 interface ITokenStakingNodesManagerEvents {
 
