@@ -7,7 +7,7 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
+import {IYieldNestStrategyManager, IRedemptionAssetsVaultExt} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
@@ -20,6 +20,7 @@ interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
     event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
     event DepositedToEigenlayer(IERC20[] depositAssets, uint256[] depositAmounts, IStrategy[] strategiesForNode);
+    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
 }
 
 /** @title EigenStrategyManager
@@ -77,6 +78,12 @@ contract EigenStrategyManager is
     /// @notice Role allowed to manage strategies
     bytes32 public constant STRATEGY_ADMIN_ROLE = keccak256("STRATEGY_ADMIN_ROLE");
 
+    /// @notice Role allowed to manage withdrawals
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
+
+    /// @notice Role allowed to withdraw from staking nodes
+    bytes32 public constant STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -98,6 +105,8 @@ contract EigenStrategyManager is
     IERC4626 public woETH;
     IERC20 public oETH;
     IERC20 public stETH;
+
+    IRedemptionAssetsVaultExt public redemptionAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -155,8 +164,17 @@ contract EigenStrategyManager is
         oETH = IERC20(woETH.asset());
     }
 
+    function initializeV2(
+        address _redemptionAssetsVault,
+        address _withdrawer
+    ) external reinitializer(2) notZeroAddress(_redemptionAssetsVault) {
+        redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
+        _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
+    }
+
     //--------------------------------------------------------------------------------------
-    //----------------------------------  STRATEGY  ----------------------------------------
+    //------------------------------------ DEPOSIT  ----------------------------------------
     //--------------------------------------------------------------------------------------
     
     /**
@@ -254,6 +272,42 @@ contract EigenStrategyManager is
             depositAsset = asset;
             depositAmount = amount;
         }   
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS  -------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function processPrincipalWithdrawals(
+        WithdrawalAction[] calldata _actions
+    ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
+        uint256 _len = _actions.length;
+        for (uint256 i = 0; i < _len; ++i) {
+            _processPrincipalWithdrawalForNode(_actions[i]);
+        }
+    }
+
+    function _processPrincipalWithdrawalForNode(WithdrawalAction calldata _action) internal {
+
+        uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
+
+        ITokenStakingNode _node = tokenStakingNodesManager.getNodeById(_action.nodeId);
+        _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
+        IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
+
+        if (_action.amountToReinvest > 0) {
+            IynEigen _ynEigen = ynEigen;
+            IERC20(_action.asset).forceApprove(address(_ynEigen), _action.amountToReinvest);
+            _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
+        }
+
+        if (_action.amountToQueue > 0) {
+            IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
+            IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
+            _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
+        }
+
+        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
     }
 
     //--------------------------------------------------------------------------------------
@@ -393,6 +447,15 @@ contract EigenStrategyManager is
      */
     function supportsAsset(IERC20 asset) public view returns (bool) {
         return address(strategies[asset]) != address(0);
+    }
+
+    /**
+     * @notice Checks if the given address has the STAKING_NODES_WITHDRAWER_ROLE.
+     * @param _address The address to check.
+     * @return True if the address has the STAKING_NODES_WITHDRAWER_ROLE, false otherwise.
+     */
+    function isStakingNodesWithdrawer(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_WITHDRAWER_ROLE, _address);
     }
 
     //--------------------------------------------------------------------------------------
