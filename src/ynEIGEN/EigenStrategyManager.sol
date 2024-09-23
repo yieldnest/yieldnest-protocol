@@ -15,6 +15,7 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IWrapper} from "src/interfaces/IWrapper.sol";
 
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
@@ -107,6 +108,7 @@ contract EigenStrategyManager is
     IERC20 public stETH;
 
     IRedemptionAssetsVaultExt public redemptionAssetsVault;
+    IWrapper public wrapper;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -166,11 +168,17 @@ contract EigenStrategyManager is
 
     function initializeV2(
         address _redemptionAssetsVault,
+        address _wrapper,
         address _withdrawer
-    ) external reinitializer(2) notZeroAddress(_redemptionAssetsVault) {
+    ) external reinitializer(2) notZeroAddress(_redemptionAssetsVault) notZeroAddress(_wrapper) {
         redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
+        wrapper = IWrapper(_wrapper);
+
         _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
+
+        IERC20(address(wstETH)).forceApprove(address(_wrapper), type(uint256).max);
+        IERC20(address(woETH)).forceApprove(address(_wrapper), type(uint256).max);
     }
 
     //--------------------------------------------------------------------------------------
@@ -239,7 +247,7 @@ contract EigenStrategyManager is
         uint256[] memory depositAmounts = new uint256[](amountsLength);
 
         for (uint256 i = 0; i < assetsLength; i++) {
-            (IERC20 depositAsset, uint256 depositAmount) = toEigenLayerDeposit(assets[i], amounts[i]);
+            (uint256 depositAmount, IERC20 depositAsset) = wrapper.unwrap(amounts[i], assets[i]);
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
 
@@ -252,26 +260,6 @@ contract EigenStrategyManager is
         node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
 
         emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
-    }
-
-    function toEigenLayerDeposit(
-        IERC20 asset,
-        uint256 amount
-    ) internal returns (IERC20 depositAsset, uint256 depositAmount) {
-        if (address(asset) == address(wstETH)) {
-            // Adjust for wstETH
-            depositAsset = stETH;
-            depositAmount = wstETH.unwrap(amount); 
-        } else if (address(asset) == address(woETH)) {
-            // Adjust for woeth
-            depositAsset = oETH; 
-            // calling redeem with receiver and owner as address(this)
-            depositAmount = woETH.redeem(amount, address(this), address(this)); 
-        } else {
-            // No adjustment needed
-            depositAsset = asset;
-            depositAmount = amount;
-        }   
     }
 
     //--------------------------------------------------------------------------------------

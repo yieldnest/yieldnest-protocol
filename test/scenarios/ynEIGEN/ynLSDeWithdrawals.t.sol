@@ -11,6 +11,7 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 
+import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 
@@ -25,15 +26,16 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     ITokenStakingNode public tokenStakingNode;
     RedemptionAssetsVault public redemptionAssetsVault;
     WithdrawalQueueManager public withdrawalQueueManager;
+    LSDWrapper public wrapper;
 
     uint256 public constant AMOUNT = 1 ether;
 
-    function setUp() public override {
+    function setUp() public virtual override {
 
-        vm.createSelectFork(
-            "https://eth-mainnet.g.alchemy.com/v2/GWBlcyYZH65PHOKw_l-9pvqYdwJFPo4-", // rpc url
-            20782621 // fork block number
-        );
+        // vm.createSelectFork(
+        //     "", // rpc url
+        //     20782621 // fork block number
+        // );
         super.setUp();
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
@@ -45,22 +47,22 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         // upgrade ynLSDe
         {
-            _upgradeContract(address(yneigen), address(new ynEigen()));
+            _upgradeContract(address(yneigen), address(new ynEigen()), "");
         }
 
         // upgrade EigenStrategyManager
         {
-            _upgradeContract(address(eigenStrategyManager), address(new EigenStrategyManager()));
+            _upgradeContract(address(eigenStrategyManager), address(new EigenStrategyManager()), "");
         }
 
         // upgrade AssetRegistry
         {
-            _upgradeContract(address(assetRegistry), address(new AssetRegistry()));
+            _upgradeContract(address(assetRegistry), address(new AssetRegistry()), "");
         }
 
         // upgrade TokenStakingNodesManager
         {
-            _upgradeContract(address(tokenStakingNodesManager), address(new TokenStakingNodesManager()));
+            _upgradeContract(address(tokenStakingNodesManager), address(new TokenStakingNodesManager()), "");
         }
 
         // deal assets to user
@@ -90,9 +92,26 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             withdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
         }
 
+        // deploy wrapper
+        {
+            // call `initialize` on LSDWrapper
+            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+                address(
+                    new LSDWrapper(
+                        chainAddresses.lsd.WSTETH_ADDRESS,
+                        chainAddresses.lsd.WOETH_ADDRESS,
+                        chainAddresses.lsd.OETH_ADDRESS,
+                        chainAddresses.lsd.STETH_ADDRESS)
+                    ),
+                actors.admin.PROXY_ADMIN_OWNER,
+                abi.encodeWithSignature("initialize()")
+            );
+            wrapper = LSDWrapper(address(_proxy));
+        }
+
         // initialize eigenStrategyManager
         {
-            eigenStrategyManager.initializeV2(address(redemptionAssetsVault), actors.ops.WITHDRAWAL_MANAGER);
+            eigenStrategyManager.initializeV2(address(redemptionAssetsVault), address(wrapper), actors.ops.WITHDRAWAL_MANAGER);
         }
 
         // initialize RedemptionAssetsVault
@@ -550,12 +569,12 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Total supply mismatch after upgrade");
     }
 
-    function _upgradeContract(address _proxyAddress, address _newImplementation) private {
+    function _upgradeContract(address _proxyAddress, address _newImplementation, bytes memory _data) internal {
         bytes memory _data = abi.encodeWithSignature(
             "upgradeAndCall(address,address,bytes)",
             _proxyAddress, // proxy
             _newImplementation, // implementation
-            "" // no data
+            _data
         );
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.schedule(
