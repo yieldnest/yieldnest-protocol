@@ -10,6 +10,8 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
+import {IWrapper} from "src/interfaces/IWrapper.sol";
+
 interface IynEigenDepositAdapterEvents {
     event ReferralDepositProcessed(
         address sender, 
@@ -54,6 +56,7 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
     IERC4626 public woETH;
     IERC20 public stETH;
     IERC20 public oETH;
+    IWrapper public wrapper;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -82,6 +85,10 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
 
         stETH = IERC20(wstETH.stETH());
         oETH = IERC20(woETH.asset());
+    }
+
+    function initializeV2(address _wrapper) external reinitializer(2) notZeroAddress(_wrapper) {
+        wrapper = IWrapper(_wrapper);
     }
 
     /**
@@ -159,8 +166,8 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
 
     function depositStETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         stETH.safeTransferFrom(msg.sender, address(this), amount);
-        stETH.forceApprove(address(wstETH), amount);
-        uint256 wstETHAmount = wstETH.wrap(amount);
+        stETH.forceApprove(address(wrapper), amount);
+        (uint256 wstETHAmount,) = wrapper.wrap(amount, stETH);
         wstETH.forceApprove(address(ynEigen), wstETHAmount);
 
         shares = ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
@@ -170,8 +177,8 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
 
     function depositOETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         oETH.safeTransferFrom(msg.sender, address(this), amount);
-        oETH.forceApprove(address(woETH), amount);
-        uint256 woETHShares = woETH.deposit(amount, address(this));
+        oETH.forceApprove(address(wrapper), amount);
+        (uint256 woETHShares,) = wrapper.wrap(amount, oETH);
         woETH.forceApprove(address(ynEigen), woETHShares);
 
         shares = ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);

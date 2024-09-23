@@ -12,8 +12,7 @@ import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfa
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
-import {IwstETH} from "src/external/lido/IwstETH.sol";
-import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {IWrapper} from "src/interfaces/IWrapper.sol";
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(
@@ -30,10 +29,7 @@ interface ITokenStakingNodeEvents {
 }
 
 interface IYieldNestStrategyManager {
-    function wstETH() external view returns (IwstETH);
-    function stETH() external view returns (IERC20);
-    function woETH() external view returns (IERC4626);
-    function oETH() external view returns (IERC20);
+    function wrapper() external view returns (IWrapper);
     function isStakingNodesWithdrawer(address _address) external view returns (bool);
 }
 
@@ -206,7 +202,9 @@ contract TokenStakingNode is
             _expectedAmountOut - _actualAmountOut;
         if (_delta > 2) revert WithdrawalAmountMismatch(); // @todo - might be a footgun
 
-        (_actualAmountOut, _token) = _wrapIfNeeded(_actualAmountOut, _token);
+        IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
+        IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
+        (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
 
         queuedShares[_strategy] -= _shares;
         withdrawn[_token] += _actualAmountOut;
@@ -220,26 +218,6 @@ contract TokenStakingNode is
         _token.forceApprove(tokenStakingNodesManager.yieldNestStrategyManager(), _amount);
 
         emit DeallocatedTokens(_amount, _token);
-    }
-
-    function _wrapIfNeeded(uint256 _amount, IERC20 _token) internal returns (uint256, IERC20) {
-        IYieldNestStrategyManager _strategyManager =
-            IYieldNestStrategyManager(ITokenStakingNodesManager(address(tokenStakingNodesManager)).yieldNestStrategyManager());
-        IERC20 _stETH = _strategyManager.stETH();
-        IERC20 _oETH = _strategyManager.oETH();
-        if (_token == _stETH) {
-            IwstETH _wstETH = _strategyManager.wstETH();
-            _stETH.forceApprove(address(_wstETH), _amount);
-            uint256 _wstETHAmount = _wstETH.wrap(_amount);
-            return (_wstETHAmount, IERC20(_wstETH));
-        } else if (_token == _oETH) {
-            IERC4626 _woETH = _strategyManager.woETH();
-            _oETH.forceApprove(address(_woETH), _amount);
-            uint256 _woETHShares = _woETH.deposit(_amount, address(this));
-            return (_woETHShares, IERC20(_woETH));
-        } else {
-            return (_amount, _token);
-        }
     }
 
     //--------------------------------------------------------------------------------------
