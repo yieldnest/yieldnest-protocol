@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 
 import "./ynLSDeWithdrawals.t.sol";
+import "forge-std/console.sol";
 
 contract ynLSDeDepositAdapterTest is ynLSDeWithdrawalsTest {
 
@@ -27,26 +28,27 @@ contract ynLSDeDepositAdapterTest is ynLSDeWithdrawalsTest {
         }
     }
 
-    // function testDepositSTETH(uint256 _amount) public {
-    //     vm.assume(_amount > 0 && _amount <= 10 ether);
+    function testDepositSTETH(uint256 _amount) public {
+        vm.assume(_amount > 10_000 && _amount <= 10 ether);
 
-    //     testAssetUtils.get_stETH(user, _amount);
+        testAssetUtils.get_stETH(user, _amount);
 
-    //     vm.startPrank(user);
-    //     IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
-    //     uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.STETH_ADDRESS), _amount, user);
-    //     vm.stopPrank();
+        vm.startPrank(user);
+        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
+        uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.STETH_ADDRESS), _amount, user);
+        vm.stopPrank();
 
-    //     assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositSTETH");
-    // }
+        assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositSTETH");
+    }
 
     function testDepositOETH(uint256 _amount) public {
-        vm.assume(_amount > 0 && _amount <= 10 ether);
+        vm.assume(_amount > 10_000 && _amount <= 10 ether);
 
-        testAssetUtils.get_OETH(user, _amount);
+        testAssetUtils.get_OETH(user, _amount + 10);
 
         vm.startPrank(user);
         IERC20(chainAddresses.lsd.OETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
+        console.log("OETH balance before deposit: ", IERC20(chainAddresses.lsd.OETH_ADDRESS).balanceOf(user));
         uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.OETH_ADDRESS), _amount, user);
         vm.stopPrank();
 
