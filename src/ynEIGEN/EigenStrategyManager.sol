@@ -350,8 +350,9 @@ contract EigenStrategyManager is
 
                 uint256 strategyWithdrawalQueueBalance;
                 uint256 queuedShares = node.queuedShares(strategies[asset]);
-                if (queuedShares > 0)
+                if (queuedShares > 0) {
                     strategyWithdrawalQueueBalance = toUserAssetAmount(asset, strategies[asset].sharesToUnderlyingView(queuedShares));
+                }
                 
                 uint256 strategyWithdrawnBalance = node.withdrawn(asset);
 
