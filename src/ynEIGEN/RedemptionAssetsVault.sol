@@ -142,7 +142,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
             }
         }
 
-        emit AssetTransferred(ETH_ASSET, msg.sender, to, amount);
+        emit AssetTransferred(ETH_ASSET, msg.sender, to, amount); // @todo - `amount` here is always 0!
     }
 
     /** 
