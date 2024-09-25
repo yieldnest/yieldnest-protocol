@@ -135,6 +135,8 @@ contract Base is Test, Utils {
             vm.stopPrank();
         }
 
+        runUpgradeIntegrityInvariants(preUpgradeState);
+
         // upgrade ynETH
         {
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
@@ -147,6 +149,8 @@ contract Base is Test, Utils {
             );
             vm.stopPrank();
         }
+
+        runUpgradeIntegrityInvariants(preUpgradeState);
 
         // upgrade StakingNodeImplementation
         {
@@ -200,6 +204,8 @@ contract Base is Test, Utils {
             ynETHRedemptionAssetsVaultInstance.initialize(_init);
         }
 
+        runUpgradeIntegrityInvariants(preUpgradeState);
+
         // initialize WithdrawalQueueManager
         {
             WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
@@ -217,6 +223,8 @@ contract Base is Test, Utils {
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
 
+        runUpgradeIntegrityInvariants(preUpgradeState);
+
         // End of STAGE 2 - Deploy new contracts
 
         // initialize stakingNodesManager withdrawal contracts
@@ -231,12 +239,16 @@ contract Base is Test, Utils {
             stakingNodesManager.initializeV2(initParams);
         }
 
+        runUpgradeIntegrityInvariants(preUpgradeState);
+
         // grant burner role
         {
             vm.startPrank(actors.admin.STAKING_ADMIN);
             yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
             vm.stopPrank();
         }
+
+        runUpgradeIntegrityInvariants(preUpgradeState);
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
