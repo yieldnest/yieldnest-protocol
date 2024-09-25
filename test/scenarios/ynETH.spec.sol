@@ -260,8 +260,10 @@ event LogUint(string message, uint256 value);
 // 	event Log(string message, uint256 value);
 // 	event LogAddress(string message, address value);
 	
-// 	function test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
-// 		vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
+	// // FIXME: Non-Beacon ETH is no longer distributed as such, it's counted as shares right away in Eigenlayer M3.
+	// // Adjust this test or delete it.
+	// function skip_test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
+	// 	vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
 
 // 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
 // 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
@@ -330,7 +332,9 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		vm.recordLogs();
 	}
 
-	// function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
+	// // FIXME: Non-Beacon ETH is no longer distributed as such, it's counted as shares right away in Eigenlayer M3.
+	// // Adjust this test or delete it.
+	// function skip_test_ynETH_Scenario_9_Self_Destruct_Attack() public {
 
 	// 	uint256 previousTotalDeposited = yneth.totalDepositedInPool();
 	// 	uint256 previousTotalShares = yneth.totalSupply();

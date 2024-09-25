@@ -142,7 +142,8 @@
 
 // // contract StakingNodeEigenPod is StakingNodeTestBase {
 
-// //     function testCreateNodeAndVerifyPodStateIsValid() public {
+ //   // FIXME: update or delete to accomdate for M3
+//     function skip_estCreateNodeAndVerifyPodStateIsValid() public {
 
 // //         uint depositAmount = 32 ether;
 
@@ -198,7 +199,8 @@
 // // contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
 // //     using stdStorage for StdStorage;
 
-// //     function testWithdrawNonBeaconChainETHBalanceWeiAndProcessNonBeaconChainETHWithdrawals() public {
+//    // FIXME: update or delete to accomdate for M3
+//   function skip_testWithdrawNonBeaconChainETHBalanceWeiAndProcessNonBeaconChainETHWithdrawals() public {
 
 // //         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
 
@@ -229,7 +231,8 @@
 // //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
 // //     }
 
-// //    function testWithdrawNonBeaconChainETHBalanceWeiAndProcessNonBeaconChainETHWithdrawalsForALargeAmount() public {
+//    // FIXME: update or delete to accomdate for M3
+//   function skip_testWithdrawNonBeaconChainETHBalanceWeiAndProcessNonBeaconChainETHWithdrawalsForALargeAmount() public {
 
 // //         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
 
@@ -261,7 +264,8 @@
 // //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
 // //     }
 
-// //    function testProcessNonBeaconChainETHWithdrawalsWithExistingValidatorPrincipal() public {
+//     // FIXME: update or delete to accomdate for M3
+//    function skip_testProcessNonBeaconChainETHWithdrawalsWithExistingValidatorPrincipal() public {
 
 // //        uint256 activeValidators = 5;
 
@@ -297,7 +301,8 @@
 // //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
 // //     }
 
-// //     function testProcessNonBeaconChainETHWithdrawalsWhenETHArrivesFromBeaconChainAsWell() public {
+    // // FIXME: update or delete to accomdate for M3
+    // function skip_testProcessNonBeaconChainETHWithdrawalsWhenETHArrivesFromBeaconChainAsWell() public {
 
 // //        uint256 activeValidators = 5;
 
@@ -358,7 +363,8 @@
 //         stakingNodesManager.upgradeStakingNodeImplementation(newMockStakingNodeImplementation);
 //     }
 
-//     function skiptestVerifyWithdrawalCredentialsRevertingWhenPaused() public {
+    // // FIXME: update or delete to accomdate for M3
+    // function skiptestVerifyWithdrawalCredentialsRevertingWhenPaused() public {
 
 //         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
@@ -534,7 +540,8 @@
 //         assertEq(stakingNodeInstance.implementation(), address(newMockStakingNodeImplementation));
 //     }
 
-//     function testVerifyWithdrawalCredentialsWithWrongWithdrawalAddress() public {
+    // // FIXME: update or delete to accomdate for M3
+    // function skip_testVerifyWithdrawalCredentialsWithWrongWithdrawalAddress() public {
 
 //         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
@@ -661,20 +668,24 @@
 //         params.validatorProofs = validatorProofs;
 //     }
     
+    // // FIXME: update or delete to accomdate for M3
+    // function skip_testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
+    //     if (block.chainid != 1) {
+    //         return; // Skip test if not on Ethereum Mainnet
+    //     }
+    //     verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8746783.json");
+    // }
 
-//     function testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
-//         if (block.chainid != 1) {
-//             return; // Skip test if not on Ethereum Mainnet
-//         }
-//         VerifyWithdrawalCredentialsCallParams memory params
-//             = setupVerifyWithdrawalCredentialsForProofFileForForeignValidator("test/data/ValidatorFieldsProof_1293592_8746783.json");
+    // // FIXME: update or delete to accomdate for M3
+    // function skip_testVerifyWithdrawalCredentialsSuccesfully_1ETH() public {
+    //     if (block.chainid != 1) {
+    //         return; // Skip test if not on Ethereum Mainnet
+    //     }
+    //     verifyWithdrawalCredentialsSuccesfullyForProofFile("test/data/ValidatorFieldsProof_1293592_8654000.json");
+    // }
 
-//         uint64 oracleTimestamp = params.oracleTimestamp;
-//         IStakingNode stakingNodeInstance = params.stakingNodeInstance;
-//         ValidatorProofs memory validatorProofs = params.validatorProofs;
-
-//         uint256 stakingNodeETHBalanceBeforeVerification = stakingNodeInstance.getETHBalance();
-//         uint256 ynETHTotalAssetsBeforeVerification = yneth.totalAssets();
+    // // FIXME: update or delete to accomdate for M3
+    // function skip_testVerifyWithdrawalCredentialsWithStrategyUnpaused() public {
 
 //         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
 //         stakingNodeInstance.verifyWithdrawalCredentials(
@@ -773,7 +784,8 @@
 //         assertEq(shares, depositAmount, "Shares do not match deposit amount");
 //     }
 
-//     function skiptestVerifyWithdrawalCredentialsMismatchedValidatorIndexAndProofsLengths() public {
+    // // FIXME: update or delete to accomdate for M3
+    // function skiptestVerifyWithdrawalCredentialsMismatchedValidatorIndexAndProofsLengths() public {
 
 //         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
@@ -808,7 +820,8 @@
 //     event LogAddressMessage(string message, address value);
 //     event LogBytesMessage(string message, bytes value);
 
-//     function skiptestVerifyWithdrawalCredentialsMismatchedProofsAndValidatorFieldsLengths() public {
+    // // FIXME: update or delete to accomdate for M3
+    // function skiptestVerifyWithdrawalCredentialsMismatchedProofsAndValidatorFieldsLengths() public {
 
 //         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
