@@ -117,6 +117,8 @@ contract Base is Test, Utils {
         uint256 totalAssets = yneth.totalAssets();
         uint256 totalSupply = yneth.totalSupply();
 
+        // Capture the upgrade state before making any changes
+        UpgradeState memory preUpgradeState = captureUpgradeState();
 
         // STAGE 1 - ATOMIC upgrade existing contracts.
 
@@ -157,9 +159,7 @@ contract Base is Test, Utils {
         // STAGE 1 - End of atomic upgrade for existing contracts
 
         {
-
-            assertEq(totalAssets, yneth.totalAssets(), "totalAssets should remain unchanged");
-            assertEq(totalSupply, yneth.totalSupply(), "totalSupply should remain unchanged");
+            runUpgradeIntegrityInvariants(preUpgradeState);
             // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
             assertEq(address(stakingNodesManager.redemptionAssetsVault()), address(0), "redemptionAssetsVault should initially be set to the zero address in StakingNodesManager");
             // Assert that previewRedeem returns a non-zero value
@@ -292,6 +292,79 @@ contract Base is Test, Utils {
             assertEq(currentStakingNodeBalance, previousStakingNodeBalances[i], "Staking node balance integrity check failed for node ID: ");
         }
 	}
+
+    struct UpgradeState {
+        uint256 totalAssets;
+        uint256 totalSupply;
+        uint256[] stakingNodeBalances;
+        uint256 previewDepositAmount;
+        address ynETHStakingNodesManager;
+        address ynETHRewardsDistributor;
+        address stakingNodesManagerYnETH;
+        address stakingNodesManagerRewardsDistributor;
+        address rewardsDistributorYnETH;
+    }
+
+    function captureUpgradeState() public view returns (UpgradeState memory) {
+        return UpgradeState({
+            totalAssets: yneth.totalAssets(),
+            totalSupply: yneth.totalSupply(),
+            stakingNodeBalances: getAllStakingNodeBalances(),
+            previewDepositAmount: yneth.previewDeposit(1 ether),
+            ynETHStakingNodesManager: address(yneth.stakingNodesManager()),
+            ynETHRewardsDistributor: address(yneth.rewardsDistributor()),
+            stakingNodesManagerYnETH: address(stakingNodesManager.ynETH()),
+            stakingNodesManagerRewardsDistributor: address(stakingNodesManager.rewardsDistributor()),
+            rewardsDistributorYnETH: address(rewardsDistributor.ynETH())
+        });
+    }
+
+    function runUpgradeIntegrityInvariants(UpgradeState memory preUpgradeState) public {
+        // Check system state invariants
+        runSystemStateInvariants(
+            preUpgradeState.totalAssets,
+            preUpgradeState.totalSupply,
+            preUpgradeState.stakingNodeBalances
+        );
+
+        // Check previewDeposit stays the same
+        assertEq(
+            yneth.previewDeposit(1 ether),
+            preUpgradeState.previewDepositAmount,
+            "previewDeposit amount changed after upgrade"
+        );
+
+        // Check ynETH dependencies stay the same
+        assertEq(
+            address(yneth.stakingNodesManager()),
+            preUpgradeState.ynETHStakingNodesManager,
+            "ynETH stakingNodesManager changed after upgrade"
+        );
+        assertEq(
+            address(yneth.rewardsDistributor()),
+            preUpgradeState.ynETHRewardsDistributor,
+            "ynETH rewardsDistributor changed after upgrade"
+        );
+
+        // Check StakingNodesManager dependencies stay the same
+        assertEq(
+            address(stakingNodesManager.ynETH()),
+            preUpgradeState.stakingNodesManagerYnETH,
+            "StakingNodesManager ynETH changed after upgrade"
+        );
+        assertEq(
+            address(stakingNodesManager.rewardsDistributor()),
+            preUpgradeState.stakingNodesManagerRewardsDistributor,
+            "StakingNodesManager rewardsDistributor changed after upgrade"
+        );
+
+        // Check RewardsDistributor dependencies stay the same
+        assertEq(
+            address(rewardsDistributor.ynETH()),
+            preUpgradeState.rewardsDistributorYnETH,
+            "RewardsDistributor ynETH changed after upgrade"
+        );
+    }
 
     function getAllStakingNodeBalances() public view returns (uint256[] memory) {
         uint256[] memory balances = new uint256[](stakingNodesManager.nodesLength());
