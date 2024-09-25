@@ -117,6 +117,9 @@ contract Base is Test, Utils {
         uint256 totalAssets = yneth.totalAssets();
         uint256 totalSupply = yneth.totalSupply();
 
+
+        // STAGE 1 - ATOMIC upgrade existing contracts.
+
         // upgrade stakingNodesManager
         {
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
@@ -142,6 +145,30 @@ contract Base is Test, Utils {
             );
             vm.stopPrank();
         }
+
+        // upgrade StakingNodeImplementation
+        {
+            stakingNodeImplementation = new StakingNode();
+            vm.prank(actors.admin.STAKING_ADMIN);
+            stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
+        }
+
+
+        // STAGE 1 - End of atomic upgrade for existing contracts
+
+        {
+
+            assertEq(totalAssets, yneth.totalAssets(), "totalAssets should remain unchanged");
+            assertEq(totalSupply, yneth.totalSupply(), "totalSupply should remain unchanged");
+            // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
+            assertEq(address(stakingNodesManager.redemptionAssetsVault()), address(0), "redemptionAssetsVault should initially be set to the zero address in StakingNodesManager");
+            // Assert that previewRedeem returns a non-zero value
+            uint256 previewRedeemAmount = yneth.previewRedeem(1 ether);
+            assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
+        }
+
+
+        // STAGE 2 - Deploy and initialize new contracts 
 
         // deploy ynETHRedemptionAssetsVault
         {
@@ -190,13 +217,7 @@ contract Base is Test, Utils {
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
 
-        assertEq(totalAssets, yneth.totalAssets(), "totalAssets should remain unchanged");
-        assertEq(totalSupply, yneth.totalSupply(), "totalSupply should remain unchanged");
-        // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
-        assertEq(address(stakingNodesManager.redemptionAssetsVault()), address(0), "redemptionAssetsVault should initially be set to the zero address in StakingNodesManager");
-        // Assert that previewRedeem returns a non-zero value
-        uint256 previewRedeemAmount = yneth.previewRedeem(1 ether);
-        assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
+        // End of STAGE 2 - Deploy new contracts
 
         // initialize stakingNodesManager withdrawal contracts
         {
@@ -210,24 +231,10 @@ contract Base is Test, Utils {
             stakingNodesManager.initializeV2(initParams);
         }
 
-        // upgrade StakingNodeImplementation
-        {
-            stakingNodeImplementation = new StakingNode();
-            vm.prank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
-        }
-
         // grant burner role
         {
             vm.startPrank(actors.admin.STAKING_ADMIN);
             yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
-            vm.stopPrank();
-        }
-
-        // unpause ynETH transfers, in case they are paused
-        {
-            vm.startPrank(actors.admin.STAKING_ADMIN);
-            yneth.unpauseTransfers();
             vm.stopPrank();
         }
     }
