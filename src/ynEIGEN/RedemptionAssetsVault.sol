@@ -118,6 +118,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
      * @param to The recipient address of the assets.
      * @param amount The amount of assets to transfer.
      * @dev Requires the caller to be the redeemer and the contract to not be paused.
+     * @dev Iterates over the supported assets, transferring each asset's balance to the user until fully depleted.
      */
     function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */) public onlyRedeemer whenNotPaused nonReentrant {
         uint256 balance = availableRedemptionAssets();
