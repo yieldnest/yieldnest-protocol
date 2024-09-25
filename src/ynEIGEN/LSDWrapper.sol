@@ -70,6 +70,19 @@ contract LSDWrapper is IWrapper, Initializable {
         }
     }
 
+    /// @inheritdoc IWrapper
+    function toUserAssetAmount(IERC20 _asset, uint256 _userUnderlyingView) external view returns (uint256) {
+        if (_asset == wstETH) {
+            // Adjust for wstETH using view method, converting stETH to wstETH
+            return IwstETH(address(wstETH)).getWstETHByStETH(_userUnderlyingView);
+        }
+        if (_asset == woETH) { 
+            // Adjust for woETH using view method, converting oETH to woETH
+            return IERC4626(address(woETH)).previewDeposit(_userUnderlyingView);
+        }
+        return _userUnderlyingView;
+    }
+
     // ============================================================================================
     // Errors
     // ============================================================================================

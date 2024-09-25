@@ -343,7 +343,7 @@ contract EigenStrategyManager is
             for (uint256 i; i < nodesCount; i++ ) {
                 ITokenStakingNode node = nodes[i];
                 
-                uint256 strategyBalance = toUserAssetAmount(
+                uint256 strategyBalance = wrapper.toUserAssetAmount(
                     asset,
                     strategies[asset].userUnderlyingView((address(node)))
                 );
@@ -351,7 +351,7 @@ contract EigenStrategyManager is
                 uint256 strategyWithdrawalQueueBalance;
                 uint256 queuedShares = node.queuedShares(strategies[asset]);
                 if (queuedShares > 0) {
-                    strategyWithdrawalQueueBalance = toUserAssetAmount(asset, strategies[asset].sharesToUnderlyingView(queuedShares));
+                    strategyWithdrawalQueueBalance = wrapper.toUserAssetAmount(asset, strategies[asset].sharesToUnderlyingView(queuedShares));
                 }
                 
                 uint256 strategyWithdrawnBalance = node.withdrawn(asset);
@@ -359,26 +359,6 @@ contract EigenStrategyManager is
                 stakedBalances[j] += strategyBalance + strategyWithdrawalQueueBalance + strategyWithdrawnBalance;
             }
         }
-    }
-
-    /**
-     * @notice Converts the user's underlying asset amount to the equivalent user asset amount.
-     * @dev This function handles the conversion for wrapped staked ETH (wstETH) and wrapped other ETH (woETH),
-     *      returning the equivalent amount in the respective wrapped token.
-     * @param asset The ERC20 token for which the conversion is being made.
-     * @param userUnderlyingView The amount of the underlying asset.
-     * @return The equivalent amount in the user asset denomination.
-     */
-    function toUserAssetAmount(IERC20 asset, uint256 userUnderlyingView) public view returns (uint256) {
-        if (address(asset) == address(wstETH)) {
-            // Adjust for wstETH using view method, converting stETH to wstETH
-            return wstETH.getWstETHByStETH(userUnderlyingView);
-        }
-        if (address(asset) == address(woETH)) { 
-            // Adjust for woETH using view method, converting oETH to woETH
-            return woETH.previewDeposit(userUnderlyingView);
-        }
-        return userUnderlyingView;
     }
 
     /**
@@ -422,7 +402,7 @@ contract EigenStrategyManager is
         ITokenStakingNode node
     ) internal view returns (uint256 stakedBalance) {
 
-        uint256 strategyBalance = toUserAssetAmount(
+        uint256 strategyBalance = wrapper.toUserAssetAmount(
             asset,
             strategies[asset].userUnderlyingView((address(node)))
         );
