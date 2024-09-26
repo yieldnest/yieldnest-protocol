@@ -283,4 +283,143 @@ contract M3WithdrawalsWithRewardsTest is Base {
         assertApproxEqAbs(actualWithdrawnAmount, expectedWithdrawnAmount, 1e9, "User did not receive expected ETH amount after fee");
 
     }
+
+    function test_userWithdrawalWithRewards_Scenario_2_queueWithdrawalsBeforeValidatorExit() public {
+        // Check if we're on the Holesky testnet
+        if (block.chainid != 17000) {
+            return;
+        }
+        amount = 100 ether;
+
+        // deposit 100 ETH into ynETH
+        {
+            user = vm.addr(420);
+            vm.deal(user, amount);
+            vm.prank(user);
+            yneth.depositETH{value: amount}(user);
+
+            // Log ynETH balance for user
+            uint256 userYnETHBalance = yneth.balanceOf(user);
+            console.log("User ynETH balance after deposit:", userYnETHBalance);
+        }
+
+        // Process rewards
+        rewardsDistributor.processRewards();
+
+        // create staking node
+        {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            stakingNodesManager.createStakingNode();
+            nodeId = stakingNodesManager.nodesLength() - 1;
+        }
+
+
+        TestState memory state = TestState({
+            totalAssetsBefore: yneth.totalAssets(),
+            totalSupplyBefore: yneth.totalSupply(),
+            stakingNodeBalancesBefore: getAllStakingNodeBalances(),
+            previousYnETHRedemptionAssetsVaultBalance: ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(),
+            previousYnETHBalance: address(yneth).balance
+        });
+
+        // Calculate validator count based on amount
+        uint256 validatorCount = amount / 32 ether;
+
+        // create and register validators validator
+        {
+            // Create an array of nodeIds with length equal to validatorCount
+            uint256[] memory nodeIds = new uint256[](validatorCount);
+            for (uint256 i = 0; i < validatorCount; i++) {
+                nodeIds[i] = nodeId;
+            }
+
+            // Call createValidators with the nodeIds array and validatorCount
+            validatorIndices = createValidators(nodeIds, 1);
+
+            beaconChain.advanceEpoch_NoRewards();
+
+            registerValidators(nodeIds);
+        }
+
+        state.stakingNodeBalancesBefore[nodeId] += validatorCount * 32 ether;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // verify withdrawal credentials
+        {
+
+            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(validatorIndices);
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            IPod(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
+                beaconTimestamp: _proofs.beaconTimestamp,
+                stateRootProof: _proofs.stateRootProof,
+                validatorIndices: validatorIndices,
+                validatorFieldsProofs: _proofs.validatorFieldsProofs,
+                validatorFields: _proofs.validatorFields
+            });
+            vm.stopPrank();
+
+            // check that unverifiedStakedETH is 0 and podOwnerShares is 100 ETH (amount)
+            // _testVerifyWithdrawalCredentials();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        uint256 accumulatedRewards;
+        {
+            uint256 epochCount = 30;
+            // Advance the beacon chain by 100 epochs to simulate rewards accumulation
+            for (uint256 i = 0; i < epochCount; i++) {
+                beaconChain.advanceEpoch();
+            }
+
+            accumulatedRewards += validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
+        }
+
+        // NOTE: Withdrawal is Queued BEFORE exiting validators. does not include rewards in this case.
+
+        uint256 withdrawnAmount = 32 ether * validatorIndices.length;
+
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
+            vm.stopPrank();
+        }
+
+
+        // exit validators
+        {
+            for (uint256 i = 0; i < validatorIndices.length; i++) {
+                beaconChain.exitValidator(validatorIndices[i]);
+            }
+            beaconChain.advanceEpoch();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+
+        // start checkpoint
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            vm.stopPrank();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // verify checkpoints
+        {
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(validatorIndices, _node.eigenPod().currentCheckpointTimestamp());
+            IPod(address(_node.eigenPod())).verifyCheckpointProofs({
+                balanceContainerProof: _cpProofs.balanceContainerProof,
+                proofs: _cpProofs.balanceProofs
+            });
+        }
+
+        // Rewards accumulated are accounted after verifying the checkpoint
+        state.totalAssetsBefore += accumulatedRewards;
+        state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+    }
 }
