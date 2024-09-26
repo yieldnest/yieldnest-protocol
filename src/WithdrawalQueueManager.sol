@@ -15,18 +15,25 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 interface IWithdrawalQueueManagerEvents {
-    event WithdrawalRequested(uint256 indexed tokenId, address indexed requester, uint256 amount);
+    event WithdrawalRequested(
+        uint256 indexed tokenId,
+        address indexed requester,
+        IWithdrawalQueueManager.WithdrawalRequest request
+    );
     event WithdrawalClaimed(
         uint256 indexed tokenId,
         address claimer,
         address receiver,
         IWithdrawalQueueManager.WithdrawalRequest request,
-        uint256 finalizationId
+        uint256 finalizationId,
+        uint256 unitOfAccountAmount,
+        uint256 claimRedemptionRate
     );
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
     event SecondsToFinalizationUpdated(uint256 previousValue, uint256 newValue);
     event RequestsFinalized(uint256 indexed finalizationIndex, uint256 newFinalizedIndex, uint256 previousFinalizedIndex, uint256 redemptionRate);
+    event SurplusRedemptionAssetsWithdrawn(uint256 amount, uint256 surplus);
 }
 
 /**
@@ -192,7 +199,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
         uint256 currentRate = redemptionAssetsVault.redemptionRate();
         tokenId = _tokenIdCounter++;
-        withdrawalRequests[tokenId] = WithdrawalRequest({
+        WithdrawalRequest memory request = WithdrawalRequest({
             amount: amount,
             feeAtRequestTime: withdrawalFee,
             redemptionRateAtRequestTime: currentRate,
@@ -200,12 +207,13 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             processed: false,
             data: data
         });
+        withdrawalRequests[tokenId] = request;
 
         pendingRequestedRedemptionAmount += calculateRedemptionAmount(amount, currentRate);
 
         _mint(msg.sender, tokenId);
 
-        emit WithdrawalRequested(tokenId, msg.sender, amount);
+        emit WithdrawalRequested(tokenId, msg.sender, request);
     }
 
     //--------------------------------------------------------------------------------------
@@ -310,7 +318,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
         }
 
-        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId);
+        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId, unitOfAccountAmount, redemptionRate);
     }
 
     /**
@@ -434,6 +442,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
             revert AmountExceedsSurplus(amount, surplus);
         }
         redemptionAssetsVault.withdrawRedemptionAssets(amount);
+
+        emit SurplusRedemptionAssetsWithdrawn(amount, surplus);
     }
     //--------------------------------------------------------------------------------------
     //----------------------------------  FINALITY  ----------------------------------------
