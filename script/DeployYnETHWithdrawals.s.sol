@@ -57,20 +57,20 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         ContractAddresses contractAddresses = new ContractAddresses();
         IynETH yneth = IynETH(payable(contractAddresses.getChainAddresses(block.chainid).yn.YNETH_ADDRESS));
 
-        // Apply preprod overrides for DEFAULT_SIGNER
-        if (block.chainid == 17000 || vm.envBool("PREPROD")) { // Holesky testnet or PREPROD environment
-            address DEFAULT_SIGNER = actors.eoa.DEFAULT_SIGNER;
-            actors.ops.WITHDRAWAL_MANAGER = DEFAULT_SIGNER;
-            actors.ops.REDEMPTION_ASSET_WITHDRAWER = DEFAULT_SIGNER;
-            actors.ops.REQUEST_FINALIZER = DEFAULT_SIGNER;
-            actors.ops.STAKING_NODES_WITHDRAWER = DEFAULT_SIGNER;
-            actors.admin.FEE_RECEIVER = DEFAULT_SIGNER;
-            actors.admin.ADMIN = DEFAULT_SIGNER;
-            // Override ynETH address for Holesky testnet
-            yneth = IynETH(payable(0xe8A0fA11735b9C91F5F89340A2E2720e9c9d19fb));
-            console.log("Overridden ynETH address:", address(yneth));
-            console.log("Applied preprod overrides for Holesky testnet");
-        }
+        // // Apply preprod overrides for DEFAULT_SIGNER
+        // if (block.chainid == 17000 && vm.envBool("PREPROD")) { // Holesky testnet or PREPROD environment
+        //     address DEFAULT_SIGNER = actors.eoa.DEFAULT_SIGNER;
+        //     actors.ops.WITHDRAWAL_MANAGER = DEFAULT_SIGNER;
+        //     actors.ops.REDEMPTION_ASSET_WITHDRAWER = DEFAULT_SIGNER;
+        //     actors.ops.REQUEST_FINALIZER = DEFAULT_SIGNER;
+        //     actors.ops.STAKING_NODES_WITHDRAWER = DEFAULT_SIGNER;
+        //     actors.admin.FEE_RECEIVER = DEFAULT_SIGNER;
+        //     actors.admin.ADMIN = DEFAULT_SIGNER;
+        //     // Override ynETH address for Holesky testnet
+        //     yneth = IynETH(payable(0xe8A0fA11735b9C91F5F89340A2E2720e9c9d19fb));
+        //     console.log("Overridden ynETH address:", address(yneth));
+        //     console.log("Applied preprod overrides for Holesky testnet");
+        // }
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
