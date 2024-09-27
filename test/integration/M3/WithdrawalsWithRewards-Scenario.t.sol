@@ -143,6 +143,53 @@ contract M3WithdrawalsWithRewardsTest is Base {
         }
     }
 
+
+    struct QueuedWithdrawalInfo {
+        uint256 nodeId;
+        uint256 withdrawnAmount;
+    }
+
+    function completeQueuedWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private {
+        // create Withdrawal struct
+        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
+        {
+            for (uint256 i = 0; i < queuedWithdrawals.length; i++) {
+                uint256[] memory _shares = new uint256[](1);
+                _shares[0] = queuedWithdrawals[i].withdrawnAmount;
+                IStrategy[] memory _strategies = new IStrategy[](1);
+                _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+                address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
+                _withdrawals[i] = IDelegationManager.Withdrawal({
+                    staker: _stakingNode,
+                    delegatedTo: delegationManager.delegatedTo(_stakingNode),
+                    withdrawer: _stakingNode,
+                    nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
+                    startBlock: uint32(block.number),
+                    strategies: _strategies,
+                    shares: _shares
+                });   
+            }
+        }
+
+        {
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+
+            // advance time to allow completion
+            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        }
+
+        // complete queued withdrawals
+        {
+            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
+            // all is zeroed out by defailt
+            _middlewareTimesIndexes[0] = 0;
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            vm.stopPrank();
+        }
+    }
+
     function test_userWithdrawalWithRewards_Scenario_1() public {
         // Check if we're on the Holesky testnet
         if (block.chainid != 17000) {
@@ -158,7 +205,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
             for (uint256 i = 0; i < epochCount; i++) {
                 beaconChain.advanceEpoch();
             }
-
             accumulatedRewards += state.validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
         }
 
@@ -172,7 +218,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
         }
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
 
         startAndVerifyCheckpoint(nodeId, state);
 
@@ -192,41 +237,12 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
-        // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
-        {
-            uint256[] memory _shares = new uint256[](1);
-            _shares[0] = withdrawnAmount;
-            IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-            address _stakingNode = address(stakingNodesManager.nodes(nodeId));
-            _withdrawals[0] = IDelegationManager.Withdrawal({
-                staker: _stakingNode,
-                delegatedTo: delegationManager.delegatedTo(_stakingNode),
-                withdrawer: _stakingNode,
-                nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
-                startBlock: uint32(block.number),
-                strategies: _strategies,
-                shares: _shares
-            });   
-        }
-
-        {
-            IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-
-            // advance time to allow competion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
-        }
-
-        // complete queued withdrawals
-        {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-            _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
-            vm.stopPrank();
-        }
+        QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
+        withdrawalInfos[0] = QueuedWithdrawalInfo({
+            nodeId: nodeId,
+            withdrawnAmount: withdrawnAmount
+        });
+        completeQueuedWithdrawals(withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
@@ -362,7 +378,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
 
-            runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         // create Withdrawal struct
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
