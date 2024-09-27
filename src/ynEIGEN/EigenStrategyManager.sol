@@ -341,8 +341,9 @@ contract EigenStrategyManager is
         for (uint256 j = 0; j < assetsCount; j++) {      
 
             uint256 strategiesBalance;
-            uint256 strategiesWithdrawalQueueBalance;
+            // uint256 strategiesWithdrawalQueueBalance;
             uint256 strategiesWithdrawnBalance;
+            uint256 totalQueuedShares;
             IERC20 asset = assets[j];
             IStrategy strategy = strategies[asset];
             for (uint256 i; i < nodesCount; i++ ) {
@@ -352,8 +353,9 @@ contract EigenStrategyManager is
 
                 (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
 
-                if (queuedShares > 0) {
-                    strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
+                if (queuedShares > 0) { // @todo - remove from inner loop
+                    // strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
+                    totalQueuedShares += queuedShares; // @note - this actually costs more gas!
                 }
 
                 strategiesWithdrawnBalance += strategyWithdrawnBalance;
@@ -362,7 +364,8 @@ contract EigenStrategyManager is
             DynamicArrayLib.set(
                 stakedBalances,
                 j,
-                wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) + strategiesWithdrawnBalance
+                // wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) + strategiesWithdrawnBalance
+                wrapper.toUserAssetAmount(asset, strategiesBalance + strategy.sharesToUnderlyingView(totalQueuedShares)) + strategiesWithdrawnBalance
             );
         }
 
