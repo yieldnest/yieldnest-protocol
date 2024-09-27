@@ -36,6 +36,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         uint256[] stakingNodeBalancesBefore;
         uint256 previousYnETHRedemptionAssetsVaultBalance;
         uint256 previousYnETHBalance;
+        uint256 validatorCount;
     }
 
 
@@ -43,14 +44,10 @@ contract M3WithdrawalsWithRewardsTest is Base {
         super.setUp();
     }
 
-    function test_userWithdrawalWithRewards_Scenario_1() public {
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
-        amount = 100 ether;
+    function registerVerifiedValidators(uint256 totalDepositAmountInNewNode) internal returns (TestState memory state) {
 
-        // deposit 100 ETH into ynETH
+        amount = totalDepositAmountInNewNode;
+        // deposit entire amount
         {
             user = vm.addr(420);
             vm.deal(user, amount);
@@ -72,17 +69,17 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId = stakingNodesManager.nodesLength() - 1;
         }
 
-
-        TestState memory state = TestState({
+        // Calculate validator count based on amount
+        uint256 validatorCount = amount / 32 ether;
+        
+        state = TestState({
             totalAssetsBefore: yneth.totalAssets(),
             totalSupplyBefore: yneth.totalSupply(),
             stakingNodeBalancesBefore: getAllStakingNodeBalances(),
             previousYnETHRedemptionAssetsVaultBalance: ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(),
-            previousYnETHBalance: address(yneth).balance
+            previousYnETHBalance: address(yneth).balance,
+            validatorCount: validatorCount
         });
-
-        // Calculate validator count based on amount
-        uint256 validatorCount = amount / 32 ether;
 
         // create and register validators validator
         {
@@ -122,6 +119,16 @@ contract M3WithdrawalsWithRewardsTest is Base {
         }
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+        
+    }
+
+    function test_userWithdrawalWithRewards_Scenario_1() public {
+        // Check if we're on the Holesky testnet
+        if (block.chainid != 17000) {
+            return;
+        }
+        // deposit 100 ETH into ynETH
+        TestState memory state = registerVerifiedValidators(100 ether);
 
         uint256 accumulatedRewards;
         {
@@ -131,7 +138,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
                 beaconChain.advanceEpoch();
             }
 
-            accumulatedRewards += validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
+            accumulatedRewards += state.validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
         }
 
 
@@ -289,80 +296,9 @@ contract M3WithdrawalsWithRewardsTest is Base {
         if (block.chainid != 17000) {
             return;
         }
-        amount = 100 ether;
 
         // deposit 100 ETH into ynETH
-        {
-            user = vm.addr(420);
-            vm.deal(user, amount);
-            vm.prank(user);
-            yneth.depositETH{value: amount}(user);
-
-            // Log ynETH balance for user
-            uint256 userYnETHBalance = yneth.balanceOf(user);
-            console.log("User ynETH balance after deposit:", userYnETHBalance);
-        }
-
-        // Process rewards
-        rewardsDistributor.processRewards();
-
-        // create staking node
-        {
-            vm.prank(actors.ops.STAKING_NODE_CREATOR);
-            stakingNodesManager.createStakingNode();
-            nodeId = stakingNodesManager.nodesLength() - 1;
-        }
-
-
-        TestState memory state = TestState({
-            totalAssetsBefore: yneth.totalAssets(),
-            totalSupplyBefore: yneth.totalSupply(),
-            stakingNodeBalancesBefore: getAllStakingNodeBalances(),
-            previousYnETHRedemptionAssetsVaultBalance: ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(),
-            previousYnETHBalance: address(yneth).balance
-        });
-
-        // Calculate validator count based on amount
-        uint256 validatorCount = amount / 32 ether;
-
-        // create and register validators validator
-        {
-            // Create an array of nodeIds with length equal to validatorCount
-            uint256[] memory nodeIds = new uint256[](validatorCount);
-            for (uint256 i = 0; i < validatorCount; i++) {
-                nodeIds[i] = nodeId;
-            }
-
-            // Call createValidators with the nodeIds array and validatorCount
-            validatorIndices = createValidators(nodeIds, 1);
-
-            beaconChain.advanceEpoch_NoRewards();
-
-            registerValidators(nodeIds);
-        }
-
-        state.stakingNodeBalancesBefore[nodeId] += validatorCount * 32 ether;
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
-        // verify withdrawal credentials
-        {
-
-            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(validatorIndices);
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            IPod(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
-                beaconTimestamp: _proofs.beaconTimestamp,
-                stateRootProof: _proofs.stateRootProof,
-                validatorIndices: validatorIndices,
-                validatorFieldsProofs: _proofs.validatorFieldsProofs,
-                validatorFields: _proofs.validatorFields
-            });
-            vm.stopPrank();
-
-            // check that unverifiedStakedETH is 0 and podOwnerShares is 100 ETH (amount)
-            // _testVerifyWithdrawalCredentials();
-        }
-
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+        TestState memory state = registerVerifiedValidators(100 ether);
 
         uint256 accumulatedRewards;
         {
@@ -372,7 +308,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
                 beaconChain.advanceEpoch();
             }
 
-            accumulatedRewards += validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
+            accumulatedRewards += state.validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
         }
 
         // NOTE: Withdrawal is Queued BEFORE exiting validators. does not include rewards in this case.
