@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {DynamicArrayLib} from "lib/solady/src/utils/DynamicArrayLib.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
@@ -329,9 +330,9 @@ contract EigenStrategyManager is
      * @param assets An array of ERC20 tokens for which balances are to be retrieved.
      * @return stakedBalances An array of total balances for each asset, indexed in the same order as the `assets` array.
      */
-    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
+    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory) {
 
-        stakedBalances = new uint256[](assets.length);
+        uint256[] memory stakedBalances = DynamicArrayLib.malloc(assets.length);
         // Add balances contained in each TokenStakingNode, including those managed by strategies.
 
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
@@ -358,10 +359,14 @@ contract EigenStrategyManager is
                 strategiesWithdrawnBalance += strategyWithdrawnBalance;
             }
 
-            stakedBalances[j] +=
-                wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) +
-                strategiesWithdrawnBalance;
+            DynamicArrayLib.set(
+                stakedBalances,
+                j,
+                wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) + strategiesWithdrawnBalance
+            );
         }
+
+        return stakedBalances;
     }
 
     /**
