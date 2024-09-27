@@ -119,7 +119,28 @@ contract M3WithdrawalsWithRewardsTest is Base {
         }
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-        
+
+    }
+
+    function startAndVerifyCheckpoint(uint256 nodeId, TestState memory state) private {
+        // start checkpoint
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            vm.stopPrank();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // verify checkpoints
+        {
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(validatorIndices, _node.eigenPod().currentCheckpointTimestamp());
+            IPod(address(_node.eigenPod())).verifyCheckpointProofs({
+                balanceContainerProof: _cpProofs.balanceContainerProof,
+                proofs: _cpProofs.balanceProofs
+            });
+        }
     }
 
     function test_userWithdrawalWithRewards_Scenario_1() public {
@@ -153,24 +174,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
 
-        // start checkpoint
-        {
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
-            vm.stopPrank();
-        }
-
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
-        // verify checkpoints
-        {
-            IStakingNode _node = stakingNodesManager.nodes(nodeId);
-            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(validatorIndices, _node.eigenPod().currentCheckpointTimestamp());
-            IPod(address(_node.eigenPod())).verifyCheckpointProofs({
-                balanceContainerProof: _cpProofs.balanceContainerProof,
-                proofs: _cpProofs.balanceProofs
-            });
-        }
+        startAndVerifyCheckpoint(nodeId, state);
 
         // Rewards accumulated are accounted after verifying the checkpoint
         state.totalAssetsBefore += accumulatedRewards;
