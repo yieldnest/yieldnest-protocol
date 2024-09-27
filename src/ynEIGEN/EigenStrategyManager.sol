@@ -339,22 +339,28 @@ contract EigenStrategyManager is
         uint256 assetsCount = assets.length;
         for (uint256 j = 0; j < assetsCount; j++) {      
 
+            uint256 strategiesBalance;
+            uint256 strategiesWithdrawalQueueBalance;
+            uint256 strategiesWithdrawnBalance;
             IERC20 asset = assets[j];
+            IStrategy strategy = strategies[asset];
             for (uint256 i; i < nodesCount; i++ ) {
                 ITokenStakingNode node = nodes[i];
 
-                uint256 strategyBalance = strategies[asset].userUnderlyingView((address(node)));
+                strategiesBalance += strategy.userUnderlyingView((address(node)));
 
-                uint256 strategyWithdrawalQueueBalance;
-                (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategies[asset], asset);
+                (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
+
                 if (queuedShares > 0) {
-                    strategyWithdrawalQueueBalance = strategies[asset].sharesToUnderlyingView(queuedShares);
+                    strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
                 }
 
-                stakedBalances[j] +=
-                    wrapper.toUserAssetAmount(asset, strategyBalance + strategyWithdrawalQueueBalance) +
-                    strategyWithdrawnBalance;
+                strategiesWithdrawnBalance += strategyWithdrawnBalance;
             }
+
+            stakedBalances[j] +=
+                wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) +
+                strategiesWithdrawnBalance;
         }
     }
 

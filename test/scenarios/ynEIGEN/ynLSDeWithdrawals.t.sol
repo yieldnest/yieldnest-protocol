@@ -176,6 +176,10 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         assertApproxEqRel(yneigen.totalAssets(), _totalAssetsBefore, 1e17, "setUp: E0"); // NOTE - not best practice to have it here, but for the time being...
     }
 
+    function testTotalAssetsGas() public view {
+        yneigen.totalAssets();
+    }
+
     //
     // queueWithdrawals
     //
