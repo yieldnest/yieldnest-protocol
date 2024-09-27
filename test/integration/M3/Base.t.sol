@@ -120,6 +120,11 @@ contract Base is Test, Utils {
         // Capture the upgrade state before making any changes
         UpgradeState memory preUpgradeState = captureUpgradeState();
 
+        preUpgradeState.stakingNodesManagerTotalDeposited = 0;
+        for (uint256 i = 0; i < preUpgradeState.stakingNodeBalances.length; i++) {
+            preUpgradeState.stakingNodesManagerTotalDeposited += preUpgradeState.stakingNodeBalances[i];
+        }
+
         // STAGE 1 - ATOMIC upgrade existing contracts.
 
         // upgrade stakingNodesManager
@@ -298,6 +303,12 @@ contract Base is Test, Utils {
     ) public {  
         assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
+
+        assertEq(
+            previousStakingNodeBalances.length,
+            stakingNodesManager.nodesLength(),
+            "Number of staking nodes changed after upgrade"
+        );
         for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
             IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
             uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
@@ -309,6 +320,7 @@ contract Base is Test, Utils {
         uint256 totalAssets;
         uint256 totalSupply;
         uint256[] stakingNodeBalances;
+        uint256 stakingNodesManagerTotalDeposited;
         uint256 previewDepositAmount;
         address ynETHStakingNodesManager;
         address ynETHRewardsDistributor;
@@ -321,6 +333,7 @@ contract Base is Test, Utils {
         return UpgradeState({
             totalAssets: yneth.totalAssets(),
             totalSupply: yneth.totalSupply(),
+            stakingNodesManagerTotalDeposited: 0, // temp value since N/A in previous deployment
             stakingNodeBalances: getAllStakingNodeBalances(),
             previewDepositAmount: yneth.previewDeposit(1 ether),
             ynETHStakingNodesManager: address(yneth.stakingNodesManager()),
@@ -337,6 +350,12 @@ contract Base is Test, Utils {
             preUpgradeState.totalAssets,
             preUpgradeState.totalSupply,
             preUpgradeState.stakingNodeBalances
+        );
+
+        assertEq(
+            stakingNodesManager.totalDeposited(),
+            preUpgradeState.stakingNodesManagerTotalDeposited,
+            "StakingNodesManager totalDeposited changed after upgrade"
         );
 
         // Check previewDeposit stays the same
