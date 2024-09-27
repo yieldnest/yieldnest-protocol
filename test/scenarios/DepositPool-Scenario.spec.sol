@@ -6,6 +6,8 @@ import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/
 import {PooledDepositsVault} from "src/PooledDepositsVault.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from"forge-std/Test.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+
 
 contract MockynETH is IynETH {
     // Implement necessary mock functions
@@ -26,6 +28,21 @@ contract MockynETH is IynETH {
     function approve(address spender, uint256 value) external returns (bool) {}
     function allowance(address owner, address spender) external view returns (uint256) {}
     function previewRedeem(uint256 shares) external view returns (uint256 assets) {}
+
+    function totalAssets() external view returns (uint256) {
+        // Mock implementation returning a fixed value
+        return 0 ether;
+    }
+
+    function stakingNodesManager() external view returns (IStakingNodesManager) {
+        // Mock implementation returning a zero address
+        return IStakingNodesManager(address(0));
+    }
+
+    function previewDeposit(uint256 assets) external view returns (uint256 shares) {
+        // Mock implementation with a 1:1 ratio
+        return assets;
+    }
 
     function burn(uint256 amount) external override {
         // Empty implementation for burn function
