@@ -204,13 +204,13 @@ contract TokenStakingNode is
         uint256 _delta = _actualAmountOut > _expectedAmountOut ?
             _actualAmountOut - _expectedAmountOut :
             _expectedAmountOut - _actualAmountOut;
-        if (_delta > 2) revert WithdrawalAmountMismatch(); // @todo - might be a footgun
+        if (_delta > 2) revert WithdrawalAmountMismatch(); // @todo - remove this (bc of slashing)
 
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
         (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
 
-        queuedShares[_strategy] -= _shares;
+        queuedShares[_strategy] -= _shares; // @todo - how to account for slashing (where we have less shares than what was originally recorded)?
         withdrawn[_token] += _actualAmountOut;
 
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
