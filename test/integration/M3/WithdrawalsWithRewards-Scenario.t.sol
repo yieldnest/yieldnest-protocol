@@ -583,15 +583,81 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
         startAndVerifyCheckpoint(nodeId, state);
 
-        // Print withdrawableRestakedExecutionLayerGwei for each EigenPod
-        IEigenPod pod = stakingNodesManager.nodes(nodeId).eigenPod();
-        uint64 withdrawableGwei = pod.withdrawableRestakedExecutionLayerGwei();
-        console.log("Withdrawable GWEI for EigenPod:", withdrawableGwei);
+        uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
+        state.totalAssetsBefore = state.totalAssetsBefore - totalSlashAmount;
+        state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalSlashAmount;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
+        withdrawalInfos[0] = QueuedWithdrawalInfo({
+            nodeId: nodeId,
+            withdrawnAmount: withdrawnAmount
+        });
+        completeQueuedWithdrawals(withdrawalInfos);
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // Assert that the node's queuedSharesAmount is 0 after completing withdrawals
+        assertEq(
+            IStakingNodeVars(address(stakingNodesManager.nodes(nodeId))).queuedSharesAmount(),
+            0,
+            "Node's queuedSharesAmount should be 0 after completing withdrawals"
+        );
+        // Assert that the node's podOwnerShares is 0
+        assertEq(
+            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            int256(0),
+            "Node's podOwnerShares should be 0 after completing withdrawals"
+        );
+        // Assert that the node's withdrawnETH is equal to withdrawnAmount minus totalSlashAmount
+        uint256 expectedWithdrawnETH = withdrawnAmount - totalSlashAmount;
+        assertEq(
+            IStakingNodeVars(address(stakingNodesManager.nodes(nodeId))).withdrawnETH(),
+            expectedWithdrawnETH,
+            "Node's withdrawnETH should be equal to withdrawnAmount minus totalSlashAmount"
+        );
+    }
+
+    function test_userWithdrawalWithRewards_Scenario_5_slashAllValidatorsWithNoRewardsAndWithdrawEverything() public {
+
+        // Check if we're on the Holesky testnet
+        if (block.chainid != 17000) {
+            return;
+        }
+        // exactly 2 validators
+        TestState memory state = registerVerifiedValidators(64 ether);
+
+        uint256 withdrawnAmount = amount;
+
+        // Validators are not slashed and no rewards are earned before queueing withdrawals.
+
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
+            vm.stopPrank();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // Trigger slashing of validators after withdrawals were queued
+        // NOTE: This triggers the a exit of all validators
+        beaconChain.slashValidators(validatorIndices);
+        beaconChain.advanceEpoch();
+
+        startAndVerifyCheckpoint(nodeId, state);
 
         uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
         state.totalAssetsBefore = state.totalAssetsBefore - totalSlashAmount;
         state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalSlashAmount;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // check podOwnerShares are now negative becaose validators were slashed after withdrawals were queued up
+        assertEq(
+            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            0 - int256(totalSlashAmount),
+            "Node's podOwnerShares should be 0 after completing withdrawals"
+        );
 
         QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
         withdrawalInfos[0] = QueuedWithdrawalInfo({
