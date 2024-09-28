@@ -499,4 +499,58 @@ contract M3WithdrawalsWithRewardsTest is Base {
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );
     }
+
+    function test_userWithdrawalWithRewards_Scenario_4_slashAllValidatorsBeforeWithdrawingAndWithdrawEverything() public {
+
+        // Check if we're on the Holesky testnet
+        if (block.chainid != 17000) {
+            return;
+        }
+        // exactly 2 validators
+        TestState memory state = registerVerifiedValidators(64 ether);
+
+        uint256 accumulatedRewards;
+        {
+            uint256 epochCount = 30;
+            // Advance the beacon chain by 100 epochs to simulate rewards accumulation
+            for (uint256 i = 0; i < epochCount; i++) {
+                beaconChain.advanceEpoch();
+            }
+
+            accumulatedRewards += state.validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
+        }
+
+        // NOTE: Withdrawal is Queued BEFORE exiting validators. does not include rewards in this case.
+
+        uint256 withdrawnAmount = amount;
+
+        beaconChain.slashValidators(validatorIndices);
+
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
+            vm.stopPrank();
+        }
+
+        // validator exits no longer needed.
+        
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        startAndVerifyCheckpoint(nodeId, state);
+
+        // Rewards accumulated are accounted after verifying the checkpoint
+        state.totalAssetsBefore += accumulatedRewards;
+        state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
+        withdrawalInfos[0] = QueuedWithdrawalInfo({
+            nodeId: nodeId,
+            withdrawnAmount: withdrawnAmount
+        });
+        completeQueuedWithdrawals(withdrawalInfos);
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+    }
 }
