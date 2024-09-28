@@ -35,7 +35,7 @@ interface StakingNodeEvents {
     );
 
     event QueuedWithdrawals(uint256 sharesAmount, bytes32[] fullWithdrawalRoots);
-    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount);
+    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount, uint256 actualWithdrawalAmount);
 }
 
 /**
@@ -360,17 +360,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
-        if (actualWithdrawalAmount != totalWithdrawalAmount) {
-            revert MismatchInExpectedETHBalanceAfterWithdrawals(actualWithdrawalAmount, totalWithdrawalAmount);
-        }
 
-        // Shares are no longer queued
-        queuedSharesAmount -= actualWithdrawalAmount;
+        // NOTE: actualWithdrawalAmount may be < totalWithdrawalAmount in case of slashing !
+
+        // Shares are no longer queued; decrease what was queued for withdrawal
+        queuedSharesAmount -= totalWithdrawalAmount;
 
         // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
         withdrawnETH += actualWithdrawalAmount;
 
-        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount);
+        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount, actualWithdrawalAmount);
     }
 
     //--------------------------------------------------------------------------------------

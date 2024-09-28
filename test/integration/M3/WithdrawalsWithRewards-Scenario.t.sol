@@ -500,7 +500,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         );
     }
 
-    function test_userWithdrawalWithRewards_Scenario_4_slashAllValidatorsBeforeWithdrawingAndWithdrawEverything() public {
+    function test_userWithdrawalWithRewards_Scenario_4_slashAllValidatorsAndWithdrawEverything() public {
 
         // Check if we're on the Holesky testnet
         if (block.chainid != 17000) {
@@ -520,11 +520,11 @@ contract M3WithdrawalsWithRewardsTest is Base {
             accumulatedRewards += state.validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
         }
 
-        // NOTE: Withdrawal is Queued BEFORE exiting validators. does not include rewards in this case.
-
         uint256 withdrawnAmount = amount;
 
+        // NOTE: This triggers the a exit of all validators
         beaconChain.slashValidators(validatorIndices);
+        beaconChain.advanceEpoch();
 
         // queue withdrawals
         {
@@ -533,15 +533,64 @@ contract M3WithdrawalsWithRewardsTest is Base {
             vm.stopPrank();
         }
 
-        // validator exits no longer needed.
-        
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         startAndVerifyCheckpoint(nodeId, state);
 
-        // Rewards accumulated are accounted after verifying the checkpoint
-        state.totalAssetsBefore += accumulatedRewards;
-        state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+        // Print withdrawableRestakedExecutionLayerGwei for each EigenPod
+        IEigenPod pod = stakingNodesManager.nodes(nodeId).eigenPod();
+        uint64 withdrawableGwei = pod.withdrawableRestakedExecutionLayerGwei();
+        console.log("Withdrawable GWEI for EigenPod:", withdrawableGwei);
+
+        uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
+        state.totalAssetsBefore = state.totalAssetsBefore + accumulatedRewards - totalSlashAmount;
+        state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] + accumulatedRewards - totalSlashAmount;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
+        withdrawalInfos[0] = QueuedWithdrawalInfo({
+            nodeId: nodeId,
+            withdrawnAmount: withdrawnAmount
+        });
+        completeQueuedWithdrawals(withdrawalInfos);
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+    }
+
+    function test_userWithdrawalWithRewards_Scenario_4_slashAllValidatorsWithNoRewardsAndWithdrawEverything() public {
+
+        // Check if we're on the Holesky testnet
+        if (block.chainid != 17000) {
+            return;
+        }
+        // exactly 2 validators
+        TestState memory state = registerVerifiedValidators(64 ether);
+
+        uint256 withdrawnAmount = amount;
+
+        // NOTE: This triggers the a exit of all validators
+        beaconChain.slashValidators(validatorIndices);
+        beaconChain.advanceEpoch();
+
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
+            vm.stopPrank();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        startAndVerifyCheckpoint(nodeId, state);
+
+        // Print withdrawableRestakedExecutionLayerGwei for each EigenPod
+        IEigenPod pod = stakingNodesManager.nodes(nodeId).eigenPod();
+        uint64 withdrawableGwei = pod.withdrawableRestakedExecutionLayerGwei();
+        console.log("Withdrawable GWEI for EigenPod:", withdrawableGwei);
+
+        uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
+        state.totalAssetsBefore = state.totalAssetsBefore - totalSlashAmount;
+        state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalSlashAmount;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
