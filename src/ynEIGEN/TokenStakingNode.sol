@@ -31,6 +31,7 @@ interface ITokenStakingNodeEvents {
 interface IYieldNestStrategyManager {
     function wrapper() external view returns (IWrapper);
     function isStakingNodesWithdrawer(address _address) external view returns (bool);
+    function updateTokenStakingNodesBalances(IERC20 asset, IStrategy strategy) external;
 }
 
 /**
@@ -149,6 +150,11 @@ contract TokenStakingNode is
 
         _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(_params);
 
+        IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).updateTokenStakingNodesBalances(
+            IERC20(address(0)),
+            _strategy
+        );
+
         emit QueuedWithdrawals(_strategy, _shares, _fullWithdrawalRoots);
     }
 
@@ -179,8 +185,6 @@ contract TokenStakingNode is
             });
         }
 
-        uint256 _expectedAmountOut = _strategy.sharesToUnderlyingView(_shares);
-
         IERC20 _token = _strategy.underlyingToken();
         uint256 _balanceBefore = _token.balanceOf(address(this));
 
@@ -206,6 +210,11 @@ contract TokenStakingNode is
 
         queuedShares[_strategy] -= _shares;
         withdrawn[_token] += _actualAmountOut;
+
+        IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).updateTokenStakingNodesBalances(
+            _token,
+            _strategy
+        );
 
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
     }

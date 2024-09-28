@@ -17,12 +17,17 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
     event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
     event DepositedToEigenlayer(IERC20[] depositAssets, uint256[] depositAmounts, IStrategy[] strategiesForNode);
     event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
+}
+
+interface IynEigenVars {
+    function assetRegistry() external view returns (IAssetRegistry);
 }
 
 /** @title EigenStrategyManager
@@ -111,6 +116,11 @@ contract EigenStrategyManager is
     IRedemptionAssetsVaultExt public redemptionAssetsVault;
     IWrapper public wrapper;
 
+    // @todo - struct
+    mapping(IStrategy => uint256) public strategiesBalance;
+    mapping(IStrategy => uint256) public strategiesWithdrawalQueueBalance;
+    mapping(IStrategy => uint256) public strategiesWithdrawnBalance;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -180,6 +190,10 @@ contract EigenStrategyManager is
 
         IERC20(address(wstETH)).forceApprove(address(_wrapper), type(uint256).max);
         IERC20(address(woETH)).forceApprove(address(_wrapper), type(uint256).max);
+
+        IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
     }
 
     //--------------------------------------------------------------------------------------
@@ -260,6 +274,8 @@ contract EigenStrategyManager is
 
         node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
 
+        for (uint256 i = 0; i < assetsLength; i++) updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+
         emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
     }
 
@@ -295,6 +311,8 @@ contract EigenStrategyManager is
             IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
             _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
         }
+
+        updateTokenStakingNodesBalances(IERC20(_action.asset), IStrategy(address(0)));
 
         emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
     }
@@ -340,33 +358,66 @@ contract EigenStrategyManager is
         uint256 assetsCount = assets.length;
         for (uint256 j = 0; j < assetsCount; j++) {      
 
-            uint256 strategiesBalance;
-            uint256 strategiesWithdrawalQueueBalance;
-            uint256 strategiesWithdrawnBalance;
+            // uint256 strategiesBalance;
+            // uint256 strategiesWithdrawalQueueBalance;
+            // uint256 strategiesWithdrawnBalance;
             IERC20 asset = assets[j];
             IStrategy strategy = strategies[asset];
-            for (uint256 i; i < nodesCount; i++ ) {
-                ITokenStakingNode node = nodes[i];
+            // for (uint256 i; i < nodesCount; i++ ) {
+            //     ITokenStakingNode node = nodes[i];
 
-                strategiesBalance += strategy.userUnderlyingView((address(node)));
+            //     strategiesBalance += strategy.userUnderlyingView((address(node)));
 
-                (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
+            //     (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
 
-                if (queuedShares > 0) {
-                    strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
-                }
+            //     if (queuedShares > 0) {
+            //         strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
+            //     }
 
-                strategiesWithdrawnBalance += strategyWithdrawnBalance;
-            }
+            //     strategiesWithdrawnBalance += strategyWithdrawnBalance;
+            // }
+            // strategiesBalance
+            // strategiesWithdrawalQueueBalance
+            // strategiesWithdrawnBalance
 
             DynamicArrayLib.set(
                 stakedBalances,
                 j,
-                wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) + strategiesWithdrawnBalance
+                wrapper.toUserAssetAmount(
+                    asset,
+                    strategiesBalance[strategy] + strategiesWithdrawalQueueBalance[strategy]
+                )
+                + strategiesWithdrawnBalance[strategy]
             );
         }
 
         return stakedBalances;
+    }
+    function updateTokenStakingNodesBalances(IERC20 asset, IStrategy strategy) public { // @todo - doesnt have to iterate over all nodes everytime
+
+        if (address(strategy) == address(0)) strategy = strategies[asset];
+        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        uint256 nodesCount = nodes.length;
+        uint256 _strategiesBalance;
+        uint256 _strategiesWithdrawalQueueBalance;
+        uint256 _strategiesWithdrawnBalance;
+        for (uint256 i; i < nodesCount; i++ ) {
+            ITokenStakingNode node = nodes[i];
+
+            _strategiesBalance += strategy.userUnderlyingView((address(node)));
+
+            (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
+
+            if (queuedShares > 0) {
+                _strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
+            }
+
+            _strategiesWithdrawnBalance += strategyWithdrawnBalance;
+        }
+
+        strategiesBalance[strategy] = _strategiesBalance;
+        strategiesWithdrawalQueueBalance[strategy] = _strategiesWithdrawalQueueBalance;
+        strategiesWithdrawnBalance[strategy] = _strategiesWithdrawnBalance;
     }
 
     /**
