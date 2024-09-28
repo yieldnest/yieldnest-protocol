@@ -55,7 +55,6 @@ contract TokenStakingNode is
     error NotStrategyManager();
     error NotTokenStakingNodeDelegator();
     error NotTokenStakingNodesWithdrawer();
-    error WithdrawalAmountMismatch();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -180,7 +179,7 @@ contract TokenStakingNode is
             });
         }
 
-        uint256 _expectedAmountOut = _strategy.sharesToUnderlyingView(_shares);
+        // uint256 _expectedAmountOut = _strategy.sharesToUnderlyingView(_shares);
 
         IERC20 _token = _strategy.underlyingToken();
         uint256 _balanceBefore = _token.balanceOf(address(this));
@@ -201,16 +200,17 @@ contract TokenStakingNode is
         }
 
         uint256 _actualAmountOut = _token.balanceOf(address(this)) - _balanceBefore;
-        uint256 _delta = _actualAmountOut > _expectedAmountOut ?
-            _actualAmountOut - _expectedAmountOut :
-            _expectedAmountOut - _actualAmountOut;
-        if (_delta > 2) revert WithdrawalAmountMismatch(); // @todo - remove this (bc of slashing)
-
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
         (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
 
-        queuedShares[_strategy] -= _shares; // @todo - how to account for slashing (where we have less shares than what was originally recorded)?
+        // @todo - test this
+        // NOTE: make sure queuedShares is correct in case of a slashing event
+        uint256 _sharesBalance = _strategy.shares(address(this));
+        uint256 _newQueuedShares = queuedShares[_strategy] - _shares;
+        if (_newQueuedShares > _sharesBalance) _newQueuedShares = _sharesBalance;
+        queuedShares[_strategy] = _newQueuedShares;
+
         withdrawn[_token] += _actualAmountOut;
 
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
