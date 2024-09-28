@@ -480,6 +480,14 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     }
 
     //
+    // simulate slashing
+    //
+
+    function testQueueWithdrawalsAfterSlashing() public {
+
+    }
+
+    //
     // internal helpers
     //
 
