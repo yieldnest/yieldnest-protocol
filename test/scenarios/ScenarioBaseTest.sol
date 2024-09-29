@@ -25,7 +25,6 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
-import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
@@ -106,9 +105,7 @@ contract ScenarioBaseTest is Test, Utils {
         vm.prank(actors.admin.UNPAUSE_ADMIN);
         yneth.unpauseTransfers();
 
-        address newStakingNodesManagerImpl = block.chainid == 17000
-            ? address(new HoleskyStakingNodesManager())
-            : address(new StakingNodesManager());
+        address newStakingNodesManagerImpl = address(new StakingNodesManager());
         
         vm.prank(actors.wallets.YNSecurityCouncil);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
