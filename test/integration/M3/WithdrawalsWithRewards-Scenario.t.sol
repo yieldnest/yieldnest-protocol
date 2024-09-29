@@ -191,10 +191,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
     }
 
     function test_userWithdrawalWithRewards_Scenario_1() public {
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
+
         // deposit 100 ETH into ynETH
         TestState memory state = registerVerifiedValidators(100 ether);
 
@@ -312,10 +309,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
     }
 
     function test_userWithdrawalWithRewards_Scenario_2_queueWithdrawalsBeforeValidatorExit() public {
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
 
         // deposit 100 ETH into ynETH
         TestState memory state = registerVerifiedValidators(100 ether);
@@ -436,10 +429,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
     function test_userWithdrawalWithRewards_Scenario_3_withdrawEverything() public {
 
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
         // exactly 2 validators
         TestState memory state = registerVerifiedValidators(64 ether);
 
@@ -502,10 +491,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
     function test_userWithdrawalWithRewards_Scenario_4_slashAllValidatorsAndWithdrawEverything() public {
 
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
         // exactly 2 validators
         TestState memory state = registerVerifiedValidators(64 ether);
 
@@ -559,10 +544,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
     function test_userWithdrawalWithRewards_Scenario_4_slashAllValidatorsWithNoRewardsAndWithdrawEverything() public {
 
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
         // exactly 2 validators
         TestState memory state = registerVerifiedValidators(64 ether);
 
@@ -620,10 +601,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
     function test_userWithdrawalWithRewards_Scenario_5_slashAllValidatorsWithNoRewardsAndWithdrawEverything() public {
 
-        // Check if we're on the Holesky testnet
-        if (block.chainid != 17000) {
-            return;
-        }
         // exactly 2 validators
         TestState memory state = registerVerifiedValidators(64 ether);
 
