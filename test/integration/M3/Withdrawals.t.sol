@@ -49,7 +49,6 @@ contract M3WithdrawalsTest is Base {
     //
 
     function testVerifyWithdrawalCredentials() public {
-        if (block.chainid != 17000) return;
 
         // create staking node
         {
@@ -105,7 +104,6 @@ contract M3WithdrawalsTest is Base {
     }
 
     function testVerifyCheckpoints() public {
-        if (block.chainid != 17000) return;
 
         // setup env
         {
@@ -140,7 +138,6 @@ contract M3WithdrawalsTest is Base {
     }
 
     function testWithdraw() public {
-        if (block.chainid != 17000) return;
 
         // setup env
         {
@@ -247,7 +244,6 @@ contract M3WithdrawalsTest is Base {
     //
 
     function testRequestWithdrawal(uint256 _amount) public returns (uint256 _tokenId) {
-        if (block.chainid != 17000) return 0;
 
         uint256 _userAmountBefore = yneth.balanceOf(user);
         vm.assume(_amount <= _userAmountBefore / 2 && _amount > 0); // `/ 2` bc we distribute only half of what the user has deposited
@@ -273,7 +269,6 @@ contract M3WithdrawalsTest is Base {
 
     function testClaimWithdrawal(uint256 _amount) public {
         vm.assume(_amount > 1 ether);
-        if (block.chainid != 17000) return;
 
         uint256 _tokenId = testRequestWithdrawal(_amount);
         uint256 _userETHBalanceBefore = address(user).balance;
