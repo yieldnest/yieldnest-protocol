@@ -2,9 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20Burnable} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20Metadata} from "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "forge-std/console.sol";
 
 
