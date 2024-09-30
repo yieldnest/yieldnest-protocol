@@ -301,43 +301,24 @@ contract Base is Test, Utils {
             preUpgradeState.stakingNodesManagerTotalDeposited += preUpgradeState.stakingNodeBalances[i];
         }
 
-        {
-            address stakinNodesManagerImplementation = 0xC9cf6740282617f3B392f900De0449E687Ce05e3;
+        // Assert the implementations of upgraded contracts
+        assertEq(
+            getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager)),
+            0xC9cf6740282617f3B392f900De0449E687Ce05e3,
+            "StakingNodesManager implementation mismatch"
+        );
 
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(stakingNodesManager)),
-                address(stakinNodesManagerImplementation),
-                ""
-            );
-            vm.stopPrank();
-        }
+        assertEq(
+            getTransparentUpgradeableProxyImplementationAddress(address(yneth)),
+            0x090D67d3C97712f6C17a037515CbB8502561EE57,
+            "ynETH implementation mismatch"
+        );
 
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // upgrade ynETH
-        {
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(yneth))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(yneth)),
-                address(0x090D67d3C97712f6C17a037515CbB8502561EE57),
-                ""
-            );
-            vm.stopPrank();
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // upgrade StakingNodeImplementation
-        {
-            stakingNodeImplementation = new StakingNode();
-            vm.prank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(0xf07861349Ed0cB4603590B47D2269768Ed6E2821);
-        }
+        assertEq(
+            address(stakingNodesManager.upgradeableBeacon().implementation()),
+            0xf07861349Ed0cB4603590B47D2269768Ed6E2821,
+            "StakingNode implementation mismatch"
+        );
 
         {
             runUpgradeIntegrityInvariants(preUpgradeState);
