@@ -163,325 +163,278 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
     }
 }
 
-// contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
-//     using stdStorage for StdStorage;
-//     using BytesLib for bytes;
+contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
+    using stdStorage for StdStorage;
+    using BytesLib for bytes;
 
-//     address newMockStakingNodeImplementation;
+    address newMockStakingNodeImplementation;
 
-//     function setUp() public override {
-//         super.setUp();
-//         // Set the implementation of the StakingNode to be MockStakingNode
-//         newMockStakingNodeImplementation = address(new MockStakingNode());
-//         vm.prank(actors.admin.STAKING_ADMIN);
-//         stakingNodesManager.upgradeStakingNodeImplementation(newMockStakingNodeImplementation);
-//     }
+    function setUp() public override {
+        super.setUp();
+    }
 
-    // // FIXME: update or delete to accomdate for M3
-    // function skiptestVerifyWithdrawalCredentialsRevertingWhenPaused() public {
+    // function testCreateEigenPodReturnsEigenPodAddressAfterCreated() public {
+    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
+    //     IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+    //     IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+    //     assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
+    // }
 
-//         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
-//         uint256 depositAmount = 32 ether;
-//         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
+    function testDelegateFailWhenNotAdmin() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        vm.expectRevert();
+        stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+    }
 
-//         uint64 oracleTimestamp = uint64(block.timestamp);
+    function testStakingNodeDelegate() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
+        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
+        address operator = address(0x123);
 
-// 		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
+        // register as operator
+        vm.prank(operator);
+        delegationManager.registerAsOperator(
+            IDelegationManager.OperatorDetails({
+                __deprecated_earningsReceiver: address(1), // unused
+                delegationApprover: address(0),
+                stakerOptOutWindowBlocks: 1
+            }), 
+            "ipfs://some-ipfs-hash"
+        ); 
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(operator, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
-// 		uint40[] memory validatorIndexes = new uint40[](1);
+        address delegatedOperator = delegationManager.delegatedTo(address(stakingNodeInstance));
+        assertEq(delegatedOperator, operator, "Delegation is not set to the right operator.");
+    }
 
-// 		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
-
-//         bytes[] memory validatorFieldsProofs = proofUtils._getValidatorFieldsProof();
-
-// 		bytes32[][] memory validatorFields = new bytes32[][](1);
-//         validatorFields[0] = proofUtils.getValidatorFields();
-
-//         uint256 shares = strategyManager.stakerStrategyShares(address(stakingNodeInstance), stakingNodeInstance.beaconChainETHStrategy());
-//         assertEq(shares, depositAmount, "Shares do not match deposit amount");
-
-//         vm.expectRevert("Pausable: index is paused");
-//         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-//         stakingNodeInstance.verifyWithdrawalCredentials(
-//             oracleTimestamp,
-//             stateRootProof,
-//             validatorIndexes,
-//             validatorFieldsProofs,
-//             validatorFields
-//         );
-//     }
-
-//     function testCreateEigenPodReturnsEigenPodAddressAfterCreated() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-//         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
-//         assertEq(address(eigenPodInstance), address(stakingNodeInstance.eigenPod()));
-//     }
-
-//     function testClaimDelayedWithdrawals() public {
-
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-
-//         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-//         vm.expectRevert();
-//         stakingNodeInstance.processDelayedWithdrawals();
-//     }
-
-//     function testDelegateFailWhenNotAdmin() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-//         vm.expectRevert();
-//         stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
-//     }
-
-//     function testStakingNodeDelegate() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-//         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-//         IPausable pauseDelegationManager = IPausable(address(delegationManager));
-//         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-//         pauseDelegationManager.unpause(0);
-//         address operator = address(0x123);
-
-//         // register as operator
-//         vm.prank(operator);
-//         delegationManager.registerAsOperator(
-//             IDelegationManager.OperatorDetails({
-//                 earningsReceiver: operator,
-//                 delegationApprover: address(0),
-//                 stakerOptOutWindowBlocks: 1
-//             }), 
-//             "ipfs://some-ipfs-hash"
-//         ); 
-//         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-//         stakingNodeInstance.delegate(operator, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
-
-//         address delegatedOperator = delegationManager.delegatedTo(address(stakingNodeInstance));
-//         assertEq(delegatedOperator, operator, "Delegation is not set to the right operator.");
-//     }
-
-//     function testStakingNodeUndelegate() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-//         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-//         IPausable pauseDelegationManager = IPausable(address(delegationManager));
+    function testStakingNodeUndelegate() public {
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        IPausable pauseDelegationManager = IPausable(address(delegationManager));
         
-//         // Unpause delegation manager to allow delegation
-//         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-//         pauseDelegationManager.unpause(0);
+        // Unpause delegation manager to allow delegation
+        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
+        pauseDelegationManager.unpause(0);
 
-//         // Register as operator and delegate
-//         delegationManager.registerAsOperator(
-//             IDelegationManager.OperatorDetails({
-//                 earningsReceiver: address(this),
-//                 delegationApprover: address(0),
-//                 stakerOptOutWindowBlocks: 1
-//             }), 
-//             "ipfs://some-ipfs-hash"
-//         );
+        // Register as operator and delegate
+        delegationManager.registerAsOperator(
+            IDelegationManager.OperatorDetails({
+                __deprecated_earningsReceiver: address(1),
+                delegationApprover: address(0),
+                stakerOptOutWindowBlocks: 1
+            }), 
+            "ipfs://some-ipfs-hash"
+        );
         
-//         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-//         stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
-//         // // Attempt to undelegate with the wrong role
-//         vm.expectRevert();
-//         stakingNodeInstance.undelegate();
+        // // Attempt to undelegate with the wrong role
+        vm.expectRevert();
+        stakingNodeInstance.undelegate();
 
-//         IStrategyManager strategyManager = stakingNodesManager.strategyManager();
-//         uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(stakingNodeInstance));
-//         assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
+        IStrategyManager strategyManager = stakingNodesManager.strategyManager();
+        uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(stakingNodeInstance));
+        assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
-//         // Now actually undelegate with the correct role
-//         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-//         stakingNodeInstance.undelegate();
+        // Now actually undelegate with the correct role
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.undelegate();
         
-//         // Verify undelegation
-//         address delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
-//         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
-//     }
+        // Verify undelegation
+        address delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
+        assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+    }
 
-//     function testDelegateUndelegateAndDelegateAgain() public {
-//         address operator1 = address(0x9999);
-//         address operator2 = address(0x8888);
+    // function testDelegateUndelegateAndDelegateAgain() public {
+    //     address operator1 = address(0x9999);
+    //     address operator2 = address(0x8888);
 
-//         address[] memory operators = new address[](2);
-//         operators[0] = operator1;
-//         operators[1] = operator2;
+    //     address[] memory operators = new address[](2);
+    //     operators[0] = operator1;
+    //     operators[1] = operator2;
 
-//         for (uint i = 0; i < operators.length; i++) {
-//             vm.prank(operators[i]);
-//             delegationManager.registerAsOperator(
-//                 IDelegationManager.OperatorDetails({
-//                     earningsReceiver: operators[i],
-//                     delegationApprover: address(0),
-//                     stakerOptOutWindowBlocks: 1
-//                 }), 
-//                 "ipfs://some-ipfs-hash"
-//             );
-//         }
+    //     for (uint i = 0; i < operators.length; i++) {
+    //         vm.prank(operators[i]);
+    //         delegationManager.registerAsOperator(
+    //             IDelegationManager.OperatorDetails({
+    //                 earningsReceiver: operators[i],
+    //                 delegationApprover: address(0),
+    //                 stakerOptOutWindowBlocks: 1
+    //             }), 
+    //             "ipfs://some-ipfs-hash"
+    //         );
+    //     }
 
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-//         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
+    //     IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+    //     IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
-//         // Delegate to operator1
-//         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-//         stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+    //     // Delegate to operator1
+    //     vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+    //     stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
-//         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
-//         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
+    //     address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
+    //     assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
-//         // Undelegate
-//         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-//         stakingNodeInstance.undelegate();
+    //     // Undelegate
+    //     vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+    //     stakingNodeInstance.undelegate();
 
-//         address undelegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
-//         assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+    //     address undelegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
+    //     assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
 
-//         // Delegate to operator2
-//         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-//         stakingNodeInstance.delegate(operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+    //     // Delegate to operator2
+    //     vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+    //     stakingNodeInstance.delegate(operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
-//         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
-//         assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
-//     }
+    //     address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
+    //     assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
+    // }
 
-//     function testImplementViewFunction() public {
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-//         assertEq(stakingNodeInstance.implementation(), address(newMockStakingNodeImplementation));
-//     }
+    // function testImplementViewFunction() public {
+    //     vm.prank(actors.ops.STAKING_NODE_CREATOR);
+    //     IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+    //     assertEq(stakingNodeInstance.implementation(), address(newMockStakingNodeImplementation));
+    // }
 
     // // FIXME: update or delete to accomdate for M3
     // function skip_testVerifyWithdrawalCredentialsWithWrongWithdrawalAddress() public {
 
-//         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
+    //     ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
 
-//         uint256 depositAmount = 32 ether;
-//         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
+    //     uint256 depositAmount = 32 ether;
+    //     (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
 
-//         uint64 oracleTimestamp = uint64(block.timestamp);
-//         MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+    //     uint64 oracleTimestamp = uint64(block.timestamp);
+    //     MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
 
-//         address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
-//         vm.prank(eigenPodManagerOwner);
-//         eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+    //     address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+    //     vm.prank(eigenPodManagerOwner);
+    //     eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
 
-//         bytes32 latestBlockRoot = proofUtils.getLatestBlockRoot();
-//         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    //     bytes32 latestBlockRoot = proofUtils.getLatestBlockRoot();
+    //     mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
 
-// 		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
+	// 	BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
 
-// 		uint40[] memory validatorIndexes = new uint40[](1);
+	// 	uint40[] memory validatorIndexes = new uint40[](1);
 
-// 		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
+	// 	validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
 
-//         bytes[] memory validatorFieldsProofs = new bytes[](1);
-//         validatorFieldsProofs[0] = proofUtils._getValidatorFieldsProof()[0];
+    //     bytes[] memory validatorFieldsProofs = new bytes[](1);
+    //     validatorFieldsProofs[0] = proofUtils._getValidatorFieldsProof()[0];
 
-// 		bytes32[][] memory validatorFields = new bytes32[][](1);
-//         validatorFields[0] = proofUtils.getValidatorFields();
+	// 	bytes32[][] memory validatorFields = new bytes32[][](1);
+    //     validatorFields[0] = proofUtils.getValidatorFields();
 
-//         // address eigenPodAddress = address(stakingNodeInstance.eigenPod());
-//         // validatorFields[0][1] = (abi.encodePacked(bytes1(uint8(1)), bytes11(0), eigenPodAddress)).toBytes32(0);
+    //     // address eigenPodAddress = address(stakingNodeInstance.eigenPod());
+    //     // validatorFields[0][1] = (abi.encodePacked(bytes1(uint8(1)), bytes11(0), eigenPodAddress)).toBytes32(0);
 
-//         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-//         vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Proof is not for this EigenPod");
-//         stakingNodeInstance.verifyWithdrawalCredentials(
-//             oracleTimestamp,
-//             stateRootProof,
-//             validatorIndexes,
-//             validatorFieldsProofs,
-//             validatorFields
-//         ); 
-//     }
+    //     vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+    //     vm.expectRevert("EigenPod.verifyCorrectWithdrawalCredentials: Proof is not for this EigenPod");
+    //     stakingNodeInstance.verifyWithdrawalCredentials(
+    //         oracleTimestamp,
+    //         stateRootProof,
+    //         validatorIndexes,
+    //         validatorFieldsProofs,
+    //         validatorFields
+    //     ); 
+    // }
 
-//     function setupVerifyWithdrawalCredentialsForProofFileForForeignValidator(
-//         string memory path
-//     ) public returns(VerifyWithdrawalCredentialsCallParams memory params) {
+    // function setupVerifyWithdrawalCredentialsForProofFileForForeignValidator(
+    //     string memory path
+    // ) public returns(VerifyWithdrawalCredentialsCallParams memory params) {
 
-//         setJSON(path);
+    //     setJSON(path);
 
-//         uint256 depositAmount = 32 ether;
-//         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
+    //     uint256 depositAmount = 32 ether;
+    //     (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
 
-//         uint64 oracleTimestamp = uint64(block.timestamp);
-//         MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
+    //     uint64 oracleTimestamp = uint64(block.timestamp);
+    //     MockEigenLayerBeaconOracle mockBeaconOracle = new MockEigenLayerBeaconOracle();
 
-//         address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
-//         vm.prank(eigenPodManagerOwner);
-//         eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
+    //     address eigenPodManagerOwner = OwnableUpgradeable(address(eigenPodManager)).owner();
+    //     vm.prank(eigenPodManagerOwner);
+    //     eigenPodManager.updateBeaconChainOracle(IBeaconChainOracle(address(mockBeaconOracle)));
         
-//         // set existing EigenPod to be the EigenPod of the StakingNode for the 
-//         // purpose of testing verifyWithdrawalCredentials
-//         address eigenPodAddress = getWithdrawalAddress();
+    //     // set existing EigenPod to be the EigenPod of the StakingNode for the 
+    //     // purpose of testing verifyWithdrawalCredentials
+    //     address eigenPodAddress = getWithdrawalAddress();
 
-//         MockStakingNode(payable(address(stakingNodeInstance)))
-//             .setEigenPod(IEigenPod(eigenPodAddress));
+    //     MockStakingNode(payable(address(stakingNodeInstance)))
+    //         .setEigenPod(IEigenPod(eigenPodAddress));
 
-//         {
-//             // Upgrade the implementation of EigenPod to be able to alter its owner
-//             EigenPod existingEigenPod = EigenPod(payable(address(stakingNodeInstance.eigenPod())));
+    //     {
+    //         // Upgrade the implementation of EigenPod to be able to alter its owner
+    //         EigenPod existingEigenPod = EigenPod(payable(address(stakingNodeInstance.eigenPod())));
 
-//             MockEigenPod mockEigenPod = new MockEigenPod(
-//                 IETHPOSDeposit(existingEigenPod.ethPOS()),
-//                 IDelayedWithdrawalRouter(address(delayedWithdrawalRouter)),
-//                 IEigenPodManager(address(eigenPodManager)),
-//                 existingEigenPod.MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR(),
-//                 existingEigenPod.GENESIS_TIME()
-//             );
+    //         MockEigenPod mockEigenPod = new MockEigenPod(
+    //             IETHPOSDeposit(existingEigenPod.ethPOS()),
+    //             IDelayedWithdrawalRouter(address(delayedWithdrawalRouter)),
+    //             IEigenPodManager(address(eigenPodManager)),
+    //             existingEigenPod.MAX_RESTAKED_BALANCE_GWEI_PER_VALIDATOR(),
+    //             existingEigenPod.GENESIS_TIME()
+    //         );
 
-//             address mockEigenPodAddress = address(mockEigenPod);
-//             IEigenPodManager eigenPodManagerInstance = IEigenPodManager(eigenPodManager);
-//             address eigenPodBeaconAddress = address(eigenPodManagerInstance.eigenPodBeacon());
-//             UpgradeableBeacon eigenPodBeacon = UpgradeableBeacon(eigenPodBeaconAddress);
-//             address eigenPodBeaconOwner = Ownable(eigenPodBeaconAddress).owner();
-//             vm.prank(eigenPodBeaconOwner);
-//             eigenPodBeacon.upgradeTo(mockEigenPodAddress);
-//         }
+    //         address mockEigenPodAddress = address(mockEigenPod);
+    //         IEigenPodManager eigenPodManagerInstance = IEigenPodManager(eigenPodManager);
+    //         address eigenPodBeaconAddress = address(eigenPodManagerInstance.eigenPodBeacon());
+    //         UpgradeableBeacon eigenPodBeacon = UpgradeableBeacon(eigenPodBeaconAddress);
+    //         address eigenPodBeaconOwner = Ownable(eigenPodBeaconAddress).owner();
+    //         vm.prank(eigenPodBeaconOwner);
+    //         eigenPodBeacon.upgradeTo(mockEigenPodAddress);
+    //     }
 
-//         MockEigenPod mockEigenPodInstance = MockEigenPod(payable(address(stakingNodeInstance.eigenPod())));
-//         mockEigenPodInstance.setPodOwner(address(stakingNodeInstance));
-
-
-//         ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
-//         bytes32 validatorPubkeyHash = BeaconChainProofs.getPubkeyHash(validatorProofs.validatorFields[0]);
-//         IEigenPod.ValidatorInfo memory zeroedValidatorInfo = IEigenPod.ValidatorInfo({
-//             validatorIndex: 0,
-//             restakedBalanceGwei: 0,
-//             mostRecentBalanceUpdateTimestamp: 0,
-//             status: IEigenPod.VALIDATOR_STATUS.INACTIVE
-//         });
-//         mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
-
-//         {
-//             // Upgrade the implementation of EigenPod to be able to alter the owner of the pod being tested
-//             MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
-//             address payable eigenPodManagerPayable = payable(address(eigenPodManager));
-//             ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
-
-//             address proxyAdmin = Utils.getTransparentUpgradeableProxyAdminAddress(eigenPodManagerPayable);
-//             vm.prank(proxyAdmin);
-//             eigenPodManagerProxy.upgradeTo(address(mockEigenPodManager));
-//         }
-
-//         {
-//             // mock latest blockRoot
-//             MockEigenPodManager mockEigenPodManagerInstance = MockEigenPodManager(address(eigenPodManager));
-//             mockEigenPodManagerInstance.setHasPod(address(stakingNodeInstance), stakingNodeInstance.eigenPod());
-
-//             bytes32 latestBlockRoot = _getLatestBlockRoot();
-//             mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
-//         }
+    //     MockEigenPod mockEigenPodInstance = MockEigenPod(payable(address(stakingNodeInstance.eigenPod())));
+    //     mockEigenPodInstance.setPodOwner(address(stakingNodeInstance));
 
 
-//         params.oracleTimestamp = oracleTimestamp;
-//         params.stakingNodeInstance = stakingNodeInstance;
-//         params.validatorProofs = validatorProofs;
-//     }
-    
+    //     ValidatorProofs memory validatorProofs = getWithdrawalCredentialParams();
+    //     bytes32 validatorPubkeyHash = BeaconChainProofs.getPubkeyHash(validatorProofs.validatorFields[0]);
+    //     IEigenPod.ValidatorInfo memory zeroedValidatorInfo = IEigenPod.ValidatorInfo({
+    //         validatorIndex: 0,
+    //         restakedBalanceGwei: 0,
+    //         mostRecentBalanceUpdateTimestamp: 0,
+    //         status: IEigenPod.VALIDATOR_STATUS.INACTIVE
+    //     });
+    //     mockEigenPodInstance.setValidatorInfo(validatorPubkeyHash, zeroedValidatorInfo);
+
+    //     {
+    //         // Upgrade the implementation of EigenPod to be able to alter the owner of the pod being tested
+    //         MockEigenPodManager mockEigenPodManager = new MockEigenPodManager(EigenPodManager(address(eigenPodManager)));
+    //         address payable eigenPodManagerPayable = payable(address(eigenPodManager));
+    //         ITransparentUpgradeableProxy eigenPodManagerProxy = ITransparentUpgradeableProxy(eigenPodManagerPayable);
+
+    //         address proxyAdmin = Utils.getTransparentUpgradeableProxyAdminAddress(eigenPodManagerPayable);
+    //         vm.prank(proxyAdmin);
+    //         eigenPodManagerProxy.upgradeTo(address(mockEigenPodManager));
+    //     }
+
+    //     {
+    //         // mock latest blockRoot
+    //         MockEigenPodManager mockEigenPodManagerInstance = MockEigenPodManager(address(eigenPodManager));
+    //         mockEigenPodManagerInstance.setHasPod(address(stakingNodeInstance), stakingNodeInstance.eigenPod());
+
+    //         bytes32 latestBlockRoot = _getLatestBlockRoot();
+    //         mockBeaconOracle.setOracleBlockRootAtTimestamp(latestBlockRoot);
+    //     }
+
+
+    //     params.oracleTimestamp = oracleTimestamp;
+    //     params.stakingNodeInstance = stakingNodeInstance;
+    //     params.validatorProofs = validatorProofs;
+    // }
+}   
+
     // // FIXME: update or delete to accomdate for M3
     // function skip_testVerifyWithdrawalCredentialsSuccesfully_32ETH() public {
     //     if (block.chainid != 1) {
