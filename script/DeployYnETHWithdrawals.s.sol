@@ -165,7 +165,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             withdrawalQueueManager: ynETHWithdrawalQueueManager,
             stakingNodesManagerImplementation: stakingNodesManagerImplementation,
             stakingNodeImplementation: stakingNodeImplementation,
-            ynETHImplementation: ynETH(payable(address(yneth)))
+            ynETHImplementation: ynETHImplementation
         });
 
         saveDeployment(deployment);
