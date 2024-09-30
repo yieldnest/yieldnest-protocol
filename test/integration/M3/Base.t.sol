@@ -127,46 +127,29 @@ contract Base is Test, Utils {
             preUpgradeState.stakingNodesManagerTotalDeposited += preUpgradeState.stakingNodeBalances[i];
         }
 
-        // STAGE 1 - ATOMIC upgrade existing contracts.
+        /*
+         ███████╗████████╗ █████╗  ██████╗ ███████╗     ██╗
+         ██╔════╝╚══██╔══╝██╔══██╗██╔════╝ ██╔════╝    ███║
+         ███████╗   ██║   ███████║██║  ███╗█████╗      ╚██║
+         ╚════██║   ██║   ██╔══██║██║   ██║██╔══╝       ██║
+         ███████║   ██║   ██║  ██║╚██████╔╝███████╗     ██║
+         ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝     ╚═╝
+         Stage 1 - ATOMIC upgrade existing contracts
+        */
+
 
         // upgrade stakingNodesManager
         {
+            /*
+                ██████╗  █████╗ ███╗   ██╗ ██████╗ ███████╗██████╗ 
+                ██╔══██╗██╔══██╗████╗  ██║██╔════╝ ██╔════╝██╔══██╗
+                ██║  ██║███████║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
+                ██║  ██║██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
+                ██████╔╝██║  ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
+                ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
+            */
 
-            address stakinNodesManagerImplementation;
-
-            if (block.chainid == 1) {
-
-                /*
-                 ██████╗  █████╗ ███╗   ██╗ ██████╗ ███████╗██████╗ 
-                 ██╔══██╗██╔══██╗████╗  ██║██╔════╝ ██╔════╝██╔══██╗
-                 ██║  ██║███████║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
-                 ██║  ██║██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
-                 ██████╔╝██║  ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
-                 ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-                */
-
-                // WARNING: This code is for testing purposes only and MUST be removed before deploying to mainnet.
-                // It uses a placeholder implementation that doesn't reflect the actual mainnet behavior.
-                // Keeping this in production could lead to severe security vulnerabilities and incorrect contract behavior.
-                // This logic auto-adjust for unverifiedStakedETH based on the the difference between podOwnerShares and pre-deposit balance.
-
-                // Compute deltas array
-                uint256[] memory deltas = new uint256[](stakingNodesManager.nodesLength());
-                for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-                    IStakingNode stakingNode = stakingNodesManager.nodes(i);
-                    uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
-                    deltas[i] = preUpgradeState.stakingNodeBalances[i] - podShares;
-                    // Revert if delta is bigger than 32 ether
-                    require(deltas[i] <= 32 ether, "Delta exceeds 32 ether limit");
-                }
-
-                // Deploy PlaceholderStakingNodesManager
-                PlaceholderStakingNodesManager placeholderStakingNodesManager = new PlaceholderStakingNodesManager(deltas);
-                stakinNodesManagerImplementation = address(placeholderStakingNodesManager);
-            } else {
-                stakinNodesManagerImplementation = address(new StakingNodesManager());
-            }
-
+            address stakinNodesManagerImplementation = getStakingNodesManagerImplementation(preUpgradeState);
 
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
             ProxyAdmin(
@@ -203,33 +186,6 @@ contract Base is Test, Utils {
             stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
         }
 
-        // Print StakingNode balance before upgrade
-        console.log("StakingNode balance before upgrade:");
-        for (uint256 i = 0; i < preUpgradeState.stakingNodeBalances.length; i++) {
-            console.log("Node", i, ":", preUpgradeState.stakingNodeBalances[i]);
-        }
-
-        // Print current StakingNode balance after upgrade
-        console.log("StakingNode balance after upgrade:");
-        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-            IStakingNode stakingNode = stakingNodesManager.nodes(i);
-            console.log("Node", i, ":", stakingNode.getETHBalance());
-        }
-
-        // Log pod shares for each eigenpod of each node
-        console.log("EigenPod shares for each StakingNode:");
-        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-            IStakingNode stakingNode = stakingNodesManager.nodes(i);
-            address eigenPodAddress = address(stakingNode.eigenPod());
-            uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
-            console.log("Node", i, "Shares:", podShares);
-        }
-
-        //runUpgradeIntegrityInvariants(preUpgradeState);
-
-
-        // STAGE 1 - End of atomic upgrade for existing contracts
-
         {
             runUpgradeIntegrityInvariants(preUpgradeState);
             // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
@@ -239,7 +195,15 @@ contract Base is Test, Utils {
             assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
         }
 
-        // STAGE 2 - Deploy and initialize new contracts 
+        logStakingNodeBalancesAndShares(preUpgradeState);
+
+
+        //  ███████╗████████╗ █████╗  ██████╗ ███████╗    ██████╗ 
+        //  ██╔════╝╚══██╔══╝██╔══██╗██╔════╝ ██╔════╝    ╚════██╗
+        //  ███████╗   ██║   ███████║██║  ███╗█████╗       █████╔╝
+        //  ╚════██║   ██║   ██╔══██║██║   ██║██╔══╝      ██╔═══╝ 
+        //  ███████║   ██║   ██║  ██║╚██████╔╝███████╗    ███████╗
+        // STAGE 2: NEW CONTRACTS - Deploy and initialize new contracts
 
         // deploy ynETHRedemptionAssetsVault
         {
@@ -294,7 +258,9 @@ contract Base is Test, Utils {
 
         // End of STAGE 2 - Deploy new contracts
 
-        // initialize stakingNodesManager withdrawal contracts
+        // ---------------------------------------------------------------
+        // STAGE 3 - Initialize StakingNodesManager with Init2 and add BURNER_ROLE for WithdrawalQueueManager
+        // ---------------------------------------------------------------
         {
             StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
                 redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
@@ -471,4 +437,62 @@ contract Base is Test, Utils {
         return balances;
     }
 
+    function logStakingNodeBalancesAndShares(UpgradeState memory preUpgradeState) internal {
+        // Print StakingNode balance before upgrade
+        console.log("StakingNode balance before upgrade:");
+        for (uint256 i = 0; i < preUpgradeState.stakingNodeBalances.length; i++) {
+            console.log("Node", i, ":", preUpgradeState.stakingNodeBalances[i]);
+        }
+
+        // Print current StakingNode balance after upgrade
+        console.log("StakingNode balance after upgrade:");
+        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            IStakingNode stakingNode = stakingNodesManager.nodes(i);
+            console.log("Node", i, ":", stakingNode.getETHBalance());
+        }
+
+        // Log pod shares for each eigenpod of each node
+        console.log("EigenPod shares for each StakingNode:");
+        for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            IStakingNode stakingNode = stakingNodesManager.nodes(i);
+            address eigenPodAddress = address(stakingNode.eigenPod());
+            uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
+            console.log("Node", i, "Shares:", podShares);
+        }
+    }
+
+    function getStakingNodesManagerImplementation(UpgradeState memory preUpgradeState) internal returns (address stakinNodesManagerImplementation) {
+        if (block.chainid == 1) { // only on MAINNET
+
+            /*
+                ██████╗  █████╗ ███╗   ██╗ ██████╗ ███████╗██████╗ 
+                ██╔══██╗██╔══██╗████╗  ██║██╔════╝ ██╔════╝██╔══██╗
+                ██║  ██║███████║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
+                ██║  ██║██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
+                ██████╔╝██║  ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
+                ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
+            */
+
+            // WARNING: This code is for testing purposes only and MUST be removed before deploying to mainnet.
+            // It uses a placeholder implementation that doesn't reflect the actual mainnet behavior.
+            // Keeping this in production could lead to severe security vulnerabilities and incorrect contract behavior.
+            // This logic auto-adjust for unverifiedStakedETH based on the the difference between podOwnerShares and pre-deposit balance.
+
+            // Compute deltas array
+            uint256[] memory deltas = new uint256[](stakingNodesManager.nodesLength());
+            for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+                IStakingNode stakingNode = stakingNodesManager.nodes(i);
+                uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
+                deltas[i] = preUpgradeState.stakingNodeBalances[i] - podShares;
+                // Revert if delta is bigger than 32 ether
+                require(deltas[i] <= 32 ether, "Delta exceeds 32 ether limit");
+            }
+
+            // Deploy PlaceholderStakingNodesManager
+            PlaceholderStakingNodesManager placeholderStakingNodesManager = new PlaceholderStakingNodesManager(deltas);
+            stakinNodesManagerImplementation = address(placeholderStakingNodesManager);
+        } else {
+            stakinNodesManagerImplementation = address(new StakingNodesManager());
+        }
+    }
 }
