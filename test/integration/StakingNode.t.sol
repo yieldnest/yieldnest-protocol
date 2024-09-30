@@ -1,353 +1,167 @@
-// // SPDX-License-Identifier: BSD 3-Clause License
-// pragma solidity ^0.8.24;
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
 
-// import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-// import {OwnableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-// import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-// import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
-// import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-// import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
-// import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
-// import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-// import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-// import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
-// // import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
-// import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
-// import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol"; 
-// import {StakingNode} from "src/StakingNode.sol";
-// import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
-// import {ProofUtils} from "test/utils/ProofUtils.sol";
-// import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
-// import { MockEigenLayerBeaconOracle } from "../mocks/MockEigenLayerBeaconOracle.sol";
-// import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
-// import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
-// import {MockEigenPod} from "../mocks/MockEigenPod.sol";
-// import { MockEigenPodManager } from "../mocks/MockEigenPodManager.sol";
-// import { MockStakingNode } from "../mocks/MockStakingNode.sol";
-// import { EigenPodManager } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
-// import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
-// import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-// import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
-// // import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
-// import { TransparentUpgradeableProxy } from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {OwnableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
+import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
+import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol"; 
+import {StakingNode} from "src/StakingNode.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
+import {ProofUtils} from "test/utils/ProofUtils.sol";
+import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
+import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
+import {MockEigenPod} from "../mocks/MockEigenPod.sol";
+import { MockEigenPodManager } from "../mocks/MockEigenPodManager.sol";
+import { MockStakingNode } from "../mocks/MockStakingNode.sol";
+import { EigenPodManager } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
+import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
+import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import { TransparentUpgradeableProxy } from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-// import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
-// import {Utils} from "script/Utils.sol";
+import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
+import {Utils} from "script/Utils.sol";
 
 
-// interface ITransparentUpgradeableProxy {
-//     function upgradeTo(address) external payable;
-// }
+interface ITransparentUpgradeableProxy {
+    function upgradeTo(address) external payable;
+}
 
-// contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
+contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
 
-//     string DEFAULT_PROOFS_PATH = "lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json";
+    string DEFAULT_PROOFS_PATH = "lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json";
 
-//     struct VerifyWithdrawalCredentialsCallParams {
-//         uint64 oracleTimestamp;
-//         ValidatorProofs validatorProofs;
-//         IStakingNode stakingNodeInstance;
-//     }
+    struct VerifyWithdrawalCredentialsCallParams {
+        uint64 oracleTimestamp;
+        ValidatorProofs validatorProofs;
+        IStakingNode stakingNodeInstance;
+    }
 
-//     struct ValidatorProofs {
-//         BeaconChainProofs.StateRootProof stateRootProof;
-//         uint40[] validatorIndices;
-//         bytes[] withdrawalCredentialProofs;
-//         bytes[] validatorFieldsProofs;
-//         bytes32[][] validatorFields;
-//     }
+    struct ValidatorProofs {
+        BeaconChainProofs.StateRootProof stateRootProof;
+        uint40[] validatorIndices;
+        bytes[] withdrawalCredentialProofs;
+        bytes[] validatorFieldsProofs;
+        bytes32[][] validatorFields;
+    }
 
-//     function setupStakingNode(uint256 depositAmount) public returns (IStakingNode, IEigenPod) {
+    function setupStakingNode(uint256 depositAmount) public returns (IStakingNode, IEigenPod) {
 
-//         address addr1 = vm.addr(100);
+        address addr1 = vm.addr(100);
 
-//         require(depositAmount % 32 ether == 0, "depositAmount must be a multiple of 32 ether");
+        require(depositAmount % 32 ether == 0, "depositAmount must be a multiple of 32 ether");
 
-//         uint256 validatorCount = depositAmount / 32 ether;
+        uint256 validatorCount = depositAmount / 32 ether;
 
-//         vm.deal(addr1, depositAmount);
+        vm.deal(addr1, depositAmount);
 
-//         vm.prank(addr1);
-//         yneth.depositETH{value: depositAmount}(addr1);
+        vm.prank(addr1);
+        yneth.depositETH{value: depositAmount}(addr1);
 
-//         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-//         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
 
-//         uint256 nodeId = 0;
+        uint256 nodeId = 0;
 
-//         IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
-//         for (uint256 i = 0; i < validatorCount; i++) {
-//             bytes memory publicKey = abi.encodePacked(uint256(i));
-//             publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
-//             validatorData[i] = IStakingNodesManager.ValidatorData({
-//                 publicKey: publicKey,
-//                 signature: ZERO_SIGNATURE,
-//                 nodeId: nodeId,
-//                 depositDataRoot: bytes32(0)
-//             });
-//         }
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
+        for (uint256 i = 0; i < validatorCount; i++) {
+            bytes memory publicKey = abi.encodePacked(uint256(i));
+            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
+            validatorData[i] = IStakingNodesManager.ValidatorData({
+                publicKey: publicKey,
+                signature: ZERO_SIGNATURE,
+                nodeId: nodeId,
+                depositDataRoot: bytes32(0)
+            });
+        }
 
-//         bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
+        bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
 
-//         for (uint256 i = 0; i < validatorData.length; i++) {
-//             uint256 amount = depositAmount / validatorData.length;
-//             bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
-//             validatorData[i].depositDataRoot = depositDataRoot;
-//         }
+        for (uint256 i = 0; i < validatorData.length; i++) {
+            uint256 amount = depositAmount / validatorData.length;
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
         
-//         vm.prank(actors.ops.VALIDATOR_MANAGER);
-//         stakingNodesManager.registerValidators(validatorData);
+        vm.prank(actors.ops.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(validatorData);
 
-//         uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
-//         assertEq(actualETHBalance, depositAmount, "ETH balance does not match expected value");
+        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
+        assertEq(actualETHBalance, depositAmount, "ETH balance does not match expected value");
 
-//         IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
 
-//         return (stakingNodeInstance, eigenPodInstance);
-//     }
+        return (stakingNodeInstance, eigenPodInstance);
+    }
 
-//     function _getLatestBlockRoot() public returns (bytes32) {
-//         return getLatestBlockRoot();
-//     }
+    function _getLatestBlockRoot() public returns (bytes32) {
+        return getLatestBlockRoot();
+    }
 
-//     function getWithdrawalCredentialParams() public returns (ValidatorProofs memory) {
-//         ValidatorProofs memory validatorProofs;
+    function getWithdrawalCredentialParams() public returns (ValidatorProofs memory) {
+        ValidatorProofs memory validatorProofs;
         
-//         validatorProofs.validatorIndices = new uint40[](1);
-//         validatorProofs.withdrawalCredentialProofs = new bytes[](1);
-//         validatorProofs.validatorFieldsProofs = new bytes[](1);
-//         validatorProofs.validatorFields = new bytes32[][](1);
+        validatorProofs.validatorIndices = new uint40[](1);
+        validatorProofs.withdrawalCredentialProofs = new bytes[](1);
+        validatorProofs.validatorFieldsProofs = new bytes[](1);
+        validatorProofs.validatorFields = new bytes32[][](1);
 
-//         // Set beacon state root, validatorIndex
-//         validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
-//         validatorProofs.stateRootProof.proof = getStateRootProof();
-//         validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
-//         validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-//         // validatorProofs.validatorFieldsProofs[0] = getWithdrawalCredentialProof();
-//         validatorProofs.validatorFields[0] = getValidatorFields();
+        // Set beacon state root, validatorIndex
+        validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
+        validatorProofs.stateRootProof.proof = getStateRootProof();
+        validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
+        validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
+        // validatorProofs.validatorFieldsProofs[0] = getWithdrawalCredentialProof();
+        validatorProofs.validatorFields[0] = getValidatorFields();
 
-//         return validatorProofs;
-//     }
+        return validatorProofs;
+    }
 
-//     function bytes32ToData(bytes32 data) public pure returns (address) {
-//         return address(uint160(uint256(data)));
-//     }
+    function bytes32ToData(bytes32 data) public pure returns (address) {
+        return address(uint160(uint256(data)));
+    }
 
-//     function getWithdrawalAddress() public returns (address) {
-//         bytes32[] memory validatorFields = getValidatorFields();
-//         return bytes32ToData(validatorFields[1]);
-//     }
-// }
-
-
-// // contract StakingNodeEigenPod is StakingNodeTestBase {
-
- //   // FIXME: update or delete to accomdate for M3
-//     function skip_estCreateNodeAndVerifyPodStateIsValid() public {
-
-// //         uint depositAmount = 32 ether;
-
-// //         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
-
-// //         // Collapsed variable declarations into direct usage within assertions and conditions
-
-// //         // TODO: double check this is the desired state for a pod.
-// //         // we can't delegate on mainnet at this time so one should be able to farm points without delegating
-// //         assertEq(eigenPodInstance.withdrawableRestakedExecutionLayerGwei(), 0, "Restaked Gwei should be 0");
-// //         assertEq(address(eigenPodManager), address(eigenPodInstance.eigenPodManager()), "EigenPodManager should match");
-// //         assertEq(eigenPodInstance.podOwner(), address(stakingNodeInstance), "Pod owner address does not match");
-// //         assertEq(eigenPodInstance.mostRecentWithdrawalTimestamp(), 0, "Most recent withdrawal block should be greater than 0");
-
-// //         address payable eigenPodAddress = payable(address(eigenPodInstance));
-// //         // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
-// //         uint256 rewardsSweeped = 1 ether;
-// //         vm.deal(address(this), rewardsSweeped);
-// //         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
-// //         require(success, "Failed to send rewards to EigenPod");
-
-// //         // trigger non beacon chain ETH withdrawal
-// //         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
-// //         vm.stopPrank();
-
-// //         // IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-// //         uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
-// //         vm.roll(block.number + withdrawalDelayBlocks + 1);
-
-// //         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
-
-// //         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-// //         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.processDelayedWithdrawals();
-// //         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
-// //         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
-
-// //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
-
-// //         rewardsDistributor.processRewards();
-
-// //         uint256 fee = uint256(rewardsDistributor.feesBasisPoints());
-// //         uint256 finalRewardsReceived = rewardsAmount - (rewardsAmount * fee / 10000);
-
-// //         // Assert total assets after claiming delayed withdrawals
-// //         uint256 totalAssets = yneth.totalAssets();
-// //         assertEq(totalAssets, finalRewardsReceived + depositAmount, "Total assets after claiming delayed withdrawals do not match expected value");
-// //     }
-// // }
+    function getWithdrawalAddress() public returns (address) {
+        bytes32[] memory validatorFields = getValidatorFields();
+        return bytes32ToData(validatorFields[1]);
+    }
+}
 
 
-// // contract StakingNodeWithdrawNonBeaconChainETHBalanceWei is StakingNodeTestBase {
-// //     using stdStorage for StdStorage;
+contract StakingNodeEigenPod is StakingNodeTestBase {
 
-//    // FIXME: update or delete to accomdate for M3
-//   function skip_testWithdrawNonBeaconChainETHBalanceWeiAndProcessNonBeaconChainETHWithdrawals() public {
+   // FIXME: update or delete to accomdate for M3
+    function testCreateNodeAndVerifyPodStateIsValid() public {
 
-// //         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
+        uint depositAmount = 32 ether;
 
-// //        address payable eigenPodAddress = payable(address(eigenPodInstance));
-// //         // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
-// //         uint256 rewardsSweeped = 1 ether;
-// //         vm.deal(address(this), rewardsSweeped);
-// //         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
-// //         require(success, "Failed to send rewards to EigenPod");
+        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
 
-// //         // trigger withdrawNonBeaconChainETHBalanceWei succesfully
-// //         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
-// //         vm.stopPrank();
+        // Collapsed variable declarations into direct usage within assertions and conditions
 
-// //         // IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-// //         uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
-// //         vm.roll(block.number + withdrawalDelayBlocks + 1);
+        // TODO: double check this is the desired state for a pod.
+        // we can't delegate on mainnet at this time so one should be able to farm points without delegating
+        assertEq(eigenPodInstance.withdrawableRestakedExecutionLayerGwei(), 0, "Restaked Gwei should be 0");
+        assertEq(address(eigenPodManager), address(eigenPodInstance.eigenPodManager()), "EigenPodManager should match");
+        assertEq(eigenPodInstance.podOwner(), address(stakingNodeInstance), "Pod owner address does not match");
 
-// //         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
+        address payable eigenPodAddress = payable(address(eigenPodInstance));
+        // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
+        uint256 rewardsSweeped = 1 ether;
+        vm.deal(address(this), rewardsSweeped);
+        (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
+        require(success, "Failed to send rewards to EigenPod");
 
-// //         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-// //         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.processDelayedWithdrawals();
-// //         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
-// //         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
-
-// //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
-// //     }
-
-//    // FIXME: update or delete to accomdate for M3
-//   function skip_testWithdrawNonBeaconChainETHBalanceWeiAndProcessNonBeaconChainETHWithdrawalsForALargeAmount() public {
-
-// //         (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(32 ether);
-
-// //        address payable eigenPodAddress = payable(address(eigenPodInstance));
-       
-// //         // a large amount of ETH from an arbitrary source is sent to the EigenPod
-// //         uint256 rewardsSweeped = 1000 ether;
-// //         vm.deal(address(this), rewardsSweeped);
-// //         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
-// //         require(success, "Failed to send rewards to EigenPod");
-
-// //         // trigger withdraw before restaking succesfully
-// //         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
-// //         vm.stopPrank();
-
-// //         // IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-// //         uint256 withdrawalDelayBlocks = delayedWithdrawalRouter.withdrawalDelayBlocks();
-// //         vm.roll(block.number + withdrawalDelayBlocks + 1);
-
-// //         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
-
-// //         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-// //         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.processDelayedWithdrawals();
-// //         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
-// //         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
-
-// //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
-// //     }
-
-//     // FIXME: update or delete to accomdate for M3
-//    function skip_testProcessNonBeaconChainETHWithdrawalsWithExistingValidatorPrincipal() public {
-
-// //        uint256 activeValidators = 5;
-
-// //        uint256 depositAmount = activeValidators * 32 ether;
-
-// //        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
-
-// //        address payable eigenPodAddress = payable(address(eigenPodInstance));
-// //         // Arbitrary rewards sent to the Eigenpod
-// //         uint256 rewardsSweeped = 100 ether;
-// //         vm.deal(address(this), rewardsSweeped);
-// //         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
-// //         require(success, "Failed to send rewards to EigenPod");
-
-// //         // trigger withdraw before restaking succesfully
-// //         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
-// //         vm.stopPrank();
-
-// //         // IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-// //         vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
-
-// //         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
-
-// //         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-
-// //         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.processDelayedWithdrawals();
-// //         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
-// //         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
-
-// //         assertEq(stakingNodeInstance.getETHBalance(), depositAmount, "StakingNode ETH balance does not match expected value");
-// //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
-// //     }
-
-    // // FIXME: update or delete to accomdate for M3
-    // function skip_testProcessNonBeaconChainETHWithdrawalsWhenETHArrivesFromBeaconChainAsWell() public {
-
-// //        uint256 activeValidators = 5;
-
-// //        uint256 depositAmount = activeValidators * 32 ether;
-
-// //        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
-
-// //        address payable eigenPodAddress = payable(address(eigenPodInstance));
-// //         // Arbitrary rewards sent to the Eigenpod
-// //         uint256 rewardsSweeped = 100 ether;
-// //         vm.deal(address(this), rewardsSweeped);
-// //         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
-// //         require(success, "Failed to send rewards to EigenPod");
-
-// //         uint256 withdrawnValidators = 1;
-// //         uint256 withdrawnPrincipal = withdrawnValidators * 32 ether;
-
-// //         // this increases the balance of the EigenPod without triggering
-// //         // receive or fallback just like beacon chain ETH rewards or withdrawals would
-// //         vm.deal(eigenPodAddress, eigenPodAddress.balance + withdrawnPrincipal);
-// //         uint256 expectedBalance = rewardsSweeped + withdrawnPrincipal;
-// //         assertEq(address(eigenPodInstance).balance, expectedBalance, "EigenPod balance does not match expected value");
-
-// //         // trigger withdraw before restaking succesfully
-// //         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.withdrawNonBeaconChainETHBalanceWei();
-// //         vm.stopPrank();
-
-
-// //         IDelayedWithdrawalRouter delayedWithdrawalRouter = stakingNodesManager.delayedWithdrawalRouter();
-// //         vm.roll(block.number + delayedWithdrawalRouter.withdrawalDelayBlocks() + 1);
-
-// //         delayedWithdrawalRouter.claimDelayedWithdrawals(address(stakingNodeInstance), type(uint256).max);
-
-// //         uint256 balanceBeforeClaim = address(consensusLayerReceiver).balance;
-
-// //         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-// //         stakingNodeInstance.processDelayedWithdrawals();
-// //         uint256 balanceAfterClaim = address(consensusLayerReceiver).balance;
-// //         uint256 rewardsAmount = balanceAfterClaim - balanceBeforeClaim;
-
-// //         // assertEq(stakingNodeInstance.getETHBalance(), depositAmount, "StakingNode ETH balance does not match expected value");
-// //         assertEq(rewardsAmount, rewardsSweeped, "Rewards amount does not match expected value");
-// //     }
-// // }
+    }
+}
 
 // contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 //     using stdStorage for StdStorage;
