@@ -165,7 +165,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             withdrawalQueueManager: ynETHWithdrawalQueueManager,
             stakingNodesManagerImplementation: stakingNodesManagerImplementation,
             stakingNodeImplementation: stakingNodeImplementation,
-            ynETHImplementation: ynETH(payable(address(yneth)))
+            ynETHImplementation: ynETHImplementation
         });
 
         saveDeployment(deployment);
@@ -198,10 +198,10 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         // contract addresses
         serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
-        serializeProxyElements(json, "ynETRewardsRedemptionVault", address(deployment.ynETHRedemptionAssetsVault));
+        serializeProxyElements(json, "ynETHRedemptionAssetsVault", address(deployment.ynETHRedemptionAssetsVault));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
-        vm.serializeAddress(json, "implementation-stakingNodesManager", address(deployment.stakingNodeImplementation));
-        vm.serializeAddress(json, "implementation-ynETH", address(deployment.stakingNodeImplementation));
+        vm.serializeAddress(json, "implementation-stakingNodesManager", address(deployment.stakingNodesManagerImplementation));
+        vm.serializeAddress(json, "implementation-ynETH", address(deployment.ynETHImplementation));
 
 
         string memory finalJson = vm.serializeAddress(json, "DEPLOYER", deployer);
