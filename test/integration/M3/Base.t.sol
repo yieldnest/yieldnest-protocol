@@ -113,7 +113,7 @@ contract Base is Test, Utils {
     }
 
     function upgradeYnToM3() internal {
-        if (block.chainid != 17000) {
+        if (block.chainid == 17000) {
             upgradeYnToM3OnHolesky();
             return;
         }
