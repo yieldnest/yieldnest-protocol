@@ -1,0 +1,12 @@
+{
+  "DEPLOYER": "0xd7d4A7f14265B0A69AE482b85B0a8496c3F99fb9",
+  "implementation-stakingNodesManager": "0xA25Ab5783bCe976CDd0792389bE1cF95A3a64256",
+  "implementation-withdrawalQueueManager": "0xA04c4d2379b24D557d051BD15d08a88976Ccb481",
+  "implementation-ynETH": "0xA25Ab5783bCe976CDd0792389bE1cF95A3a64256",
+  "implementation-ynETRewardsRedemptionVault": "0xd9849a30F802BA42aB6aF3E3d2A102CB2aE05BCc",
+  "proxy-withdrawalQueueManager": "0x0316f30e8a0406d1EAAeA8241b921AF7B7Ca5b29",
+  "proxy-ynETRewardsRedemptionVault": "0x7c48e1d3c4fC88389Cc7E6E7451A7a8A07114948",
+  "proxyAdmin-withdrawalQueueManager": "0xaDfe2fc8ff8DabACCFD39a51B733A2ceF17a9A29",
+  "proxyAdmin-ynETRewardsRedemptionVault": "0x07FFcaD3FDFA21482B72b2662c7e40A1B2Dd2FcA",
+  "stakingNodeImplementation": "0xA25Ab5783bCe976CDd0792389bE1cF95A3a64256"
+}
