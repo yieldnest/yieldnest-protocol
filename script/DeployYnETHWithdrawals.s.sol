@@ -32,6 +32,15 @@ import {console} from "lib/forge-std/src/console.sol";
 
 contract DeployYnETHWithdrawals is BaseYnETHScript {
 
+
+    struct WithdrawalsDeployment {
+        ynETHRedemptionAssetsVault ynETHRedemptionAssetsVault;
+        WithdrawalQueueManager withdrawalQueueManager;
+        StakingNodesManager stakingNodesManagerImplementation;
+        StakingNode stakingNodeImplementation;
+        ynETH ynETHImplementation;
+    }
+
     /**
         The following uprades MUST be performed for withdrawals to work:
 
@@ -43,6 +52,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
     WithdrawalQueueManager public ynETHWithdrawalQueueManager;
     ActorAddresses.Actors actors;
+    address deployer;
 
     function run() external {
 
@@ -50,6 +60,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
+        deployer = publicKey;
 
         // ynETH.sol ROLES
         actors = getActors();
@@ -79,6 +90,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("Default Signer Address:", _broadcaster);
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
+        
 
         // Deploy implementation contracts
         StakingNodesManager stakingNodesManagerImplementation = new StakingNodesManager();
@@ -137,8 +149,6 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
 
-        console.log("ynETHWithdrawalQueueManager address:", address(ynETHWithdrawalQueueManager));
-
         // Verify all the above is deployed correctly.
 
         // Perform the following permissioned call with DEFAULT_ADMIN ROLE:
@@ -147,6 +157,20 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("redemptionAssetsVault:", address(ynETHRedemptionAssetsVaultInstance));
         console.log("withdrawalManager:", actors.ops.WITHDRAWAL_MANAGER);
         console.log("stakingNodesWithdrawer:", actors.ops.STAKING_NODES_WITHDRAWER);
+
+
+        // Save deployment information
+        WithdrawalsDeployment memory deployment = WithdrawalsDeployment({
+            ynETHRedemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
+            withdrawalQueueManager: ynETHWithdrawalQueueManager,
+            stakingNodesManagerImplementation: stakingNodesManagerImplementation,
+            stakingNodeImplementation: stakingNodeImplementation,
+            ynETHImplementation: ynETH(payable(address(yneth)))
+        });
+
+        saveDeployment(deployment);
+
+        console.log("Deployment information saved successfully.");
 
         // initialize stakingNodesManager withdrawal contracts
         // {
@@ -161,5 +185,28 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         // }
 
         vm.stopBroadcast();
+    }
+
+
+    function getDeploymentFile() internal virtual view override returns (string memory) {
+        string memory root = vm.projectRoot();
+        return string.concat(root, "/deployments/ynETHWithdrawals-", vm.toString(block.chainid), ".json");
+    }
+
+    function saveDeployment(WithdrawalsDeployment memory deployment) public virtual {
+        string memory json = "deployment";
+
+        // contract addresses
+        serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
+        serializeProxyElements(json, "ynETRewardsRedemptionVault", address(deployment.ynETHRedemptionAssetsVault));
+        vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
+        vm.serializeAddress(json, "implementation-stakingNodesManager", address(deployment.stakingNodeImplementation));
+        vm.serializeAddress(json, "implementation-ynETH", address(deployment.stakingNodeImplementation));
+
+
+        string memory finalJson = vm.serializeAddress(json, "DEPLOYER", deployer);
+        vm.writeJson(finalJson, getDeploymentFile());
+
+        console.log("Deployment JSON file written successfully:", getDeploymentFile());
     }
 }
