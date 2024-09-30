@@ -56,16 +56,18 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
     function run() external {
 
+        // ynETH.sol ROLES
+        actors = getActors();
+        
+        ContractAddresses contractAddresses = new ContractAddresses();
+
+        if (false) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
         deployer = publicKey;
 
-        // ynETH.sol ROLES
-        actors = getActors();
-        
-        ContractAddresses contractAddresses = new ContractAddresses();
         IynETH yneth = IynETH(payable(contractAddresses.getChainAddresses(block.chainid).yn.YNETH_ADDRESS));
 
         // // Apply preprod overrides for DEFAULT_SIGNER
@@ -171,18 +173,24 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         saveDeployment(deployment);
 
         console.log("Deployment information saved successfully.");
+        }
 
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x3a2DD2f0f5A20768110a52fC4f091AB9d8631b58));
         // initialize stakingNodesManager withdrawal contracts
-        // {
-        //     StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
-        //         redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-        //         withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
-        //         stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
-        //     });
+        {
+            StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
+                redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
+                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
+                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
+            });
+
+            console.log("actors.ops.WITHDRAWAL_MANAGER:", actors.ops.WITHDRAWAL_MANAGER);
+            console.log("actors.ops.STAKING_NODES_WITHDRAWER:", actors.ops.STAKING_NODES_WITHDRAWER);
             
-        //     vm.prank(actors.admin.ADMIN);
-        //     stakingNodesManager.initializeV2(initParams);
-        // }
+            bytes memory txData = abi.encodeWithSelector(StakingNodesManager.initializeV2.selector, initParams);
+            console.log("Transaction data for stakingNodesManager.initializeV2:");
+            console.logBytes(txData);
+        }
 
         vm.stopBroadcast();
     }

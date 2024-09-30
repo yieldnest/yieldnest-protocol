@@ -92,6 +92,8 @@ contract Base is Test, Utils {
             rewardsDistributor = RewardsDistributor(payable(chainAddresses.yn.REWARDS_DISTRIBUTOR_ADDRESS));
             executionLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.EXECUTION_LAYER_RECEIVER_ADDRESS));
             consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
+            ynETHWithdrawalQueueManager = WithdrawalQueueManager(payable(chainAddresses.yn.WITHDRAWAL_QUEUE_MANAGER_ADDRESS));
+            ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(chainAddresses.yn.YNETH_REDEMPTION_ASSETS_VAULT_ADDRESS));
         }
 
         // assign Ethereum addresses
@@ -113,8 +115,8 @@ contract Base is Test, Utils {
     }
 
     function upgradeYnToM3() internal {
-        if (block.chainid == 17000) {
-            upgradeYnToM3OnHolesky();
+        if (block.chainid != 1) {
+            // Nothing to do, only mainnet left to upgrade
             return;
         }
 
@@ -260,96 +262,6 @@ contract Base is Test, Utils {
         runUpgradeIntegrityInvariants(preUpgradeState);
 
         // End of STAGE 2 - Deploy new contracts
-
-        // ---------------------------------------------------------------
-        // STAGE 3 - Initialize StakingNodesManager with Init2 and add BURNER_ROLE for WithdrawalQueueManager
-        // ---------------------------------------------------------------
-        {
-            StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
-                redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
-                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
-            });
-            
-            vm.prank(actors.admin.ADMIN);
-            stakingNodesManager.initializeV2(initParams);
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // grant burner role
-        {
-            vm.startPrank(actors.admin.STAKING_ADMIN);
-            yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
-            vm.stopPrank();
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-    }
-
-    function upgradeYnToM3OnHolesky() internal {
-
-
-        uint256 totalAssets = yneth.totalAssets();
-        uint256 totalSupply = yneth.totalSupply();
-
-        // Capture the upgrade state before making any changes
-        UpgradeState memory preUpgradeState = captureUpgradeState();
-
-        preUpgradeState.stakingNodesManagerTotalDeposited = 0;
-        for (uint256 i = 0; i < preUpgradeState.stakingNodeBalances.length; i++) {
-            preUpgradeState.stakingNodesManagerTotalDeposited += preUpgradeState.stakingNodeBalances[i];
-        }
-
-        {
-            address stakinNodesManagerImplementation = 0xC9cf6740282617f3B392f900De0449E687Ce05e3;
-
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(stakingNodesManager)),
-                address(stakinNodesManagerImplementation),
-                ""
-            );
-            vm.stopPrank();
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // upgrade ynETH
-        {
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(yneth))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(yneth)),
-                address(0x090D67d3C97712f6C17a037515CbB8502561EE57),
-                ""
-            );
-            vm.stopPrank();
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // upgrade StakingNodeImplementation
-        {
-            stakingNodeImplementation = new StakingNode();
-            vm.prank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(0xf07861349Ed0cB4603590B47D2269768Ed6E2821);
-        }
-
-        {
-            runUpgradeIntegrityInvariants(preUpgradeState);
-            // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
-            assertEq(address(stakingNodesManager.redemptionAssetsVault()), address(0), "redemptionAssetsVault should initially be set to the zero address in StakingNodesManager");
-            // Assert that previewRedeem returns a non-zero value
-            uint256 previewRedeemAmount = yneth.previewRedeem(1 ether);
-            assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
-        }
-
-        ynETHWithdrawalQueueManager = WithdrawalQueueManager(0x141aAb320857145fB42240C979b800f48CE5B678);
-        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x3a2DD2f0f5A20768110a52fC4f091AB9d8631b58));
 
         // ---------------------------------------------------------------
         // STAGE 3 - Initialize StakingNodesManager with Init2 and add BURNER_ROLE for WithdrawalQueueManager
