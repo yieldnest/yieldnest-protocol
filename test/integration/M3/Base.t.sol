@@ -302,7 +302,7 @@ contract Base is Test, Utils {
         }
 
         {
-            address stakinNodesManagerImplementation = getStakingNodesManagerImplementation(preUpgradeState);
+            address stakinNodesManagerImplementation = 0xC9cf6740282617f3B392f900De0449E687Ce05e3;
 
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
             ProxyAdmin(
@@ -324,7 +324,7 @@ contract Base is Test, Utils {
                 getTransparentUpgradeableProxyAdminAddress(address(yneth))
             ).upgradeAndCall(
                 ITransparentUpgradeableProxy(address(yneth)),
-                address(new ynETH()),
+                address(0x090D67d3C97712f6C17a037515CbB8502561EE57),
                 ""
             );
             vm.stopPrank();
@@ -336,7 +336,7 @@ contract Base is Test, Utils {
         {
             stakingNodeImplementation = new StakingNode();
             vm.prank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
+            stakingNodesManager.upgradeStakingNodeImplementation(0xf07861349Ed0cB4603590B47D2269768Ed6E2821);
         }
 
         {
@@ -348,8 +348,8 @@ contract Base is Test, Utils {
             assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
         }
 
-        ynETHWithdrawalQueueManager = WithdrawalQueueManager(0x0316f30e8a0406d1EAAeA8241b921AF7B7Ca5b29);
-        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x7c48e1d3c4fC88389Cc7E6E7451A7a8A07114948));
+        ynETHWithdrawalQueueManager = WithdrawalQueueManager(0x141aAb320857145fB42240C979b800f48CE5B678);
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x3a2DD2f0f5A20768110a52fC4f091AB9d8631b58));
 
         // ---------------------------------------------------------------
         // STAGE 3 - Initialize StakingNodesManager with Init2 and add BURNER_ROLE for WithdrawalQueueManager
