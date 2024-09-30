@@ -138,6 +138,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         }
 
         console.log("ynETHWithdrawalQueueManager address:", address(ynETHWithdrawalQueueManager));
+        console.log("ynETHRedemptionAssetsVault address:", address(ynETHRedemptionAssetsVaultInstance));
 
         // Verify all the above is deployed correctly.
 
