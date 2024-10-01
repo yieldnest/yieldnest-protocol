@@ -95,12 +95,53 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         assertEq(eigenPodInstance.podOwner(), address(stakingNodeInstance), "Pod owner address does not match");
 
         address payable eigenPodAddress = payable(address(eigenPodInstance));
+        // Get initial pod owner shares
+        int256 initialPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        // Assert that initial pod owner shares are 0
+        assertEq(initialPodOwnerShares, 0, "Initial pod owner shares should be 0");
+
         // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
         uint256 rewardsSweeped = 1 ether;
         vm.deal(address(this), rewardsSweeped);
         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
         require(success, "Failed to send rewards to EigenPod");
 
+        // Get final pod owner shares
+        int256 finalPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+
+        // Assert that pod owner shares remain the same
+        assertEq(initialPodOwnerShares, 0, "Pod owner shares should not change");
+    }
+    
+    function testCreateNodeVerifyPodStateAndCheckpoint() public {
+        uint256 depositAmount = 32 ether;
+        address user = vm.addr(156737);
+
+        // Fund user and deposit ETH
+        vm.deal(user, 1000 ether);
+        yneth.depositETH{value: depositAmount}(user);
+
+        // Create staking node and get instances
+        uint256[] memory nodeIds = createStakingNodes(1);
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+
+        // Simulate ETH entering the pod
+        uint256 rewardsSweeped = 1 ether;
+        vm.deal(address(this), rewardsSweeped);
+        (bool success,) = payable(address(eigenPodInstance)).call{value: rewardsSweeped}("");
+        require(success, "Failed to send rewards to EigenPod");
+
+        beaconChain.advanceEpoch_NoRewards();
+        // Start checkpoint
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        stakingNodeInstance.startCheckpoint(true);
+        // Checkpoint ends since no active validators are here
+
+        // Get final pod owner shares
+        int256 finalPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        // Assert that the increase matches the swept rewards
+        assertEq(uint256(finalPodOwnerShares), rewardsSweeped, "Pod owner shares increase should match swept rewards");
     }
 }
 
