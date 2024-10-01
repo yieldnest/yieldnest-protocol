@@ -305,6 +305,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     address user = vm.addr(156737);
 
+
+    uint256 nodeId;
+    uint40 validatorIndex;
+    uint256 AMOUNT = 32 ether;
+
     function setUp() public override {
         super.setUp();
 
@@ -312,13 +317,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         vm.deal(user, 1000 ether);
 
         yneth.depositETH{value: 1000 ether}(user);
-    }
-    
-    function testVerifyWithdrawalCredentials() public {
 
-        uint256 nodeId;
-        uint40 validatorIndex;
-        uint256 AMOUNT = 32 ether;
         // create staking node
         {
             vm.prank(actors.ops.STAKING_NODE_CREATOR);
@@ -351,6 +350,9 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             vm.prank(actors.ops.VALIDATOR_MANAGER);
             stakingNodesManager.registerValidators(_data);
         }
+    }
+    
+    function testVerifyWithdrawalCredentials() public {
 
         // verify withdrawal credentials
         {
@@ -374,75 +376,67 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
         }
     }
+
+    function testVerifyCheckpointsForOneValidator() public {
+
+        // setup env
+
+                // verify withdrawal credentials
+        {
+            uint40[] memory _validators = new uint40[](1);
+            _validators[0] = validatorIndex;
+
+            
+            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            IEigenPodSimplified(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
+                beaconTimestamp: _proofs.beaconTimestamp,
+                stateRootProof: _proofs.stateRootProof,
+                validatorIndices: _validators,
+                validatorFieldsProofs: _proofs.validatorFieldsProofs,
+                validatorFields: _proofs.validatorFields
+            });
+            vm.stopPrank();
+
+            // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
+            assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
+            assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
+        }
+        {
+            beaconChain.advanceEpoch();
+        }
+
+        // start checkpoint
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            vm.stopPrank();
+
+            // make sure startCheckpoint cant be called again, which means that the checkpoint has started
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+            _node.startCheckpoint(true);
+        }
+
+        // verify checkpoints
+        {
+            uint40[] memory _validators = new uint40[](1);
+            _validators[0] = validatorIndex;
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
+            IEigenPodSimplified(address(_node.eigenPod())).verifyCheckpointProofs({
+                balanceContainerProof: _cpProofs.balanceContainerProof,
+                proofs: _cpProofs.balanceProofs
+            });
+
+            // check that proofsRemaining is 0 and podOwnerShares is still 32 ETH (AMOUNT)
+            IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
+            assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+            assertApproxEqAbs(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, 1000000000, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
+        }
+    }
 }
-
-    // // FIXME: update or delete to accomdate for M3
-    // function skiptestVerifyWithdrawalCredentialsMismatchedValidatorIndexAndProofsLengths() public {
-
-//         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
-
-//         uint256 depositAmount = 32 ether;
-//         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
-
-//         uint64 oracleTimestamp = uint64(block.timestamp);
-
-// 		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
-
-// 		uint40[] memory validatorIndexes = new uint40[](1);
-
-// 		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
-
-//         bytes[] memory validatorFieldsProofs = new bytes[](1);
-//         validatorFieldsProofs[0] = proofUtils._getValidatorFieldsProof()[0];
-
-// 		bytes32[][] memory validatorFields = new bytes32[][](1);
-//         validatorFields[0] = proofUtils.getValidatorFields();
-
-//         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-//         stakingNodeInstance.verifyWithdrawalCredentials(
-//             oracleTimestamp,
-//             stateRootProof,
-//             validatorIndexes,
-//             validatorFieldsProofs,
-//             validatorFields
-//         );    
-//     }
-
-//     event LogUintMessage(string message, uint256 value);
-//     event LogAddressMessage(string message, address value);
-//     event LogBytesMessage(string message, bytes value);
-
-    // // FIXME: update or delete to accomdate for M3
-    // function skiptestVerifyWithdrawalCredentialsMismatchedProofsAndValidatorFieldsLengths() public {
-
-//         ProofUtils proofUtils = new ProofUtils(DEFAULT_PROOFS_PATH);
-
-//         uint256 depositAmount = 32 ether;
-//         (IStakingNode stakingNodeInstance,) = setupStakingNode(depositAmount);
-
-// 		uint64 oracleTimestamp = uint64(block.timestamp);
-
-// 		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
-
-// 		uint40[] memory validatorIndexes = new uint40[](1);
-
-// 		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
-
-//         bytes[] memory validatorFieldsProofs = proofUtils._getValidatorFieldsProof();
-
-// 		bytes32[][] memory validatorFields = new bytes32[][](1);
-//         validatorFields[0] = proofUtils.getValidatorFields();
-
-//         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-//         stakingNodeInstance.verifyWithdrawalCredentials(
-//             oracleTimestamp,
-//             stateRootProof,
-//             validatorIndexes,
-//             validatorFieldsProofs,
-//             validatorFields
-//         ); 
-//     }
-// }
 
 // contract StakingNodeStakedETHAllocationTests is StakingNodeTestBase {
 
