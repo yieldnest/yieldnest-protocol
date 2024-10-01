@@ -177,7 +177,8 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     }
 
     function testTotalAssetsGas() public view {
-        yneigen.totalAssets();
+        // yneigen.totalAssets();
+        yneigen.convertToAssets(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), 1 ether);
     }
 
     //
@@ -477,14 +478,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         assertApproxEqRel(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user), _userSFRXETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E2");
         assertLt(yneigen.totalAssets(), _totalAssetsBefore, "testClaimWithdrawal: E3");
         assertApproxEqRel(redemptionAssetsVault.redemptionRate(), _redemptionRateBefore, 1, "testClaimWithdrawal: E4");
-    }
-
-    //
-    // simulate slashing
-    //
-
-    function testQueueWithdrawalsAfterSlashing() public {
-
     }
 
     //
