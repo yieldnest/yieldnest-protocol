@@ -280,6 +280,16 @@ contract IntegrationBaseTest is Test, Utils {
         vm.startPrank(actors.admin.ADMIN);
         yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
         vm.stopPrank();
+
+        // Initialize V2 of StakingNodesManager
+        vm.prank(actors.admin.ADMIN);
+        stakingNodesManager.initializeV2(
+            StakingNodesManager.Init2({
+                redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
+                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
+                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
+            })
+        );
     }
 
     //--------------------------------------------------------------------------------------

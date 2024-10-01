@@ -66,6 +66,28 @@ contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
         });
         vm.stopPrank();
     }
+
+    struct StateSnapshot {
+        uint256 totalAssets;
+        uint256 totalSupply;
+        uint256 stakingNodeBalance;
+        uint256 queuedShares;
+        uint256 withdrawnETH;
+        uint256 unverifiedStakedETH;
+        int256 podOwnerShares;
+    }
+
+    function takeSnapshot(uint256 nodeId) internal view returns (StateSnapshot memory) {
+        return StateSnapshot({
+            totalAssets: yneth.totalAssets(),
+            totalSupply: yneth.totalSupply(),
+            stakingNodeBalance: stakingNodesManager.nodes(nodeId).getETHBalance(),
+            queuedShares: stakingNodesManager.nodes(nodeId).getQueuedSharesAmount(),
+            withdrawnETH: stakingNodesManager.nodes(nodeId).getWithdrawnETH(),
+            unverifiedStakedETH: stakingNodesManager.nodes(nodeId).unverifiedStakedETH(),
+            podOwnerShares: eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))
+        });
+    }
 }
 
 
@@ -295,27 +317,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         vm.deal(user, 1000 ether);
 
         yneth.depositETH{value: 1000 ether}(user);
-    }
-    struct StateSnapshot {
-        uint256 totalAssets;
-        uint256 totalSupply;
-        uint256 stakingNodeBalance;
-        uint256 queuedShares;
-        uint256 withdrawnETH;
-        uint256 unverifiedStakedETH;
-        int256 podOwnerShares;
-    }
-
-    function takeSnapshot(uint256 nodeId) internal view returns (StateSnapshot memory) {
-        return StateSnapshot({
-            totalAssets: yneth.totalAssets(),
-            totalSupply: yneth.totalSupply(),
-            stakingNodeBalance: stakingNodesManager.nodes(nodeId).getETHBalance(),
-            queuedShares: stakingNodesManager.nodes(nodeId).getQueuedSharesAmount(),
-            withdrawnETH: stakingNodesManager.nodes(nodeId).getWithdrawnETH(),
-            unverifiedStakedETH: stakingNodesManager.nodes(nodeId).unverifiedStakedETH(),
-            podOwnerShares: eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))
-        });
     }
     
     function testVerifyWithdrawalCredentialsForOneValidator() public {
@@ -552,6 +553,84 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
                 "_testVerifyCheckpointsBeforeWithdrawalRequest: E1"
             );
         }
+    }
+}
+
+contract StakingNodeWithdrawals  is StakingNodeTestBase {
+
+    function testQueueWithdrawals() public {
+        // Setup
+        uint256 depositAmount = 32 ether;
+        address user = vm.addr(156737);
+        vm.deal(user, 1000 ether);
+        yneth.depositETH{value: depositAmount}(user);
+
+        uint256[] memory nodeIds = createStakingNodes(1);
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+
+        // Create and register a validator
+        uint40[] memory validatorIndices = createValidators(repeat(nodeIds[0], 1), 1);
+     
+        registerValidators(repeat(nodeIds[0], 1));
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Verify withdrawal credentials
+        _verifyWithdrawalCredentials(nodeIds[0], validatorIndices[0]);
+
+        // Simulate some rewards
+        beaconChain.advanceEpoch();
+
+        // Start and complete a checkpoint
+        vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+        stakingNodeInstance.startCheckpoint(true);
+        
+        uint40[] memory _validators = new uint40[](1);
+        _validators[0] = validatorIndices[0];
+        CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, stakingNodeInstance.eigenPod().currentCheckpointTimestamp());
+        IEigenPodSimplified(address(stakingNodeInstance.eigenPod())).verifyCheckpointProofs({
+            balanceContainerProof: _cpProofs.balanceContainerProof,
+            proofs: _cpProofs.balanceProofs
+        });
+
+        // Get initial state
+        StateSnapshot memory initialState = takeSnapshot(nodeIds[0]);
+
+        // Queue withdrawals
+        uint256 withdrawalAmount = 1 ether;
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        // Get final state
+        StateSnapshot memory finalState = takeSnapshot(nodeIds[0]);
+
+        // Assert
+        assertEq(finalState.totalAssets, initialState.totalAssets, "Total assets should remain unchanged");
+        assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
+        assertEq(finalState.stakingNodeBalance, initialState.stakingNodeBalance, "Staking node balance should remain unchanged");
+        assertEq(finalState.queuedShares, initialState.queuedShares + withdrawalAmount, "Queued shares should increase by withdrawal amount");
+        assertEq(finalState.withdrawnETH, initialState.withdrawnETH, "Withdrawn ETH should remain unchanged");
+        assertEq(finalState.unverifiedStakedETH, initialState.unverifiedStakedETH, "Unverified staked ETH should remain unchanged");
+        assertEq(finalState.podOwnerShares, initialState.podOwnerShares - int256(withdrawalAmount), "Pod owner shares should decrease by withdrawalAmount");
+    }
+
+    function skiptestQueueWithdrawalsFailsWhenNotAdmin() public {
+        uint256[] memory nodeIds = createStakingNodes(1);
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+
+        uint256 withdrawalAmount = 1 ether;
+        vm.expectRevert("Ownable: caller is not the owner");
+        vm.prank(actors.eoa.DEFAULT_SIGNER);
+        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+    }
+
+    function skiptestQueueWithdrawalsFailsWhenInsufficientBalance() public {
+        uint256[] memory nodeIds = createStakingNodes(1);
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+
+        uint256 withdrawalAmount = 100 ether; // Assuming this is more than the node's balance
+        vm.expectRevert("StakingNode: Insufficient balance");
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
     }
 }
 
