@@ -366,7 +366,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testVerifyCheckpointsForOneValidator() public {
 
-                uint256 nodeId = createStakingNodes(1)[0];
+        uint256 nodeId = createStakingNodes(1)[0];
         // Call createValidators with the nodeIds array and validatorCount
         validatorIndices = createValidators(repeat(nodeId, 1), 1);
         beaconChain.advanceEpoch_NoRewards();
@@ -415,6 +415,78 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         }
     }
 
+
+    function testVerifyCheckpointsForManyValidators() public {
+
+        uint256 validatorCount = 10;
+
+        uint256 nodeId = createStakingNodes(1)[0];
+        // Call createValidators with the nodeIds array and validatorCount
+        validatorIndices = createValidators(repeat(nodeId, 1), validatorCount);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, validatorCount));
+        
+
+        {
+            for (uint256 i = 0; i < validatorIndices.length; i++) {
+                _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+            }
+
+            // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
+            assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
+            assertEq(
+                uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))),
+                AMOUNT * validatorCount,
+                "_testVerifyWithdrawalCredentials: E1"
+            );
+        }
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        uint256 exitedValidatorsCount = 5;
+
+        // exit validators
+        {
+            for (uint256 i = 0; i < exitedValidatorsCount; i++) {
+                beaconChain.exitValidator(validatorIndices[i]);
+            }
+            beaconChain.advanceEpoch_NoRewards();
+        }
+
+        // start checkpoint
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            vm.stopPrank();
+
+            // make sure startCheckpoint cant be called again, which means that the checkpoint has started
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+            vm.prank(actors.ops.STAKING_NODES_OPERATOR);
+            _node.startCheckpoint(true);
+        }
+
+        // verify checkpoints
+        {
+            uint40[] memory _validators = validatorIndices;
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
+            IEigenPodSimplified(address(_node.eigenPod())).verifyCheckpointProofs({
+                balanceContainerProof: _cpProofs.balanceContainerProof,
+                proofs: _cpProofs.balanceProofs
+            });
+
+            IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
+            assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+            assertApproxEqAbs(
+                uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))),
+                AMOUNT * validatorCount,
+                1000000000,
+                "_testVerifyCheckpointsBeforeWithdrawalRequest: E1"
+            );
+        }
+    }
+    
     function _verifyWithdrawalCredentials(uint256 _nodeId, uint40 _validatorIndex) internal {
         uint40[] memory _validators = new uint40[](1);
         _validators[0] = _validatorIndex;
