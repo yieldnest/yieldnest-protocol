@@ -354,57 +354,24 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     
     function testVerifyWithdrawalCredentials() public {
 
-        // verify withdrawal credentials
-        {
-            uint40[] memory _validators = new uint40[](1);
-            _validators[0] = validatorIndex;
+         _verifyWithdrawalCredentials(nodeId, validatorIndex);
 
-            
-            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            IEigenPodSimplified(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
-                beaconTimestamp: _proofs.beaconTimestamp,
-                stateRootProof: _proofs.stateRootProof,
-                validatorIndices: _validators,
-                validatorFieldsProofs: _proofs.validatorFieldsProofs,
-                validatorFields: _proofs.validatorFields
-            });
-            vm.stopPrank();
-
-            // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
-            assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
-            assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
-        }
+        // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
+        assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
+        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
     }
 
     function testVerifyCheckpointsForOneValidator() public {
 
-        // setup env
-
-                // verify withdrawal credentials
         {
-            uint40[] memory _validators = new uint40[](1);
-            _validators[0] = validatorIndex;
-
-            
-            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            IEigenPodSimplified(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
-                beaconTimestamp: _proofs.beaconTimestamp,
-                stateRootProof: _proofs.stateRootProof,
-                validatorIndices: _validators,
-                validatorFieldsProofs: _proofs.validatorFieldsProofs,
-                validatorFields: _proofs.validatorFields
-            });
-            vm.stopPrank();
+            _verifyWithdrawalCredentials(nodeId, validatorIndex);
 
             // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
             assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
             assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
         }
-        {
-            beaconChain.advanceEpoch();
-        }
+
+        beaconChain.advanceEpoch();
 
         // start checkpoint
         {
@@ -435,6 +402,23 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
             assertApproxEqAbs(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, 1000000000, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
         }
+    }
+
+    function _verifyWithdrawalCredentials(uint256 _nodeId, uint40 _validatorIndex) internal {
+        uint40[] memory _validators = new uint40[](1);
+        _validators[0] = _validatorIndex;
+
+        
+        CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+        IEigenPodSimplified(address(stakingNodesManager.nodes(_nodeId))).verifyWithdrawalCredentials({
+            beaconTimestamp: _proofs.beaconTimestamp,
+            stateRootProof: _proofs.stateRootProof,
+            validatorIndices: _validators,
+            validatorFieldsProofs: _proofs.validatorFieldsProofs,
+            validatorFields: _proofs.validatorFields
+        });
+        vm.stopPrank();
     }
 }
 
