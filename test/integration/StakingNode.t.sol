@@ -40,102 +40,31 @@ interface ITransparentUpgradeableProxy {
 }
 
 contract StakingNodeTestBase is IntegrationBaseTest, ProofParsingV1 {
-
-    string DEFAULT_PROOFS_PATH = "lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json";
-
-    struct VerifyWithdrawalCredentialsCallParams {
-        uint64 oracleTimestamp;
-        ValidatorProofs validatorProofs;
-        IStakingNode stakingNodeInstance;
-    }
-
-    struct ValidatorProofs {
-        BeaconChainProofs.StateRootProof stateRootProof;
-        uint40[] validatorIndices;
-        bytes[] withdrawalCredentialProofs;
-        bytes[] validatorFieldsProofs;
-        bytes32[][] validatorFields;
-    }
-
-    function setupStakingNode(uint256 depositAmount) public returns (IStakingNode, IEigenPod) {
-
-        address addr1 = vm.addr(100);
-
-        require(depositAmount % 32 ether == 0, "depositAmount must be a multiple of 32 ether");
-
-        uint256 validatorCount = depositAmount / 32 ether;
-
-        vm.deal(addr1, depositAmount);
-
-        vm.prank(addr1);
-        yneth.depositETH{value: depositAmount}(addr1);
-
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
-
-        uint256 nodeId = 0;
-
-        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorCount);
-        for (uint256 i = 0; i < validatorCount; i++) {
-            bytes memory publicKey = abi.encodePacked(uint256(i));
-            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
-            validatorData[i] = IStakingNodesManager.ValidatorData({
-                publicKey: publicKey,
-                signature: ZERO_SIGNATURE,
-                nodeId: nodeId,
-                depositDataRoot: bytes32(0)
-            });
+    function createStakingNodes(uint nodeCount) public returns (uint256[] memory) {
+        uint256[] memory nodeIds = new uint256[](nodeCount);
+        for (uint256 i = 0; i < nodeCount; i++) {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            IStakingNode node = stakingNodesManager.createStakingNode();
+            nodeIds[i] = node.nodeId();
         }
+        return nodeIds;
+    }
 
-        bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
+    function _verifyWithdrawalCredentials(uint256 _nodeId, uint40 _validatorIndex) internal {
+        uint40[] memory _validators = new uint40[](1);
+        _validators[0] = _validatorIndex;
 
-        for (uint256 i = 0; i < validatorData.length; i++) {
-            uint256 amount = depositAmount / validatorData.length;
-            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
-            validatorData[i].depositDataRoot = depositDataRoot;
-        }
         
-        vm.prank(actors.ops.VALIDATOR_MANAGER);
-        stakingNodesManager.registerValidators(validatorData);
-
-        uint256 actualETHBalance = stakingNodeInstance.getETHBalance();
-        assertEq(actualETHBalance, depositAmount, "ETH balance does not match expected value");
-
-        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
-
-        return (stakingNodeInstance, eigenPodInstance);
-    }
-
-    function _getLatestBlockRoot() public returns (bytes32) {
-        return getLatestBlockRoot();
-    }
-
-    function getWithdrawalCredentialParams() public returns (ValidatorProofs memory) {
-        ValidatorProofs memory validatorProofs;
-        
-        validatorProofs.validatorIndices = new uint40[](1);
-        validatorProofs.withdrawalCredentialProofs = new bytes[](1);
-        validatorProofs.validatorFieldsProofs = new bytes[](1);
-        validatorProofs.validatorFields = new bytes32[][](1);
-
-        // Set beacon state root, validatorIndex
-        validatorProofs.stateRootProof.beaconStateRoot = getBeaconStateRoot();
-        validatorProofs.stateRootProof.proof = getStateRootProof();
-        validatorProofs.validatorIndices[0] = uint40(getValidatorIndex());
-        validatorProofs.withdrawalCredentialProofs[0] = abi.encodePacked(getWithdrawalCredentialProof()); // Validator fields are proven here
-        // validatorProofs.validatorFieldsProofs[0] = getWithdrawalCredentialProof();
-        validatorProofs.validatorFields[0] = getValidatorFields();
-
-        return validatorProofs;
-    }
-
-    function bytes32ToData(bytes32 data) public pure returns (address) {
-        return address(uint160(uint256(data)));
-    }
-
-    function getWithdrawalAddress() public returns (address) {
-        bytes32[] memory validatorFields = getValidatorFields();
-        return bytes32ToData(validatorFields[1]);
+        CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+        IEigenPodSimplified(address(stakingNodesManager.nodes(_nodeId))).verifyWithdrawalCredentials({
+            beaconTimestamp: _proofs.beaconTimestamp,
+            stateRootProof: _proofs.stateRootProof,
+            validatorIndices: _validators,
+            validatorFieldsProofs: _proofs.validatorFieldsProofs,
+            validatorFields: _proofs.validatorFields
+        });
+        vm.stopPrank();
     }
 }
 
@@ -147,9 +76,17 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
 
         uint depositAmount = 32 ether;
 
-        (IStakingNode stakingNodeInstance, IEigenPod eigenPodInstance) = setupStakingNode(depositAmount);
+        address user = vm.addr(156737);
 
-        // Collapsed variable declarations into direct usage within assertions and conditions
+        // Create a user address and fund it with 1000 ETH
+        vm.deal(user, 1000 ether);
+
+        yneth.depositETH{value: depositAmount }(user);
+
+        uint256[] memory nodeIds = createStakingNodes(1);
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+        IEigenPod eigenPodInstance = stakingNodeInstance.eigenPod();
+
 
         // TODO: double check this is the desired state for a pod.
         // we can't delegate on mainnet at this time so one should be able to farm points without delegating
@@ -470,7 +407,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             assertEq(afterVerification.stakingNodeBalance, initialState.stakingNodeBalance + rewardsAmount, "Node balance did not increase by rewards amount");
 
             // Assert that other state variables remain unchanged
-            assertEq(afterVerification.totalAssets, initialState.totalAssets, "Total assets changed after verification");
+            assertEq(afterVerification.totalAssets, initialState.totalAssets + expectedRewards, "Total assets changed after verification");
             assertEq(afterVerification.totalSupply, initialState.totalSupply, "Total supply changed after verification");
             assertEq(afterVerification.queuedShares, initialState.queuedShares, "Queued shares changed after verification");
             assertEq(afterVerification.withdrawnETH, initialState.withdrawnETH, "Withdrawn ETH changed after verification");
@@ -574,33 +511,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
                 "_testVerifyCheckpointsBeforeWithdrawalRequest: E1"
             );
         }
-    }
-    
-    function _verifyWithdrawalCredentials(uint256 _nodeId, uint40 _validatorIndex) internal {
-        uint40[] memory _validators = new uint40[](1);
-        _validators[0] = _validatorIndex;
-
-        
-        CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
-        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-        IEigenPodSimplified(address(stakingNodesManager.nodes(_nodeId))).verifyWithdrawalCredentials({
-            beaconTimestamp: _proofs.beaconTimestamp,
-            stateRootProof: _proofs.stateRootProof,
-            validatorIndices: _validators,
-            validatorFieldsProofs: _proofs.validatorFieldsProofs,
-            validatorFields: _proofs.validatorFields
-        });
-        vm.stopPrank();
-    }
-
-    function createStakingNodes(uint nodeCount) public returns (uint256[] memory) {
-        uint256[] memory nodeIds = new uint256[](nodeCount);
-        for (uint256 i = 0; i < nodeCount; i++) {
-            vm.prank(actors.ops.STAKING_NODE_CREATOR);
-            IStakingNode node = stakingNodesManager.createStakingNode();
-            nodeIds[i] = node.nodeId();
-        }
-        return nodeIds;
     }
 }
 
