@@ -296,7 +296,8 @@ contract EigenStrategyManager is
             }
             strategiesForNode[i] = strategy;
         }
-        // Transfer assets to node
+
+        // Transfer assets to address(this)
         ynEigen.retrieveAssets(assets, amounts);
 
         IERC20[] memory depositAssets = new IERC20[](assetsLength);
