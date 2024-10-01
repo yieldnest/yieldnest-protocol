@@ -755,6 +755,91 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
         assertEq(afterCompletion.podOwnerShares, before.podOwnerShares, "Pod owner shares should remain unchanged");
         assertEq(afterCompletion.stakingNodeBalance, before.stakingNodeBalance, "Staking node balance should remain unchanged");
     }
+
+    function testCompleteQueuedWithdrawalsWithSlashedValidators() public {
+        uint256 validatorCount = 5;
+
+        {
+            // Setup
+            uint256 validatorCount = 5;
+            uint256 depositAmount = 32 ether;
+            address user = vm.addr(156737);
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: depositAmount * validatorCount}(user);  // Deposit for 5 validators
+        }
+        
+        uint256 nodeId = createStakingNodes(1)[0];
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        
+        // Setup: Create multiple validators and verify withdrawal credentials
+        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, validatorCount));
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        for (uint256 i = 0; i < validatorCount; i++) {
+            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+        }
+
+        beaconChain.advanceEpoch_NoRewards();
+
+
+        uint256 slashedValidatorCount = 2;
+        // Slash some validators
+        uint40[] memory slashedValidators = new uint40[](slashedValidatorCount);
+        for (uint256 i = 0; i < slashedValidatorCount; i++) {
+            slashedValidators[i] = validatorIndices[i];
+        }
+        beaconChain.slashValidators(slashedValidators);
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Exit remaining validators
+        uint256 exitedValidatorCount = validatorCount - slashedValidatorCount;
+        for (uint256 i = slashedValidatorCount; i < validatorCount; i++) {
+            beaconChain.exitValidator(validatorIndices[i]);
+        }
+        
+        // Advance the beacon chain by one epoch without rewards
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Capture initial state
+        StateSnapshot memory before = takeSnapshot(nodeId);
+
+        // Start and verify checkpoint for all validators
+        startAndVerifyCheckpoint(nodeId, validatorIndices);
+
+        // Calculate expected withdrawal amount (slashed validators lose 1 ETH each)
+        uint256 withdrawalAmount = (32 ether * exitedValidatorCount);
+        
+        // Queue withdrawals for all validators
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
+        queuedWithdrawals[0] = QueuedWithdrawalInfo({
+            withdrawnAmount: withdrawalAmount
+        });
+        _completeQueuedWithdrawals(queuedWithdrawals, nodeId);
+
+        // Capture final state
+        StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
+
+        uint256 slashedAmount = slashedValidatorCount * (beaconChain.SLASH_AMOUNT_GWEI() * 1e9);
+
+        // Assertions
+        assertEq(afterCompletion.withdrawnETH, before.withdrawnETH + withdrawalAmount, "Withdrawn ETH should increase by the withdrawn amount");
+        assertEq(
+            afterCompletion.podOwnerShares,
+            before.podOwnerShares - int256(slashedAmount) - int256(withdrawalAmount),
+            "Pod owner shares should decrease by SLASH_AMOUNT_GWEI per slashed validator and by withdrawalAmount"
+        );
+        assertEq(afterCompletion.stakingNodeBalance, before.stakingNodeBalance - slashedAmount, "Staking node balance should remain unchanged");
+
+        // Verify that the total withdrawn amount matches the expected amount
+        assertEq(afterCompletion.withdrawnETH - before.withdrawnETH, withdrawalAmount, "Total withdrawn amount should match the expected amount");
+    }
 }
 
 // contract StakingNodeStakedETHAllocationTests is StakingNodeTestBase {
