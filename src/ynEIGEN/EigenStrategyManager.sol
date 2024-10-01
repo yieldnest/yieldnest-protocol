@@ -201,7 +201,7 @@ contract EigenStrategyManager is
     //------------------------------------ ACCOUNTING  ----------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Updates the staked balances for all nodes across a strategies.
+    /// @notice Updates the staked balances for all nodes for a strategies.
     /// @dev Should be called atomically after any node-balance-changing operation.
     /// @dev On a slashing events, users will have an incentive to call this function, to decrease the exchange rate.
     /// @param asset The asset for which the balances are to be updated.
