@@ -463,6 +463,10 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             // Assert that node balance and shares increased by the amount of rewards
             StateSnapshot memory afterVerification = takeSnapshot(nodeId);
             uint256 rewardsAmount = uint256(afterVerification.podOwnerShares - initialState.podOwnerShares);
+            // Calculate expected rewards for one epoch
+            uint256 expectedRewards = 1 * 1 * 1e9; // 1 GWEI per Epoch per Validator;
+            assertApproxEqAbs(rewardsAmount, expectedRewards, 1, "Rewards amount does not match expected value for one epoch");
+
             assertEq(afterVerification.stakingNodeBalance, initialState.stakingNodeBalance + rewardsAmount, "Node balance did not increase by rewards amount");
 
             // Assert that other state variables remain unchanged
