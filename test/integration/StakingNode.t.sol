@@ -327,11 +327,38 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         beaconChain.advanceEpoch_NoRewards();
         registerValidators(repeat(nodeId, 1));
 
+        
+         // Capture state before verification
+         uint256 totalAssetsBefore = yneth.totalAssets();
+         uint256 totalSupplyBefore = yneth.totalSupply();
+         uint256 stakingNodeBalanceBefore = stakingNodesManager.nodes(nodeId).getETHBalance();
+         uint256 queuedSharesBefore = stakingNodesManager.nodes(nodeId).queuedShares();
+         uint256 withdrawnETHBefore = stakingNodesManager.nodes(nodeId).withdrawnETH();
+         uint256 unverifiedStakedETHBefore = stakingNodesManager.nodes(nodeId).unverifiedStakedETH();
+
          _verifyWithdrawalCredentials(nodeId, validatorIndices[0]);
 
-        // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
-        assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
-        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
+         // Capture state after verification
+         uint256 totalAssetsAfter = yneth.totalAssets();
+         uint256 totalSupplyAfter = yneth.totalSupply();
+         uint256 stakingNodeBalanceAfter = stakingNodesManager.nodes(nodeId).getETHBalance();
+         uint256 queuedSharesAfter = stakingNodesManager.nodes(nodeId).queuedShares();
+         uint256 withdrawnETHAfter = stakingNodesManager.nodes(nodeId).withdrawnETH();
+         uint256 unverifiedStakedETHAfter = stakingNodesManager.nodes(nodeId).unverifiedStakedETH();
+
+         // Assert that ynETH totalAssets, totalSupply, and staking Node balance, queuedShares and withdrawnETH stay the same
+         assertEq(totalAssetsAfter, totalAssetsBefore, "Total assets should not change");
+         assertEq(totalSupplyAfter, totalSupplyBefore, "Total supply should not change");
+         assertEq(stakingNodeBalanceAfter, stakingNodeBalanceBefore, "Staking node balance should not change");
+         assertEq(queuedSharesAfter, queuedSharesBefore, "Queued shares should not change");
+         assertEq(withdrawnETHAfter, withdrawnETHBefore, "Withdrawn ETH should not change");
+
+         // Assert that unverifiedStakedETH decreases
+         assertLt(unverifiedStakedETHAfter, unverifiedStakedETHBefore, "Unverified staked ETH should decrease");
+
+         // Additional checks
+         assertEq(unverifiedStakedETHAfter, 0, "Unverified staked ETH should be 0 after verification");
+         assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "Pod owner shares should equal AMOUNT");
     }
 
     function testVerifyWithdrawalCredentialsTwice() public {
