@@ -307,7 +307,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
 
     uint256 nodeId;
-    uint40 validatorIndex;
+    uint40[] validatorIndices;
     uint256 AMOUNT = 32 ether;
 
     function setUp() public override {
@@ -317,44 +317,17 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         vm.deal(user, 1000 ether);
 
         yneth.depositETH{value: 1000 ether}(user);
-
-        // create staking node
-        {
-            vm.prank(actors.ops.STAKING_NODE_CREATOR);
-            stakingNodesManager.createStakingNode();
-            nodeId = stakingNodesManager.nodesLength() - 1;
-        }
-
-        // create validator
-        {
-            bytes memory _withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeId);
-            validatorIndex = beaconChain.newValidator{ value: AMOUNT }(_withdrawalCredentials);
-            beaconChain.advanceEpoch_NoRewards();
-        }
-
-        // register validator
-        {
-            bytes memory _dummyPubkey = new bytes(48);
-            IStakingNodesManager.ValidatorData[] memory _data = new IStakingNodesManager.ValidatorData[](1);
-            _data[0] = IStakingNodesManager.ValidatorData({
-                publicKey: _dummyPubkey,
-                signature: ZERO_SIGNATURE,
-                depositDataRoot: stakingNodesManager.generateDepositRoot(
-                    _dummyPubkey,
-                    ZERO_SIGNATURE,
-                    stakingNodesManager.getWithdrawalCredentials(nodeId),
-                    AMOUNT
-                ),
-                nodeId: nodeId
-            });
-            vm.prank(actors.ops.VALIDATOR_MANAGER);
-            stakingNodesManager.registerValidators(_data);
-        }
     }
     
-    function testVerifyWithdrawalCredentials() public {
+    function testVerifyWithdrawalCredentialsForOneValidator() public {
 
-         _verifyWithdrawalCredentials(nodeId, validatorIndex);
+        uint256 nodeId = createStakingNodes(1)[0];
+        // Call createValidators with the nodeIds array and validatorCount
+        validatorIndices = createValidators(repeat(nodeId, 1), 1);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, 1));
+
+         _verifyWithdrawalCredentials(nodeId, validatorIndices[0]);
 
         // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
         assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
@@ -362,17 +335,20 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     }
 
     function testVerifyWithdrawalCredentialsTwice() public {
+        uint256 nodeId = createStakingNodes(1)[0];
+        // Call createValidators with the nodeIds array and validatorCount
+        validatorIndices = createValidators(repeat(nodeId, 1), 1);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, 1));
+        
+        uint40 validatorIndex = validatorIndices[0];
+
         // First verification
         _verifyWithdrawalCredentials(nodeId, validatorIndex);
-
-        // Check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT) after first verification
-        assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "First verification: unverifiedStakedETH should be 0");
-        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "First verification: podOwnerShares should be AMOUNT");
 
         // Try to verify withdrawal credentials again
         uint40[] memory _validators = new uint40[](1);
         _validators[0] = validatorIndex;
-
         
         CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
@@ -389,6 +365,14 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     }
 
     function testVerifyCheckpointsForOneValidator() public {
+
+                uint256 nodeId = createStakingNodes(1)[0];
+        // Call createValidators with the nodeIds array and validatorCount
+        validatorIndices = createValidators(repeat(nodeId, 1), 1);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, 1));
+        
+        uint40 validatorIndex = validatorIndices[0];
 
         {
             _verifyWithdrawalCredentials(nodeId, validatorIndex);
@@ -446,6 +430,16 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             validatorFields: _proofs.validatorFields
         });
         vm.stopPrank();
+    }
+
+    function createStakingNodes(uint nodeCount) public returns (uint256[] memory) {
+        uint256[] memory nodeIds = new uint256[](nodeCount);
+        for (uint256 i = 0; i < nodeCount; i++) {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            IStakingNode node = stakingNodesManager.createStakingNode();
+            nodeIds[i] = node.nodeId();
+        }
+        return nodeIds;
     }
 }
 
