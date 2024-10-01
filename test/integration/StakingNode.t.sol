@@ -694,43 +694,46 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
         stakingNodeInstance.queueWithdrawals(withdrawalAmount);
     }
 
-    function testCompleteQueuedWithdrawalsWithOneValidator() public {
-
+    function testCompleteQueuedWithdrawalsWithMultipleValidators() public {
         // Setup
+
+        uint256 validatorCount = 5;
         uint256 depositAmount = 32 ether;
         address user = vm.addr(156737);
         vm.deal(user, 1000 ether);
-        yneth.depositETH{value: depositAmount}(user);
+        yneth.depositETH{value: depositAmount * validatorCount}(user);  // Deposit for 5 validators
 
         uint256[] memory nodeIds = createStakingNodes(1);
         uint256 nodeId = nodeIds[0];
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
         
-        // Setup: Create a validator and verify withdrawal credentials
-        uint40[] memory validatorIndices = createValidators(repeat(nodeId, 1), 1);
+        // Setup: Create multiple validators and verify withdrawal credentials
+        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
         beaconChain.advanceEpoch_NoRewards();
-        registerValidators(repeat(nodeId, 1));
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        _verifyWithdrawalCredentials(nodeIds[0], validatorIndices[0]);
+        registerValidators(repeat(nodeId, validatorCount));
 
         beaconChain.advanceEpoch_NoRewards();
 
-        beaconChain.exitValidator(validatorIndices[0]);       
+        for (uint256 i = 0; i < validatorCount; i++) {
+            _verifyWithdrawalCredentials(nodeIds[0], validatorIndices[i]);
+        }
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Exit some validators
+        uint256 exitedValidatorCount = 3;
+        for (uint256 i = 0; i < exitedValidatorCount; i++) {
+            beaconChain.exitValidator(validatorIndices[i]);
+        }
+        
         // Advance the beacon chain by one epoch without rewards
         beaconChain.advanceEpoch_NoRewards();
 
-        // Start and verify checkpoint for the single validator
-        uint40[] memory validators = new uint40[](1);
-        validators[0] = validatorIndices[0];
-        startAndVerifyCheckpoint(nodeId, validators);
-    
-        // Log withdrawableRestakedExecutionLayerGwei before queueing withdrawals
-        console.log("Before queueing withdrawals - withdrawableRestakedExecutionLayerGwei:", stakingNodeInstance.eigenPod().withdrawableRestakedExecutionLayerGwei());
+        // Start and verify checkpoint for all validators
+        startAndVerifyCheckpoint(nodeId, validatorIndices);
 
-        // Queue withdrawals
-        uint256 withdrawalAmount = 32 ether;
+        // Queue withdrawals for exited validators
+        uint256 withdrawalAmount = 32 ether * exitedValidatorCount;
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         stakingNodeInstance.queueWithdrawals(withdrawalAmount);
 
