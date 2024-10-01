@@ -32,10 +32,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
     function setUp() public virtual override {
 
-        vm.createSelectFork(
-            "https://eth-mainnet.g.alchemy.com/v2/GWBlcyYZH65PHOKw_l-9pvqYdwJFPo4-", // rpc url
-            20782621 // fork block number
-        );
         super.setUp();
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
@@ -174,11 +170,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         }
 
         assertApproxEqRel(yneigen.totalAssets(), _totalAssetsBefore, 1e17, "setUp: E0"); // NOTE - not best practice to have it here, but for the time being...
-    }
-
-    function testTotalAssetsGas() public view {
-        // yneigen.totalAssets();
-        yneigen.convertToAssets(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), 1 ether);
     }
 
     //
