@@ -613,23 +613,23 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
         assertEq(finalState.podOwnerShares, initialState.podOwnerShares - int256(withdrawalAmount), "Pod owner shares should decrease by withdrawalAmount");
     }
 
-    function skiptestQueueWithdrawalsFailsWhenNotAdmin() public {
+    function testQueueWithdrawalsFailsWhenNotAdmin() public {
         uint256[] memory nodeIds = createStakingNodes(1);
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
 
         uint256 withdrawalAmount = 1 ether;
-        vm.expectRevert("Ownable: caller is not the owner");
-        vm.prank(actors.eoa.DEFAULT_SIGNER);
+        vm.prank(address(0x1234567890123456789012345678901234567890));
+        vm.expectRevert(StakingNode.NotStakingNodesWithdrawer.selector);
         stakingNodeInstance.queueWithdrawals(withdrawalAmount);
     }
 
-    function skiptestQueueWithdrawalsFailsWhenInsufficientBalance() public {
+    function testQueueWithdrawalsFailsWhenInsufficientBalance() public {
         uint256[] memory nodeIds = createStakingNodes(1);
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
 
         uint256 withdrawalAmount = 100 ether; // Assuming this is more than the node's balance
-        vm.expectRevert("StakingNode: Insufficient balance");
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        vm.expectRevert("EigenPodManager.removeShares: cannot result in pod owner having negative shares");
         stakingNodeInstance.queueWithdrawals(withdrawalAmount);
     }
 }
