@@ -361,6 +361,33 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
     }
 
+    function testVerifyWithdrawalCredentialsTwice() public {
+        // First verification
+        _verifyWithdrawalCredentials(nodeId, validatorIndex);
+
+        // Check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT) after first verification
+        assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "First verification: unverifiedStakedETH should be 0");
+        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "First verification: podOwnerShares should be AMOUNT");
+
+        // Try to verify withdrawal credentials again
+        uint40[] memory _validators = new uint40[](1);
+        _validators[0] = validatorIndex;
+
+        
+        CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
+        vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+        IEigenPodSimplified node = IEigenPodSimplified(address(stakingNodesManager.nodes(nodeId)));
+        vm.expectRevert("EigenPod._verifyWithdrawalCredentials: validator must be inactive to prove withdrawal credentials");
+        node.verifyWithdrawalCredentials({
+            beaconTimestamp: _proofs.beaconTimestamp,
+            stateRootProof: _proofs.stateRootProof,
+            validatorIndices: _validators,
+            validatorFieldsProofs: _proofs.validatorFieldsProofs,
+            validatorFields: _proofs.validatorFields
+        });
+        vm.stopPrank();
+    }
+
     function testVerifyCheckpointsForOneValidator() public {
 
         {
