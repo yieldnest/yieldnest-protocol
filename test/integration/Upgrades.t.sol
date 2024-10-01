@@ -44,15 +44,6 @@ contract UpgradesTest is IntegrationBaseTest {
         assertEq(currentRewardsDistributorImpl, newRewardsDistributorImpl);
     }
 
-    // function testUpgradeYnLSD() public {
-    //     address newYnLSDImpl = address(new ynLSD());
-    //     vm.prank(actors.admin.PROXY_ADMIN_OWNER);
-    //     ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynlsd))).upgradeAndCall(ITransparentUpgradeableProxy(address(ynlsd)), newYnLSDImpl, "");
-        
-    //     address currentYnLSDImpl = getTransparentUpgradeableProxyImplementationAddress(address(ynlsd));
-    //     assertEq(currentYnLSDImpl, newYnLSDImpl);
-    // }
-
     function testUpgradeStakingNodesManagerToV2AndReinit() public {
         TestStakingNodesManagerV2.ReInit memory reInit = TestStakingNodesManagerV2.ReInit({
             newV2Value: 42
@@ -64,7 +55,7 @@ contract UpgradesTest is IntegrationBaseTest {
             .upgradeAndCall(
                 ITransparentUpgradeableProxy(address(stakingNodesManager)),
                 newStakingNodesManagerV2Impl,
-                abi.encodeWithSelector(TestStakingNodesManagerV2.initializeV2.selector, reInit)
+                abi.encodeWithSelector(TestStakingNodesManagerV2.initializeV3.selector, reInit)
             );
 
         address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
