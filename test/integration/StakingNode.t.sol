@@ -515,6 +515,8 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             }
             beaconChain.advanceEpoch_NoRewards();
         }
+        // Take snapshot before starting checkpoint
+        StateSnapshot memory beforeStart = takeSnapshot(nodeId);
 
         // start checkpoint
         {
@@ -529,6 +531,18 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             _node.startCheckpoint(true);
         }
 
+        // Take snapshot after starting checkpoint
+        StateSnapshot memory afterStart = takeSnapshot(nodeId);
+
+        // Assert state after starting checkpoint
+        assertEq(afterStart.totalAssets, beforeStart.totalAssets, "Total assets should not change after starting checkpoint");
+        assertEq(afterStart.totalSupply, beforeStart.totalSupply, "Total supply should not change after starting checkpoint");
+        assertEq(afterStart.stakingNodeBalance, beforeStart.stakingNodeBalance, "Staking node balance should not change after starting checkpoint");
+        assertEq(afterStart.queuedShares, beforeStart.queuedShares, "Queued shares should not change after starting checkpoint");
+        assertEq(afterStart.withdrawnETH, beforeStart.withdrawnETH, "Withdrawn ETH should not change after starting checkpoint");
+        assertEq(afterStart.unverifiedStakedETH, beforeStart.unverifiedStakedETH, "Unverified staked ETH should not change after starting checkpoint");
+        assertEq(afterStart.podOwnerShares, beforeStart.podOwnerShares, "Pod owner shares should not change after starting checkpoint");
+
         // verify checkpoints
         {
             uint40[] memory _validators = validatorIndices;
@@ -538,6 +552,18 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
+
+            // Take snapshot after verifying checkpoint
+            StateSnapshot memory afterVerify = takeSnapshot(nodeId);
+
+            // Assert state after verifying checkpoint
+            assertEq(afterVerify.totalAssets, afterStart.totalAssets, "Total assets should not change after verifying checkpoint");
+            assertEq(afterVerify.totalSupply, afterStart.totalSupply, "Total supply should not change after verifying checkpoint");
+            assertGe(afterVerify.stakingNodeBalance, afterStart.stakingNodeBalance, "Staking node balance should not decrease after verifying checkpoint");
+            assertEq(afterVerify.queuedShares, afterStart.queuedShares, "Queued shares should not change after verifying checkpoint");
+            assertEq(afterVerify.withdrawnETH, afterStart.withdrawnETH, "Withdrawn ETH should not change after verifying checkpoint");
+            assertEq(afterVerify.unverifiedStakedETH, afterStart.unverifiedStakedETH, "Unverified staked ETH should not change after verifying checkpoint");
+            assertGe(afterVerify.podOwnerShares, afterStart.podOwnerShares, "Pod owner shares should not decrease after verifying checkpoint");
 
             IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
             assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
