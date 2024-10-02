@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {DynamicArrayLib} from "lib/solady/src/utils/DynamicArrayLib.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
+import {IYieldNestStrategyManager, IRedemptionAssetsVaultExt} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
@@ -15,12 +16,13 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import {IWrapper} from "src/interfaces/IWrapper.sol";
 
 interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
     event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
     event DepositedToEigenlayer(IERC20[] depositAssets, uint256[] depositAmounts, IStrategy[] strategiesForNode);
+    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
 }
 
 /** @title EigenStrategyManager
@@ -78,6 +80,12 @@ contract EigenStrategyManager is
     /// @notice Role allowed to manage strategies
     bytes32 public constant STRATEGY_ADMIN_ROLE = keccak256("STRATEGY_ADMIN_ROLE");
 
+    /// @notice Role allowed to manage withdrawals
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
+
+    /// @notice Role allowed to withdraw from staking nodes
+    bytes32 public constant STAKING_NODES_WITHDRAWER_ROLE = keccak256("STAKING_NODES_WITHDRAWER_ROLE");
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -99,6 +107,9 @@ contract EigenStrategyManager is
     IERC4626 public woETH;
     IERC20 public oETH;
     IERC20 public stETH;
+
+    IRedemptionAssetsVaultExt public redemptionAssetsVault;
+    IWrapper public wrapper;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -156,8 +167,23 @@ contract EigenStrategyManager is
         oETH = IERC20(woETH.asset());
     }
 
+    function initializeV2(
+        address _redemptionAssetsVault,
+        address _wrapper,
+        address _withdrawer
+    ) external reinitializer(2) notZeroAddress(_redemptionAssetsVault) notZeroAddress(_wrapper) {
+        redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
+        wrapper = IWrapper(_wrapper);
+
+        _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
+
+        IERC20(address(wstETH)).forceApprove(address(_wrapper), type(uint256).max);
+        IERC20(address(woETH)).forceApprove(address(_wrapper), type(uint256).max);
+    }
+
     //--------------------------------------------------------------------------------------
-    //----------------------------------  STRATEGY  ----------------------------------------
+    //------------------------------------ DEPOSIT  ----------------------------------------
     //--------------------------------------------------------------------------------------
     
     /**
@@ -222,7 +248,7 @@ contract EigenStrategyManager is
         uint256[] memory depositAmounts = new uint256[](amountsLength);
 
         for (uint256 i = 0; i < assetsLength; i++) {
-            (IERC20 depositAsset, uint256 depositAmount) = toEigenLayerDeposit(assets[i], amounts[i]);
+            (uint256 depositAmount, IERC20 depositAsset) = wrapper.unwrap(amounts[i], assets[i]);
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
 
@@ -237,24 +263,40 @@ contract EigenStrategyManager is
         emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
     }
 
-    function toEigenLayerDeposit(
-        IERC20 asset,
-        uint256 amount
-    ) internal returns (IERC20 depositAsset, uint256 depositAmount) {
-        if (address(asset) == address(wstETH)) {
-            // Adjust for wstETH
-            depositAsset = stETH;
-            depositAmount = wstETH.unwrap(amount); 
-        } else if (address(asset) == address(woETH)) {
-            // Adjust for woeth
-            depositAsset = oETH; 
-            // calling redeem with receiver and owner as address(this)
-            depositAmount = woETH.redeem(amount, address(this), address(this)); 
-        } else {
-            // No adjustment needed
-            depositAsset = asset;
-            depositAmount = amount;
-        }   
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS  -------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function processPrincipalWithdrawals(
+        WithdrawalAction[] calldata _actions
+    ) public onlyRole(WITHDRAWAL_MANAGER_ROLE)  {
+        uint256 _len = _actions.length;
+        for (uint256 i = 0; i < _len; ++i) {
+            _processPrincipalWithdrawalForNode(_actions[i]);
+        }
+    }
+
+    function _processPrincipalWithdrawalForNode(WithdrawalAction calldata _action) internal {
+
+        uint256 _totalAmount = _action.amountToReinvest + _action.amountToQueue;
+
+        ITokenStakingNode _node = tokenStakingNodesManager.getNodeById(_action.nodeId);
+        _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
+        IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
+
+        if (_action.amountToReinvest > 0) {
+            IynEigen _ynEigen = ynEigen;
+            IERC20(_action.asset).forceApprove(address(_ynEigen), _action.amountToReinvest);
+            _ynEigen.processWithdrawn(_action.amountToReinvest, _action.asset);
+        }
+
+        if (_action.amountToQueue > 0) {
+            IRedemptionAssetsVaultExt _redemptionAssetsVault = redemptionAssetsVault;
+            IERC20(_action.asset).forceApprove(address(_redemptionAssetsVault), _action.amountToQueue);
+            _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
+        }
+
+        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
     }
 
     //--------------------------------------------------------------------------------------
@@ -288,9 +330,9 @@ contract EigenStrategyManager is
      * @param assets An array of ERC20 tokens for which balances are to be retrieved.
      * @return stakedBalances An array of total balances for each asset, indexed in the same order as the `assets` array.
      */
-    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
+    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory) {
 
-        stakedBalances = new uint256[](assets.length);
+        uint256[] memory stakedBalances = DynamicArrayLib.malloc(assets.length);
         // Add balances contained in each TokenStakingNode, including those managed by strategies.
 
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
@@ -298,37 +340,36 @@ contract EigenStrategyManager is
         uint256 assetsCount = assets.length;
         for (uint256 j = 0; j < assetsCount; j++) {      
 
+            uint256 strategiesBalance;
+            // uint256 strategiesWithdrawalQueueBalance;
+            uint256 strategiesWithdrawnBalance;
+            uint256 totalQueuedShares;
             IERC20 asset = assets[j];
+            IStrategy strategy = strategies[asset];
             for (uint256 i; i < nodesCount; i++ ) {
                 ITokenStakingNode node = nodes[i];
-                
-                uint256 strategyBalance = toUserAssetAmount(
-                    asset,
-                    strategies[asset].userUnderlyingView((address(node)))
-                );
-                stakedBalances[j] += strategyBalance;
-            }
-        }
-    }
 
-    /**
-     * @notice Converts the user's underlying asset amount to the equivalent user asset amount.
-     * @dev This function handles the conversion for wrapped staked ETH (wstETH) and wrapped other ETH (woETH),
-     *      returning the equivalent amount in the respective wrapped token.
-     * @param asset The ERC20 token for which the conversion is being made.
-     * @param userUnderlyingView The amount of the underlying asset.
-     * @return The equivalent amount in the user asset denomination.
-     */
-    function toUserAssetAmount(IERC20 asset, uint256 userUnderlyingView) public view returns (uint256) {
-        if (address(asset) == address(wstETH)) {
-            // Adjust for wstETH using view method, converting stETH to wstETH
-            return wstETH.getWstETHByStETH(userUnderlyingView);
+                strategiesBalance += strategy.userUnderlyingView((address(node)));
+
+                (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
+
+                if (queuedShares > 0) { // @todo - remove from inner loop
+                    // strategiesWithdrawalQueueBalance += strategy.sharesToUnderlyingView(queuedShares);
+                    totalQueuedShares += queuedShares; // @note - this actually costs more gas!
+                }
+
+                strategiesWithdrawnBalance += strategyWithdrawnBalance;
+            }
+
+            DynamicArrayLib.set(
+                stakedBalances,
+                j,
+                // wrapper.toUserAssetAmount(asset, strategiesBalance + strategiesWithdrawalQueueBalance) + strategiesWithdrawnBalance
+                wrapper.toUserAssetAmount(asset, strategiesBalance + strategy.sharesToUnderlyingView(totalQueuedShares)) + strategiesWithdrawnBalance
+            );
         }
-        if (address(asset) == address(woETH)) { 
-            // Adjust for woETH using view method, converting oETH to woETH
-            return woETH.previewDeposit(userUnderlyingView);
-        }
-        return userUnderlyingView;
+
+        return stakedBalances;
     }
 
     /**
@@ -372,7 +413,7 @@ contract EigenStrategyManager is
         ITokenStakingNode node
     ) internal view returns (uint256 stakedBalance) {
 
-        uint256 strategyBalance = toUserAssetAmount(
+        uint256 strategyBalance = wrapper.toUserAssetAmount(
             asset,
             strategies[asset].userUnderlyingView((address(node)))
         );
@@ -386,6 +427,15 @@ contract EigenStrategyManager is
      */
     function supportsAsset(IERC20 asset) public view returns (bool) {
         return address(strategies[asset]) != address(0);
+    }
+
+    /**
+     * @notice Checks if the given address has the STAKING_NODES_WITHDRAWER_ROLE.
+     * @param _address The address to check.
+     * @return True if the address has the STAKING_NODES_WITHDRAWER_ROLE, false otherwise.
+     */
+    function isStakingNodesWithdrawer(address _address) public view returns (bool) {
+        return hasRole(STAKING_NODES_WITHDRAWER_ROLE, _address);
     }
 
     //--------------------------------------------------------------------------------------

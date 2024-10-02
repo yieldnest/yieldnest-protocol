@@ -15,11 +15,13 @@ interface IAssetRegistry {
         AssetStatus status;
     }
 
+    function getAssets() external view returns (IERC20[] memory);
     function assetData(IERC20 asset) external view returns (AssetData memory);
     function addAsset(IERC20 asset) external;
     function disableAsset(IERC20 asset) external;
     function deleteAsset(IERC20 asset) external;
     function totalAssets() external view returns (uint256);
     function convertToUnitOfAccount(IERC20 asset, uint256 amount) external view returns (uint256);
+    function convertFromUnitOfAccount(IERC20 asset, uint256 amount) external view returns (uint256);
     function assetIsSupported(IERC20 asset) external view returns (bool);
 }
