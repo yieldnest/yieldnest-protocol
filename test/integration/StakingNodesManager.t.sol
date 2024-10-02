@@ -563,13 +563,28 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
         vm.prank(depositor);
         yneth.depositETH{value: 1000 ether}(depositor);
 
+
+        // Create an array of nodeIds
+        uint256[] memory nodeIds = new uint256[](STAKING_NODE_COUNT);
+        for (uint nodeId = 0; nodeId < STAKING_NODE_COUNT; nodeId++) {
+            nodeIds[nodeId] = nodeId;
+        }
+
+
+        uint40[] memory allValidatorIndices = createValidators(nodeIds, VALIDATORS_PER_NODE);
+        uint256[] memory assignedNodeIds = new uint256[](STAKING_NODE_COUNT * VALIDATORS_PER_NODE);
+        
         // Register validators for each staking node
         for (uint nodeId = 0; nodeId < STAKING_NODE_COUNT; nodeId++) {
-            // Call createValidators with the nodeIds array and validatorCount
-            nodeData[nodeId].validatorIndices = createValidators(repeat(nodeId, 1), 1);
-            beaconChain.advanceEpoch_NoRewards();
-            registerValidators(repeat(nodeId, 1));
+            nodeData[nodeId].validatorIndices = new uint40[](VALIDATORS_PER_NODE);
+            for (uint i = 0; i < VALIDATORS_PER_NODE; i++) {
+                nodeData[nodeId].validatorIndices[i] = allValidatorIndices[nodeId * VALIDATORS_PER_NODE + i];
+
+                //assignedNodeIds[nodeId * VALIDATORS_PER_NODE + i] = nodeId;
+            }
         }
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(assignedNodeIds);
 
         // Verify that STAKING_NODE_COUNT * VALIDATORS_PER_NODE validators were registered in total
         assertEq(stakingNodesManager.getAllValidators().length, STAKING_NODE_COUNT * VALIDATORS_PER_NODE, "Incorrect number of registered validators");
