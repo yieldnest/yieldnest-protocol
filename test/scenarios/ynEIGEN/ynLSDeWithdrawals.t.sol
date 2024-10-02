@@ -475,7 +475,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // internal helpers
     //
 
-    function _setupTokenStakingNode(uint256 _amount) private { // @todo - add totalAssets check
+    function _setupTokenStakingNode(uint256 _amount) private {
         vm.assume(_amount > 10_000 && _amount < 100 ether);
 
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
