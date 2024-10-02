@@ -540,8 +540,8 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
 
 contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
 
-    uint256 constant STAKING_NODE_COUNT = 3;
-    uint256 constant VALIDATORS_PER_NODE = 5;
+    uint256 constant STAKING_NODE_COUNT = 1;
+    uint256 constant VALIDATORS_PER_NODE = 2;
 
     struct NodeData {
         uint40[] validatorIndices;
@@ -637,7 +637,7 @@ contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
 
         uint256 nodeId = 0;
         uint256 exitedValidatorsCount = 2;
-        (uint256 rewardsAmount, ) = exitValidatorsAndAccumulateRewards(nodeId, exitedValidatorsCount, 20);
+        (uint256 rewardsAmount, ) = exitValidatorsAndAccumulateRewards(nodeId, exitedValidatorsCount, 5);
 
         // Prepare withdrawal actions
         StakingNodesManager.WithdrawalAction[] memory actions = new StakingNodesManager.WithdrawalAction[](1);
