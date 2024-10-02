@@ -21,7 +21,12 @@ import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 
 contract ProtocolUpgradeScenario is ScenarioBaseTest {
 
-    address YNSecurityCouncil = 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975;
+    address YNSecurityCouncil;
+
+    function setUp() public override {
+        super.setUp();
+        YNSecurityCouncil = actors.wallets.YNSecurityCouncil;
+    }
     
     function test_Upgrade_ynETH_Scenario() public {
         address previousImplementation = getTransparentUpgradeableProxyImplementationAddress(address(yneth));

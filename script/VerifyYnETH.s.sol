@@ -373,10 +373,10 @@ contract Verify is BaseYnETHScript {
             address(deployment.stakingNodesManager.delegationManager()) == chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS,
             "StakingNodesManager: delegationManager dependency mismatch"
         );
-        require(
-            address(deployment.stakingNodesManager.delayedWithdrawalRouter()) == chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS,
-            "StakingNodesManager: delayedWithdrawalRouter dependency mismatch"
-        );
+        // require(
+        //     address(deployment.stakingNodesManager.delayedWithdrawalRouter()) == chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS,
+        //     "StakingNodesManager: delayedWithdrawalRouter dependency mismatch"
+        // );
         require(
             address(deployment.stakingNodesManager.strategyManager()) == chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS,
             "StakingNodesManager: strategyManager dependency mismatch"

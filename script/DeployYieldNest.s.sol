@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+// import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
@@ -42,7 +42,7 @@ contract DeployYieldNest is BaseYnETHScript {
 
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
     IDepositContract public depositContract;
     IWETH public weth;
@@ -72,7 +72,7 @@ contract DeployYieldNest is BaseYnETHScript {
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
         depositContract = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
         weth = IWETH(chainAddresses.ethereum.WETH_ADDRESS);
@@ -131,7 +131,7 @@ contract DeployYieldNest is BaseYnETHScript {
             depositContract: depositContract,
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
-            delayedWithdrawalRouter: delayedWithdrawalRouter,
+            // delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);

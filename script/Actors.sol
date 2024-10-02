@@ -27,6 +27,10 @@ contract ActorAddresses {
         address POOLED_DEPOSITS_OWNER;
         address PAUSE_ADMIN;
         address REFERRAL_PUBLISHER;
+        address WITHDRAWAL_MANAGER;
+        address REDEMPTION_ASSET_WITHDRAWER;
+        address REQUEST_FINALIZER;
+        address STAKING_NODES_WITHDRAWER;
         address STRATEGY_CONTROLLER;
         address TOKEN_STAKING_NODE_OPERATOR;
     }
@@ -62,7 +66,6 @@ contract ActorAddresses {
                 // TODO: replace with concrete deployment
                 YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890
             });
-
             actors[17000] = Actors({
                 eoa: EOAActors({
                     DEFAULT_SIGNER: 0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5,
@@ -89,7 +92,11 @@ contract ActorAddresses {
                     PAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
                     REFERRAL_PUBLISHER: holeskyWallets.YNDev,
                     STRATEGY_CONTROLLER: holeskyWallets.YNStrategyController,
-                    TOKEN_STAKING_NODE_OPERATOR: holeskyWallets.YNTokenStakingNodeOperator
+                    TOKEN_STAKING_NODE_OPERATOR: holeskyWallets.YNTokenStakingNodeOperator,
+                    WITHDRAWAL_MANAGER: holeskyWallets.YNDev,
+                    REDEMPTION_ASSET_WITHDRAWER: holeskyWallets.YNDev,
+                    REQUEST_FINALIZER: holeskyWallets.YNDev,
+                    STAKING_NODES_WITHDRAWER: holeskyWallets.YNDev
                 }),
                 wallets: holeskyWallets
             });
@@ -131,6 +138,14 @@ contract ActorAddresses {
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
                 REFERRAL_PUBLISHER: mainnetWallets.YNDev,
+                // TODO: fix for mainnet deployment
+                WITHDRAWAL_MANAGER: mainnetWallets.YNDev,
+                // TODO: fix for mainnet deployment
+                REDEMPTION_ASSET_WITHDRAWER: mainnetWallets.YNDev,
+                // TODO: fix for mainnet deployment
+                REQUEST_FINALIZER: mainnetWallets.YNDev,
+                // TODO: fix for mainnet deployment
+                STAKING_NODES_WITHDRAWER: mainnetWallets.YNDev,
                 STRATEGY_CONTROLLER: mainnetWallets.YNStrategyController,
                 TOKEN_STAKING_NODE_OPERATOR: mainnetWallets.YNTokenStakingNodeOperator
             }),

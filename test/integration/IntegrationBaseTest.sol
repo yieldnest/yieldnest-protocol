@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+// import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -28,6 +28,11 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 contract IntegrationBaseTest is Test, Utils {
 
@@ -37,6 +42,7 @@ contract IntegrationBaseTest is Test, Utils {
     bytes constant TWO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002";
     bytes constant  ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     bytes32 constant ZERO_DEPOSIT_ROOT = bytes32(0);
+    uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -51,6 +57,10 @@ contract IntegrationBaseTest is Test, Utils {
     RewardsReceiver public consensusLayerReceiver;
     RewardsDistributor public rewardsDistributor;
 
+    // Withdrawals
+    WithdrawalQueueManager public ynETHWithdrawalQueueManager;
+    ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
+
     // Staking
     StakingNodesManager public stakingNodesManager;
     StakingNode public stakingNodeImplementation;
@@ -61,13 +71,15 @@ contract IntegrationBaseTest is Test, Utils {
     // Eigen
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
 
     // Ethereum
     IDepositContract public depositContractEth2;
 
     address public transferEnabledEOA;
+
+    BeaconChainMock public beaconChain;
 
     function setUp() public virtual {
 
@@ -86,6 +98,7 @@ contract IntegrationBaseTest is Test, Utils {
         setupStakingNodesManager();
         setupYnETH();
         setupUtils();
+        setupWithdrawalQueueManager();
     }
 
     function setupYnETHPoxies() public {
@@ -150,14 +163,16 @@ contract IntegrationBaseTest is Test, Utils {
 
     function setupEthereum() public {
         depositContractEth2 = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
+        vm.warp(GENESIS_TIME_LOCAL);
+        beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
     }
 
     function setupEigenLayer() public {
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(vm.addr(6));
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(vm.addr(6));
         strategyManager = IStrategyManager(vm.addr(7));
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
     }
 
@@ -214,7 +229,7 @@ contract IntegrationBaseTest is Test, Utils {
             ynETH: IynETH(address(yneth)),
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
-            delayedWithdrawalRouter: delayedWithdrawalRouter,
+            // delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager,
             rewardsDistributor: IRewardsDistributor(address(rewardsDistributor)),
             stakingNodeCreatorRole:  actors.ops.STAKING_NODE_CREATOR
@@ -224,5 +239,100 @@ contract IntegrationBaseTest is Test, Utils {
         vm.prank(actors.admin.STAKING_ADMIN); // StakingNodesManager is the only contract that can register a staking node implementation contract
         stakingNodesManager.registerStakingNodeImplementationContract(address(stakingNodeImplementation));
     }
-}
 
+    function setupWithdrawalQueueManager() public {
+
+        TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+            address(new ynETHRedemptionAssetsVault()),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
+
+        _proxy = new TransparentUpgradeableProxy(
+            address(new WithdrawalQueueManager()),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
+
+        ynETHRedemptionAssetsVault.Init memory _vaultInit = ynETHRedemptionAssetsVault.Init({
+            admin: actors.admin.PROXY_ADMIN_OWNER,
+            redeemer: address(ynETHWithdrawalQueueManager),
+            ynETH: IynETH(address(yneth))
+        });
+        ynETHRedemptionAssetsVaultInstance.initialize(_vaultInit);
+
+        WithdrawalQueueManager.Init memory _managerInit = WithdrawalQueueManager.Init({
+            name: "ynETH Withdrawal Manager",
+            symbol: "ynETHWM",
+            redeemableAsset: IRedeemableAsset(address(yneth)),
+            redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
+            admin: actors.admin.PROXY_ADMIN_OWNER,
+            withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+            redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+            requestFinalizer: actors.ops.REQUEST_FINALIZER,
+            withdrawalFee: 500, // 0.05%
+            feeReceiver: actors.admin.FEE_RECEIVER
+        });
+        ynETHWithdrawalQueueManager.initialize(_managerInit);
+
+        vm.startPrank(actors.admin.ADMIN);
+        yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
+        vm.stopPrank();
+
+        // Initialize V2 of StakingNodesManager
+        vm.prank(actors.admin.ADMIN);
+        stakingNodesManager.initializeV2(
+            StakingNodesManager.Init2({
+                redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
+                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
+                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
+            })
+        );
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  UTILITY  -----------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
+        uint40[] memory validatorIndices = new uint40[](count * nodeIds.length);
+        uint256 index = 0;
+
+        for (uint256 j = 0; j < nodeIds.length; j++) {
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(nodeIds[j]);
+
+            for (uint256 i = 0; i < count; i++) {
+                validatorIndices[index] = beaconChain.newValidator{value: 32 ether}(withdrawalCredentials);
+                index++;
+            }
+        }
+        return validatorIndices;
+    }
+
+    function registerValidators(uint256[] memory validatorNodeIds) public {
+        IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorNodeIds.length);
+        
+        for (uint256 i = 0; i < validatorNodeIds.length; i++) {
+            bytes memory publicKey = abi.encodePacked(uint256(i));
+            publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
+            validatorData[i] = IStakingNodesManager.ValidatorData({
+                publicKey: publicKey,
+                signature: ZERO_SIGNATURE,
+                nodeId: validatorNodeIds[i],
+                depositDataRoot: bytes32(0)
+            });
+        }
+
+        for (uint256 i = 0; i < validatorData.length; i++) {
+            uint256 amount = 32 ether;
+            bytes memory withdrawalCredentials = stakingNodesManager.getWithdrawalCredentials(validatorData[i].nodeId);
+            bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
+            validatorData[i].depositDataRoot = depositDataRoot;
+        }
+        
+        vm.prank(actors.ops.VALIDATOR_MANAGER);
+        stakingNodesManager.registerValidators(validatorData);
+    }
+}
