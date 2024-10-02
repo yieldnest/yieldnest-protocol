@@ -12,7 +12,6 @@ import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEige
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol"; 
 import {StakingNode} from "src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
-import {ProofUtils} from "test/utils/ProofUtils.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
