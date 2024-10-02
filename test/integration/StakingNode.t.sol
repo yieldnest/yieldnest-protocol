@@ -498,6 +498,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 contract StakingNodeWithdrawals  is StakingNodeTestBase {
 
     function testQueueWithdrawals() public {
+        
         // Setup
         uint256 depositAmount = 32 ether;
         address user = vm.addr(156737);
@@ -568,7 +569,6 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
 
     function testCompleteQueuedWithdrawalsWithMultipleValidators() public {
         // Setup
-
         uint256 validatorCount = 5;
         uint256 depositAmount = 32 ether;
         address user = vm.addr(156737);
