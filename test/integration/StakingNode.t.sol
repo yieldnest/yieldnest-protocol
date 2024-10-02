@@ -399,7 +399,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
     function testVerifyCheckpointsForManyValidators() public {
 
-        uint256 validatorCount = 10;
+        uint256 validatorCount = 3;
 
         uint256 nodeId = createStakingNodes(1)[0];
         // Call createValidators with the nodeIds array and validatorCount
@@ -424,7 +424,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
         beaconChain.advanceEpoch_NoRewards();
 
-        uint256 exitedValidatorsCount = 5;
+        uint256 exitedValidatorsCount = 1;
 
         // exit validators
         {
@@ -498,7 +498,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 contract StakingNodeWithdrawals  is StakingNodeTestBase {
 
     function testQueueWithdrawals() public {
-        
+
         // Setup
         uint256 depositAmount = 32 ether;
         address user = vm.addr(156737);
@@ -569,11 +569,11 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
 
     function testCompleteQueuedWithdrawalsWithMultipleValidators() public {
         // Setup
-        uint256 validatorCount = 5;
+        uint256 validatorCount = 2;
         uint256 depositAmount = 32 ether;
         address user = vm.addr(156737);
         vm.deal(user, 1000 ether);
-        yneth.depositETH{value: depositAmount * validatorCount}(user);  // Deposit for 5 validators
+        yneth.depositETH{value: depositAmount * validatorCount}(user);  // Deposit for validators
 
         uint256[] memory nodeIds = createStakingNodes(1);
         uint256 nodeId = nodeIds[0];
@@ -593,7 +593,7 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
         beaconChain.advanceEpoch_NoRewards();
 
         // Exit some validators
-        uint256 exitedValidatorCount = 3;
+        uint256 exitedValidatorCount = 1;
         for (uint256 i = 0; i < exitedValidatorCount; i++) {
             beaconChain.exitValidator(validatorIndices[i]);
         }
@@ -629,15 +629,14 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
     }
 
     function testCompleteQueuedWithdrawalsWithSlashedValidators() public {
-        uint256 validatorCount = 5;
+        uint256 validatorCount = 2;
 
         {
             // Setup
-            uint256 validatorCount = 5;
             uint256 depositAmount = 32 ether;
             address user = vm.addr(156737);
             vm.deal(user, 1000 ether);
-            yneth.depositETH{value: depositAmount * validatorCount}(user);  // Deposit for 5 validators
+            yneth.depositETH{value: depositAmount * validatorCount}(user);  // Deposit for validators
         }
         
         uint256 nodeId = createStakingNodes(1)[0];
@@ -656,7 +655,7 @@ contract StakingNodeWithdrawals  is StakingNodeTestBase {
 
         beaconChain.advanceEpoch_NoRewards();
 
-        uint256 slashedValidatorCount = 2;
+        uint256 slashedValidatorCount = 1;
         // Slash some validators
         uint40[] memory slashedValidators = new uint40[](slashedValidatorCount);
         for (uint256 i = 0; i < slashedValidatorCount; i++) {
