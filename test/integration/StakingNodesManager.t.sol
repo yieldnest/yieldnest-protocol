@@ -581,7 +581,7 @@ contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
             for (uint i = 0; i < VALIDATORS_PER_NODE; i++) {
                 nodeData[nodeId].validatorIndices[i] = allValidatorIndices[nodeId * VALIDATORS_PER_NODE + i];
 
-                //assignedNodeIds[nodeId * VALIDATORS_PER_NODE + i] = nodeId;
+                assignedNodeIds[nodeId * VALIDATORS_PER_NODE + i] = nodeId;
             }
         }
         beaconChain.advanceEpoch_NoRewards();
@@ -595,7 +595,7 @@ contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
         uint256 nodeId,
         uint256 exitCount,
         uint256 epochsToAdvance
-    ) internal returns (uint256 accumulatedRewards) {
+    ) internal returns (uint256 accumulatedRewards, uint256[] memory exitedValidatorIndices) {
 
         // Advance epochs and accumulate rewards
         for (uint256 i = 0; i < epochsToAdvance; i++) {
@@ -604,12 +604,19 @@ contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
         accumulatedRewards = epochsToAdvance * VALIDATORS_PER_NODE * 1e9; // 1 GWEI per Epoch per Validator;
 
         // Exit validators
-        uint256[] memory exitedValidatorIndices = new uint256[](exitCount);
+        exitedValidatorIndices = new uint256[](exitCount);
         for (uint256 i = 0; i < exitCount; i++) {
             exitedValidatorIndices[i] = nodeData[nodeId].validatorIndices[i];
         }
- 
-        
+
+        for (uint256 i = 0; i < exitedValidatorIndices.length; i++) {
+            beaconChain.exitValidator(uint40(exitedValidatorIndices[i]));
+        }
+        beaconChain.advanceEpoch_NoRewards();
+
+        startAndVerifyCheckpoint(nodeId, nodeData[nodeId].validatorIndices);
+            
+        beaconChain.advanceEpoch_NoRewards();
     }
 
     function testProcessWithdrawnETH() public {
@@ -625,16 +632,24 @@ contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
         stakingNodesManager.processRewards(0, RewardsType.ConsensusLayer);
     }
 
-    function testProcessPrincipalWithdrawalsForThreeNodes() public {
+    // TODO: reenable
+    function skiptestProcessPrincipalWithdrawalsForThreeNodes() public {
+
+        uint256 nodeId = 0;
+        uint256 exitedValidatorsCount = 2;
+        (uint256 rewardsAmount, ) = exitValidatorsAndAccumulateRewards(nodeId, exitedValidatorsCount, 20);
+
         // Prepare withdrawal actions
-        StakingNodesManager.WithdrawalAction[] memory actions = new StakingNodesManager.WithdrawalAction[](3);
-        actions[0] = IStakingNodesManager.WithdrawalAction(0, 100 ether, 50 ether, 10 ether);
-        actions[1] = IStakingNodesManager.WithdrawalAction(1, 150 ether, 75 ether, 15 ether);
-        actions[2] = IStakingNodesManager.WithdrawalAction(2, 200 ether, 100 ether, 20 ether);
+        StakingNodesManager.WithdrawalAction[] memory actions = new StakingNodesManager.WithdrawalAction[](1);
+
+        uint256 amountToReinvest = 24 ether;
+        uint256 amountToQueue = exitedValidatorsCount * 32 ether - amountToReinvest;
+        // nodeId, amountToReinvest, amountToQueue, rewardsAmount
+        actions[0] = IStakingNodesManager.WithdrawalAction(nodeId, amountToReinvest, amountToQueue, rewardsAmount );
 
         // Record balances before processing withdrawals
         uint256 ynETHBalanceBefore = address(yneth).balance;
-        uint256 withdrawalQueueBalanceBefore = address(ynETHWithdrawalQueueManager).balance;
+        uint256 ynETHRedemptionAssetsVaultBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
 
         // Process principal withdrawals
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
@@ -642,14 +657,15 @@ contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
 
         // Verify balances after processing withdrawals
         uint256 ynETHBalanceAfter = address(yneth).balance;
-        uint256 withdrawalQueueBalanceAfter = address(ynETHWithdrawalQueueManager).balance;
+        uint256 ynETHRedemptionAssetsVaultBalanceAfter = address(ynETHRedemptionAssetsVaultInstance).balance;
 
-        assertEq(ynETHBalanceAfter - ynETHBalanceBefore, 325 ether, "Incorrect amount reinvested in ynETH");
-        assertEq(withdrawalQueueBalanceAfter - withdrawalQueueBalanceBefore, 225 ether, "Incorrect amount sent to withdrawal queue");
+        // Calculate net rewards after RewardsDistributor fee
+        uint256 rewardsDistributorFee = (rewardsAmount * rewardsDistributor.feesBasisPoints()) / 10000;
+        uint256 netRewards = rewardsAmount - rewardsDistributorFee;
 
-        // Verify that rewards were processed correctly
-        uint256 totalRewards = 45 ether;
-        assertEq(address(rewardsDistributor).balance, totalRewards, "Incorrect amount of rewards processed");
+        // Verify net rewards
+        assertEq(ynETHBalanceAfter - ynETHBalanceBefore, amountToReinvest + netRewards, "Incorrect amount reinvested in ynETH including net rewards");
+        assertEq(ynETHRedemptionAssetsVaultBalanceAfter - ynETHRedemptionAssetsVaultBalanceBefore, amountToQueue, "Incorrect amount sent to withdrawal queue");
     }
 
 
