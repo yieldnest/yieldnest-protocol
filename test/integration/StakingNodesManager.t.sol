@@ -14,6 +14,7 @@ import {ynETH} from "src/ynETH.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
+import {StakingNodeTestBase} from "./StakingNodeTestBase.sol";
 
 import "forge-std/console.sol";
 
@@ -537,7 +538,7 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
     }
 }
 
-contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
+contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
 
     uint256 constant STAKING_NODE_COUNT = 3;
     uint256 constant VALIDATORS_PER_NODE = 5;
@@ -608,6 +609,7 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
             exitedValidatorIndices[i] = nodeData[nodeId].validatorIndices[i];
         }
  
+        
     }
 
     function testProcessWithdrawnETH() public {
