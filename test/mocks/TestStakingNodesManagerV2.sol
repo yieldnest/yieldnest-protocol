@@ -11,7 +11,7 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
         uint256 newV2Value;
     }
 
-    function initializeV2(ReInit memory reInit) public reinitializer(2) {
+    function initializeV3(ReInit memory reInit) public reinitializer(3) {
         newV2Value = reInit.newV2Value;
     }
 

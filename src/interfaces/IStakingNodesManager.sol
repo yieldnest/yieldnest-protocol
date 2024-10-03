@@ -56,4 +56,6 @@ interface IStakingNodesManager {
     function redemptionAssetsVault() external returns (IRedemptionAssetsVault);
 
     function isStakingNodesWithdrawer(address _address) external view returns (bool);
+
+    function nodes(uint256 index) external view returns (IStakingNode);
 }

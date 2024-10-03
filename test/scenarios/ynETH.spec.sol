@@ -11,7 +11,6 @@ import { IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEi
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 // import { IDelayedWithdrawalRouter } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import { IRewardsDistributor } from "src/interfaces/IRewardsDistributor.sol";
-import { ProofUtils } from "test/utils/ProofUtils.sol";
 import "forge-std/Vm.sol";
 
 contract YnETHScenarioTest1 is IntegrationBaseTest {
@@ -216,36 +215,6 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 
 		return (stakingNode, validatorData);
 	}
-
-	function verifyEigenWithdrawCredentials(IStakingNode stakingNode) public {
-        
-        ProofUtils proofUtils = new ProofUtils("lib/eigenlayer-contracts/src/test/test-data/fullWithdrawalProof_Latest.json");
-
-		uint64 oracleTimestamp = uint64(block.timestamp);
-
-		BeaconChainProofs.StateRootProof memory stateRootProof = proofUtils._getStateRootProof();
-
-		uint40[] memory validatorIndexes = new uint40[](1);
-
-		validatorIndexes[0] = uint40(proofUtils.getValidatorIndex());
-
-        bytes[] memory validatorFieldsProofs = proofUtils._getValidatorFieldsProof();
-
-		bytes32[][] memory validatorFields = new bytes32[][](1);
-        validatorFields[0] = proofUtils.getValidatorFields();
-
-		vm.prank(actors.ops.STAKING_NODES_OPERATOR);
-		stakingNode.verifyWithdrawalCredentials(
-            oracleTimestamp,
-            stateRootProof,
-            validatorIndexes,
-            validatorFieldsProofs,
-            validatorFields
-        );
-
-		IEigenPod eigenPod = IEigenPod(stakingNode.eigenPod());
-		eigenPod.validatorStatus(0);
-	}
 }
 
 event LogUint(string message, uint256 value);
@@ -260,8 +229,10 @@ event LogUint(string message, uint256 value);
 // 	event Log(string message, uint256 value);
 // 	event LogAddress(string message, address value);
 	
-// 	function test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
-// 		vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
+	// // FIXME: Non-Beacon ETH is no longer distributed as such, it's counted as shares right away in Eigenlayer M3.
+	// // Adjust this test or delete it.
+	// function skip_test_ynETH_Scenario_8_NonBeaconChainETH_Rewards_Distribution(uint256 randomAmount) public {
+	// 	vm.assume(randomAmount > 32 ether + 2 wei && randomAmount < 100_000_000 ether);
 
 // 		// Deposit 32 ETH to ynETH and create a Staking Node with a Validator
 // 		(IStakingNode stakingNode,) = depositEth_and_createValidator();
@@ -330,7 +301,9 @@ contract YnETHScenarioTest10 is IntegrationBaseTest, YnETHScenarioTest3 {
 		vm.recordLogs();
 	}
 
-	// function test_ynETH_Scenario_9_Self_Destruct_Attack() public {
+	// // FIXME: Non-Beacon ETH is no longer distributed as such, it's counted as shares right away in Eigenlayer M3.
+	// // Adjust this test or delete it.
+	// function skip_test_ynETH_Scenario_9_Self_Destruct_Attack() public {
 
 	// 	uint256 previousTotalDeposited = yneth.totalDepositedInPool();
 	// 	uint256 previousTotalShares = yneth.totalSupply();

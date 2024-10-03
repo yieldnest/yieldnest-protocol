@@ -31,6 +31,17 @@ interface StakingNodesManagerEvents {
     event ETHReceived(address sender, uint256 amount);
 }
 
+/**
+ * @notice Each node in the StakingNodesManager manages an EigenPod. 
+ * An EigenPod represents a collection of validators and their associated staking activities within the EigenLayer protocol. 
+ * The StakingNode contract, which each node is an instance of, interacts with the EigenPod to perform various operations such as:
+ * - Creating the EigenPod upon the node's initialization if it does not already exist.
+ * - Delegating staking operations to the EigenPod, including processing rewards and managing withdrawals.
+ * - Verifying withdrawal credentials and managing expedited withdrawals before restaking.
+ * 
+ * This design allows for delegating to multiple operators simultaneously while also being gas efficient.
+ * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
+ */
 contract StakingNodesManager is
     IStakingNodesManager,
     Initializable,
@@ -103,7 +114,7 @@ contract StakingNodesManager is
     IDepositContract public depositContractEth2;
     IDelegationManager public delegationManager;
     /// @dev redemptionAssetsVault replaces the slot formerly used by: IDelayedWithdrawalRouter public delayedWithdrawalRouter;
-    IRedemptionAssetsVault public redemptionAssetsVault;
+    address private ___deprecated_delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
     
     UpgradeableBeacon public upgradeableBeacon;
@@ -111,18 +122,6 @@ contract StakingNodesManager is
     IynETH public ynETH;
     IRewardsDistributor public rewardsDistributor;
 
-    /**
-    /**
-     * @notice Each node in the StakingNodesManager manages an EigenPod. 
-     * An EigenPod represents a collection of validators and their associated staking activities within the EigenLayer protocol. 
-     * The StakingNode contract, which each node is an instance of, interacts with the EigenPod to perform various operations such as:
-     * - Creating the EigenPod upon the node's initialization if it does not already exist.
-     * - Delegating staking operations to the EigenPod, including processing rewards and managing withdrawals.
-     * - Verifying withdrawal credentials and managing expedited withdrawals before restaking.
-     * 
-     * This design allows for delegating to multiple operators simultaneously while also being gas efficient.
-     * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
-     */
     IStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
@@ -130,6 +129,7 @@ contract StakingNodesManager is
     mapping(bytes pubkey => bool) usedValidators;
 
     bool public validatorRegistrationPaused;
+    IRedemptionAssetsVault public redemptionAssetsVault;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -234,6 +234,9 @@ contract StakingNodesManager is
         redemptionAssetsVault = init.redemptionAssetsVault;
         _grantRole(WITHDRAWAL_MANAGER_ROLE, init.withdrawalManager);
         _grantRole(STAKING_NODES_WITHDRAWER_ROLE, init.stakingNodesWithdrawer);
+
+        // Zero out deprecated variable
+        ___deprecated_delayedWithdrawalRouter = address(0);
     }
 
     receive() external payable {

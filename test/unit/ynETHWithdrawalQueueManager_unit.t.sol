@@ -9,8 +9,8 @@ import {ynETHRedemptionAssetsVault} from "../../src/ynETHRedemptionAssetsVault.s
 
 import {MockRedeemableYnETH} from "./mocks/MockRedeemableYnETH.sol";
 
-import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IERC20Errors} from "lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 
 import "forge-std/Test.sol";
 

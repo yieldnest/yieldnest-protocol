@@ -102,7 +102,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     /// @notice Calculates the amount of shares to be minted for a given deposit.
     /// @param assets The amount of assets to be deposited.
     /// @return The amount of shares to be minted.
-    function previewDeposit(uint256 assets) public view override returns (uint256) {
+    function previewDeposit(uint256 assets) public view override(ERC4626Upgradeable, IynETH) returns (uint256) {
         return _convertToShares(assets, Math.Rounding.Floor);
     }
 
@@ -137,8 +137,7 @@ contract MockYnETHERC4626 is IynETH, AccessControlUpgradeable, ERC4626Upgradeabl
     //----------------------------------  ASSETS -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
-    function totalAssets() public view override returns (uint256) {
+    function totalAssets() public view override(ERC4626Upgradeable, IynETH) returns (uint256) {
         uint256 total = 0;
         // allocated ETH for deposits pending to be processed
         total += totalDepositedInPool;
