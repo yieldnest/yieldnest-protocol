@@ -317,7 +317,9 @@ contract EigenStrategyManager is
 
         node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
 
-        for (uint256 i = 0; i < assetsLength; i++) updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        for (uint256 i = 0; i < assetsLength; i++) {
+            updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        }
 
         emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
     }
