@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {SafeCast} from "lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
 import {DynamicArrayLib} from "lib/solady/src/utils/DynamicArrayLib.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
@@ -117,8 +118,8 @@ contract EigenStrategyManager is
     IWrapper public wrapper;
 
     struct StrategyBalance {
-        uint256 stakedBalance;
-        uint256 withdrawnBalance;
+        uint128 stakedBalance;
+        uint128 withdrawnBalance;
     }
     mapping(IStrategy => StrategyBalance) public strategiesBalance;
 
@@ -230,8 +231,8 @@ contract EigenStrategyManager is
         }
 
         StrategyBalance memory _strategyBalance = StrategyBalance({
-            stakedBalance: _strategiesBalance + _strategiesWithdrawalQueueBalance,
-            withdrawnBalance: _strategiesWithdrawnBalance
+            stakedBalance: SafeCast.toUint128(_strategiesBalance + _strategiesWithdrawalQueueBalance),
+            withdrawnBalance: SafeCast.toUint128(_strategiesWithdrawnBalance)
         });
 
         strategiesBalance[strategy] = _strategyBalance;
