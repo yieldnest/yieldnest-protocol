@@ -66,6 +66,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         notZeroAddress(address(init.assetRegistry))
         initializer {
         __AccessControl_init();
+        __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
         _grantRole(PAUSER_ROLE, init.admin);
         _grantRole(UNPAUSER_ROLE, init.admin);
