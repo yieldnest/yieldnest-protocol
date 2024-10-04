@@ -218,13 +218,21 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
      * @notice Pauses the contract, preventing certain actions.
      */
     function pause() external onlyRole(PAUSER_ROLE) {
+        if (paused) revert ContractPaused();
+
         paused = true;
+
+        emit Paused();
     }
 
     /** 
      * @notice Unpauses the contract, allowing certain actions.
      */
     function unpause() external onlyRole(UNPAUSER_ROLE) {
+        if (!paused) revert ContractPaused();
+
         paused = false;
+
+        emit Unpaused();
     }
 }
