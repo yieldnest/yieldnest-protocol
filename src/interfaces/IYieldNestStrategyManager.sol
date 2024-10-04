@@ -8,6 +8,7 @@ import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol"
 interface IRedemptionAssetsVaultExt is IRedemptionAssetsVault {
     function deposit(uint256 amount, address asset) external;
     function balances(address asset) external view returns (uint256 amount);
+    function assetBalances(IERC20[] calldata assetsArray) external view returns (uint256[] memory balances);
 }
 
 interface IYieldNestStrategyManager {

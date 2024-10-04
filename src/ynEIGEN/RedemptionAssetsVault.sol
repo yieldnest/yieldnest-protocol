@@ -80,6 +80,18 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     }
 
     //--------------------------------------------------------------------------------------
+    //------------------------------------- VIEW  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function assetBalances(IERC20[] calldata assetsArray) public view returns (uint256[] memory _balances) {
+        uint256 len = assetsArray.length;
+        _balances = new uint256[](len);
+        for (uint256 i = 0; i < len; ++i) {
+            _balances[i] = balances[address(assetsArray[i])];
+        }
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  REDEMPTION  --------------------------------------
     //--------------------------------------------------------------------------------------
 

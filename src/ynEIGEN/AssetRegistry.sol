@@ -287,9 +287,14 @@ interface IAssetRegistryEvents {
         }
 
         IRedemptionAssetsVaultExt redemptionAssetsVault = strategyManager.redemptionAssetsVault();
+        uint256[] memory redemptionAssetBalances = new uint256[](assetsCount);
+        if (address(redemptionAssetsVault) != address(0)) {
+            redemptionAssetBalances = redemptionAssetsVault.assetBalances(assets);
+        }
+
         for (uint256 i = 0; i < assetsCount; i++) {
             assetBalances[i] += stakedAssetBalances[i];
-            if (address(redemptionAssetsVault) != address(0)) assetBalances[i] += redemptionAssetsVault.balances(address(assets[i]));
+            assetBalances[i] += redemptionAssetBalances[i];
         }
     }
 
