@@ -195,19 +195,29 @@ contract EigenStrategyManager is
 
         IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
         uint256 assetsLength = assets.length;
-        for (uint256 i = 0; i < assetsLength; i++) updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        for (uint256 i = 0; i < assetsLength; i++) {
+            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        }
     }
 
     //--------------------------------------------------------------------------------------
     //------------------------------------ ACCOUNTING  ----------------------------------------
     //--------------------------------------------------------------------------------------
 
+    /// @notice Updates the staked balances for all nodes for a specific asset's strategy.
+    /// @dev This function should be called after any operation that changes node balances.
+    /// @dev In case of slashing events, users are incentivized to call this function to adjust the exchange rate.
+    /// @param asset The ERC20 token for which the balances are to be updated.
+    function updateTokenStakingNodesBalances(IERC20 asset) public {
+        _updateTokenStakingNodesBalances(asset, strategies[asset]);
+    } 
+
     /// @notice Updates the staked balances for all nodes for a strategies.
     /// @dev Should be called atomically after any node-balance-changing operation.
     /// @dev On a slashing events, users will have an incentive to call this function, to decrease the exchange rate.
     /// @param asset The asset for which the balances are to be updated.
     /// @param strategy The strategy for which the balances are to be updated. If not provided, we search for the strategy associated with the asset.
-    function updateTokenStakingNodesBalances(IERC20 asset, IStrategy strategy) public {
+    function _updateTokenStakingNodesBalances(IERC20 asset, IStrategy strategy) internal {
 
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
         uint256 nodesCount = nodes.length;
@@ -318,7 +328,7 @@ contract EigenStrategyManager is
         node.depositAssetsToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
 
         for (uint256 i = 0; i < assetsLength; i++) {
-            updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
         }
 
         emit DepositedToEigenlayer(depositAssets, depositAmounts, strategiesForNode);
@@ -357,7 +367,7 @@ contract EigenStrategyManager is
             _redemptionAssetsVault.deposit(_action.amountToQueue, _action.asset);
         }
 
-        updateTokenStakingNodesBalances(IERC20(_action.asset), IStrategy(address(0)));
+        _updateTokenStakingNodesBalances(IERC20(_action.asset), IStrategy(address(0)));
 
         emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
     }
@@ -400,14 +410,14 @@ contract EigenStrategyManager is
 
         uint256 assetsCount = assets.length;
         for (uint256 j = 0; j < assetsCount; j++) {      
-
             IERC20 asset = assets[j];
             IStrategy strategy = strategies[asset];
+            StrategyBalance memory balance = strategiesBalance[strategy];
             DynamicArrayLib.set(
                 stakedBalances,
                 j,
-                wrapper.toUserAssetAmount(asset, strategiesBalance[strategy].stakedBalance)
-                + strategiesBalance[strategy].withdrawnBalance
+                wrapper.toUserAssetAmount(asset, balance.stakedBalance)
+                + balance.withdrawnBalance
             );
         }
 
