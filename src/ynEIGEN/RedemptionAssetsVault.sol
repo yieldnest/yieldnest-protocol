@@ -25,6 +25,8 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     error ContractPaused();
     error NotRedeemer(address caller);
     error AssetNotSupported();
+    event Paused();
+    event Unpaused();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
