@@ -22,18 +22,42 @@ interface IWithdrawalsProcessorEvents {
 
 contract WithdrawalsProcessor is Initializable, AccessControlUpgradeable, IWithdrawalsProcessorEvents {
 
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    error ZeroAddress();
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES  -------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
     IStakingNodesManager public stakingNodesManager;
+
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
-    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
 
-    function initialize(address _stakingNodesManager, address _withdrawalManager) public initializer {
-        require(_stakingNodesManager != address(0), "Invalid StakingNodesManager address");
-        require(_withdrawalManager != address(0), "Invalid withdrawal manager address");
-        stakingNodesManager = IStakingNodesManager(_stakingNodesManager);
+    function initialize(
+        IStakingNodesManager _stakingNodesManager,
+        address _admin,
+        address _withdrawalManager
+    ) public initializer 
+      notZeroAddress(address(_stakingNodesManager)) 
+      notZeroAddress(_withdrawalManager) 
+    {
+        __AccessControl_init();
+        
+        stakingNodesManager = _stakingNodesManager;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawalManager);
     }
 
@@ -61,5 +85,20 @@ contract WithdrawalsProcessor is Initializable, AccessControlUpgradeable, IWithd
             withdrawalAction,
             withdrawals.length
         );
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  MODIFIERS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
+    modifier notZeroAddress(address _address) {
+        if (_address == address(0)) {
+            revert ZeroAddress();
+        }
+        _;
     }
 }
