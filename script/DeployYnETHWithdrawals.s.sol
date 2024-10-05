@@ -66,7 +66,6 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         
         ContractAddresses contractAddresses = new ContractAddresses();
 
-        if (false) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         address publicKey = vm.addr(deployerPrivateKey);
@@ -185,7 +184,6 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         saveWithdrawalsDeployment(deployment);
 
         console.log("Deployment information saved successfully.");
-        }
 
         ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x3a2DD2f0f5A20768110a52fC4f091AB9d8631b58));
         // initialize stakingNodesManager withdrawal contracts
