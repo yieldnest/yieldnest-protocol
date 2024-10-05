@@ -29,6 +29,7 @@ import {WithdrawalQueueManager} from "../../../src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "../../../src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNodesManager.sol";
 import {PlaceholderStakingNodesManager} from "./PlaceholderStakingNodesManager.sol";
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
 
 
 
@@ -61,6 +62,7 @@ contract Base is Test, Utils {
     // Withdrawals
     WithdrawalQueueManager public ynETHWithdrawalQueueManager;
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
+    WithdrawalsProcessor public withdrawalsProcessor;
 
     // EigenLayer
     IEigenPodManager public eigenPodManager;
@@ -115,8 +117,9 @@ contract Base is Test, Utils {
     }
 
     function upgradeYnToM3() internal {
-        if (block.chainid != 1) {
+        if (block.chainid == 17000) {
             // Nothing to do, only mainnet left to upgrade
+            deployWithdrawalsProcessor();
             return;
         }
 
@@ -286,7 +289,38 @@ contract Base is Test, Utils {
             vm.stopPrank();
         }
 
+        deployWithdrawalsProcessor();
+
         runUpgradeIntegrityInvariants(preUpgradeState);
+    }
+
+    function deployWithdrawalsProcessor() internal {
+        // Deploy WithdrawalsProcessor
+        // Deploy the implementation contract
+        WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
+
+        // Prepare the initialization data
+        bytes memory initData = abi.encodeWithSelector(
+            WithdrawalsProcessor.initialize.selector,
+            IStakingNodesManager(address(stakingNodesManager)),
+            actors.admin.ADMIN,
+            actors.ops.WITHDRAWAL_MANAGER
+        );
+
+        // Deploy the proxy
+        TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
+            address(withdrawalsProcessorImplementation),
+            actors.admin.PROXY_ADMIN_OWNER,
+            initData
+        );
+
+        withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
+
+        // Grant WITHDRAWAL_MANAGER_ROLE to WithdrawalsProcessor
+        vm.startPrank(actors.admin.ADMIN);
+        stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor));
+        stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor));
+        vm.stopPrank();
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {

@@ -149,7 +149,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         uint256 withdrawnAmount;
     }
 
-    function completeQueuedWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private {
+    function getDelegationManagerWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private view returns (IDelegationManager.Withdrawal[] memory) {
         // create Withdrawal struct
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
         {
@@ -170,6 +170,13 @@ contract M3WithdrawalsWithRewardsTest is Base {
                 });   
             }
         }
+        
+        return _withdrawals;
+    }
+
+    function completeQueuedWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private {
+        // create Withdrawal struct
+        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
@@ -187,6 +194,32 @@ contract M3WithdrawalsWithRewardsTest is Base {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
+        }
+    }
+
+    function completeAndProcessWithdrawals(
+        IStakingNodesManager.WithdrawalAction memory withdrawalAction,
+        QueuedWithdrawalInfo[] memory queuedWithdrawals
+    ) public {
+
+        {
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+
+            // advance time to allow completion
+            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        }
+
+        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
+
+        {
+            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
+            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+            withdrawalsProcessor.completeAndProcessWithdrawalsForNode(
+                withdrawalAction,
+                _withdrawals,
+                _middlewareTimesIndexes
+            );
         }
     }
 
@@ -307,6 +340,120 @@ contract M3WithdrawalsWithRewardsTest is Base {
         assertApproxEqAbs(actualWithdrawnAmount, expectedWithdrawnAmount, 1e9, "User did not receive expected ETH amount after fee");
 
     }
+
+    function test_userWithdrawalWithRewards_Scenario_2_queueWithdrawalsBeforeValidatorExit_with_WithdrawalsProcessor() public {
+
+        // deposit 100 ETH into ynETH
+        TestState memory state = registerVerifiedValidators(100 ether);
+
+        uint256 accumulatedRewards;
+        {
+            uint256 epochCount = 30;
+            // Advance the beacon chain by 100 epochs to simulate rewards accumulation
+            for (uint256 i = 0; i < epochCount; i++) {
+                beaconChain.advanceEpoch();
+            }
+
+            accumulatedRewards += state.validatorCount * epochCount * 1e9; // 1 GWEI per Epoch per Validator
+        }
+
+        // NOTE: Withdrawal is Queued BEFORE exiting validators. does not include rewards in this case.
+
+        uint256 withdrawnAmount = 32 ether * validatorIndices.length;
+
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
+            vm.stopPrank();
+        }
+
+        // exit validators
+        {
+            for (uint256 i = 0; i < validatorIndices.length; i++) {
+                beaconChain.exitValidator(validatorIndices[i]);
+            }
+            beaconChain.advanceEpoch();
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        startAndVerifyCheckpoint(nodeId, state);
+
+        // Rewards accumulated are accounted after verifying the checkpoint
+        state.totalAssetsBefore += accumulatedRewards;
+        state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        uint256 userWithdrawalAmount = 90 ether;
+        uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount - accumulatedRewards;
+
+        {
+            IStakingNodesManager.WithdrawalAction memory withdrawalAction = IStakingNodesManager.WithdrawalAction({
+                nodeId: nodeId,
+                amountToReinvest: amountToReinvest,
+                amountToQueue: userWithdrawalAmount,
+                rewardsAmount: accumulatedRewards
+            });
+            QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
+            withdrawalInfos[0] = QueuedWithdrawalInfo({
+                nodeId: nodeId,
+                withdrawnAmount: withdrawnAmount
+            });
+
+            completeAndProcessWithdrawals(withdrawalAction, withdrawalInfos);
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        {
+            // Calculate fee for accumulated rewards
+            uint256 feesBasisPoints = rewardsDistributor.feesBasisPoints();
+            uint256 _BASIS_POINTS_DENOMINATOR = 10_000; // Assuming this is the denominator used in RewardsDistributor
+            uint256 fees = Math.mulDiv(feesBasisPoints, accumulatedRewards, _BASIS_POINTS_DENOMINATOR);
+            
+            // Fees on accumulated rewards are substracted from the totalAssets and set to feeReceiver
+            state.totalAssetsBefore -= fees;
+            // The Balance of the stakingNode decreases by the total amount withdrawn
+            state.stakingNodeBalancesBefore[nodeId] -= (amountToReinvest + userWithdrawalAmount + accumulatedRewards);
+        }
+
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+
+        // Calculate user ynETH amount to redeem
+        uint256 userYnETHToRedeem = yneth.previewDeposit(userWithdrawalAmount);
+        
+        // Ensure user has enough ynETH balance
+        require(yneth.balanceOf(user) >= userYnETHToRedeem, "User doesn't have enough ynETH balance");
+
+        vm.startPrank(user);
+        yneth.approve(address(ynETHWithdrawalQueueManager), userYnETHToRedeem);
+        uint256 _tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userYnETHToRedeem);
+        vm.stopPrank();
+
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        uint256 finalizationId = ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
+
+        uint256 userBalanceBefore = user.balance;
+        vm.prank(user);
+
+        ynETHWithdrawalQueueManager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                finalizationId: finalizationId,
+                tokenId: _tokenId,
+                receiver: user
+            })
+        );
+        uint256 userBalanceAfter = user.balance;
+        uint256 actualWithdrawnAmount = userBalanceAfter - userBalanceBefore;
+        // Calculate expected withdrawal amount after fee
+        uint256 withdrawalFee = ynETHWithdrawalQueueManager.withdrawalFee();
+        uint256 expectedWithdrawnAmount = userWithdrawalAmount - (userWithdrawalAmount * withdrawalFee / ynETHWithdrawalQueueManager.FEE_PRECISION());
+        
+        assertApproxEqAbs(actualWithdrawnAmount, expectedWithdrawnAmount, 1e9, "User did not receive expected ETH amount after fee");
+
+    }
+
 
     function test_userWithdrawalWithRewards_Scenario_2_queueWithdrawalsBeforeValidatorExit() public {
 
