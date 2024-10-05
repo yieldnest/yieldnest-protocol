@@ -4,12 +4,6 @@ pragma solidity ^0.8.24;
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager, IStakingNodesManager as WithdrawalAction} from "./interfaces/IStakingNodesManager.sol";
-
-/**
- * @title WithdrawalsBundler
- * @notice This contract bundles the completion of queued withdrawals and processing of principal withdrawals
- * into a single transaction for gas efficiency.
- */
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 
@@ -39,6 +33,10 @@ contract WithdrawalsProcessor is Initializable, AccessControlUpgradeable, IWithd
     //--------------------------------------------------------------------------------------
 
     IStakingNodesManager public stakingNodesManager;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
 
     /// @custom:oz-upgrades-unsafe-allow constructor
