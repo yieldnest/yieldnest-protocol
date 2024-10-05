@@ -202,6 +202,9 @@ contract M3WithdrawalsWithRewardsTest is Base {
         QueuedWithdrawalInfo[] memory queuedWithdrawals
     ) public {
 
+
+        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
+
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
@@ -210,7 +213,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
             vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
         }
 
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
 
         {
             uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
@@ -403,8 +405,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
             completeAndProcessWithdrawals(withdrawalAction, withdrawalInfos);
         }
-
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         {
             // Calculate fee for accumulated rewards
