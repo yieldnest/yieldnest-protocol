@@ -13,6 +13,8 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
+
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(
@@ -26,12 +28,6 @@ interface ITokenStakingNodeEvents {
     event QueuedWithdrawals(IStrategy strategies, uint256 shares, bytes32[] fullWithdrawalRoots);
     event CompletedQueuedWithdrawals(uint256 shares, uint256 amountOut, address strategy);
     event DeallocatedTokens(uint256 amount, IERC20 token);
-}
-
-interface IYieldNestStrategyManager {
-    function wrapper() external view returns (IWrapper);
-    function isStakingNodesWithdrawer(address _address) external view returns (bool);
-    function updateTokenStakingNodesBalances(IERC20 asset, IStrategy strategy) external;
 }
 
 /**
@@ -150,11 +146,6 @@ contract TokenStakingNode is
 
         _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(_params);
 
-        IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).updateTokenStakingNodesBalances(
-            IERC20(address(0)),
-            _strategy
-        );
-
         emit QueuedWithdrawals(_strategy, _shares, _fullWithdrawalRoots);
     }
 
@@ -212,8 +203,7 @@ contract TokenStakingNode is
         withdrawn[_token] += _actualAmountOut;
 
         IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).updateTokenStakingNodesBalances(
-            _token,
-            _strategy
+            _token
         );
 
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
