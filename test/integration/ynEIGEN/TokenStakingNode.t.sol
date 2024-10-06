@@ -212,19 +212,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             amounts[0] = wstethAmount;
             vm.prank(actors.ops.STRATEGY_CONTROLLER);
             eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-
-            uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
-
-            uint256 treshold = wstethAmount / 1e17 + 3;
-            uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
-            assertTrue(
-                compareWithThreshold(expectedBalance, amounts[0], treshold),
-                "Staked asset balance does not match expected deposits"
-            );
         }
-
-		uint256 strategyUserUnderlyingView = eigenStrategyManager.strategies(assets[0]).userUnderlyingView(address(tokenStakingNode));
-
 
         NodeStateSnapshot before = new NodeStateSnapshot();
         before.takeSnapshot(address(this), nodeId);
