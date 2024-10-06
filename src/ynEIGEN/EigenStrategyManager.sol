@@ -465,11 +465,14 @@ contract EigenStrategyManager is
         ITokenStakingNode node
     ) internal view returns (uint256 stakedBalance) {
 
+        IStrategy strategy = strategies[asset];
+        (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
         uint256 strategyBalance = wrapper.toUserAssetAmount(
             asset,
-            strategies[asset].userUnderlyingView((address(node)))
+            strategy.userUnderlyingView((address(node))) + strategy.sharesToUnderlyingView(queuedShares)
         );
-        stakedBalance += strategyBalance;
+
+        stakedBalance += strategyBalance + strategyWithdrawnBalance;   
     }
 
     /**
