@@ -355,6 +355,15 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             3,
             "Total assets should remain approximately unchanged"
         );
+
+        eigenStrategyManager.updateTokenStakingNodesBalances(wstETH);
+
+        assertApproxEqAbs(
+            afterCompletion.totalAssets(),
+            ynEigenToken.totalAssets(),
+            3,
+            "Total assets should have decreased by approximately the withdraw amount"
+        );
     }
 }
 
