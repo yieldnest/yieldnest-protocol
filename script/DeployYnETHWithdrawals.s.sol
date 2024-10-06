@@ -85,35 +85,35 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("Current Chain ID:", block.chainid);
         
 
-        // // Deploy implementation contracts
-        // stakingNodesManagerImplementation = new StakingNodesManager();
-        // console.log("StakingNodesManager implementation deployed at:", address(stakingNodesManagerImplementation));
+        // Deploy implementation contracts
+        stakingNodesManagerImplementation = new StakingNodesManager();
+        console.log("StakingNodesManager implementation deployed at:", address(stakingNodesManagerImplementation));
 
-        // StakingNode stakingNodeImplementation = new StakingNode();
-        // console.log("StakingNode implementation deployed at:", address(stakingNodeImplementation));
+        StakingNode stakingNodeImplementation = new StakingNode();
+        console.log("StakingNode implementation deployed at:", address(stakingNodeImplementation));
 
-        // ynETHImplementation = new ynETH();
-        // console.log("ynETH implementation deployed at:", address(ynETHImplementation));
+        ynETHImplementation = new ynETH();
+        console.log("ynETH implementation deployed at:", address(ynETHImplementation));
 
-        // // deploy ynETHRedemptionAssetsVault
-        // {
-        //     TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-        //         address(new ynETHRedemptionAssetsVault()),
-        //         actors.admin.PROXY_ADMIN_OWNER,
-        //         ""
-        //     );
-        //     ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
-        // }
+        // deploy ynETHRedemptionAssetsVault
+        {
+            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+                address(new ynETHRedemptionAssetsVault()),
+                actors.admin.PROXY_ADMIN_OWNER,
+                ""
+            );
+            ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
+        }
 
-        // // deploy WithdrawalQueueManager
-        // {
-        //     TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-        //         address(new WithdrawalQueueManager()),
-        //         actors.admin.PROXY_ADMIN_OWNER,
-        //         ""
-        //     );
-        //     ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
-        // }
+        // deploy WithdrawalQueueManager
+        {
+            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+                address(new WithdrawalQueueManager()),
+                actors.admin.PROXY_ADMIN_OWNER,
+                ""
+            );
+            ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
+        }
 
         // deploy WithdrawalsProcessor
         WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
@@ -126,32 +126,32 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         );
         withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
 
-        // // initialize ynETHRedemptionAssetsVault
-        // {
-        //     ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
-        //         admin: actors.admin.PROXY_ADMIN_OWNER,
-        //         redeemer: address(ynETHWithdrawalQueueManager),
-        //         ynETH: IynETH(address(yneth))
-        //     });
-        //     ynETHRedemptionAssetsVaultInstance.initialize(_init);
-        // }
+        // initialize ynETHRedemptionAssetsVault
+        {
+            ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
+                admin: actors.admin.PROXY_ADMIN_OWNER,
+                redeemer: address(ynETHWithdrawalQueueManager),
+                ynETH: IynETH(address(yneth))
+            });
+            ynETHRedemptionAssetsVaultInstance.initialize(_init);
+        }
 
-        // // initialize WithdrawalQueueManager
-        // {
-        //     WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
-        //         name: "ynETH Withdrawal Manager",
-        //         symbol: "ynETHWM",
-        //         redeemableAsset: IRedeemableAsset(address(yneth)),
-        //         redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
-        //         admin: actors.admin.ADMIN,
-        //         withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
-        //         redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-        //         requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-        //         withdrawalFee: 500, // 0.05%
-        //         feeReceiver: actors.admin.FEE_RECEIVER
-        //     });
-        //     ynETHWithdrawalQueueManager.initialize(managerInit);
-        // }
+        // initialize WithdrawalQueueManager
+        {
+            WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
+                name: "ynETH Withdrawal Manager",
+                symbol: "ynETHWM",
+                redeemableAsset: IRedeemableAsset(address(yneth)),
+                redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
+                admin: actors.admin.ADMIN,
+                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
+                withdrawalFee: 500, // 0.05%
+                feeReceiver: actors.admin.FEE_RECEIVER
+            });
+            ynETHWithdrawalQueueManager.initialize(managerInit);
+        }
 
         {
             // initialize WithdrawalsProcessor
