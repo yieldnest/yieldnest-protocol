@@ -24,7 +24,7 @@ interface IEigenStrategyManagerEvents {
     event StrategyAdded(address indexed asset, address indexed strategy);
     event StakedAssetsToNode(uint256 indexed nodeId, IERC20[] assets, uint256[] amounts);
     event DepositedToEigenlayer(IERC20[] depositAssets, uint256[] depositAmounts, IStrategy[] strategiesForNode);
-    event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue);
+    event PrincipalWithdrawalProcessed(uint256 indexed nodeId, address indexed asset, uint256 amountToReinvest, uint256 amountToQueue);
     event StrategyBalanceUpdated(address indexed asset, address indexed strategy, uint256 nodeCount, uint128 stakedBalance, uint128 withdrawnBalance);
 }
 
@@ -378,7 +378,7 @@ contract EigenStrategyManager is
 
         _updateTokenStakingNodesBalances(IERC20(_action.asset), IStrategy(address(0)));
 
-        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.amountToReinvest, _action.amountToQueue);
+        emit PrincipalWithdrawalProcessed(_action.nodeId, _action.asset, _action.amountToReinvest, _action.amountToQueue);
     }
 
     //--------------------------------------------------------------------------------------
