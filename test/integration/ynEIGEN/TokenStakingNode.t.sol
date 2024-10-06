@@ -275,33 +275,42 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         uint256 stakeAmount = 100 ether;
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 nodeId = tokenStakingNode.nodeId();
-
-        // 1. Obtain wstETH and Deposit assets to ynEigen by User
-        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
-
-        
-        IERC20[] memory assets = new IERC20[](1);
-        assets[0] = IERC20(address(wstETH));
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = stakeAmount;
-
-        vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-
-        // Prepare for withdrawal
-        uint256 withdrawAmount = stakeAmount / 2;
+        uint256 sharesToWithdraw;
+        uint256 withdrawAmount;
         IStrategy wstETHStrategy = eigenStrategyManager.strategies(wstETH);
-        uint256 sharesToWithdraw = wstETHStrategy.underlyingToShares(withdrawAmount);
+        uint32 _startBlock;
+        {
+            // 1. Obtain wstETH and Deposit assets to ynEigen by User
+            testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
 
-        // Queue withdrawal
-        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        bytes32[] memory withdrawalRoots = tokenStakingNode.queueWithdrawals(wstETHStrategy, sharesToWithdraw);
+            IERC20[] memory assets = new IERC20[](1);
+            assets[0] = IERC20(address(wstETH));
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = stakeAmount;
 
-        uint32 _startBlock = uint32(block.number);
+            vm.prank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
 
-        IStrategy[] memory _strategies = new IStrategy[](1);
-        _strategies[0] = wstETHStrategy;
-        vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+            // Prepare for withdrawal
+            withdrawAmount = stakeAmount / 2;
+            sharesToWithdraw = wstETHStrategy.underlyingToShares(
+                IwstETH(address(wstETH)).getStETHByWstETH(withdrawAmount)
+            );
+
+            // Queue withdrawal
+            vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+            bytes32[] memory withdrawalRoots = tokenStakingNode.queueWithdrawals(wstETHStrategy, sharesToWithdraw);
+
+            _startBlock = uint32(block.number);
+
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = wstETHStrategy;
+            vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+        }
+
+        // Capture state before completing withdrawal
+        NodeStateSnapshot before = new NodeStateSnapshot();
+        before.takeSnapshot(address(this), nodeId);
 
         // Complete queued withdrawal
         vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
@@ -313,6 +322,39 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             new uint256[](1) // _middlewareTimesIndexes
         );
         vm.stopPrank();
+
+        NodeStateSnapshot afterCompletion = new NodeStateSnapshot();
+        afterCompletion.takeSnapshot(address(this), nodeId);
+
+        // Assert withdrawn amount increased
+        assertApproxEqAbs(
+            afterCompletion.getWithdrawnByToken(address(wstETH)),
+            before.getWithdrawnByToken(address(wstETH)) + withdrawAmount,
+            3,
+            "Withdrawn amount should have increased by withdrawAmount"
+        );
+
+        // Assert queued shares decreased
+        assertEq(
+            afterCompletion.getStrategyQueuedShares(wstETHStrategy),
+            before.getStrategyQueuedShares(wstETHStrategy) - sharesToWithdraw,
+            "Queued shares should have decreased by sharesToWithdraw"
+        );
+
+        // Assert total supply remained unchanged
+        assertEq(
+            afterCompletion.totalSupply(),
+            before.totalSupply(),
+            "Total supply should remain unchanged"
+        );
+
+        // Assert total assets remained approximately unchanged
+        assertApproxEqAbs(
+            afterCompletion.totalAssets(),
+            before.totalAssets(),
+            3,
+            "Total assets should remain approximately unchanged"
+        );
     }
 }
 
