@@ -267,7 +267,52 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             before.getStrategySharesForNode(address(wstETH)) - withdrawnShares,
             "Strategy shares should have decreased by withdrawn shares"
         );
+    }
 
+    function testQueueAndCompleteWithdrawals() public {
+
+        // Stake some wstETH to the node
+        uint256 stakeAmount = 100 ether;
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 nodeId = tokenStakingNode.nodeId();
+
+        // 1. Obtain wstETH and Deposit assets to ynEigen by User
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+        
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = IERC20(address(wstETH));
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = stakeAmount;
+
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        // Prepare for withdrawal
+        uint256 withdrawAmount = stakeAmount / 2;
+        IStrategy wstETHStrategy = eigenStrategyManager.strategies(wstETH);
+        uint256 sharesToWithdraw = wstETHStrategy.underlyingToShares(withdrawAmount);
+
+        // Queue withdrawal
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        bytes32[] memory withdrawalRoots = tokenStakingNode.queueWithdrawals(wstETHStrategy, sharesToWithdraw);
+
+        uint32 _startBlock = uint32(block.number);
+
+        IStrategy[] memory _strategies = new IStrategy[](1);
+        _strategies[0] = wstETHStrategy;
+        vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+
+        // Complete queued withdrawal
+        vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.completeQueuedWithdrawals(
+            eigenLayer.delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode)) - 1, // _nonce
+            _startBlock, // _startBlock
+            sharesToWithdraw, // _shares
+            wstETHStrategy, // _strategy
+            new uint256[](1) // _middlewareTimesIndexes
+        );
+        vm.stopPrank();
     }
 }
 
