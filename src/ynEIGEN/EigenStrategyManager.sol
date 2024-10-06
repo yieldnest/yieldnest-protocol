@@ -429,7 +429,7 @@ contract EigenStrategyManager is
      * @param asset The ERC20 token for which the staked balance is to be retrieved.
      * @return stakedBalance The total staked balance of the specified asset.
      */
-    function getStakedAssetBalance(IERC20 asset) public view returns (uint256 stakedBalance) {
+    function getStakedAssetBalance(IERC20 asset) external view returns (uint256 stakedBalance) {
         if (address(strategies[asset]) == address(0)) {
             revert NoStrategyDefinedForAsset(address(asset));
         }
@@ -451,7 +451,7 @@ contract EigenStrategyManager is
     function getStakedAssetBalanceForNode(
         IERC20 asset,
         uint256 nodeId
-    ) public view returns (uint256 stakedBalance) {
+    ) external view returns (uint256 stakedBalance) {
         if (address(strategies[asset]) == address(0)) {
             revert NoStrategyDefinedForAsset(address(asset));
         }
