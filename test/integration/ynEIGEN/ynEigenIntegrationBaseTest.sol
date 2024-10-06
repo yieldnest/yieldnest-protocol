@@ -71,7 +71,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     LSDWrapper public wrapper;
 
     // Strategy
-    EigenStrategyManager eigenStrategyManager;
+    EigenStrategyManager public eigenStrategyManager;
 
     // Eigen
     struct EigenLayer {
