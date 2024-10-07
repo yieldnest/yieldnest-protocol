@@ -246,15 +246,21 @@ contract EigenStrategyManager is
             withdrawnBalance: SafeCast.toUint128(_strategiesWithdrawnBalance)
         });
 
-        strategiesBalance[strategy] = _strategyBalance;
 
-        emit StrategyBalanceUpdated(
-            address(asset),
-            address(strategy),
-            nodesCount,
-            _strategyBalance.stakedBalance,
-            _strategyBalance.withdrawnBalance
-        );
+        // update only if it changed
+        StrategyBalance memory previousStrategyBalance = strategiesBalance[strategy];
+        if (previousStrategyBalance.stakedBalance != _strategyBalance.stakedBalance ||
+            previousStrategyBalance.withdrawnBalance != _strategyBalance.withdrawnBalance) {
+            strategiesBalance[strategy] = _strategyBalance;
+
+            emit StrategyBalanceUpdated(
+                address(asset),
+                address(strategy),
+                nodesCount,
+                _strategyBalance.stakedBalance,
+                _strategyBalance.withdrawnBalance
+            );
+        }
     }
 
     //--------------------------------------------------------------------------------------
