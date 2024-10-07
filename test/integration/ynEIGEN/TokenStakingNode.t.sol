@@ -319,7 +319,8 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             _startBlock, // _startBlock
             sharesToWithdraw, // _shares
             wstETHStrategy, // _strategy
-            new uint256[](1) // _middlewareTimesIndexes
+            new uint256[](1), // _middlewareTimesIndexes
+            false
         );
         vm.stopPrank();
 

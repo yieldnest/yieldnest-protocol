@@ -255,7 +255,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes);
+        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsSTETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), 0, "testCompleteQueuedWithdrawalsSTETH: E1");
@@ -283,7 +283,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes);
+        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsSFRXETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), 0, "testCompleteQueuedWithdrawalsSFRXETH: E1");
@@ -310,7 +310,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
         vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes);
+        tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsOETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), 0, "testCompleteQueuedWithdrawalsOETH: E1");
