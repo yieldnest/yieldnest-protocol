@@ -26,7 +26,7 @@ import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
-
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -36,6 +36,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
     struct WithdrawalsDeployment {
         ynETHRedemptionAssetsVault ynETHRedemptionAssetsVault;
         WithdrawalQueueManager withdrawalQueueManager;
+        WithdrawalsProcessor withdrawalsProcessor;
         StakingNodesManager stakingNodesManagerImplementation;
         StakingNode stakingNodeImplementation;
         ynETH ynETHImplementation;
@@ -51,6 +52,10 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
     WithdrawalQueueManager public ynETHWithdrawalQueueManager;
+    WithdrawalsProcessor withdrawalsProcessor;
+    StakingNodesManager stakingNodesManagerImplementation;
+    StakingNode stakingNodeImplementation;
+    ynETH ynETHImplementation;
     ActorAddresses.Actors actors;
     address deployer;
 
@@ -61,7 +66,6 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         
         ContractAddresses contractAddresses = new ContractAddresses();
 
-        if (false) {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         address publicKey = vm.addr(deployerPrivateKey);
@@ -69,21 +73,8 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         deployer = publicKey;
 
         IynETH yneth = IynETH(payable(contractAddresses.getChainAddresses(block.chainid).yn.YNETH_ADDRESS));
-
-        // // Apply preprod overrides for DEFAULT_SIGNER
-        // if (block.chainid == 17000 && vm.envBool("PREPROD")) { // Holesky testnet or PREPROD environment
-        //     address DEFAULT_SIGNER = actors.eoa.DEFAULT_SIGNER;
-        //     actors.ops.WITHDRAWAL_MANAGER = DEFAULT_SIGNER;
-        //     actors.ops.REDEMPTION_ASSET_WITHDRAWER = DEFAULT_SIGNER;
-        //     actors.ops.REQUEST_FINALIZER = DEFAULT_SIGNER;
-        //     actors.ops.STAKING_NODES_WITHDRAWER = DEFAULT_SIGNER;
-        //     actors.admin.FEE_RECEIVER = DEFAULT_SIGNER;
-        //     actors.admin.ADMIN = DEFAULT_SIGNER;
-        //     // Override ynETH address for Holesky testnet
-        //     yneth = IynETH(payable(0xe8A0fA11735b9C91F5F89340A2E2720e9c9d19fb));
-        //     console.log("Overridden ynETH address:", address(yneth));
-        //     console.log("Applied preprod overrides for Holesky testnet");
-        // }
+        // Get the StakingNodesManager instance
+        IStakingNodesManager stakingNodesManager = IStakingNodesManager(contractAddresses.getChainAddresses(block.chainid).yn.STAKING_NODES_MANAGER_ADDRESS);
 
         address _broadcaster = vm.addr(deployerPrivateKey);
 
@@ -95,13 +86,13 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         
 
         // Deploy implementation contracts
-        StakingNodesManager stakingNodesManagerImplementation = new StakingNodesManager();
+        stakingNodesManagerImplementation = new StakingNodesManager();
         console.log("StakingNodesManager implementation deployed at:", address(stakingNodesManagerImplementation));
 
         StakingNode stakingNodeImplementation = new StakingNode();
         console.log("StakingNode implementation deployed at:", address(stakingNodeImplementation));
 
-        ynETH ynETHImplementation = new ynETH();
+        ynETHImplementation = new ynETH();
         console.log("ynETH implementation deployed at:", address(ynETHImplementation));
 
         // deploy ynETHRedemptionAssetsVault
@@ -123,6 +114,17 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             );
             ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
         }
+
+        // deploy WithdrawalsProcessor
+        WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
+        console.log("WithdrawalsProcessor implementation deployed at:", address(withdrawalsProcessorImplementation));
+
+        TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
+            address(withdrawalsProcessorImplementation),
+            actors.admin.PROXY_ADMIN_OWNER,
+            ""
+        );
+        withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
 
         // initialize ynETHRedemptionAssetsVault
         {
@@ -151,6 +153,17 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
 
+        {
+            // initialize WithdrawalsProcessor
+            withdrawalsProcessor.initialize(
+                IStakingNodesManager(address(stakingNodesManager)),
+                actors.admin.ADMIN,
+                actors.ops.WITHDRAWAL_MANAGER
+            );
+            console.log("WithdrawalsProcessor initialized");
+
+        }
+
         // Verify all the above is deployed correctly.
 
         // Perform the following permissioned call with DEFAULT_ADMIN ROLE:
@@ -160,20 +173,19 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("withdrawalManager:", actors.ops.WITHDRAWAL_MANAGER);
         console.log("stakingNodesWithdrawer:", actors.ops.STAKING_NODES_WITHDRAWER);
 
-
         // Save deployment information
         WithdrawalsDeployment memory deployment = WithdrawalsDeployment({
             ynETHRedemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
             withdrawalQueueManager: ynETHWithdrawalQueueManager,
+            withdrawalsProcessor: withdrawalsProcessor,
             stakingNodesManagerImplementation: stakingNodesManagerImplementation,
             stakingNodeImplementation: stakingNodeImplementation,
             ynETHImplementation: ynETHImplementation
         });
 
-        saveDeployment(deployment);
+        saveWithdrawalsDeployment(deployment);
 
         console.log("Deployment information saved successfully.");
-        }
 
         ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x3a2DD2f0f5A20768110a52fC4f091AB9d8631b58));
         // initialize stakingNodesManager withdrawal contracts
@@ -201,12 +213,13 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         return string.concat(root, "/deployments/ynETHWithdrawals-", vm.toString(block.chainid), ".json");
     }
 
-    function saveDeployment(WithdrawalsDeployment memory deployment) public virtual {
+    function saveWithdrawalsDeployment(WithdrawalsDeployment memory deployment) public virtual {
         string memory json = "deployment";
 
         // contract addresses
         serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
         serializeProxyElements(json, "ynETHRedemptionAssetsVault", address(deployment.ynETHRedemptionAssetsVault));
+        serializeProxyElements(json, "withdrawalsProcessor", address(deployment.withdrawalsProcessor));
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
         vm.serializeAddress(json, "implementation-stakingNodesManager", address(deployment.stakingNodesManagerImplementation));
         vm.serializeAddress(json, "implementation-ynETH", address(deployment.ynETHImplementation));
