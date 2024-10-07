@@ -162,13 +162,15 @@ contract TokenStakingNode is
      * @param _shares The number of shares to withdraw
      * @param _strategy The strategy from which to withdraw
      * @param _middlewareTimesIndexes The indexes of middleware times to use for the withdrawal
+     * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
      */
     function completeQueuedWithdrawals(
         uint256 _nonce,
         uint32 _startBlock,
         uint256 _shares,
         IStrategy _strategy,
-        uint256[] memory _middlewareTimesIndexes
+        uint256[] memory _middlewareTimesIndexes,
+        bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer {
 
         IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
@@ -216,9 +218,13 @@ contract TokenStakingNode is
         queuedShares[_strategy] -= _shares;
         withdrawn[_token] += _actualAmountOut;
 
-        IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).updateTokenStakingNodesBalances(
-            _token
-        );
+        if (updateTokenStakingNodesBalances) {
+            // Actual balance changes only if slashing occured. choose to update here
+            // only if the off-chain considers it necessary to save gas
+            IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).updateTokenStakingNodesBalances(
+                _token
+            );
+        }
 
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
     }
