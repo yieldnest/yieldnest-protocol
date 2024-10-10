@@ -101,6 +101,7 @@ contract BaseYnEigenScript is BaseScript {
         string memory root = vm.projectRoot();
 
         return string.concat(root, "/deployments/", tokenName(), "-", vm.toString(block.chainid), ".json");
+        // return string.concat(root, "/deployments/", tokenName(), "-", vm.toString(block.chainid), "-ynFoo", ".json");
     }
 
     function saveDeployment(Deployment memory deployment) public virtual {
