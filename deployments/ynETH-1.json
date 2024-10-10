@@ -17,15 +17,18 @@
   "implementation-rewardsDistributor": "0x306EBed66642867B94b29752be37b8f20fEb5F72",
   "implementation-stakingNodesManager": "0xaBD3A755E4eEF24f862c268D21Fd5235904cc811",
   "implementation-ynETH": "0x14DC3d915107DcA9ed39E29E14fbdfe4358a1346",
+  "implementation-ynViewer": "0x0365a6eF790e05EEe386B57326e5Ceaf5B10899e",
   "proxy-consensusLayerReceiver": "0xE439fe4563F7666FCd7405BEC24aE7B0d226536e",
   "proxy-executionLayerReceiver": "0x1D6b2a11FFEa5F9a8Ed85A02581910b3d695C12b",
   "proxy-rewardsDistributor": "0x40d5FF3E218f54f4982661a0464a298Cf6652351",
   "proxy-stakingNodesManager": "0x8C33A1d6d062dB7b51f79702355771d44359cD7d",
   "proxy-ynETH": "0x09db87A538BD693E9d08544577d5cCfAA6373A48",
+  "proxy-ynViewer": "0xF0207Ffa0b793E009DF9Df62fEE95B8FC6c93EcF",
   "proxyAdmin-consensusLayerReceiver": "0xaB5CC95BD4F5C45F637B6D319169Bbbc212CfEE8",
   "proxyAdmin-executionLayerReceiver": "0x5a3d6625C6d26E3650675bF2b7041cd7d16A63B2",
   "proxyAdmin-rewardsDistributor": "0x17ecBFce53B364Fd571D159eA2b766bA3114d85E",
   "proxyAdmin-stakingNodesManager": "0x091929600D3891861615098fc9eA3a0270966398",
   "proxyAdmin-ynETH": "0x12e9DA7e671342E7A5fDD7197348C8019e72C31F",
+  "proxyAdmin-ynViewer": "0xcAD4147b889D5A5564575fDA6B2910eeF5eBA03A",
   "stakingNodeImplementation": "0xF8A37F34a427611C4c54F82bF43230FA041d237B"
 }

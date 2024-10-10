@@ -35,6 +35,12 @@ contract ActorAddresses {
         address TOKEN_STAKING_NODE_OPERATOR;
     }
 
+    struct YnETHWithdrawalsWallets {
+        address YNStakingNodesWithdrawer;
+        address YNWithdrawalManager;
+        address YNRequestFinalizer;
+    }
+
     struct Wallets {
         address YNSecurityCouncil;
         address YNDelegator;
@@ -42,6 +48,7 @@ contract ActorAddresses {
         address YNValidatorService;
         address YNStrategyController;
         address YNTokenStakingNodeOperator;
+        YnETHWithdrawalsWallets ynETHWithdrawalsWallets;
     }
 
     struct Actors {
@@ -64,7 +71,12 @@ contract ActorAddresses {
                 // TODO: replace with concrete deployment
                 YNStrategyController: 0x1234567890123456789012345678901234567890,
                 // TODO: replace with concrete deployment
-                YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890
+                YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890,
+                ynETHWithdrawalsWallets: YnETHWithdrawalsWallets({
+                    YNStakingNodesWithdrawer: 0x96B7B4d05595131301203aFaB7250a38B07cDEe2,
+                    YNWithdrawalManager: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07,
+                    YNRequestFinalizer: 0x530F6057e93b54Ec39D6472DA75712db2178780C
+                })
             });
             actors[17000] = Actors({
                 eoa: EOAActors({
@@ -93,10 +105,10 @@ contract ActorAddresses {
                     REFERRAL_PUBLISHER: holeskyWallets.YNDev,
                     STRATEGY_CONTROLLER: holeskyWallets.YNStrategyController,
                     TOKEN_STAKING_NODE_OPERATOR: holeskyWallets.YNTokenStakingNodeOperator,
-                    WITHDRAWAL_MANAGER: holeskyWallets.YNDev,
+                    WITHDRAWAL_MANAGER: holeskyWallets.ynETHWithdrawalsWallets.YNWithdrawalManager,
                     REDEMPTION_ASSET_WITHDRAWER: holeskyWallets.YNDev,
-                    REQUEST_FINALIZER: holeskyWallets.YNDev,
-                    STAKING_NODES_WITHDRAWER: holeskyWallets.YNDev
+                    REQUEST_FINALIZER: holeskyWallets.ynETHWithdrawalsWallets.YNRequestFinalizer,
+                    STAKING_NODES_WITHDRAWER: holeskyWallets.ynETHWithdrawalsWallets.YNStakingNodesWithdrawer
                 }),
                 wallets: holeskyWallets
             });
@@ -110,7 +122,14 @@ contract ActorAddresses {
             // TODO: replace with concrete deployment
             YNStrategyController: 0x0573A7DaFBc080064663623979287286Bb65C1BD,
             // TODO: replace with concrete deployment
-            YNTokenStakingNodeOperator: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975 // same as YNSecurityCouncil
+            YNTokenStakingNodeOperator: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975, // same as YNSecurityCouncil
+
+            // TODO: MUST fill for prod. same as YnDev for now
+            ynETHWithdrawalsWallets: YnETHWithdrawalsWallets({
+                YNStakingNodesWithdrawer: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
+                YNWithdrawalManager: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
+                YNRequestFinalizer: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3
+            })
         });
 
         actors[1] = Actors({
@@ -138,16 +157,12 @@ contract ActorAddresses {
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
                 PAUSE_ADMIN: mainnetWallets.YNDev,
                 REFERRAL_PUBLISHER: mainnetWallets.YNDev,
-                // TODO: fix for mainnet deployment
-                WITHDRAWAL_MANAGER: mainnetWallets.YNDev,
-                // TODO: fix for mainnet deployment
-                REDEMPTION_ASSET_WITHDRAWER: mainnetWallets.YNDev,
-                // TODO: fix for mainnet deployment
-                REQUEST_FINALIZER: mainnetWallets.YNDev,
-                // TODO: fix for mainnet deployment
-                STAKING_NODES_WITHDRAWER: mainnetWallets.YNDev,
                 STRATEGY_CONTROLLER: mainnetWallets.YNStrategyController,
-                TOKEN_STAKING_NODE_OPERATOR: mainnetWallets.YNTokenStakingNodeOperator
+                TOKEN_STAKING_NODE_OPERATOR: mainnetWallets.YNTokenStakingNodeOperator,
+                WITHDRAWAL_MANAGER: mainnetWallets.ynETHWithdrawalsWallets.YNWithdrawalManager,
+                REDEMPTION_ASSET_WITHDRAWER: mainnetWallets.YNDev,
+                REQUEST_FINALIZER: mainnetWallets.ynETHWithdrawalsWallets.YNRequestFinalizer,
+                STAKING_NODES_WITHDRAWER: mainnetWallets.ynETHWithdrawalsWallets.YNStakingNodesWithdrawer
             }),
             wallets: mainnetWallets
         });
