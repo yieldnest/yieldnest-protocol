@@ -10,6 +10,8 @@
 | RewardsDistributor Proxy | [`0x40d5FF3E218f54f4982661a0464a298Cf6652351`](https://etherscan.io/address/0x40d5FF3E218f54f4982661a0464a298Cf6652351) |
 | ExecutionLayerReceiver Proxy | [`0x1D6b2a11FFEa5F9a8Ed85A02581910b3d695C12b`](https://etherscan.io/address/0x1D6b2a11FFEa5F9a8Ed85A02581910b3d695C12b) |
 | ConsensusLayerReceiver Proxy | [`0xE439fe4563F7666FCd7405BEC24aE7B0d226536e`](https://etherscan.io/address/0xE439fe4563F7666FCd7405BEC24aE7B0d226536e) |
+| ynViewer | [`0x5c7C7246bD8a18DF8e0F498b1E3EB1abF5D3118E`](https://etherscan.io/address/0xF0207Ffa0b793E009DF9Df62fEE95B8FC6c93EcF) |
+
 
 
 ## Holesky
@@ -24,4 +26,7 @@
 | YieldNestOracle Proxy | [`0xe13ea7327507a9f8e3d3ef74635ecb1e375ed98c`](https://holesky.etherscan.io/address/0xe13ea7327507a9f8e3d3ef74635ecb1e375ed98c) |
 | ExecutionLayerReceiver Proxy | [`0xa5e9e1ceb4cc1854d0e186a9b3e67158b84ad072`](https://holesky.etherscan.io/address/0xa5e9e1ceb4cc1854d0e186a9b3e67158b84ad072) |
 | ConsensusLayerReceiver Proxy | [`0x706eed02702ffe9cbefd6a65e63f3c2b59b7ef2d`](https://holesky.etherscan.io/address/0x706eed02702ffe9cbefd6a65e63f3c2b59b7ef2d) |
+| ynViewer | [`0x5c7C7246bD8a18DF8e0F498b1E3EB1abF5D3118E`](https://holesky.etherscan.io/address/0x61810a90128ee5c5f5a3730f0449da9e9480f888) |
+
+
 
