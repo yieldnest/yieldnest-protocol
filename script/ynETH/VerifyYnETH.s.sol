@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {ContractAddresses} from "script/ContractAddresses.sol";
-import {BaseYnETHScript} from "script/BaseYnETHScript.s.sol";
+import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";

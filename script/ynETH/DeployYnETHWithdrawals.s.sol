@@ -20,7 +20,7 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
-import {BaseYnETHScript} from "script/BaseYnETHScript.s.sol";
+import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
