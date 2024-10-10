@@ -88,7 +88,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         address expectedProxyAdminOwner;
 
         // TODO: consider changing owner here for consistency
-        if (keccak256(abi.encodePacked(contractName)) == keccak256(abi.encodePacked("ynEigenViewer") && block.chainid == 1)) {
+        if (keccak256(abi.encodePacked(contractName)) == keccak256(abi.encodePacked("ynEigenViewer")) && block.chainid == 1) {
             expectedProxyAdminOwner = actors.admin.PROXY_ADMIN_OWNER;
         } else {
             expectedProxyAdminOwner = address(deployment.upgradeTimelock);
