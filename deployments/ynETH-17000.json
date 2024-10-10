@@ -11,11 +11,11 @@
   "STAKING_NODES_OPERATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
   "STAKING_NODE_CREATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
   "VALIDATOR_MANAGER": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
-  "implementation-StakingNodesManager": "0x104f0c5156BC0D9Cbda3f30d1B74F42b5610A2dF",
+  "implementation-stakingNodesManager": "0x104f0c5156BC0D9Cbda3f30d1B74F42b5610A2dF",
   "implementation-ynETH": "0x0E60A5db38c545ced3d3480B6768811cc603649A",
   "implementation-executionLayerReceiver": "0x1fbedf3773418f20b9dfeafcd9d263030eb0e42f",
   "implementation-consensusLayerReceiver": "0xe7acc0533c650ad0cc11f57f81c38fa19634b1d7",
-  "implementation-RewardsDistributor": "0xb6ec4d9f71e437c672147c576f1c70ba5da8d159",
+  "implementation-rewardsDistributor": "0xb6ec4d9f71e437c672147c576f1c70ba5da8d159",
   "proxy-consensusLayerReceiver": "0x706EED02702fFE9CBefD6A65E63f3C2b59B7eF2d",
   "proxy-executionLayerReceiver": "0xA5E9E1ceb4cC1854d0e186a9B3E67158b84AD072",
   "proxy-rewardsDistributor": "0x82915efF62af9FCC0d0735b8681959e069E3f2D8",
@@ -26,5 +26,5 @@
   "proxyAdmin-rewardsDistributor": "0xc0300eefe38a393681b6eca7912985a165d37c0e",
   "proxyAdmin-executionLayerReceiver": "0x319f70591f72c5d69823dfc673acdfefd6aee5a1",
   "proxyAdmin-consensusLayerReceiver": "0x6234fd395c1f090334606efbf3cbf3be46fcf177",
-  "stakingNodeImplementation": "0x5B70F2Fc1a33bB96828edc08B87C35392F2F0591"
+  "stakingNodeImplementation": "0xf07861349Ed0cB4603590B47D2269768Ed6E2821"
 }

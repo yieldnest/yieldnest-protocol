@@ -373,10 +373,6 @@ contract Verify is BaseYnETHScript {
             address(deployment.stakingNodesManager.delegationManager()) == chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS,
             "StakingNodesManager: delegationManager dependency mismatch"
         );
-        // require(
-        //     address(deployment.stakingNodesManager.delayedWithdrawalRouter()) == chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS,
-        //     "StakingNodesManager: delayedWithdrawalRouter dependency mismatch"
-        // );
         require(
             address(deployment.stakingNodesManager.strategyManager()) == chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS,
             "StakingNodesManager: strategyManager dependency mismatch"
@@ -389,6 +385,48 @@ contract Verify is BaseYnETHScript {
         
         console.log("\u2705 StakingNodesManager dependencies verified");
     }
+
+    // function verifyImplementations() {
+    //     // Verify ynETH implementation
+    //     address ynETHImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynETH))).getProxyImplementation(address(deployment.ynETH));
+    //     require(
+    //         ynETHImpl == deployment.ynETHImplementation,
+    //         string.concat("ynETH: implementation mismatch, expected: ", vm.toString(deployment.ynETHImplementation), ", got: ", vm.toString(ynETHImpl))
+    //     );
+    //     console.log("\u2705 ynETH implementation verified");
+
+    //     // Verify rewardsDistributor implementation
+    //     address rewardsDistributorImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.rewardsDistributor))).getProxyImplementation(address(deployment.rewardsDistributor));
+    //     require(
+    //         rewardsDistributorImpl == deployment.rewardsDistributorImplementation,
+    //         string.concat("rewardsDistributor: implementation mismatch, expected: ", vm.toString(deployment.rewardsDistributorImplementation), ", got: ", vm.toString(rewardsDistributorImpl))
+    //     );
+    //     console.log("\u2705 rewardsDistributor implementation verified");
+
+    //     // Verify stakingNodesManager implementation
+    //     address stakingNodesManagerImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.stakingNodesManager))).getProxyImplementation(address(deployment.stakingNodesManager));
+    //     require(
+    //         stakingNodesManagerImpl == deployment.stakingNodesManagerImplementation,
+    //         string.concat("stakingNodesManager: implementation mismatch, expected: ", vm.toString(deployment.stakingNodesManagerImplementation), ", got: ", vm.toString(stakingNodesManagerImpl))
+    //     );
+    //     console.log("\u2705 stakingNodesManager implementation verified");
+
+    //     // Verify consensusLayerReceiver implementation
+    //     address consensusLayerReceiverImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.consensusLayerReceiver))).getProxyImplementation(address(deployment.consensusLayerReceiver));
+    //     require(
+    //         consensusLayerReceiverImpl == deployment.consensusLayerReceiverImplementation,
+    //         string.concat("consensusLayerReceiver: implementation mismatch, expected: ", vm.toString(deployment.consensusLayerReceiverImplementation), ", got: ", vm.toString(consensusLayerReceiverImpl))
+    //     );
+    //     console.log("\u2705 consensusLayerReceiver implementation verified");
+
+    //     // Verify executionLayerReceiver implementation
+    //     address executionLayerReceiverImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.executionLayerReceiver))).getProxyImplementation(address(deployment.executionLayerReceiver));
+    //     require(
+    //         executionLayerReceiverImpl == deployment.executionLayerReceiverImplementation,
+    //         string.concat("executionLayerReceiver: implementation mismatch, expected: ", vm.toString(deployment.executionLayerReceiverImplementation), ", got: ", vm.toString(executionLayerReceiverImpl))
+    //     );
+    //     console.log("\u2705 executionLayerReceiver implementation verified");
+    // }
 
     function verifyAllStakingNodeDependencies() internal view {
         IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();
