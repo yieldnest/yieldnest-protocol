@@ -97,6 +97,12 @@ contract Verify is BaseYnETHScript {
             deployment.proxies.executionLayerReceiver
         );
 
+        verifyProxyContract(
+            address(deployment.ynViewer),
+            "ynViewer",
+            deployment.proxies.ynViewer
+        );
+
         // TODO: remove this for mainnet
         if (ONLY_HOLESKY_WITHDRAWALS) { // Holesky chain ID
 
@@ -683,5 +689,29 @@ contract Verify is BaseYnETHScript {
         uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;
         require(totalCalculatedBalance == totalAssets, "Sum of balances should equal totalAssets");
         console.log("\u2705 Sum of ETH balances equals totalAssets");
+
+        // Assert the correct number of staking nodes for mainnet and holesky
+        uint256 expectedNodeCount = block.chainid == 1 ? 5 : (block.chainid == 17000 ? 3 : 0);
+        uint256 actualNodeCount = stakingNodes.length;
+        require(
+            actualNodeCount == expectedNodeCount,
+            string.concat(
+                "Incorrect number of staking nodes. Expected: ",
+                vm.toString(expectedNodeCount),
+                ", Actual: ",
+                vm.toString(actualNodeCount)
+            )
+        );
+        console.log(
+            string.concat(
+                "\u2705 Correct number of staking nodes: ",
+                vm.toString(actualNodeCount)
+            )
+        );
+
+        // Check ynViewer getRate is greater than 1 ether
+        uint256 ynETHRate = deployment.ynViewer.getRate();
+        require(ynETHRate > 1 ether, "ynETH rate should be greater than 1 ether");
+        console.log(string.concat("\u2705 ynETH rate is greater than 1 ether: ", vm.toString(ynETHRate), " wei (", vm.toString(ynETHRate / 1e18), " ETH)"));
     }
 }

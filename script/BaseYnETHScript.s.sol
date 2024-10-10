@@ -17,6 +17,8 @@ import {BaseScript} from "script/BaseScript.s.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
+import {ynViewer} from "src/ynViewer.sol";
+
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -32,6 +34,7 @@ abstract contract BaseYnETHScript is BaseScript {
         ProxyAddresses withdrawalQueueManager;
         ProxyAddresses ynETHRedemptionAssetsVault;
         ProxyAddresses withdrawalsProcessor;
+        ProxyAddresses ynViewer;
     }
 
     struct Deployment {
@@ -44,6 +47,7 @@ abstract contract BaseYnETHScript is BaseScript {
         WithdrawalQueueManager withdrawalQueueManager;
         ynETHRedemptionAssetsVault ynETHRedemptionAssetsVaultInstance;
         WithdrawalsProcessor withdrawalsProcessor;
+        ynViewer ynViewer;
         DeploymentProxies proxies;
     }
 
@@ -61,6 +65,7 @@ abstract contract BaseYnETHScript is BaseScript {
         serializeProxyElements(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
         serializeProxyElements(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
         serializeProxyElements(json, "rewardsDistributor", address(deployment.rewardsDistributor));
+        serializeProxyElements(json, "ynViewer", address(deployment.ynViewer));
 
         // withdrawals
         serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
@@ -109,6 +114,9 @@ abstract contract BaseYnETHScript is BaseScript {
 
         deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".proxy-rewardsDistributor")));
         proxies.rewardsDistributor = loadProxyAddresses(jsonContent, "rewardsDistributor");
+
+        deployment.ynViewer = ynViewer(payable(jsonContent.readAddress(".proxy-ynViewer")));
+        proxies.ynViewer = loadProxyAddresses(jsonContent, "ynViewer");
 
         if (block.chainid == 17000) { // Holesky chain ID
             deployment.withdrawalQueueManager = WithdrawalQueueManager(payable(jsonContent.readAddress(".proxy-withdrawalQueueManager")));
