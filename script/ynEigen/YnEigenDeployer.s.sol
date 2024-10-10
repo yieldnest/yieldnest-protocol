@@ -163,20 +163,6 @@ contract YnEigenDeployer is BaseYnEigenScript {
         {
             YnEigenFactory factory = new YnEigenFactory();
 
-            // (
-            //     ynEigen ynToken,
-            //     EigenStrategyManager eigenStrategyManager,
-            //     TokenStakingNodesManager tokenStakingNodesManager,
-            //     TokenStakingNode tokenStakingNode,
-            //     AssetRegistry assetRegistry,
-            //     ynEigenDepositAdapter ynEigenDepositAdapterInstance,
-            //     IRateProvider rateProvider,
-            //     TimelockController timelock,
-            //     ynEigenViewer viewer,
-            //     RedemptionAssetsVault redemptionAssetsVault,
-            //     WithdrawalQueueManager withdrawalQueueManager,
-            //     LSDWrapper lsdWrapper
-            // ) = factory.deploy(init);
             YnEigenProxies memory proxies = factory.deploy(init);
 
             vm.stopBroadcast();
