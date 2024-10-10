@@ -33,6 +33,7 @@ contract Verify is BaseYnETHScript {
         verifyRoles();
         verifySystemParameters();
         verifyContractDependencies();
+        veryifySanityChecks();
     }
 
     function verifyProxyContract(
@@ -645,5 +646,36 @@ contract Verify is BaseYnETHScript {
             );
             console.log("\u2705 StakingNode dependencies verified for node", i);
         }
+    }
+
+    function veryifySanityChecks() internal view {
+        // Check that previewDeposit of 1 ETH is less than 1 ether
+        uint256 previewDepositResult = deployment.ynETH.previewDeposit(1 ether);
+        require(previewDepositResult < 1 ether, "previewDeposit of 1 ETH should be less than 1 ether");
+        console.log("\u2705 previewDeposit of 1 ETH is less than 1 ether");
+
+        // Check that totalSupply is less than totalAssets
+        uint256 totalSupply = deployment.ynETH.totalSupply();
+        uint256 totalAssets = deployment.ynETH.totalAssets();
+        require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
+        console.log("\u2705 totalSupply is less than totalAssets");
+
+        // Print totalSupply and totalAssets
+        console.log(string.concat("Total Supply: ", vm.toString(totalSupply), " ynETH (", vm.toString(totalSupply / 1e18), " units)"));
+        console.log(string.concat("Total Assets: ", vm.toString(totalAssets), " wei (", vm.toString(totalAssets / 1e18), " ETH)"));
+
+        // Check that ETH balance of ynETH + redemption assets vault + staking nodes equals totalAssets
+        uint256 ynETHBalance = address(deployment.ynETH).balance;
+        uint256 redemptionVaultBalance = ONLY_HOLESKY_WITHDRAWALS ? address(deployment.ynETHRedemptionAssetsVaultInstance).balance : 0;
+        
+        uint256 stakingNodesBalance = 0;
+        IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();
+        for (uint256 i = 0; i < stakingNodes.length; i++) {
+            stakingNodesBalance += stakingNodes[i].getETHBalance();
+        }
+
+        uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;
+        require(totalCalculatedBalance == totalAssets, "Sum of balances should equal totalAssets");
+        console.log("\u2705 Sum of ETH balances equals totalAssets");
     }
 }
