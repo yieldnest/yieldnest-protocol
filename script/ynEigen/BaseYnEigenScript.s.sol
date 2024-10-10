@@ -10,6 +10,9 @@ import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
+import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 
 import {ActorAddresses} from "script/Actors.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
@@ -31,6 +34,9 @@ contract BaseYnEigenScript is BaseScript {
         IRateProvider rateProvider;
         TimelockController upgradeTimelock;
         ynEigenViewer viewer;
+        RedemptionAssetsVault redemptionAssetsVault;
+        WithdrawalQueueManager withdrawalQueueManager;
+        LSDWrapper lsdWrapper;
     }
 
     struct Asset {
@@ -110,6 +116,10 @@ contract BaseYnEigenScript is BaseScript {
         serializeProxyElements(json, "rateProvider", address(deployment.rateProvider));
         serializeProxyElements(json, "ynEigenViewer", address(deployment.viewer));
         vm.serializeAddress(json, "upgradeTimelock", address(deployment.upgradeTimelock));
+        serializeProxyElements(json, "redemptionAssetsVault", address(deployment.redemptionAssetsVault));
+        serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
+        serializeProxyElements(json, "lsdWrapper", address(deployment.lsdWrapper));
+
 
         // actors
         vm.serializeAddress(json, "PROXY_ADMIN_OWNER", address(actors.admin.PROXY_ADMIN_OWNER));
