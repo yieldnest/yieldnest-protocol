@@ -7,6 +7,8 @@ import {console} from "lib/forge-std/src/console.sol";
 
 contract YnEigenScript is YnEigenDeployer, YnEigenVerifier {
     function run(string memory _filePath) public {
+    // function run(string memory _filePath) public {
+    //     string memory _filePath = "script/ynEigen/input/lsd-holesky.json";
         _initDeployer();
         _loadJson(_filePath);
         _validateNetwork();
