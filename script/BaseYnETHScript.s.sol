@@ -14,6 +14,9 @@ import {Script} from "lib/forge-std/src/Script.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
@@ -26,6 +29,9 @@ abstract contract BaseYnETHScript is BaseScript {
         ProxyAddresses executionLayerReceiver;
         ProxyAddresses consensusLayerReceiver;
         ProxyAddresses rewardsDistributor;
+        ProxyAddresses withdrawalQueueManager;
+        ProxyAddresses ynETHRedemptionAssetsVault;
+        ProxyAddresses withdrawalsProcessor;
     }
 
     struct Deployment {
@@ -35,6 +41,9 @@ abstract contract BaseYnETHScript is BaseScript {
         RewardsReceiver consensusLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
+        WithdrawalQueueManager withdrawalQueueManager;
+        ynETHRedemptionAssetsVault ynETHRedemptionAssetsVaultInstance;
+        WithdrawalsProcessor withdrawalsProcessor;
         DeploymentProxies proxies;
     }
 
@@ -52,6 +61,12 @@ abstract contract BaseYnETHScript is BaseScript {
         serializeProxyElements(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
         serializeProxyElements(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
         serializeProxyElements(json, "rewardsDistributor", address(deployment.rewardsDistributor));
+
+        // withdrawals
+        serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
+        serializeProxyElements(json, "ynETHRedemptionAssetsVault", address(deployment.ynETHRedemptionAssetsVaultInstance));
+        serializeProxyElements(json, "withdrawalsProcessor", address(deployment.withdrawalsProcessor));
+
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
 
         ActorAddresses.Actors memory actors = getActors();
@@ -94,6 +109,17 @@ abstract contract BaseYnETHScript is BaseScript {
 
         deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".proxy-rewardsDistributor")));
         proxies.rewardsDistributor = loadProxyAddresses(jsonContent, "rewardsDistributor");
+
+        if (block.chainid == 17000) { // Holesky chain ID
+            deployment.withdrawalQueueManager = WithdrawalQueueManager(payable(jsonContent.readAddress(".proxy-withdrawalQueueManager")));
+            proxies.withdrawalQueueManager = loadProxyAddresses(jsonContent, "withdrawalQueueManager");
+
+            deployment.ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(jsonContent.readAddress(".proxy-ynETHRedemptionAssetsVault")));
+            proxies.ynETHRedemptionAssetsVault = loadProxyAddresses(jsonContent, "ynETHRedemptionAssetsVault");
+
+            deployment.withdrawalsProcessor = WithdrawalsProcessor(payable(jsonContent.readAddress(".proxy-withdrawalsProcessor")));
+            proxies.withdrawalsProcessor = loadProxyAddresses(jsonContent, "withdrawalsProcessor");
+        }
 
         deployment.proxies = proxies;
 

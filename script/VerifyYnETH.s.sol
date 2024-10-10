@@ -17,7 +17,11 @@ contract Verify is BaseYnETHScript {
     ActorAddresses.Actors actors;
     ContractAddresses.ChainAddresses chainAddresses;
 
+    bool ONLY_HOLESKY_WITHDRAWALS;
+
     function run() external {
+
+        ONLY_HOLESKY_WITHDRAWALS = block.chainid == 17000;
 
         ContractAddresses contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
@@ -91,6 +95,28 @@ contract Verify is BaseYnETHScript {
             "executionLayerReceiver",
             deployment.proxies.executionLayerReceiver
         );
+
+        // TODO: remove this for mainnet
+        if (ONLY_HOLESKY_WITHDRAWALS) { // Holesky chain ID
+
+            verifyProxyContract(
+                address(deployment.withdrawalQueueManager),
+                "withdrawalQueueManager",
+                deployment.proxies.withdrawalQueueManager
+            );
+
+            verifyProxyContract(
+                address(deployment.ynETHRedemptionAssetsVaultInstance),
+                "ynETHRedemptionAssetsVault",
+                deployment.proxies.ynETHRedemptionAssetsVault
+            );
+
+            verifyProxyContract(
+                address(deployment.withdrawalsProcessor),
+                "withdrawalsProcessor",
+                deployment.proxies.withdrawalsProcessor
+            );
+        }
     }
 
     function verifyRoles() internal view {
@@ -245,28 +271,28 @@ contract Verify is BaseYnETHScript {
         );
         console.log("\u2705 stakingNodesManager: UNPAUSE_ADMIN - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
-        // Check DEFAULT_SIGNER does not have DEFAULT_ADMIN_ROLE
-        // TODO: reenable
-        // require(
-        //     !deployment.stakingNodesManager.hasRole(
-        //         deployment.stakingNodesManager.DEFAULT_ADMIN_ROLE(), 
-        //         address(actors.eoa.DEFAULT_SIGNER)
-        //     ), 
-        //     "stakingNodesManager: DEFAULT_SIGNER SHOULD NOT HAVE DEFAULT_ADMIN_ROLE"
-        // );
-        // console.log("\u2705 stakingNodesManager: DEFAULT_SIGNER - DEFAULT_ADMIN_ROLE not assigned");
+        // TODO: remove this for mainnet
+        if (ONLY_HOLESKY_WITHDRAWALS) { // Holesky chain ID
+            // STAKING_NODES_WITHDRAWER_ROLE
+            require(
+                deployment.stakingNodesManager.hasRole(
+                    deployment.stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), 
+                    address(deployment.withdrawalsProcessor)
+                ), 
+                "stakingNodesManager: STAKING_NODES_WITHDRAWER_ROLE INVALID"
+            );
+            console.log("\u2705 stakingNodesManager: STAKING_NODES_WITHDRAWER_ROLE - ", vm.toString(address(deployment.withdrawalsProcessor)));
 
-        // Check DEFAULT_SIGNER does not have STAKING_ADMIN
-        // TODO: reenable
-        // require(
-        //     !deployment.stakingNodesManager.hasRole(
-        //         deployment.stakingNodesManager.STAKING_ADMIN_ROLE(), 
-        //         address(actors.eoa.DEFAULT_SIGNER)
-        //     ), 
-        //     "stakingNodesManager: DEFAULT_SIGNER SHOULD NOT HAVE STAKING_ADMIN"
-        // );
-        // console.log("\u2705 stakingNodesManager: DEFAULT_SIGNER - STAKING_ADMIN not assigned");
-
+            // WITHDRAWAL_MANAGER_ROLE
+            require(
+                deployment.stakingNodesManager.hasRole(
+                    deployment.stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), 
+                    address(deployment.withdrawalsProcessor)
+                ), 
+                "stakingNodesManager: WITHDRAWAL_MANAGER_ROLE INVALID"
+            );
+            console.log("\u2705 stakingNodesManager: WITHDRAWAL_MANAGER_ROLE - ", vm.toString(address(deployment.withdrawalsProcessor)));
+        }
 
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
@@ -302,6 +328,137 @@ contract Verify is BaseYnETHScript {
         );
         console.log("\u2705 ynETH: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
+ 
+        if (ONLY_HOLESKY_WITHDRAWALS) {
+            // BURNER_ROLE;
+            require(
+                deployment.ynETH.hasRole(
+                    deployment.ynETH.BURNER_ROLE(), 
+                    address(deployment.withdrawalQueueManager)
+                ), 
+                "ynETH: BURNER_ROLE INVALID"
+            );
+            console.log("\u2705 ynETH: BURNER_ROLE - ", vm.toString(address(deployment.withdrawalQueueManager)));
+
+
+            //--------------------------------------------------------------------------------------
+            //------------------  withdrawalQueueManager roles  ------------------------------------
+            //--------------------------------------------------------------------------------------
+
+            // DEFAULT_ADMIN_ROLE
+            require(
+                deployment.withdrawalQueueManager.hasRole(
+                    deployment.withdrawalQueueManager.DEFAULT_ADMIN_ROLE(), 
+                    address(actors.admin.ADMIN)
+                ), 
+                "withdrawalQueueManager: DEFAULT_ADMIN_ROLE INVALID"
+            );
+            console.log("\u2705 withdrawalQueueManager: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+            // WITHDRAWAL_QUEUE_ADMIN_ROLE
+            require(
+                deployment.withdrawalQueueManager.hasRole(
+                    deployment.withdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE(), 
+                    address(actors.admin.ADMIN)
+                ), 
+                "withdrawalQueueManager: WITHDRAWAL_QUEUE_ADMIN_ROLE INVALID"
+            );
+            console.log("\u2705 withdrawalQueueManager: WITHDRAWAL_QUEUE_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+            // REQUEST_FINALIZER_ROLE
+            require(
+                deployment.withdrawalQueueManager.hasRole(
+                    deployment.withdrawalQueueManager.REQUEST_FINALIZER_ROLE(), 
+                    address(actors.ops.REQUEST_FINALIZER)
+                ), 
+                "withdrawalQueueManager: REQUEST_FINALIZER_ROLE INVALID"
+            );
+            console.log("\u2705 withdrawalQueueManager: REQUEST_FINALIZER_ROLE - ", vm.toString(address(actors.ops.REQUEST_FINALIZER)));
+
+            // REDEMPTION_ASSET_WITHDRAWER_ROLE
+            require(
+                deployment.withdrawalQueueManager.hasRole(
+                    deployment.withdrawalQueueManager.REDEMPTION_ASSET_WITHDRAWER_ROLE(), 
+                    address(actors.ops.REDEMPTION_ASSET_WITHDRAWER)
+                ), 
+                "withdrawalQueueManager: REDEMPTION_ASSET_WITHDRAWER_ROLE INVALID"
+            );
+            console.log("\u2705 withdrawalQueueManager: REDEMPTION_ASSET_WITHDRAWER_ROLE - ", vm.toString(address(actors.ops.REDEMPTION_ASSET_WITHDRAWER)));
+
+            //--------------------------------------------------------------------------------------
+            //------------------  ynETHRedemptionAssetsVault roles  ---------------------------------
+            //--------------------------------------------------------------------------------------
+
+            // DEFAULT_ADMIN_ROLE
+            require(
+                deployment.ynETHRedemptionAssetsVaultInstance.hasRole(
+                    deployment.ynETHRedemptionAssetsVaultInstance.DEFAULT_ADMIN_ROLE(), 
+                    address(actors.admin.ADMIN)
+                ), 
+                "ynETHRedemptionAssetsVault: DEFAULT_ADMIN_ROLE INVALID"
+            );
+            console.log("\u2705 ynETHRedemptionAssetsVault: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.PROXY_ADMIN_OWNER)));
+
+            // PAUSER_ROLE
+            require(
+                deployment.ynETHRedemptionAssetsVaultInstance.hasRole(
+                    deployment.ynETHRedemptionAssetsVaultInstance.PAUSER_ROLE(), 
+                    address(actors.admin.ADMIN)
+                ), 
+                "ynETHRedemptionAssetsVault: PAUSER_ROLE INVALID"
+            );
+            console.log("\u2705 ynETHRedemptionAssetsVault: PAUSER_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+            // UNPAUSER_ROLE
+            require(
+                deployment.ynETHRedemptionAssetsVaultInstance.hasRole(
+                    deployment.ynETHRedemptionAssetsVaultInstance.UNPAUSER_ROLE(), 
+                    address(actors.admin.UNPAUSE_ADMIN)
+                ), 
+                "ynETHRedemptionAssetsVault: UNPAUSER_ROLE INVALID"
+            );
+            console.log("\u2705 ynETHRedemptionAssetsVault: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
+
+            // Verify redeemer
+            require(
+                deployment.ynETHRedemptionAssetsVaultInstance.redeemer() == address(deployment.withdrawalQueueManager),
+                "ynETHRedemptionAssetsVault: redeemer INVALID"
+            );
+            console.log("\u2705 ynETHRedemptionAssetsVault: redeemer - ", vm.toString(address(deployment.withdrawalQueueManager)));
+
+
+            //--------------------------------------------------------------------------------------
+            //------------------  WithdrawalsProcessor roles  --------------------------------------
+            //--------------------------------------------------------------------------------------
+
+            // DEFAULT_ADMIN_ROLE
+            require(
+                deployment.withdrawalsProcessor.hasRole(
+                    deployment.withdrawalsProcessor.DEFAULT_ADMIN_ROLE(), 
+                    address(actors.admin.ADMIN)
+                ), 
+                "WithdrawalsProcessor: DEFAULT_ADMIN_ROLE INVALID"
+            );
+            console.log("\u2705 WithdrawalsProcessor: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+            // WITHDRAWAL_MANAGER_ROLE
+            require(
+                deployment.withdrawalsProcessor.hasRole(
+                    deployment.withdrawalsProcessor.WITHDRAWAL_MANAGER_ROLE(), 
+                    address(actors.ops.WITHDRAWAL_MANAGER)
+                ), 
+                "WithdrawalsProcessor: WITHDRAWAL_MANAGER_ROLE INVALID"
+            );
+            console.log("\u2705 WithdrawalsProcessor: WITHDRAWAL_MANAGER_ROLE - ", vm.toString(address(actors.ops.WITHDRAWAL_MANAGER)));
+
+            // Verify stakingNodesManager
+            require(
+                address(deployment.withdrawalsProcessor.stakingNodesManager()) == address(deployment.stakingNodesManager),
+                "WithdrawalsProcessor: stakingNodesManager INVALID"
+            );
+            console.log("\u2705 WithdrawalsProcessor: stakingNodesManager - ", vm.toString(address(deployment.stakingNodesManager)));
+        }
+
     }
 
     function verifySystemParameters() internal view {
@@ -330,7 +487,17 @@ contract Verify is BaseYnETHScript {
         );
         console.log("\u2705 ynETH: validatorRegistrationPaused - Value:", deployment.stakingNodesManager.validatorRegistrationPaused());
 
-        console.log("\u2705 All system parameters verified successfully");
+
+        if (ONLY_HOLESKY_WITHDRAWALS) {
+            // EXPECTING 5 BIPS for holesky and 10 BPS for mainnet 
+            require(
+                deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 1000),
+                "WithdrawalQueueManager: withdrawalFee INVALID"
+            );
+            console.log("\u2705 WithdrawalQueueManager: withdrawalFee - Value:", deployment.withdrawalQueueManager.withdrawalFee());
+
+            console.log("\u2705 All system parameters verified successfully");
+        }
     }
 
     function verifyContractDependencies() internal {
@@ -340,7 +507,49 @@ contract Verify is BaseYnETHScript {
         verifyRewardsDistributorDependencies();
         verifyAllStakingNodeDependencies();
 
+        if (ONLY_HOLESKY_WITHDRAWALS) {
+            verifyWithdrawalQueueManagerDependencies();
+            verifyYnETHRedemptionAssetsVaultDependencies();
+            verifyWithdrawalsProcessorDependencies();
+        }
+
         console.log("\u2705 All contract dependencies verified successfully");
+    }
+
+    function verifyWithdrawalsProcessorDependencies() internal view {
+        require(
+            address(deployment.withdrawalsProcessor.stakingNodesManager()) == address(deployment.stakingNodesManager),
+            "WithdrawalsProcessor: stakingNodesManager dependency mismatch"
+        );
+
+        console.log("\u2705 WithdrawalsProcessor dependencies verified successfully");
+    }
+
+    function verifyYnETHRedemptionAssetsVaultDependencies() internal view {
+        require(
+            address(deployment.ynETHRedemptionAssetsVaultInstance.ynETH()) == address(deployment.ynETH),
+            "YnETHRedemptionAssetsVault: ynETH dependency mismatch"
+        );
+        require(
+            address(deployment.ynETHRedemptionAssetsVaultInstance.redeemer()) == address(deployment.withdrawalQueueManager),
+            "YnETHRedemptionAssetsVault: withdrawalQueueManager dependency mismatch"
+        );
+
+        console.log("\u2705 YnETHRedemptionAssetsVault dependencies verified successfully");
+    }
+
+    function verifyWithdrawalQueueManagerDependencies() internal view {
+
+        require(
+            address(deployment.withdrawalQueueManager.redeemableAsset()) == address(deployment.ynETH),
+            "WithdrawalQueueManager: redeemableAsset dependency mismatch"
+        );
+        require(
+            address(deployment.withdrawalQueueManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
+            "WithdrawalQueueManager: redemptionAssetsVault dependency mismatch"
+        );
+
+        console.log("\u2705 WithdrawalQueueManager dependencies verified successfully");
     }
 
     function verifyYnETHDependencies() internal view {
@@ -407,6 +616,14 @@ contract Verify is BaseYnETHScript {
             address(deployment.stakingNodesManager.upgradeableBeacon().implementation()) == address(deployment.stakingNodeImplementation),
             "StakingNodesManager: upgradeableBeacon implementation mismatch"
         );
+
+        if (ONLY_HOLESKY_WITHDRAWALS) {
+            require(
+                address(deployment.stakingNodesManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
+                "StakingNodesManager: redemptionAssetsVault dependency mismatch"
+            );
+            console.log("\u2705 StakingNodesManager: redemptionAssetsVault dependency verified");
+        }
         
         console.log("\u2705 StakingNodesManager dependencies verified");
     }
