@@ -25,47 +25,72 @@ contract Verify is BaseYnETHScript {
         deployment = loadDeployment();
         actors = getActors();
 
-        verifyProxyAdminOwners();
+        verifyProxies();
         verifyRoles();
         verifySystemParameters();
         verifyContractDependencies();
     }
 
-    function verifyProxyAdminOwners() internal view {
-        address ynETHAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynETH))).owner();
+    function verifyProxyContract(
+        address contractAddress,
+        string memory contractName,
+        ProxyAddresses memory proxyAddresses
+    ) internal view {
+        // Verify PROXY_ADMIN_OWNER
+        address proxyAdminAddress = Utils.getTransparentUpgradeableProxyAdminAddress(contractAddress);
+        address proxyAdminOwner = ProxyAdmin(proxyAdminAddress).owner();
         require(
-            ynETHAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("ynETH: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(ynETHAdmin))
+            proxyAdminOwner == actors.admin.PROXY_ADMIN_OWNER,
+            string.concat(contractName, ": PROXY_ADMIN_OWNER mismatch, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(proxyAdminOwner))
         );
-        console.log("\u2705 ynETH: PROXY_ADMIN_OWNER - ", vm.toString(ynETHAdmin));
+        console.log(string.concat("\u2705 ", contractName, ": PROXY_ADMIN_OWNER - ", vm.toString(proxyAdminOwner)));
 
-        address rewardsDistributorAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.rewardsDistributor))).owner();
+        // Verify ProxyAdmin address
         require(
-            rewardsDistributorAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("rewardsDistributor: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(rewardsDistributorAdmin))
+            proxyAdminAddress == address(proxyAddresses.proxyAdmin),
+            string.concat(contractName, ": ProxyAdmin address mismatch, expected: ", vm.toString(address(proxyAddresses.proxyAdmin)), ", got: ", vm.toString(proxyAdminAddress))
         );
-        console.log("\u2705 rewardsDistributor: PROXY_ADMIN_OWNER - ", vm.toString(rewardsDistributorAdmin));
+        console.log(string.concat("\u2705 ", contractName, ": ProxyAdmin address - ", vm.toString(proxyAdminAddress)));
 
-        address stakingNodesManagerAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.stakingNodesManager))).owner();
+        // Verify Implementation address
+        address implementationAddress = Utils.getTransparentUpgradeableProxyImplementationAddress(contractAddress);
         require(
-            stakingNodesManagerAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("stakingNodesManager: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(stakingNodesManagerAdmin))
+            implementationAddress == proxyAddresses.implementation,
+            string.concat(contractName, ": Implementation address mismatch, expected: ", vm.toString(proxyAddresses.implementation), ", got: ", vm.toString(implementationAddress))
         );
-        console.log("\u2705 stakingNodesManager: PROXY_ADMIN_OWNER - ", vm.toString(stakingNodesManagerAdmin));
+        console.log(string.concat("\u2705 ", contractName, ": Implementation address - ", vm.toString(implementationAddress)));
+    }
 
-        address consensusLayerReceiverAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.consensusLayerReceiver))).owner();
-        require(
-            consensusLayerReceiverAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("consensusLayerReceiver: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(consensusLayerReceiverAdmin))
+    function verifyProxies() internal view {
+        verifyProxyContract(
+            address(deployment.ynETH),
+            "ynETH",
+            deployment.proxies.ynETH
         );
-        console.log("\u2705 consensusLayerReceiver: PROXY_ADMIN_OWNER - ", vm.toString(consensusLayerReceiverAdmin));
 
-        address executionLayerReceiverAdmin = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.executionLayerReceiver))).owner();
-        require(
-            executionLayerReceiverAdmin == actors.admin.PROXY_ADMIN_OWNER,
-            string.concat("executionLayerReceiver: PROXY_ADMIN_OWNER INVALID, expected: ", vm.toString(actors.admin.PROXY_ADMIN_OWNER), ", got: ", vm.toString(executionLayerReceiverAdmin))
+        verifyProxyContract(
+            address(deployment.rewardsDistributor),
+            "rewardsDistributor",
+            deployment.proxies.rewardsDistributor
         );
-        console.log("\u2705 executionLayerReceiver: PROXY_ADMIN_OWNER - ", vm.toString(executionLayerReceiverAdmin));
+
+        verifyProxyContract(
+            address(deployment.stakingNodesManager),
+            "stakingNodesManager",
+            deployment.proxies.stakingNodesManager
+        );
+
+        verifyProxyContract(
+            address(deployment.consensusLayerReceiver),
+            "consensusLayerReceiver",
+            deployment.proxies.consensusLayerReceiver
+        );
+
+        verifyProxyContract(
+            address(deployment.executionLayerReceiver),
+            "executionLayerReceiver",
+            deployment.proxies.executionLayerReceiver
+        );
     }
 
     function verifyRoles() internal view {
@@ -385,48 +410,6 @@ contract Verify is BaseYnETHScript {
         
         console.log("\u2705 StakingNodesManager dependencies verified");
     }
-
-    // function verifyImplementations() {
-    //     // Verify ynETH implementation
-    //     address ynETHImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.ynETH))).getProxyImplementation(address(deployment.ynETH));
-    //     require(
-    //         ynETHImpl == deployment.ynETHImplementation,
-    //         string.concat("ynETH: implementation mismatch, expected: ", vm.toString(deployment.ynETHImplementation), ", got: ", vm.toString(ynETHImpl))
-    //     );
-    //     console.log("\u2705 ynETH implementation verified");
-
-    //     // Verify rewardsDistributor implementation
-    //     address rewardsDistributorImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.rewardsDistributor))).getProxyImplementation(address(deployment.rewardsDistributor));
-    //     require(
-    //         rewardsDistributorImpl == deployment.rewardsDistributorImplementation,
-    //         string.concat("rewardsDistributor: implementation mismatch, expected: ", vm.toString(deployment.rewardsDistributorImplementation), ", got: ", vm.toString(rewardsDistributorImpl))
-    //     );
-    //     console.log("\u2705 rewardsDistributor implementation verified");
-
-    //     // Verify stakingNodesManager implementation
-    //     address stakingNodesManagerImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.stakingNodesManager))).getProxyImplementation(address(deployment.stakingNodesManager));
-    //     require(
-    //         stakingNodesManagerImpl == deployment.stakingNodesManagerImplementation,
-    //         string.concat("stakingNodesManager: implementation mismatch, expected: ", vm.toString(deployment.stakingNodesManagerImplementation), ", got: ", vm.toString(stakingNodesManagerImpl))
-    //     );
-    //     console.log("\u2705 stakingNodesManager implementation verified");
-
-    //     // Verify consensusLayerReceiver implementation
-    //     address consensusLayerReceiverImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.consensusLayerReceiver))).getProxyImplementation(address(deployment.consensusLayerReceiver));
-    //     require(
-    //         consensusLayerReceiverImpl == deployment.consensusLayerReceiverImplementation,
-    //         string.concat("consensusLayerReceiver: implementation mismatch, expected: ", vm.toString(deployment.consensusLayerReceiverImplementation), ", got: ", vm.toString(consensusLayerReceiverImpl))
-    //     );
-    //     console.log("\u2705 consensusLayerReceiver implementation verified");
-
-    //     // Verify executionLayerReceiver implementation
-    //     address executionLayerReceiverImpl = ProxyAdmin(Utils.getTransparentUpgradeableProxyAdminAddress(address(deployment.executionLayerReceiver))).getProxyImplementation(address(deployment.executionLayerReceiver));
-    //     require(
-    //         executionLayerReceiverImpl == deployment.executionLayerReceiverImplementation,
-    //         string.concat("executionLayerReceiver: implementation mismatch, expected: ", vm.toString(deployment.executionLayerReceiverImplementation), ", got: ", vm.toString(executionLayerReceiverImpl))
-    //     );
-    //     console.log("\u2705 executionLayerReceiver implementation verified");
-    // }
 
     function verifyAllStakingNodeDependencies() internal view {
         IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();

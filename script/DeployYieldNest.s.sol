@@ -162,14 +162,13 @@ contract DeployYieldNest is BaseYnETHScript {
 
         vm.stopBroadcast();
 
-        Deployment memory deployment = Deployment({
-            ynETH: yneth,
-            stakingNodesManager: stakingNodesManager,
-            executionLayerReceiver: executionLayerReceiver,
-            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
-            rewardsDistributor: rewardsDistributor,
-            stakingNodeImplementation: stakingNodeImplementation
-        });
+        Deployment memory deployment;
+        deployment.ynETH = yneth;
+        deployment.stakingNodesManager = stakingNodesManager;
+        deployment.executionLayerReceiver = executionLayerReceiver;
+        deployment.consensusLayerReceiver = consensusLayerReceiver; // Adding consensusLayerReceiver to the deployment
+        deployment.rewardsDistributor = rewardsDistributor;
+        deployment.stakingNodeImplementation = stakingNodeImplementation;
         
         saveDeployment(deployment);
 
