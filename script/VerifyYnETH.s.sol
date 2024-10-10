@@ -664,6 +664,12 @@ contract Verify is BaseYnETHScript {
         console.log(string.concat("Total Supply: ", vm.toString(totalSupply), " ynETH (", vm.toString(totalSupply / 1e18), " units)"));
         console.log(string.concat("Total Assets: ", vm.toString(totalAssets), " wei (", vm.toString(totalAssets / 1e18), " ETH)"));
 
+        // Check previewRedeem for Holesky withdrawals
+        if (ONLY_HOLESKY_WITHDRAWALS) {
+            uint256 previewRedeemResult = deployment.ynETH.previewRedeem(1 ether);
+            console.log(string.concat("previewRedeem of 1 ynETH: ", vm.toString(previewRedeemResult), " wei (", vm.toString(previewRedeemResult / 1e18), " ETH)"));
+        }
+
         // Check that ETH balance of ynETH + redemption assets vault + staking nodes equals totalAssets
         uint256 ynETHBalance = address(deployment.ynETH).balance;
         uint256 redemptionVaultBalance = ONLY_HOLESKY_WITHDRAWALS ? address(deployment.ynETHRedemptionAssetsVaultInstance).balance : 0;
