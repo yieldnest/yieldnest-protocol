@@ -21,6 +21,17 @@ import {console} from "lib/forge-std/src/console.sol";
 contract BaseYnEigenScript is BaseScript {
     using stdJson for string;
 
+
+    struct DeploymentProxies {
+        ProxyAddresses ynEigen;
+        ProxyAddresses assetRegistry;
+        ProxyAddresses eigenStrategyManager;
+        ProxyAddresses tokenStakingNodesManager;
+        ProxyAddresses ynEigenDepositAdapter;
+        ProxyAddresses rateProvider;
+        ProxyAddresses ynEigenViewer;
+    }
+
     struct Deployment {
         ynEigen ynEigen;
         AssetRegistry assetRegistry;
@@ -31,6 +42,7 @@ contract BaseYnEigenScript is BaseScript {
         IRateProvider rateProvider;
         TimelockController upgradeTimelock;
         ynEigenViewer viewer;
+        DeploymentProxies proxies;
     }
 
     struct Asset {
@@ -133,20 +145,40 @@ contract BaseYnEigenScript is BaseScript {
     function loadDeployment() public view returns (Deployment memory) {
         string memory deploymentFile = getDeploymentFile();
         string memory jsonContent = vm.readFile(deploymentFile);
+
         Deployment memory deployment;
+        DeploymentProxies memory proxies;
+
         deployment.ynEigen = ynEigen(payable(jsonContent.readAddress(string.concat(".proxy-", tokenName()))));
+        proxies.ynEigen =  loadProxyAddresses(jsonContent, tokenName());   
+
         deployment.tokenStakingNodesManager =
             TokenStakingNodesManager(payable(jsonContent.readAddress(".proxy-tokenStakingNodesManager")));
+        proxies.tokenStakingNodesManager =  loadProxyAddresses(jsonContent, "tokenStakingNodesManager");   
+
         deployment.assetRegistry = AssetRegistry(payable(jsonContent.readAddress(".proxy-assetRegistry")));
+        proxies.assetRegistry =  loadProxyAddresses(jsonContent, "assetRegistry");  
+
         deployment.eigenStrategyManager =
             EigenStrategyManager(payable(jsonContent.readAddress(".proxy-eigenStrategyManager")));
+        proxies.eigenStrategyManager =  loadProxyAddresses(jsonContent, "eigenStrategyManager"); 
+
         deployment.tokenStakingNodeImplementation =
             TokenStakingNode(payable(jsonContent.readAddress(".tokenStakingNodeImplementation")));
+
         deployment.ynEigenDepositAdapterInstance =
             ynEigenDepositAdapter(payable(jsonContent.readAddress(".proxy-ynEigenDepositAdapter")));
+        proxies.ynEigenDepositAdapter =  loadProxyAddresses(jsonContent, "ynEigenDepositAdapter"); 
+
         deployment.rateProvider = IRateProvider(payable(jsonContent.readAddress(".proxy-rateProvider")));
+        proxies.rateProvider =  loadProxyAddresses(jsonContent, "rateProvider"); 
+
         deployment.viewer = ynEigenViewer(payable(jsonContent.readAddress(".proxy-ynEigenViewer")));
+        proxies.ynEigenViewer =  loadProxyAddresses(jsonContent, "ynEigenViewer"); 
+        
         deployment.upgradeTimelock = TimelockController(payable(jsonContent.readAddress(".upgradeTimelock")));
+
+        deployment.proxies = proxies;
 
         return deployment;
     }
