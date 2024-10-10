@@ -144,7 +144,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
                 redeemableAsset: IRedeemableAsset(address(yneth)),
                 redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
                 admin: actors.admin.ADMIN,
-                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+                withdrawalQueueAdmin: actors.admin.ADMIN,
                 redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
                 requestFinalizer:  actors.ops.REQUEST_FINALIZER,
                 withdrawalFee: 500, // 0.05%
