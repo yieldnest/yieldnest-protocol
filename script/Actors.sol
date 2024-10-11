@@ -43,6 +43,7 @@ contract ActorAddresses {
         address YNStrategyController;
         address YNTokenStakingNodeOperator;
         address YNWithdrawalsETH;
+        address YnOperator;
     }
 
     struct Actors {
@@ -66,7 +67,8 @@ contract ActorAddresses {
                 YNStrategyController: 0x1234567890123456789012345678901234567890,
                 // TODO: replace with concrete deployment
                 YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890,
-                YNWithdrawalsETH: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07
+                YNWithdrawalsETH: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07,
+                YnOperator: 0x530F6057e93b54Ec39D6472DA75712db2178780C
             });
             actors[17000] = Actors({
                 eoa: EOAActors({
@@ -87,7 +89,7 @@ contract ActorAddresses {
                     EIGEN_STRATEGY_ADMIN: holeskyWallets.YNSecurityCouncil
                 }),
                 ops: OpsActors({
-                    STAKING_NODES_OPERATOR: holeskyWallets.YNDev,
+                    STAKING_NODES_OPERATOR: holeskyWallets.YnOperator,
                     VALIDATOR_MANAGER: holeskyWallets.YNValidatorService,
                     STAKING_NODE_CREATOR: holeskyWallets.YNDev,
                     POOLED_DEPOSITS_OWNER: holeskyWallets.YNDev,
@@ -109,13 +111,12 @@ contract ActorAddresses {
             YNDelegator: 0xDF51B7843817F76220C0970eF58Ba726630028eF,
             YNDev: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
             YNValidatorService: 0x8e20eAf121154B69B7b880FA6c617c0175c4dE2e,
-            // TODO: replace with concrete deployment
             YNStrategyController: 0x0573A7DaFBc080064663623979287286Bb65C1BD,
             // TODO: replace with concrete deployment
             YNTokenStakingNodeOperator: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975, // same as YNSecurityCouncil
-
             // TODO: MUST fill for prod. same as YnDev for now
-            YNWithdrawalsETH: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3
+            YNWithdrawalsETH: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
+            YnOperator: 0x591A163AcfDb6F79674b08e5F069b4905a230ddD
         });
 
         actors[1] = Actors({
@@ -137,7 +138,7 @@ contract ActorAddresses {
                 EIGEN_STRATEGY_ADMIN: mainnetWallets.YNSecurityCouncil
             }),
             ops: OpsActors({
-                STAKING_NODES_OPERATOR:mainnetWallets.YNDev,
+                STAKING_NODES_OPERATOR:mainnetWallets.YnOperator,
                 VALIDATOR_MANAGER: mainnetWallets.YNValidatorService,
                 STAKING_NODE_CREATOR: mainnetWallets.YNDev,
                 POOLED_DEPOSITS_OWNER: 0xE1fAc59031520FD1eb901da990Da12Af295e6731,
