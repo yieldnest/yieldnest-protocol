@@ -26,6 +26,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         deployment = loadDeployment();
 
         verifyUpgradeTimelockRoles();
+        verifyProxies();
         verifyProxyAdminOwners();
         verifyRoles();
         verifySystemParameters();
@@ -76,6 +77,84 @@ contract YnEigenVerifier is BaseYnEigenScript {
         uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 3 days;
         require(deployment.upgradeTimelock.getMinDelay() == expectedDelay, "upgradeTimelock: DELAY INVALID");
         console.log("\u2705 upgradeTimelock: DELAY - ", deployment.upgradeTimelock.getMinDelay());
+    }
+
+    function verifyProxyContract(
+        address contractAddress,
+        string memory contractName,
+        ProxyAddresses memory proxyAddresses
+    ) internal view {
+
+        address expectedProxyAdminOwner;
+
+        // TODO: consider changing owner here for consistency
+        if (keccak256(abi.encodePacked(contractName)) == keccak256(abi.encodePacked("ynEigenViewer")) && block.chainid == 1) {
+            expectedProxyAdminOwner = actors.admin.PROXY_ADMIN_OWNER;
+        } else {
+            expectedProxyAdminOwner = address(deployment.upgradeTimelock);
+        }
+
+        // Verify PROXY_ADMIN_OWNER
+        address proxyAdminAddress = Utils.getTransparentUpgradeableProxyAdminAddress(contractAddress);
+        address proxyAdminOwner = ProxyAdmin(proxyAdminAddress).owner();
+        require(
+            proxyAdminOwner == expectedProxyAdminOwner,
+            string.concat(contractName, ": PROXY_ADMIN_OWNER mismatch, expected: ", vm.toString(expectedProxyAdminOwner), ", got: ", vm.toString(proxyAdminOwner))
+        );
+        console.log(string.concat("\u2705 ", contractName, ": PROXY_ADMIN_OWNER - ", vm.toString(proxyAdminOwner)));
+
+        // Verify ProxyAdmin address
+        require(
+            proxyAdminAddress == address(proxyAddresses.proxyAdmin),
+            string.concat(contractName, ": ProxyAdmin address mismatch, expected: ", vm.toString(address(proxyAddresses.proxyAdmin)), ", got: ", vm.toString(proxyAdminAddress))
+        );
+        console.log(string.concat("\u2705 ", contractName, ": ProxyAdmin address - ", vm.toString(proxyAdminAddress)));
+
+        // Verify Implementation address
+        address implementationAddress = Utils.getTransparentUpgradeableProxyImplementationAddress(contractAddress);
+        require(
+            implementationAddress == proxyAddresses.implementation,
+            string.concat(contractName, ": Implementation address mismatch, expected: ", vm.toString(proxyAddresses.implementation), ", got: ", vm.toString(implementationAddress))
+        );
+        console.log(string.concat("\u2705 ", contractName, ": Implementation address - ", vm.toString(implementationAddress)));
+    }
+
+    function verifyProxies() internal view {
+        verifyProxyContract(
+            address(deployment.ynEigen),
+            "ynEigen",
+            deployment.proxies.ynEigen
+        );
+
+        verifyProxyContract(
+            address(deployment.assetRegistry),
+            "assetRegistry",
+            deployment.proxies.assetRegistry
+        );
+
+        verifyProxyContract(
+            address(deployment.eigenStrategyManager),
+            "eigenStrategyManager",
+            deployment.proxies.eigenStrategyManager
+        );
+
+        verifyProxyContract(
+            address(deployment.tokenStakingNodesManager),
+            "tokenStakingNodesManager",
+            deployment.proxies.tokenStakingNodesManager
+        );
+
+        verifyProxyContract(
+            address(deployment.ynEigenDepositAdapterInstance),
+            "ynEigenDepositAdapter",
+            deployment.proxies.ynEigenDepositAdapter
+        );
+
+        verifyProxyContract(
+            address(deployment.viewer),
+            "ynEigenViewer",
+            deployment.proxies.ynEigenViewer
+        );
     }
 
     function verifyProxyAdminOwners() internal view {
