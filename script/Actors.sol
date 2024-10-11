@@ -114,8 +114,7 @@ contract ActorAddresses {
             YNStrategyController: 0x0573A7DaFBc080064663623979287286Bb65C1BD,
             // TODO: replace with concrete deployment
             YNTokenStakingNodeOperator: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975, // same as YNSecurityCouncil
-            // TODO: MUST fill for prod. same as YnDev for now
-            YNWithdrawalsETH: 0xa08F39d30dc865CC11a49b6e5cBd27630D6141C3,
+            YNWithdrawalsETH: 0x7f7187fbD6e508bC23268746dff535cfC8EbC87b,
             YnOperator: 0x591A163AcfDb6F79674b08e5F069b4905a230ddD
         });
 
