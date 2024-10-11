@@ -146,7 +146,7 @@ contract M3WithdrawalsTest is Base {
 
         // queue withdrawals
         {
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             stakingNodesManager.nodes(nodeId).queueWithdrawals(AMOUNT);
             vm.stopPrank();
 
@@ -211,7 +211,7 @@ contract M3WithdrawalsTest is Base {
         {
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
 
