@@ -84,7 +84,6 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
         
-
         // Deploy implementation contracts
         stakingNodesManagerImplementation = new StakingNodesManager();
         console.log("StakingNodesManager implementation deployed at:", address(stakingNodesManagerImplementation));
@@ -147,7 +146,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
                 withdrawalQueueAdmin: actors.admin.ADMIN,
                 redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
                 requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                withdrawalFee: 500, // 0.05%
+                withdrawalFee: 1000, // 0.1%
                 feeReceiver: actors.admin.FEE_RECEIVER
             });
             ynETHWithdrawalQueueManager.initialize(managerInit);
