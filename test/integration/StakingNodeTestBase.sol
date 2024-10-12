@@ -103,7 +103,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
             // all is zeroed out by defailt
             _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
         }
