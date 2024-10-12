@@ -96,8 +96,10 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         // deploy ynETHRedemptionAssetsVault
         {
+            ynETHRedemptionAssetsVault impl = new ynETHRedemptionAssetsVault();
+            console.log("ynETHRedemptionAssetsVault implementation deployed at:", address(impl));
             TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new ynETHRedemptionAssetsVault()),
+                address(impl),
                 actors.admin.PROXY_ADMIN_OWNER,
                 ""
             );
@@ -106,8 +108,11 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         // deploy WithdrawalQueueManager
         {
+            WithdrawalQueueManager withdrawalQueueManagerImpl = new WithdrawalQueueManager();
+            console.log("WithdrawalQueueManager implementation deployed at:", address(withdrawalQueueManagerImpl));
+
             TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new WithdrawalQueueManager()),
+                address(withdrawalQueueManagerImpl),
                 actors.admin.PROXY_ADMIN_OWNER,
                 ""
             );
@@ -115,15 +120,17 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         }
 
         // deploy WithdrawalsProcessor
-        WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
-        console.log("WithdrawalsProcessor implementation deployed at:", address(withdrawalsProcessorImplementation));
+        {
+            WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
+            console.log("WithdrawalsProcessor implementation deployed at:", address(withdrawalsProcessorImplementation));
 
-        TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
-            address(withdrawalsProcessorImplementation),
-            actors.admin.PROXY_ADMIN_OWNER,
-            ""
-        );
-        withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
+            TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
+                address(withdrawalsProcessorImplementation),
+                actors.admin.PROXY_ADMIN_OWNER,
+                ""
+            );
+            withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
+        }
 
         // initialize ynETHRedemptionAssetsVault
         {
@@ -163,14 +170,12 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         }
 
-        // Verify all the above is deployed correctly.
-
         // Perform the following permissioned call with DEFAULT_ADMIN ROLE:
 
         console.log("Parameters for stakingNodesManager.initializeV2:");
         console.log("redemptionAssetsVault:", address(ynETHRedemptionAssetsVaultInstance));
-        console.log("withdrawalManager:", actors.ops.WITHDRAWAL_MANAGER);
-        console.log("stakingNodesWithdrawer:", actors.ops.STAKING_NODES_WITHDRAWER);
+        console.log("withdrawalManager:", address(withdrawalsProcessor));
+        console.log("stakingNodesWithdrawer:", address(withdrawalsProcessor));
 
         // Save deployment information
         WithdrawalsDeployment memory deployment = WithdrawalsDeployment({
@@ -184,14 +189,17 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         saveWithdrawalsDeployment(deployment);
 
+        // Verify all the above is deployed correctly.
+        verifyDeployment(contractAddresses, deployment);
+
         console.log("Deployment information saved successfully.");
 
         // initialize stakingNodesManager withdrawal contracts
         {
             StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
                 redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
-                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
+                withdrawalManager: address(withdrawalsProcessor),
+                stakingNodesWithdrawer: address(withdrawalsProcessor)
             });
 
             console.log("actors.ops.WITHDRAWAL_MANAGER:", actors.ops.WITHDRAWAL_MANAGER);
@@ -227,5 +235,48 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         vm.writeJson(finalJson, getDeploymentFile());
 
         console.log("Deployment JSON file written successfully:", getDeploymentFile());
+    }
+
+    function verifyDeployment(ContractAddresses contractAddresses, WithdrawalsDeployment memory deployment) internal {
+        // Verify WithdrawalQueueManager
+        require(address(deployment.withdrawalQueueManager) != address(0), "WithdrawalQueueManager not deployed");
+        WithdrawalQueueManager wqm = deployment.withdrawalQueueManager;
+        require(wqm.hasRole(wqm.WITHDRAWAL_QUEUE_ADMIN_ROLE(), actors.wallets.YNSecurityCouncil), "ADMIN role not set for WithdrawalQueueManager");
+        require(wqm.hasRole(wqm.REDEMPTION_ASSET_WITHDRAWER_ROLE(), actors.wallets.YNDev), "REDEMPTION_ASSET_WITHDRAWER role not set for WithdrawalQueueManager");
+        require(wqm.hasRole(wqm.REQUEST_FINALIZER_ROLE(), actors.wallets.YNWithdrawalsETH), "REQUEST_FINALIZER role not set for WithdrawalQueueManager");
+        // Assert parameters for WithdrawalQueueManager
+        require(address(wqm.redeemableAsset()) == contractAddresses.getChainAddresses(block.chainid).yn.YNETH_ADDRESS, "Redeemable asset not set correctly in WithdrawalQueueManager");
+        require(address(wqm.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVault), "RedemptionAssetsVault not set correctly in WithdrawalQueueManager");
+        require(wqm.feeReceiver() == actors.wallets.YNSecurityCouncil, "Fee receiver not set correctly in WithdrawalQueueManager");
+        require(wqm.withdrawalFee() == 1000, "Initial withdrawal fee should be 0.1%");
+
+        // Verify YnETHRedemptionAssetsVault
+        require(address(deployment.ynETHRedemptionAssetsVault) != address(0), "YnETHRedemptionAssetsVault not deployed");
+        ynETHRedemptionAssetsVault rav = deployment.ynETHRedemptionAssetsVault;
+        require(rav.hasRole(rav.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN), "ADMIN role not set for YnETHRedemptionAssetsVault");
+        require(rav.hasRole(rav.PAUSER_ROLE(), actors.admin.ADMIN), "PAUSER role not set for YnETHRedemptionAssetsVault");
+        require(rav.hasRole(rav.UNPAUSER_ROLE(), actors.admin.ADMIN), "UNPAUSER role not set for YnETHRedemptionAssetsVault");
+        require(rav.redeemer() == address(wqm), "Redeemer not set correctly in YnETHRedemptionAssetsVault");
+        // Verify ynETH dependency
+        require(address(rav.ynETH()) == contractAddresses.getChainAddresses(block.chainid).yn.YNETH_ADDRESS, "ynETH address mismatch in YnETHRedemptionAssetsVault");
+
+
+        // Verify WithdrawalsProcessor
+        require(address(deployment.withdrawalsProcessor) != address(0), "WithdrawalsProcessor not deployed");
+        WithdrawalsProcessor wp = deployment.withdrawalsProcessor;
+        require(wp.hasRole(wp.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN), "ADMIN role not set for WithdrawalsProcessor");
+        require(wp.hasRole(wp.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER), "WITHDRAWAL_MANAGER role not set for WithdrawalsProcessor");
+        require(address(wp.stakingNodesManager()) == contractAddresses.getChainAddresses(block.chainid).yn.STAKING_NODES_MANAGER_ADDRESS, "StakingNodesManager not set correctly in WithdrawalsProcessor");
+
+        // Verify StakingNodeImplementation
+        require(address(deployment.stakingNodeImplementation) != address(0), "StakingNodeImplementation not deployed");
+
+        // Verify StakingNodesManagerImplementation
+        require(address(deployment.stakingNodesManagerImplementation) != address(0), "StakingNodesManagerImplementation not deployed");
+
+        // Verify YnETHImplementation
+        require(address(deployment.ynETHImplementation) != address(0), "YnETHImplementation not deployed");
+
+        console.log("All deployments verified successfully.");
     }
 }
