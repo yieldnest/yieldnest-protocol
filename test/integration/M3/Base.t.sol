@@ -96,6 +96,7 @@ contract Base is Test, Utils {
             consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
             ynETHWithdrawalQueueManager = WithdrawalQueueManager(payable(chainAddresses.yn.WITHDRAWAL_QUEUE_MANAGER_ADDRESS));
             ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(chainAddresses.yn.YNETH_REDEMPTION_ASSETS_VAULT_ADDRESS));
+            withdrawalsProcessor = WithdrawalsProcessor(payable(chainAddresses.yn.WITHDRAWALS_PROCESSOR_ADDRESS));
         }
 
         // assign Ethereum addresses
@@ -118,11 +119,9 @@ contract Base is Test, Utils {
 
     function upgradeYnToM3() internal {
         if (block.chainid == 17000) {
-            // Nothing to do, only mainnet left to upgrade
-            deployWithdrawalsProcessor();
+            // nothing to do
             return;
         }
-
 
         uint256 totalAssets = yneth.totalAssets();
         uint256 totalSupply = yneth.totalSupply();
@@ -233,6 +232,29 @@ contract Base is Test, Utils {
             ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
         }
 
+        {
+            // Deploy WithdrawalsProcessor
+            // Deploy the implementation contract
+            WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
+
+            // Prepare the initialization data
+            bytes memory initData = abi.encodeWithSelector(
+                WithdrawalsProcessor.initialize.selector,
+                IStakingNodesManager(address(stakingNodesManager)),
+                actors.admin.ADMIN,
+                actors.ops.WITHDRAWAL_MANAGER
+            );
+
+            // Deploy the proxy
+            TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
+                address(withdrawalsProcessorImplementation),
+                actors.admin.PROXY_ADMIN_OWNER,
+                initData
+            );
+
+            withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
+        }
+
         // initialize ynETHRedemptionAssetsVault
         {
             ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
@@ -272,8 +294,8 @@ contract Base is Test, Utils {
         {
             StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
                 redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-                withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
-                stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
+                withdrawalManager: address(withdrawalsProcessor),
+                stakingNodesWithdrawer: address(withdrawalsProcessor)
             });
             
             vm.prank(actors.admin.ADMIN);
@@ -289,38 +311,20 @@ contract Base is Test, Utils {
             vm.stopPrank();
         }
 
-        deployWithdrawalsProcessor();
+        {
+            // Roles are granted here just for testing purposes.
+            // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
+            // them separately as well if needed.
+            // Grant roles on StakingNodesManager for mainnet only
+            if (block.chainid == 1) { // Mainnet chain ID
+                vm.startPrank(actors.admin.ADMIN);
+                stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
+                stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
+                vm.stopPrank();
+            }
+        }
 
         runUpgradeIntegrityInvariants(preUpgradeState);
-    }
-
-    function deployWithdrawalsProcessor() internal {
-        // Deploy WithdrawalsProcessor
-        // Deploy the implementation contract
-        WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
-
-        // Prepare the initialization data
-        bytes memory initData = abi.encodeWithSelector(
-            WithdrawalsProcessor.initialize.selector,
-            IStakingNodesManager(address(stakingNodesManager)),
-            actors.admin.ADMIN,
-            actors.ops.WITHDRAWAL_MANAGER
-        );
-
-        // Deploy the proxy
-        TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
-            address(withdrawalsProcessorImplementation),
-            actors.admin.PROXY_ADMIN_OWNER,
-            initData
-        );
-
-        withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
-
-        // Grant WITHDRAWAL_MANAGER_ROLE to WithdrawalsProcessor
-        vm.startPrank(actors.admin.ADMIN);
-        stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor));
-        stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor));
-        vm.stopPrank();
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
