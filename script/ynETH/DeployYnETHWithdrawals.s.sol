@@ -186,7 +186,6 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
 
         console.log("Deployment information saved successfully.");
 
-        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x3a2DD2f0f5A20768110a52fC4f091AB9d8631b58));
         // initialize stakingNodesManager withdrawal contracts
         {
             StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
