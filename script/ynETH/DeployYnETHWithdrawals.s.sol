@@ -249,6 +249,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         require(address(wqm.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVault), "RedemptionAssetsVault not set correctly in WithdrawalQueueManager");
         require(wqm.feeReceiver() == actors.wallets.YNSecurityCouncil, "Fee receiver not set correctly in WithdrawalQueueManager");
         require(wqm.withdrawalFee() == 1000, "Initial withdrawal fee should be 0.1%");
+        console.log("\u2705 WithdrawalQueueManager verified");
 
         // Verify YnETHRedemptionAssetsVault
         require(address(deployment.ynETHRedemptionAssetsVault) != address(0), "YnETHRedemptionAssetsVault not deployed");
@@ -259,7 +260,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         require(rav.redeemer() == address(wqm), "Redeemer not set correctly in YnETHRedemptionAssetsVault");
         // Verify ynETH dependency
         require(address(rav.ynETH()) == contractAddresses.getChainAddresses(block.chainid).yn.YNETH_ADDRESS, "ynETH address mismatch in YnETHRedemptionAssetsVault");
-
+        console.log("\u2705 YnETHRedemptionAssetsVault verified");
 
         // Verify WithdrawalsProcessor
         require(address(deployment.withdrawalsProcessor) != address(0), "WithdrawalsProcessor not deployed");
@@ -267,15 +268,19 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         require(wp.hasRole(wp.DEFAULT_ADMIN_ROLE(), actors.admin.ADMIN), "ADMIN role not set for WithdrawalsProcessor");
         require(wp.hasRole(wp.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER), "WITHDRAWAL_MANAGER role not set for WithdrawalsProcessor");
         require(address(wp.stakingNodesManager()) == contractAddresses.getChainAddresses(block.chainid).yn.STAKING_NODES_MANAGER_ADDRESS, "StakingNodesManager not set correctly in WithdrawalsProcessor");
+        console.log("\u2705 WithdrawalsProcessor verified");
 
         // Verify StakingNodeImplementation
         require(address(deployment.stakingNodeImplementation) != address(0), "StakingNodeImplementation not deployed");
+        console.log("\u2705 StakingNodeImplementation verified");
 
         // Verify StakingNodesManagerImplementation
         require(address(deployment.stakingNodesManagerImplementation) != address(0), "StakingNodesManagerImplementation not deployed");
+        console.log("\u2705 StakingNodesManagerImplementation verified");
 
         // Verify YnETHImplementation
         require(address(deployment.ynETHImplementation) != address(0), "YnETHImplementation not deployed");
+        console.log("\u2705 YnETHImplementation verified");
 
         console.log("All deployments verified successfully.");
     }
