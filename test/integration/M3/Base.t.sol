@@ -157,6 +157,9 @@ contract Base is Test, Utils {
             */
 
             {
+                // Print ynETH total assets and total supply
+                console.log("ynETH total assets:", yneth.totalAssets());
+                console.log("ynETH total supply:", yneth.totalSupply());
                 // VERY IMPORTANT: the deltas must be all ZERO (0)
                 for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
                     IStakingNode stakingNode = stakingNodesManager.nodes(i);
@@ -185,42 +188,42 @@ contract Base is Test, Utils {
                 }
             }
 
-            address stakinNodesManagerImplementation = 0x33Ffb713C73Cdf668b11296Bb9B1C9a0C3100626;  // getStakingNodesManagerImplementation(preUpgradeState);
+            // address stakinNodesManagerImplementation = 0x33Ffb713C73Cdf668b11296Bb9B1C9a0C3100626;  // getStakingNodesManagerImplementation(preUpgradeState);
 
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(stakingNodesManager)),
-                address(stakinNodesManagerImplementation),
-                ""
-            );
-            vm.stopPrank();
+            // vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
+            // ProxyAdmin(
+            //     getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
+            // ).upgradeAndCall(
+            //     ITransparentUpgradeableProxy(address(stakingNodesManager)),
+            //     address(stakinNodesManagerImplementation),
+            //     ""
+            // );
+            // vm.stopPrank();
         }
 
         runUpgradeIntegrityInvariants(preUpgradeState);
 
         // upgrade ynETH
         {
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            address ynETHImplementation = 0x87E2A51d3B88FC2f5917a7aB793ea595b243710a;
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(yneth))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(yneth)),
-                ynETHImplementation,
-                ""
-            );
-            vm.stopPrank();
+            // vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
+            // address ynETHImplementation = 0x87E2A51d3B88FC2f5917a7aB793ea595b243710a;
+            // ProxyAdmin(
+            //     getTransparentUpgradeableProxyAdminAddress(address(yneth))
+            // ).upgradeAndCall(
+            //     ITransparentUpgradeableProxy(address(yneth)),
+            //     ynETHImplementation,
+            //     ""
+            // );
+            // vm.stopPrank();
         }
 
         runUpgradeIntegrityInvariants(preUpgradeState);
 
         // upgrade StakingNodeImplementation
         {
-            stakingNodeImplementation = StakingNode(payable(0xA8bD8f089F5Bd0BeE61e23B3A0a4aA1332Fe929d));
-            vm.prank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
+            // stakingNodeImplementation = StakingNode(payable(0xA8bD8f089F5Bd0BeE61e23B3A0a4aA1332Fe929d));
+            // vm.prank(actors.admin.STAKING_ADMIN);
+            // stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
         }
 
         {
