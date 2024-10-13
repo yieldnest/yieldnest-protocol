@@ -156,7 +156,7 @@ contract Base is Test, Utils {
                 ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
             */
 
-            address stakinNodesManagerImplementation = getStakingNodesManagerImplementation(preUpgradeState);
+            address stakinNodesManagerImplementation = 0x33Ffb713C73Cdf668b11296Bb9B1C9a0C3100626;  // getStakingNodesManagerImplementation(preUpgradeState);
 
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
             ProxyAdmin(
@@ -174,11 +174,12 @@ contract Base is Test, Utils {
         // upgrade ynETH
         {
             vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
+            address ynETHImplementation = 0x87E2A51d3B88FC2f5917a7aB793ea595b243710a;
             ProxyAdmin(
                 getTransparentUpgradeableProxyAdminAddress(address(yneth))
             ).upgradeAndCall(
                 ITransparentUpgradeableProxy(address(yneth)),
-                address(new ynETH()),
+                ynETHImplementation,
                 ""
             );
             vm.stopPrank();
@@ -188,7 +189,7 @@ contract Base is Test, Utils {
 
         // upgrade StakingNodeImplementation
         {
-            stakingNodeImplementation = new StakingNode();
+            stakingNodeImplementation = StakingNode(payable(0xA8bD8f089F5Bd0BeE61e23B3A0a4aA1332Fe929d));
             vm.prank(actors.admin.STAKING_ADMIN);
             stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
         }
@@ -213,76 +214,76 @@ contract Base is Test, Utils {
         // STAGE 2: NEW CONTRACTS - Deploy and initialize new contracts
 
         // deploy ynETHRedemptionAssetsVault
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new ynETHRedemptionAssetsVault()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
-        }
+        // {
+        //     TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+        //         address(new ynETHRedemptionAssetsVault()),
+        //         actors.admin.PROXY_ADMIN_OWNER,
+        //         ""
+        //     );
+        //     ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
+        // }
 
         // deploy WithdrawalQueueManager
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new WithdrawalQueueManager()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
-        }
+        // {
+        //     TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+        //         address(new WithdrawalQueueManager()),
+        //         actors.admin.PROXY_ADMIN_OWNER,
+        //         ""
+        //     );
+        //     ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
+        // }
 
-        {
-            // Deploy WithdrawalsProcessor
-            // Deploy the implementation contract
-            WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
+        // {
+        //     // Deploy WithdrawalsProcessor
+        //     // Deploy the implementation contract
+        //     WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
 
-            // Prepare the initialization data
-            bytes memory initData = abi.encodeWithSelector(
-                WithdrawalsProcessor.initialize.selector,
-                IStakingNodesManager(address(stakingNodesManager)),
-                actors.admin.ADMIN,
-                actors.ops.WITHDRAWAL_MANAGER
-            );
+        //     // Prepare the initialization data
+        //     bytes memory initData = abi.encodeWithSelector(
+        //         WithdrawalsProcessor.initialize.selector,
+        //         IStakingNodesManager(address(stakingNodesManager)),
+        //         actors.admin.ADMIN,
+        //         actors.ops.WITHDRAWAL_MANAGER
+        //     );
 
-            // Deploy the proxy
-            TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
-                address(withdrawalsProcessorImplementation),
-                actors.admin.PROXY_ADMIN_OWNER,
-                initData
-            );
+        //     // Deploy the proxy
+        //     TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
+        //         address(withdrawalsProcessorImplementation),
+        //         actors.admin.PROXY_ADMIN_OWNER,
+        //         initData
+        //     );
 
-            withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
-        }
+        //     withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
+        // }
 
         // initialize ynETHRedemptionAssetsVault
-        {
-            ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                redeemer: address(ynETHWithdrawalQueueManager),
-                ynETH: IynETH(address(yneth))
-            });
-            ynETHRedemptionAssetsVaultInstance.initialize(_init);
-        }
+        // {
+        //     ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
+        //         admin: actors.admin.PROXY_ADMIN_OWNER,
+        //         redeemer: address(ynETHWithdrawalQueueManager),
+        //         ynETH: IynETH(address(yneth))
+        //     });
+        //     ynETHRedemptionAssetsVaultInstance.initialize(_init);
+        // }
 
-        runUpgradeIntegrityInvariants(preUpgradeState);
+        // runUpgradeIntegrityInvariants(preUpgradeState);
 
-        // initialize WithdrawalQueueManager
-        {
-            WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
-                name: "ynETH Withdrawal Manager",
-                symbol: "ynETHWM",
-                redeemableAsset: IRedeemableAsset(address(yneth)),
-                redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
-                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                withdrawalFee: 500, // 0.05%
-                feeReceiver: actors.admin.FEE_RECEIVER
-            });
-            ynETHWithdrawalQueueManager.initialize(managerInit);
-        }
+        // // initialize WithdrawalQueueManager
+        // {
+        //     WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
+        //         name: "ynETH Withdrawal Manager",
+        //         symbol: "ynETHWM",
+        //         redeemableAsset: IRedeemableAsset(address(yneth)),
+        //         redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
+        //         admin: actors.admin.PROXY_ADMIN_OWNER,
+        //         withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+        //         redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+        //         requestFinalizer:  actors.ops.REQUEST_FINALIZER,
+        //         withdrawalFee: 500, // 0.05%
+        //         feeReceiver: actors.admin.FEE_RECEIVER
+        //     });
+        //     ynETHWithdrawalQueueManager.initialize(managerInit);
+        // }
 
         runUpgradeIntegrityInvariants(preUpgradeState);
 
