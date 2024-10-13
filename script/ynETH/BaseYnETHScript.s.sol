@@ -118,16 +118,14 @@ abstract contract BaseYnETHScript is BaseScript {
         deployment.ynViewer = ynViewer(payable(jsonContent.readAddress(".proxy-ynViewer")));
         proxies.ynViewer = loadProxyAddresses(jsonContent, "ynViewer");
 
-        if (block.chainid == 17000) { // Holesky chain ID
-            deployment.withdrawalQueueManager = WithdrawalQueueManager(payable(jsonContent.readAddress(".proxy-withdrawalQueueManager")));
-            proxies.withdrawalQueueManager = loadProxyAddresses(jsonContent, "withdrawalQueueManager");
+        deployment.withdrawalQueueManager = WithdrawalQueueManager(payable(jsonContent.readAddress(".proxy-withdrawalQueueManager")));
+        proxies.withdrawalQueueManager = loadProxyAddresses(jsonContent, "withdrawalQueueManager");
 
-            deployment.ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(jsonContent.readAddress(".proxy-ynETHRedemptionAssetsVault")));
-            proxies.ynETHRedemptionAssetsVault = loadProxyAddresses(jsonContent, "ynETHRedemptionAssetsVault");
+        deployment.ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(jsonContent.readAddress(".proxy-ynETHRedemptionAssetsVault")));
+        proxies.ynETHRedemptionAssetsVault = loadProxyAddresses(jsonContent, "ynETHRedemptionAssetsVault");
 
-            deployment.withdrawalsProcessor = WithdrawalsProcessor(payable(jsonContent.readAddress(".proxy-withdrawalsProcessor")));
-            proxies.withdrawalsProcessor = loadProxyAddresses(jsonContent, "withdrawalsProcessor");
-        }
+        deployment.withdrawalsProcessor = WithdrawalsProcessor(payable(jsonContent.readAddress(".proxy-withdrawalsProcessor")));
+        proxies.withdrawalsProcessor = loadProxyAddresses(jsonContent, "withdrawalsProcessor");
 
         deployment.proxies = proxies;
 

@@ -103,27 +103,23 @@ contract Verify is BaseYnETHScript {
             deployment.proxies.ynViewer
         );
 
-        // TODO: remove this for mainnet
-        if (ONLY_HOLESKY_WITHDRAWALS) { // Holesky chain ID
+        verifyProxyContract(
+            address(deployment.withdrawalQueueManager),
+            "withdrawalQueueManager",
+            deployment.proxies.withdrawalQueueManager
+        );
 
-            verifyProxyContract(
-                address(deployment.withdrawalQueueManager),
-                "withdrawalQueueManager",
-                deployment.proxies.withdrawalQueueManager
-            );
+        verifyProxyContract(
+            address(deployment.ynETHRedemptionAssetsVaultInstance),
+            "ynETHRedemptionAssetsVault",
+            deployment.proxies.ynETHRedemptionAssetsVault
+        );
 
-            verifyProxyContract(
-                address(deployment.ynETHRedemptionAssetsVaultInstance),
-                "ynETHRedemptionAssetsVault",
-                deployment.proxies.ynETHRedemptionAssetsVault
-            );
-
-            verifyProxyContract(
-                address(deployment.withdrawalsProcessor),
-                "withdrawalsProcessor",
-                deployment.proxies.withdrawalsProcessor
-            );
-        }
+        verifyProxyContract(
+            address(deployment.withdrawalsProcessor),
+            "withdrawalsProcessor",
+            deployment.proxies.withdrawalsProcessor
+        );
     }
 
     function verifyRoles() internal view {
