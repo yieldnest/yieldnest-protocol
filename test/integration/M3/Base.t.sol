@@ -28,10 +28,7 @@ import {StakingNode} from "../../../src/StakingNode.sol";
 import {WithdrawalQueueManager} from "../../../src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "../../../src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "../../../src/interfaces/IStakingNodesManager.sol";
-import {PlaceholderStakingNodesManager} from "./PlaceholderStakingNodesManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
-
-
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
