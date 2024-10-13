@@ -17,11 +17,7 @@ contract Verify is BaseYnETHScript {
     ActorAddresses.Actors actors;
     ContractAddresses.ChainAddresses chainAddresses;
 
-    bool ONLY_HOLESKY_WITHDRAWALS;
-
     function run() external {
-
-        ONLY_HOLESKY_WITHDRAWALS = block.chainid == 17000;
 
         ContractAddresses contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
@@ -330,17 +326,15 @@ contract Verify is BaseYnETHScript {
         console.log("\u2705 ynETH: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
  
-        if (ONLY_HOLESKY_WITHDRAWALS) {
-            // BURNER_ROLE;
-            require(
-                deployment.ynETH.hasRole(
-                    deployment.ynETH.BURNER_ROLE(), 
-                    address(deployment.withdrawalQueueManager)
-                ), 
-                "ynETH: BURNER_ROLE INVALID"
-            );
-            console.log("\u2705 ynETH: BURNER_ROLE - ", vm.toString(address(deployment.withdrawalQueueManager)));
-        }
+        // BURNER_ROLE;
+        require(
+            deployment.ynETH.hasRole(
+                deployment.ynETH.BURNER_ROLE(), 
+                address(deployment.withdrawalQueueManager)
+            ), 
+            "ynETH: BURNER_ROLE INVALID"
+        );
+        console.log("\u2705 ynETH: BURNER_ROLE - ", vm.toString(address(deployment.withdrawalQueueManager)));
 
         //--------------------------------------------------------------------------------------
         //------------------  withdrawalQueueManager roles  ------------------------------------
