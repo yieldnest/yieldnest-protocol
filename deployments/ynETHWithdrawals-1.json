@@ -1,0 +1,15 @@
+{
+    "DEPLOYER": "0xa1E340bd1e3ea09B3981164BBB4AfeDdF0e7bA0D",
+    "implementation-stakingNodesManager": "0x33Ffb713C73Cdf668b11296Bb9B1C9a0C3100626",
+    "implementation-withdrawalQueueManager": "0x6ac38ab99053a2585B6184D0AD72018Ae22185CD",
+    "implementation-withdrawalsProcessor": "0x97e619c4573ce55A3Aa8e105E339dce00e3bF3B2",
+    "implementation-ynETH": "0x87E2A51d3B88FC2f5917a7aB793ea595b243710a",
+    "implementation-ynETHRedemptionAssetsVault": "0xe1a2A7FAc6729360e6794f2f137621E2Cdb0Fed5",
+    "proxy-withdrawalQueueManager": "0x0BC9BC81aD379810B36AD5cC95387112990AA67b",
+    "proxy-withdrawalsProcessor": "0x6d052CdEd3F64aea51f6051F33b68b42016C5FbA",
+    "proxy-ynETHRedemptionAssetsVault": "0x5D6e53c42E3B37f82F693937BC508940769c5caf",
+    "proxyAdmin-withdrawalQueueManager": "0xd3f08F92D6752B01FC5b706AdbE254B222A1BdaA",
+    "proxyAdmin-withdrawalsProcessor": "0xb5234121Be2144975a123C4457606e6F4e5E2a6b",
+    "proxyAdmin-ynETHRedemptionAssetsVault": "0x364b8154Ea1673E360446c3D17480d32C3E71B2c",
+    "stakingNodeImplementation": "0xA8bD8f089F5Bd0BeE61e23B3A0a4aA1332Fe929d"
+  }
