@@ -78,7 +78,17 @@ contract Base is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
-        upgradeYnToM3();
+        
+        // Roles are granted here just for testing purposes.
+        // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
+        // them separately as well if needed.
+        // Grant roles on StakingNodesManager for mainnet only
+        if (block.chainid == 1) { // Mainnet chain ID
+            vm.startPrank(actors.admin.ADMIN);
+            stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
+            stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
+            vm.stopPrank();
+        }
     }
 
     function assignContracts() internal {
@@ -114,25 +124,6 @@ contract Base is Test, Utils {
         {
             vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
-        }
-    }
-
-    function upgradeYnToM3() internal {
-        if (block.chainid == 17000) {
-            // nothing to do
-            return;
-        }
-        {
-            // Roles are granted here just for testing purposes.
-            // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
-            // them separately as well if needed.
-            // Grant roles on StakingNodesManager for mainnet only
-            if (block.chainid == 1) { // Mainnet chain ID
-                vm.startPrank(actors.admin.ADMIN);
-                stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
-                stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
-                vm.stopPrank();
-            }
         }
     }
 
@@ -310,41 +301,6 @@ contract Base is Test, Utils {
             address eigenPodAddress = address(stakingNode.eigenPod());
             uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
             console.log("Node", i, "Shares:", podShares);
-        }
-    }
-
-    function getStakingNodesManagerImplementation(UpgradeState memory preUpgradeState) internal returns (address stakinNodesManagerImplementation) {
-        if (block.chainid == 1) { // only on MAINNET
-
-            /*
-                ██████╗  █████╗ ███╗   ██╗ ██████╗ ███████╗██████╗ 
-                ██╔══██╗██╔══██╗████╗  ██║██╔════╝ ██╔════╝██╔══██╗
-                ██║  ██║███████║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
-                ██║  ██║██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
-                ██████╔╝██║  ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
-                ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-            */
-
-            // WARNING: This code is for testing purposes only and MUST be removed before deploying to mainnet.
-            // It uses a placeholder implementation that doesn't reflect the actual mainnet behavior.
-            // Keeping this in production could lead to severe security vulnerabilities and incorrect contract behavior.
-            // This logic auto-adjust for unverifiedStakedETH based on the the difference between podOwnerShares and pre-deposit balance.
-
-            // Compute deltas array
-            uint256[] memory deltas = new uint256[](stakingNodesManager.nodesLength());
-            for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-                IStakingNode stakingNode = stakingNodesManager.nodes(i);
-                uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
-                deltas[i] = preUpgradeState.stakingNodeBalances[i] - podShares;
-                // Revert if delta is bigger than 32 ether
-                require(deltas[i] <= 32 ether, "Delta exceeds 32 ether limit");
-            }
-
-            // Deploy PlaceholderStakingNodesManager
-            PlaceholderStakingNodesManager placeholderStakingNodesManager = new PlaceholderStakingNodesManager(deltas);
-            stakinNodesManagerImplementation = address(placeholderStakingNodesManager);
-        } else {
-            stakinNodesManagerImplementation = address(new StakingNodesManager());
         }
     }
 }
