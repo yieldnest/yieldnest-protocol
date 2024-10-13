@@ -59,6 +59,8 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
     ActorAddresses.Actors actors;
     address deployer;
 
+
+
     function run() external {
 
         // ynETH.sol ROLES
@@ -84,15 +86,19 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
         
-        // Deploy implementation contracts
+        // // Deploy implementation contracts
         stakingNodesManagerImplementation = new StakingNodesManager();
         console.log("StakingNodesManager implementation deployed at:", address(stakingNodesManagerImplementation));
 
-        StakingNode stakingNodeImplementation = new StakingNode();
+
+        stakingNodeImplementation = new StakingNode();
         console.log("StakingNode implementation deployed at:", address(stakingNodeImplementation));
+
 
         ynETHImplementation = new ynETH();
         console.log("ynETH implementation deployed at:", address(ynETHImplementation));
+
+
 
         // deploy ynETHRedemptionAssetsVault
         {
@@ -105,6 +111,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             );
             ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
         }
+
 
         // deploy WithdrawalQueueManager
         {
@@ -119,6 +126,7 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
         }
 
+
         // deploy WithdrawalsProcessor
         {
             WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
@@ -132,18 +140,42 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
         }
 
-        // initialize ynETHRedemptionAssetsVault
+        // ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(0x5D6e53c42E3B37f82F693937BC508940769c5caf));
+
+        // ynETHWithdrawalQueueManager = WithdrawalQueueManager(0x0BC9BC81aD379810B36AD5cC95387112990AA67b);
+        // withdrawalsProcessor = WithdrawalsProcessor(0x6d052CdEd3F64aea51f6051F33b68b42016C5FbA);
+
+        //initialize ynETHRedemptionAssetsVault
         {
+            console.log("Initializing ynETHRedemptionAssetsVault...");
+            console.log("ynETHRedemptionAssetsVault initialization parameters:");
+            console.log("  admin:", actors.admin.ADMIN);
+            console.log("  redeemer:", address(ynETHWithdrawalQueueManager));
+            console.log("  ynETH:", address(yneth));
             ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
-                admin: actors.admin.PROXY_ADMIN_OWNER,
+                admin: actors.admin.ADMIN,
                 redeemer: address(ynETHWithdrawalQueueManager),
                 ynETH: IynETH(address(yneth))
             });
             ynETHRedemptionAssetsVaultInstance.initialize(_init);
+            console.log("ynETHRedemptionAssetsVault initialized successfully");
         }
 
-        // initialize WithdrawalQueueManager
+        //initialize WithdrawalQueueManager
         {
+
+            console.log("WithdrawalQueueManager initialization parameters:");
+            console.log("  name:", "ynETH Withdrawal Manager");
+            console.log("  symbol:", "ynETHWM");
+            console.log("  redeemableAsset:", address(yneth));
+            console.log("  redemptionAssetsVault:", address(ynETHRedemptionAssetsVaultInstance));
+            console.log("  admin:", actors.admin.ADMIN);
+            console.log("  withdrawalQueueAdmin:", actors.admin.ADMIN);
+            console.log("  redemptionAssetWithdrawer:", actors.ops.REDEMPTION_ASSET_WITHDRAWER);
+            console.log("  requestFinalizer:", actors.ops.REQUEST_FINALIZER);
+            console.log("  withdrawalFee:", 1000);
+            console.log("  feeReceiver:", actors.admin.FEE_RECEIVER);
+
             WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
                 name: "ynETH Withdrawal Manager",
                 symbol: "ynETHWM",
@@ -159,7 +191,12 @@ contract DeployYnETHWithdrawals is BaseYnETHScript {
             ynETHWithdrawalQueueManager.initialize(managerInit);
         }
 
+
         {
+            console.log("Parameters for withdrawalsProcessor.initialize:");
+            console.log("stakingNodesManager:", address(stakingNodesManager));
+            console.log("admin:", actors.admin.ADMIN);
+            console.log("withdrawalManager:", actors.ops.WITHDRAWAL_MANAGER);
             // initialize WithdrawalsProcessor
             withdrawalsProcessor.initialize(
                 IStakingNodesManager(address(stakingNodesManager)),
