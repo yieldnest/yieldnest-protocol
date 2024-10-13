@@ -28,6 +28,8 @@ import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
+
 import { ynETHRedemptionAssetsVault } from "src/ynETHRedemptionAssetsVault.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
@@ -57,6 +59,7 @@ contract ScenarioBaseTest is Test, Utils {
     // Withdrawals
     WithdrawalQueueManager public ynETHWithdrawalQueueManager;
     ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
+    WithdrawalsProcessor public withdrawalsProcessor;
 
     // Eigen
     IEigenPodManager public eigenPodManager;
@@ -99,5 +102,6 @@ contract ScenarioBaseTest is Test, Utils {
         consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
         ynETHWithdrawalQueueManager = WithdrawalQueueManager(payable(chainAddresses.yn.WITHDRAWAL_QUEUE_MANAGER_ADDRESS));
         ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(chainAddresses.yn.YNETH_REDEMPTION_ASSETS_VAULT_ADDRESS));
+        withdrawalsProcessor = WithdrawalsProcessor(payable(chainAddresses.yn.WITHDRAWALS_PROCESSOR_ADDRESS));
     }
 }
