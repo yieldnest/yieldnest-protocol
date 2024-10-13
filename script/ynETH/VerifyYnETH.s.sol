@@ -675,7 +675,9 @@ contract Verify is BaseYnETHScript {
         uint256 stakingNodesBalance = 0;
         IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();
         for (uint256 i = 0; i < stakingNodes.length; i++) {
-            stakingNodesBalance += stakingNodes[i].getETHBalance();
+            stakingNodesBalance += stakingNodes[i].getETHBalance();     
+            console.log(string.concat("Balance for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].getETHBalance()), " wei (", vm.toString(stakingNodes[i].getETHBalance() / 1e18), " ETH)"));
+
         }
 
         uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;
