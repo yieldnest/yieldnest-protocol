@@ -69,7 +69,6 @@ contract ScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
-        applyNextReleaseUpgrades();
     }
     function assignContracts() internal {
         uint256 chainId = block.chainid;
@@ -98,76 +97,7 @@ contract ScenarioBaseTest is Test, Utils {
         rewardsDistributor = RewardsDistributor(payable(chainAddresses.yn.REWARDS_DISTRIBUTOR_ADDRESS));
         executionLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.EXECUTION_LAYER_RECEIVER_ADDRESS));
         consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
-    }
-
-    function applyNextReleaseUpgrades() internal {
-
-        vm.prank(actors.admin.UNPAUSE_ADMIN);
-        yneth.unpauseTransfers();
-
-        address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        
-        vm.prank(actors.wallets.YNSecurityCouncil);
-        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
-
-        address newynETHImpl = address(new ynETH());
-        vm.prank(actors.wallets.YNSecurityCouncil);
-        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(yneth))).upgradeAndCall(ITransparentUpgradeableProxy(address(yneth)), newynETHImpl, "");
-
-        ynETHRedemptionAssetsVault ynethRedemptionAssetsVaultImplementation = new ynETHRedemptionAssetsVault();
-        TransparentUpgradeableProxy ynethRedemptionAssetsVaultProxy = new TransparentUpgradeableProxy(
-            address(ynethRedemptionAssetsVaultImplementation),
-            actors.admin.PROXY_ADMIN_OWNER,
-            ""
-        );
-        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(ynethRedemptionAssetsVaultProxy)));
-
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(new WithdrawalQueueManager()),
-            actors.admin.PROXY_ADMIN_OWNER,
-            ""
-        );
-        ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(proxy));
-
-        ynETHRedemptionAssetsVault.Init memory vaultInit = ynETHRedemptionAssetsVault.Init({
-            admin: actors.admin.PROXY_ADMIN_OWNER,
-            redeemer: address(ynETHWithdrawalQueueManager),
-            ynETH: IynETH(address(yneth))
-        });
-        ynETHRedemptionAssetsVaultInstance.initialize(vaultInit);
-
-        WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
-            name: "ynETH Withdrawal Manager",
-            symbol: "ynETHWM",
-            redeemableAsset: IRedeemableAsset(address(yneth)),
-            redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
-            admin: actors.admin.PROXY_ADMIN_OWNER,
-            withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
-            redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-            requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-            withdrawalFee: 500, // 0.05%
-            feeReceiver: actors.admin.FEE_RECEIVER
-        });
-        ynETHWithdrawalQueueManager.initialize(managerInit);
-
-        StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
-            redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-            withdrawalManager: actors.ops.WITHDRAWAL_MANAGER,
-            stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
-        });
-        
-        vm.prank(actors.admin.ADMIN);
-        stakingNodesManager.initializeV2(initParams);
-        assert(stakingNodesManager.hasRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER));
-        console.log("WITHDRAWAL_MANAGER address:", actors.ops.WITHDRAWAL_MANAGER);
-
-        stakingNodeImplementation = new StakingNode();
-        
-        vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
-
-        bytes32 burnerRole = yneth.BURNER_ROLE();
-        vm.prank(actors.admin.ADMIN);
-        yneth.grantRole(burnerRole, address(ynETHWithdrawalQueueManager));
+        ynETHWithdrawalQueueManager = WithdrawalQueueManager(payable(chainAddresses.yn.WITHDRAWAL_QUEUE_MANAGER_ADDRESS));
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(chainAddresses.yn.YNETH_REDEMPTION_ASSETS_VAULT_ADDRESS));
     }
 }
