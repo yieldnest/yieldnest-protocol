@@ -78,7 +78,17 @@ contract Base is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
-        upgradeYnToM3();
+        
+        // Roles are granted here just for testing purposes.
+        // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
+        // them separately as well if needed.
+        // Grant roles on StakingNodesManager for mainnet only
+        if (block.chainid == 1) { // Mainnet chain ID
+            vm.startPrank(actors.admin.ADMIN);
+            stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
+            stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
+            vm.stopPrank();
+        }
     }
 
     function assignContracts() internal {
@@ -115,216 +125,6 @@ contract Base is Test, Utils {
             vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
-    }
-
-    function upgradeYnToM3() internal {
-        if (block.chainid == 17000) {
-            // nothing to do
-            return;
-        }
-
-        uint256 totalAssets = yneth.totalAssets();
-        uint256 totalSupply = yneth.totalSupply();
-
-        // Capture the upgrade state before making any changes
-        UpgradeState memory preUpgradeState = captureUpgradeState();
-
-        preUpgradeState.stakingNodesManagerTotalDeposited = 0;
-        for (uint256 i = 0; i < preUpgradeState.stakingNodeBalances.length; i++) {
-            preUpgradeState.stakingNodesManagerTotalDeposited += preUpgradeState.stakingNodeBalances[i];
-        }
-
-        /*
-         ███████╗████████╗ █████╗  ██████╗ ███████╗     ██╗
-         ██╔════╝╚══██╔══╝██╔══██╗██╔════╝ ██╔════╝    ███║
-         ███████╗   ██║   ███████║██║  ███╗█████╗      ╚██║
-         ╚════██║   ██║   ██╔══██║██║   ██║██╔══╝       ██║
-         ███████║   ██║   ██║  ██║╚██████╔╝███████╗     ██║
-         ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝     ╚═╝
-         Stage 1 - ATOMIC upgrade existing contracts
-        */
-
-
-        // upgrade stakingNodesManager
-        {
-            /*
-                ██████╗  █████╗ ███╗   ██╗ ██████╗ ███████╗██████╗ 
-                ██╔══██╗██╔══██╗████╗  ██║██╔════╝ ██╔════╝██╔══██╗
-                ██║  ██║███████║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
-                ██║  ██║██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
-                ██████╔╝██║  ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
-                ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-            */
-
-            address stakinNodesManagerImplementation = getStakingNodesManagerImplementation(preUpgradeState);
-
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(stakingNodesManager)),
-                address(stakinNodesManagerImplementation),
-                ""
-            );
-            vm.stopPrank();
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // upgrade ynETH
-        {
-            vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
-            ProxyAdmin(
-                getTransparentUpgradeableProxyAdminAddress(address(yneth))
-            ).upgradeAndCall(
-                ITransparentUpgradeableProxy(address(yneth)),
-                address(new ynETH()),
-                ""
-            );
-            vm.stopPrank();
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // upgrade StakingNodeImplementation
-        {
-            stakingNodeImplementation = new StakingNode();
-            vm.prank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
-        }
-
-        {
-            runUpgradeIntegrityInvariants(preUpgradeState);
-            // Assert that the redemptionAssetsVault is initially set to the zero address in the StakingNodesManager
-            assertEq(address(stakingNodesManager.redemptionAssetsVault()), address(0), "redemptionAssetsVault should initially be set to the zero address in StakingNodesManager");
-            // Assert that previewRedeem returns a non-zero value
-            uint256 previewRedeemAmount = yneth.previewRedeem(1 ether);
-            assertGt(previewRedeemAmount, 0, "previewRedeem should return a non-zero value");
-        }
-
-        logStakingNodeBalancesAndShares(preUpgradeState);
-
-
-        //  ███████╗████████╗ █████╗  ██████╗ ███████╗    ██████╗ 
-        //  ██╔════╝╚══██╔══╝██╔══██╗██╔════╝ ██╔════╝    ╚════██╗
-        //  ███████╗   ██║   ███████║██║  ███╗█████╗       █████╔╝
-        //  ╚════██║   ██║   ██╔══██║██║   ██║██╔══╝      ██╔═══╝ 
-        //  ███████║   ██║   ██║  ██║╚██████╔╝███████╗    ███████╗
-        // STAGE 2: NEW CONTRACTS - Deploy and initialize new contracts
-
-        // deploy ynETHRedemptionAssetsVault
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new ynETHRedemptionAssetsVault()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(address(_proxy)));
-        }
-
-        // deploy WithdrawalQueueManager
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new WithdrawalQueueManager()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            ynETHWithdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
-        }
-
-        {
-            // Deploy WithdrawalsProcessor
-            // Deploy the implementation contract
-            WithdrawalsProcessor withdrawalsProcessorImplementation = new WithdrawalsProcessor();
-
-            // Prepare the initialization data
-            bytes memory initData = abi.encodeWithSelector(
-                WithdrawalsProcessor.initialize.selector,
-                IStakingNodesManager(address(stakingNodesManager)),
-                actors.admin.ADMIN,
-                actors.ops.WITHDRAWAL_MANAGER
-            );
-
-            // Deploy the proxy
-            TransparentUpgradeableProxy withdrawalsProcessorProxy = new TransparentUpgradeableProxy(
-                address(withdrawalsProcessorImplementation),
-                actors.admin.PROXY_ADMIN_OWNER,
-                initData
-            );
-
-            withdrawalsProcessor = WithdrawalsProcessor(address(withdrawalsProcessorProxy));
-        }
-
-        // initialize ynETHRedemptionAssetsVault
-        {
-            ynETHRedemptionAssetsVault.Init memory _init = ynETHRedemptionAssetsVault.Init({
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                redeemer: address(ynETHWithdrawalQueueManager),
-                ynETH: IynETH(address(yneth))
-            });
-            ynETHRedemptionAssetsVaultInstance.initialize(_init);
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // initialize WithdrawalQueueManager
-        {
-            WithdrawalQueueManager.Init memory managerInit = WithdrawalQueueManager.Init({
-                name: "ynETH Withdrawal Manager",
-                symbol: "ynETHWM",
-                redeemableAsset: IRedeemableAsset(address(yneth)),
-                redemptionAssetsVault: IRedemptionAssetsVault(address(ynETHRedemptionAssetsVaultInstance)),
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
-                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                withdrawalFee: 500, // 0.05%
-                feeReceiver: actors.admin.FEE_RECEIVER
-            });
-            ynETHWithdrawalQueueManager.initialize(managerInit);
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // End of STAGE 2 - Deploy new contracts
-
-        // ---------------------------------------------------------------
-        // STAGE 3 - Initialize StakingNodesManager with Init2 and add BURNER_ROLE for WithdrawalQueueManager
-        // ---------------------------------------------------------------
-        {
-            StakingNodesManager.Init2 memory initParams = StakingNodesManager.Init2({
-                redemptionAssetsVault: ynETHRedemptionAssetsVaultInstance,
-                withdrawalManager: address(withdrawalsProcessor),
-                stakingNodesWithdrawer: address(withdrawalsProcessor)
-            });
-            
-            vm.prank(actors.admin.ADMIN);
-            stakingNodesManager.initializeV2(initParams);
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
-
-        // grant burner role
-        {
-            vm.startPrank(actors.admin.STAKING_ADMIN);
-            yneth.grantRole(yneth.BURNER_ROLE(), address(ynETHWithdrawalQueueManager));
-            vm.stopPrank();
-        }
-
-        {
-            // Roles are granted here just for testing purposes.
-            // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
-            // them separately as well if needed.
-            // Grant roles on StakingNodesManager for mainnet only
-            if (block.chainid == 1) { // Mainnet chain ID
-                vm.startPrank(actors.admin.ADMIN);
-                stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
-                stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
-                vm.stopPrank();
-            }
-        }
-
-        runUpgradeIntegrityInvariants(preUpgradeState);
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
@@ -501,41 +301,6 @@ contract Base is Test, Utils {
             address eigenPodAddress = address(stakingNode.eigenPod());
             uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
             console.log("Node", i, "Shares:", podShares);
-        }
-    }
-
-    function getStakingNodesManagerImplementation(UpgradeState memory preUpgradeState) internal returns (address stakinNodesManagerImplementation) {
-        if (block.chainid == 1) { // only on MAINNET
-
-            /*
-                ██████╗  █████╗ ███╗   ██╗ ██████╗ ███████╗██████╗ 
-                ██╔══██╗██╔══██╗████╗  ██║██╔════╝ ██╔════╝██╔══██╗
-                ██║  ██║███████║██╔██╗ ██║██║  ███╗█████╗  ██████╔╝
-                ██║  ██║██╔══██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗
-                ██████╔╝██║  ██║██║ ╚████║╚██████╔╝███████╗██║  ██║
-                ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-            */
-
-            // WARNING: This code is for testing purposes only and MUST be removed before deploying to mainnet.
-            // It uses a placeholder implementation that doesn't reflect the actual mainnet behavior.
-            // Keeping this in production could lead to severe security vulnerabilities and incorrect contract behavior.
-            // This logic auto-adjust for unverifiedStakedETH based on the the difference between podOwnerShares and pre-deposit balance.
-
-            // Compute deltas array
-            uint256[] memory deltas = new uint256[](stakingNodesManager.nodesLength());
-            for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-                IStakingNode stakingNode = stakingNodesManager.nodes(i);
-                uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
-                deltas[i] = preUpgradeState.stakingNodeBalances[i] - podShares;
-                // Revert if delta is bigger than 32 ether
-                require(deltas[i] <= 32 ether, "Delta exceeds 32 ether limit");
-            }
-
-            // Deploy PlaceholderStakingNodesManager
-            PlaceholderStakingNodesManager placeholderStakingNodesManager = new PlaceholderStakingNodesManager(deltas);
-            stakinNodesManagerImplementation = address(placeholderStakingNodesManager);
-        } else {
-            stakinNodesManagerImplementation = address(new StakingNodesManager());
         }
     }
 }
