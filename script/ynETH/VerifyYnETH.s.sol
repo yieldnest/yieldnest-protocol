@@ -274,28 +274,26 @@ contract Verify is BaseYnETHScript {
         );
         console.log("\u2705 stakingNodesManager: UNPAUSE_ADMIN - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
 
-        // TODO: remove this for mainnet
-        if (ONLY_HOLESKY_WITHDRAWALS) { // Holesky chain ID
-            // STAKING_NODES_WITHDRAWER_ROLE
-            require(
-                deployment.stakingNodesManager.hasRole(
-                    deployment.stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), 
-                    address(deployment.withdrawalsProcessor)
-                ), 
-                "stakingNodesManager: STAKING_NODES_WITHDRAWER_ROLE INVALID"
-            );
-            console.log("\u2705 stakingNodesManager: STAKING_NODES_WITHDRAWER_ROLE - ", vm.toString(address(deployment.withdrawalsProcessor)));
 
-            // WITHDRAWAL_MANAGER_ROLE
-            require(
-                deployment.stakingNodesManager.hasRole(
-                    deployment.stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), 
-                    address(deployment.withdrawalsProcessor)
-                ), 
-                "stakingNodesManager: WITHDRAWAL_MANAGER_ROLE INVALID"
-            );
-            console.log("\u2705 stakingNodesManager: WITHDRAWAL_MANAGER_ROLE - ", vm.toString(address(deployment.withdrawalsProcessor)));
-        }
+        // STAKING_NODES_WITHDRAWER_ROLE
+        require(
+            deployment.stakingNodesManager.hasRole(
+                deployment.stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), 
+                address(deployment.withdrawalsProcessor)
+            ), 
+            "stakingNodesManager: STAKING_NODES_WITHDRAWER_ROLE INVALID"
+        );
+        console.log("\u2705 stakingNodesManager: STAKING_NODES_WITHDRAWER_ROLE - ", vm.toString(address(deployment.withdrawalsProcessor)));
+
+        // WITHDRAWAL_MANAGER_ROLE
+        require(
+            deployment.stakingNodesManager.hasRole(
+                deployment.stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), 
+                address(deployment.withdrawalsProcessor)
+            ), 
+            "stakingNodesManager: WITHDRAWAL_MANAGER_ROLE INVALID"
+        );
+        console.log("\u2705 stakingNodesManager: WITHDRAWAL_MANAGER_ROLE - ", vm.toString(address(deployment.withdrawalsProcessor)));
 
         //--------------------------------------------------------------------------------------
         //--------------------------------  ynETH roles  ---------------------------------------
@@ -616,13 +614,11 @@ contract Verify is BaseYnETHScript {
             "StakingNodesManager: upgradeableBeacon implementation mismatch"
         );
 
-        if (ONLY_HOLESKY_WITHDRAWALS) {
-            require(
-                address(deployment.stakingNodesManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
-                "StakingNodesManager: redemptionAssetsVault dependency mismatch"
-            );
-            console.log("\u2705 StakingNodesManager: redemptionAssetsVault dependency verified");
-        }
+        require(
+            address(deployment.stakingNodesManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
+            "StakingNodesManager: redemptionAssetsVault dependency mismatch"
+        );
+        console.log("\u2705 StakingNodesManager: redemptionAssetsVault dependency verified");
         
         console.log("\u2705 StakingNodesManager dependencies verified");
     }
@@ -668,7 +664,7 @@ contract Verify is BaseYnETHScript {
 
         // Check that ETH balance of ynETH + redemption assets vault + staking nodes equals totalAssets
         uint256 ynETHBalance = address(deployment.ynETH).balance;
-        uint256 redemptionVaultBalance = ONLY_HOLESKY_WITHDRAWALS ? address(deployment.ynETHRedemptionAssetsVaultInstance).balance : 0;
+        uint256 redemptionVaultBalance = address(deployment.ynETHRedemptionAssetsVaultInstance).balance;
         
         uint256 stakingNodesBalance = 0;
         IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();
