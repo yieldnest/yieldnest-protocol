@@ -158,13 +158,30 @@ contract Base is Test, Utils {
 
             {
                 // VERY IMPORTANT: the deltas must be all ZERO (0)
-                uint256[] memory deltas = new uint256[](stakingNodesManager.nodesLength());
                 for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
                     IStakingNode stakingNode = stakingNodesManager.nodes(i);
                     uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
-                    deltas[i] = preUpgradeState.stakingNodeBalances[i] - podShares;
-                    // Revert if delta is bigger than 32 ether
-                    require(deltas[i] == 0 ether, string.concat("Delta MUST be 0 for node ", vm.toString(i), ". Actual delta: ", vm.toString(deltas[i])));
+                    require(
+                        stakingNode.getETHBalance() == podShares,
+                        string.concat(
+                            "Delta MUST be 0 for node ",
+                            vm.toString(i),
+                            ".\nActual values:\nETH balance = ",
+                            vm.toString(stakingNode.getETHBalance()),
+                            "\npodShares = ",
+                            vm.toString(podShares)
+                        )
+                    );
+                    console.log(
+                        string.concat(
+                            "Node ", 
+                            vm.toString(i), 
+                            " ETH balance: ", 
+                            vm.toString(stakingNode.getETHBalance()),
+                            ", podOwnerShares: ",
+                            vm.toString(podShares)
+                        )
+                    );
                 }
             }
 
