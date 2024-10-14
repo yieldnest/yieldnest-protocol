@@ -122,11 +122,11 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
     }
 
-    function startAndVerifyCheckpoint(uint256 nodeId, TestState memory state) private {
+    function startAndVerifyCheckpoint(uint256 _nodeId, TestState memory state) private {
         // start checkpoint
         {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            stakingNodesManager.nodes(_nodeId).startCheckpoint(true);
             vm.stopPrank();
         }
 
@@ -134,7 +134,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
         // verify checkpoints
         {
-            IStakingNode _node = stakingNodesManager.nodes(nodeId);
+            IStakingNode _node = stakingNodesManager.nodes(_nodeId);
             CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(validatorIndices, _node.eigenPod().currentCheckpointTimestamp());
             IPod(address(_node.eigenPod())).verifyCheckpointProofs({
                 balanceContainerProof: _cpProofs.balanceContainerProof,

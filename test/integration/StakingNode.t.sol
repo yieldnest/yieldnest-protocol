@@ -15,9 +15,6 @@ import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import { EigenPod } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
-import {MockEigenPod} from "../mocks/MockEigenPod.sol";
-import { MockEigenPodManager } from "../mocks/MockEigenPodManager.sol";
-import { MockStakingNode } from "../mocks/MockStakingNode.sol";
 import { EigenPodManager } from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
 import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
@@ -66,9 +63,6 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         vm.deal(address(this), rewardsSweeped);
         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
         require(success, "Failed to send rewards to EigenPod");
-
-        // Get final pod owner shares
-        int256 finalPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
 
         // Assert that pod owner shares remain the same
         assertEq(initialPodOwnerShares, 0, "Pod owner shares should not change");
@@ -244,8 +238,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     address user = vm.addr(156737);
 
-
-    uint256 nodeId;
     uint40[] validatorIndices;
     uint256 AMOUNT = 32 ether;
 

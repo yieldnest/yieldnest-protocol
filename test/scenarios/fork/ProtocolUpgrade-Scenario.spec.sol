@@ -19,6 +19,10 @@ import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beac
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+
 contract ProtocolUpgradeScenario is ScenarioBaseTest {
 
     address YNSecurityCouncil;
@@ -100,6 +104,51 @@ contract ProtocolUpgradeScenario is ScenarioBaseTest {
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(consensusLayerReceiver))).upgradeAndCall(ITransparentUpgradeableProxy(address(consensusLayerReceiver)), newConsensusLayerReceiverImpl, "");
         
         runUpgradeInvariants(address(consensusLayerReceiver), previousConsensusLayerReceiverImpl, newConsensusLayerReceiverImpl);
+        runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
+    }
+
+    function test_Upgrade_WithdrawalQueueManager_Scenario() public {
+        address previousWithdrawalQueueManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(ynETHWithdrawalQueueManager));
+        address newWithdrawalQueueManagerImpl = address(new WithdrawalQueueManager());
+
+        uint256 previousTotalDeposited = yneth.totalDepositedInPool();
+        uint256 previousTotalAssets = yneth.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneth)).totalSupply();
+        
+        vm.prank(YNSecurityCouncil);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynETHWithdrawalQueueManager))).upgradeAndCall(ITransparentUpgradeableProxy(address(ynETHWithdrawalQueueManager)), newWithdrawalQueueManagerImpl, "");
+        
+        runUpgradeInvariants(address(ynETHWithdrawalQueueManager), previousWithdrawalQueueManagerImpl, newWithdrawalQueueManagerImpl);
+        runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
+    }
+
+    function test_Upgrade_WithdrawalsProcessor_Scenario() public {
+        address previousWithdrawalsProcessorImpl = getTransparentUpgradeableProxyImplementationAddress(address(withdrawalsProcessor));
+        address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
+
+        uint256 previousTotalDeposited = yneth.totalDepositedInPool();
+        uint256 previousTotalAssets = yneth.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneth)).totalSupply();
+        
+        vm.prank(YNSecurityCouncil);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(ITransparentUpgradeableProxy(address(withdrawalsProcessor)), newWithdrawalsProcessorImpl, "");
+        
+        runUpgradeInvariants(address(withdrawalsProcessor), previousWithdrawalsProcessorImpl, newWithdrawalsProcessorImpl);
+        runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
+    }
+
+    function test_Upgrade_YnETHRedemptionAssetsVault_Scenario() public {
+        address previousYnETHRedemptionAssetsVaultImpl = getTransparentUpgradeableProxyImplementationAddress(address(ynETHRedemptionAssetsVaultInstance));
+        address newYnETHRedemptionAssetsVaultImpl = address(new ynETHRedemptionAssetsVault());
+
+        uint256 previousTotalDeposited = yneth.totalDepositedInPool();
+        uint256 previousTotalAssets = yneth.totalAssets();
+        uint256 previousTotalSupply = IERC20(address(yneth)).totalSupply();
+        
+        vm.prank(YNSecurityCouncil);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(ynETHRedemptionAssetsVaultInstance))).upgradeAndCall(ITransparentUpgradeableProxy(address(ynETHRedemptionAssetsVaultInstance)), newYnETHRedemptionAssetsVaultImpl, "");
+        
+        runUpgradeInvariants(address(ynETHRedemptionAssetsVaultInstance), previousYnETHRedemptionAssetsVaultImpl, newYnETHRedemptionAssetsVaultImpl);
         runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
     }
 
