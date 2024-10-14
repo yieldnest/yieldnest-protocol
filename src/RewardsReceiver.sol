@@ -12,9 +12,11 @@ interface IRewardsReceiverEvents {
     event EthWithdrawn(address indexed to, uint256 amount);
 }
 
-/// @title ReturnsReceiver
-/// @notice Receives protocol level returns and manages who can withdraw the returns. Deployed as the
-/// consensus layer withdrawal wallet and execution layer rewards wallet in the protocol.
+/**
+ * @title ReturnsReceiver
+ * @notice Receives protocol level returns and manages who can withdraw the returns. Deployed as the
+ * consensus layer withdrawal wallet and execution layer rewards wallet in the protocol.
+ */
 contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsReceiverEvents {
 
     //--------------------------------------------------------------------------------------
@@ -29,7 +31,9 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsRec
     //----------------------------------  ROLES  -------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice The withdrawer role can withdraw ETH and ERC20 assets from this contract.
+    /**
+     * @notice The withdrawer role can withdraw ETH and ERC20 assets from this contract.
+     */
     bytes32 public constant WITHDRAWER_ROLE = keccak256("WITHDRAWER_ROLE");
 
     //--------------------------------------------------------------------------------------
@@ -40,13 +44,17 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsRec
         _disableInitializers();
     }
 
-    /// @notice Configuration for contract initialization.
+    /**
+     * @notice Configuration for contract initialization.
+     */
     struct Init {
         address admin;
         address withdrawer;
     }
 
-    /// @notice Inititalizes the contract.
+    /**
+     * @notice Initializes the contract.
+     */
     function initialize(Init memory init)
         external
         notZeroAddress(init.admin)
@@ -64,8 +72,10 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsRec
     //----------------------------------  TRANSFERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Transfers the given amount of ETH to an address.
-    /// @dev Only called by the withdrawer.
+    /**
+     * @notice Transfers the given amount of ETH to an address.
+     * @dev Only called by the withdrawer.
+     */
     function transferETH(address payable to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
         if (address(this).balance < amount) {
             revert InsufficientBalance();
@@ -78,8 +88,10 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsRec
         emit EthWithdrawn(to, amount);
     }
 
-    /// @notice Transfers the given amount of an ERC20 asset to an address.
-    /// @dev Only called by the withdrawer.
+    /**
+     * @notice Transfers the given amount of an ERC20 asset to an address.
+     * @dev Only called by the withdrawer.
+     */
     function transferERC20(IERC20 asset, address to, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
         SafeERC20.safeTransfer(asset, to, amount);
         emit AssetWithdrawn(address(asset), to, amount);
@@ -89,8 +101,10 @@ contract RewardsReceiver is Initializable, AccessControlUpgradeable, IRewardsRec
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /// @notice Ensure that the given address is not the zero address.
-    /// @param _address The address to check.
+    /**
+     * @notice Ensure that the given address is not the zero address.
+     * @param _address The address to check.
+     */
     modifier notZeroAddress(address _address) {
         if (_address == address(0)) {
             revert ZeroAddress();

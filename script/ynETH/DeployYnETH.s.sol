@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+// import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
@@ -20,7 +20,7 @@ import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {ynETH} from "src/ynETH.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
-import {BaseYnETHScript} from "script/BaseYnETHScript.s.sol";
+import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
 import {ActorAddresses} from "script/Actors.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
@@ -42,7 +42,7 @@ contract DeployYieldNest is BaseYnETHScript {
 
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
     IDepositContract public depositContract;
     IWETH public weth;
@@ -72,7 +72,7 @@ contract DeployYieldNest is BaseYnETHScript {
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
         depositContract = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
         weth = IWETH(chainAddresses.ethereum.WETH_ADDRESS);
@@ -131,7 +131,7 @@ contract DeployYieldNest is BaseYnETHScript {
             depositContract: depositContract,
             eigenPodManager: eigenPodManager,
             delegationManager: delegationManager,
-            delayedWithdrawalRouter: delayedWithdrawalRouter,
+            // delayedWithdrawalRouter: delayedWithdrawalRouter,
             strategyManager: strategyManager
         });
         stakingNodesManager.initialize(stakingNodesManagerInit);
@@ -162,14 +162,13 @@ contract DeployYieldNest is BaseYnETHScript {
 
         vm.stopBroadcast();
 
-        Deployment memory deployment = Deployment({
-            ynETH: yneth,
-            stakingNodesManager: stakingNodesManager,
-            executionLayerReceiver: executionLayerReceiver,
-            consensusLayerReceiver: consensusLayerReceiver, // Adding consensusLayerReceiver to the deployment
-            rewardsDistributor: rewardsDistributor,
-            stakingNodeImplementation: stakingNodeImplementation
-        });
+        Deployment memory deployment;
+        deployment.ynETH = yneth;
+        deployment.stakingNodesManager = stakingNodesManager;
+        deployment.executionLayerReceiver = executionLayerReceiver;
+        deployment.consensusLayerReceiver = consensusLayerReceiver; // Adding consensusLayerReceiver to the deployment
+        deployment.rewardsDistributor = rewardsDistributor;
+        deployment.stakingNodeImplementation = stakingNodeImplementation;
         
         saveDeployment(deployment);
 

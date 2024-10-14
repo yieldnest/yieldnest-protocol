@@ -14,6 +14,10 @@ import {ynETH} from "src/ynETH.sol";
 import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
+import {StakingNodeTestBase} from "./StakingNodeTestBase.sol";
+
+import "forge-std/console.sol";
+
 
 
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
@@ -129,6 +133,9 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
         
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager)))
             .upgradeAndCall(ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, "");
+
+        // uint64 initializedVersion = stakingNodeInstance.getInitializedVersion();
+        // console.log("Initialized version initializedVersion", initializedVersion);
 
         TestStakingNodeV2 testStakingNodeV2 = new TestStakingNodeV2();
         vm.prank(actors.admin.STAKING_ADMIN);
@@ -531,7 +538,86 @@ contract StakingNodesManagerValidators is IntegrationBaseTest {
     }
 }
 
-contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
+contract StakingNodeManagerWithdrawals is StakingNodeTestBase {
+
+    uint256 constant STAKING_NODE_COUNT = 1;
+    uint256 constant VALIDATORS_PER_NODE = 2;
+
+    struct NodeData {
+        uint40[] validatorIndices;
+    }
+    
+    mapping(uint256 => NodeData) internal nodeData;
+
+    function setUp() public override {
+        super.setUp();
+
+        // Create STAKING_NODE_COUNT StakingNodes
+        for (uint i = 0; i < STAKING_NODE_COUNT; i++) {
+            vm.prank(actors.ops.STAKING_NODE_CREATOR);
+            stakingNodesManager.createStakingNode();
+        }
+
+        // Deposit 1000 ETH to ynETH
+        address depositor = vm.addr(100);
+        vm.deal(depositor, 1000 ether);
+        vm.prank(depositor);
+        yneth.depositETH{value: 1000 ether}(depositor);
+
+
+        // Create an array of nodeIds
+        uint256[] memory nodeIds = new uint256[](STAKING_NODE_COUNT);
+        for (uint nodeId = 0; nodeId < STAKING_NODE_COUNT; nodeId++) {
+            nodeIds[nodeId] = nodeId;
+        }
+
+
+        uint40[] memory allValidatorIndices = createValidators(nodeIds, VALIDATORS_PER_NODE);
+        uint256[] memory assignedNodeIds = new uint256[](STAKING_NODE_COUNT * VALIDATORS_PER_NODE);
+        
+        // Register validators for each staking node
+        for (uint nodeId = 0; nodeId < STAKING_NODE_COUNT; nodeId++) {
+            nodeData[nodeId].validatorIndices = new uint40[](VALIDATORS_PER_NODE);
+            for (uint i = 0; i < VALIDATORS_PER_NODE; i++) {
+                nodeData[nodeId].validatorIndices[i] = allValidatorIndices[nodeId * VALIDATORS_PER_NODE + i];
+
+                assignedNodeIds[nodeId * VALIDATORS_PER_NODE + i] = nodeId;
+            }
+        }
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(assignedNodeIds);
+
+        // Verify that STAKING_NODE_COUNT * VALIDATORS_PER_NODE validators were registered in total
+        assertEq(stakingNodesManager.getAllValidators().length, STAKING_NODE_COUNT * VALIDATORS_PER_NODE, "Incorrect number of registered validators");
+    }
+
+    function exitValidatorsAndAccumulateRewards(
+        uint256 nodeId,
+        uint256 exitCount,
+        uint256 epochsToAdvance
+    ) internal returns (uint256 accumulatedRewards, uint256[] memory exitedValidatorIndices) {
+
+        // Advance epochs and accumulate rewards
+        for (uint256 i = 0; i < epochsToAdvance; i++) {
+            beaconChain.advanceEpoch();
+        }
+        accumulatedRewards = epochsToAdvance * VALIDATORS_PER_NODE * 1e9; // 1 GWEI per Epoch per Validator;
+
+        // Exit validators
+        exitedValidatorIndices = new uint256[](exitCount);
+        for (uint256 i = 0; i < exitCount; i++) {
+            exitedValidatorIndices[i] = nodeData[nodeId].validatorIndices[i];
+        }
+
+        for (uint256 i = 0; i < exitedValidatorIndices.length; i++) {
+            beaconChain.exitValidator(uint40(exitedValidatorIndices[i]));
+        }
+        beaconChain.advanceEpoch_NoRewards();
+
+        startAndVerifyCheckpoint(nodeId, nodeData[nodeId].validatorIndices);
+            
+        beaconChain.advanceEpoch_NoRewards();
+    }
 
     function testProcessWithdrawnETH() public {
         address addr1 = vm.addr(100);
@@ -545,15 +631,55 @@ contract StakingNodeManagerWithdrawals is IntegrationBaseTest {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         stakingNodesManager.processRewards(0, RewardsType.ConsensusLayer);
     }
+
+    // TODO: reenable
+    function skiptestProcessPrincipalWithdrawalsForThreeNodes() public {
+
+        uint256 nodeId = 0;
+        uint256 exitedValidatorsCount = 2;
+        (uint256 rewardsAmount, ) = exitValidatorsAndAccumulateRewards(nodeId, exitedValidatorsCount, 5);
+
+        // Prepare withdrawal actions
+        StakingNodesManager.WithdrawalAction[] memory actions = new StakingNodesManager.WithdrawalAction[](1);
+
+        uint256 amountToReinvest = 24 ether;
+        uint256 amountToQueue = exitedValidatorsCount * 32 ether - amountToReinvest;
+        // nodeId, amountToReinvest, amountToQueue, rewardsAmount
+        actions[0] = IStakingNodesManager.WithdrawalAction(nodeId, amountToReinvest, amountToQueue, rewardsAmount );
+
+        // Record balances before processing withdrawals
+        uint256 ynETHBalanceBefore = address(yneth).balance;
+        uint256 ynETHRedemptionAssetsVaultBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
+
+        // Process principal withdrawals
+        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        stakingNodesManager.processPrincipalWithdrawals(actions);
+
+        // Verify balances after processing withdrawals
+        uint256 ynETHBalanceAfter = address(yneth).balance;
+        uint256 ynETHRedemptionAssetsVaultBalanceAfter = address(ynETHRedemptionAssetsVaultInstance).balance;
+
+        // Calculate net rewards after RewardsDistributor fee
+        uint256 rewardsDistributorFee = (rewardsAmount * rewardsDistributor.feesBasisPoints()) / 10000;
+        uint256 netRewards = rewardsAmount - rewardsDistributorFee;
+
+        // Verify net rewards
+        assertEq(ynETHBalanceAfter - ynETHBalanceBefore, amountToReinvest + netRewards, "Incorrect amount reinvested in ynETH including net rewards");
+        assertEq(ynETHRedemptionAssetsVaultBalanceAfter - ynETHRedemptionAssetsVaultBalanceBefore, amountToQueue, "Incorrect amount sent to withdrawal queue");
+    }
+
+
 }
 
 contract StakingNodesManagerMisc is IntegrationBaseTest {
 
-    function testSendingETHToStakingNodesManagerShouldRevert() public {
+    function testSendingETHToStakingNodesManagerShouldNotRevert() public {
         uint256 amountToSend = 1 ether;
 
         // Send ETH to the StakingNodesManager contract
         (bool sent, ) = address(stakingNodesManager).call{value: amountToSend}("");
-        assertFalse(sent, "Sending ETH should fail");
+        assertTrue(sent, "ETH transfer failed");
+        assertEq(address(stakingNodesManager).balance, amountToSend, "Balance of StakingNodesManager incorrect after receiving ETH");
+
     }
 }

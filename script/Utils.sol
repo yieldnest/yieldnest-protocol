@@ -60,4 +60,18 @@ contract Utils {
             return difference <= 2; // Allow for a 1-2 wei difference only
         }
     }
+
+    /**
+     * @dev Creates an array of uint256 with a specified value repeated a given number of times.
+     * @param value The value to be repeated in the array.
+     * @param count The number of times to repeat the value.
+     * @return uint256[] An array containing the repeated value.
+     */
+    function repeat(uint256 value, uint256 count) public pure returns (uint256[] memory) {
+        uint256[] memory result = new uint256[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = value;
+        }
+        return result;
+    }
 }

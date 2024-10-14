@@ -24,8 +24,9 @@ contract DepositToYnLSDe is BaseYnEigenScript {
     uint256 public constant AMOUNT = 0.1 ether;
 
     function run() public {
-        address token = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
-        uint256 path = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
+        // TODO: FIXME: fix the prompts
+        address token; // = _getTokenAddress(vm.prompt("Token (`sfrxETH`, `wstETH`, `mETH` and `rETH` (holesky only))"));
+        uint256 path; // = vm.parseUint(vm.prompt("Path (`0` for deposit or `1` for send"));
         run(path, token);
     }
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
-import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
+// import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -25,6 +25,16 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
+
+import { ynETHRedemptionAssetsVault } from "src/ynETHRedemptionAssetsVault.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import "forge-std/console.sol";
+
 
 contract ScenarioBaseTest is Test, Utils {
 
@@ -46,10 +56,15 @@ contract ScenarioBaseTest is Test, Utils {
     // Assets
     ynETH public yneth;
 
+    // Withdrawals
+    WithdrawalQueueManager public ynETHWithdrawalQueueManager;
+    ynETHRedemptionAssetsVault public ynETHRedemptionAssetsVaultInstance;
+    WithdrawalsProcessor public withdrawalsProcessor;
+
     // Eigen
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IDelayedWithdrawalRouter public delayedWithdrawalRouter;
+    // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
 
     // Ethereum
@@ -73,7 +88,7 @@ contract ScenarioBaseTest is Test, Utils {
         // Assign Eigenlayer addresses
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
+        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS);
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
 
         // Assign LSD addresses
@@ -85,5 +100,8 @@ contract ScenarioBaseTest is Test, Utils {
         rewardsDistributor = RewardsDistributor(payable(chainAddresses.yn.REWARDS_DISTRIBUTOR_ADDRESS));
         executionLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.EXECUTION_LAYER_RECEIVER_ADDRESS));
         consensusLayerReceiver = RewardsReceiver(payable(chainAddresses.yn.CONSENSUS_LAYER_RECEIVER_ADDRESS));
+        ynETHWithdrawalQueueManager = WithdrawalQueueManager(payable(chainAddresses.yn.WITHDRAWAL_QUEUE_MANAGER_ADDRESS));
+        ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(chainAddresses.yn.YNETH_REDEMPTION_ASSETS_VAULT_ADDRESS));
+        withdrawalsProcessor = WithdrawalsProcessor(payable(chainAddresses.yn.WITHDRAWALS_PROCESSOR_ADDRESS));
     }
 }

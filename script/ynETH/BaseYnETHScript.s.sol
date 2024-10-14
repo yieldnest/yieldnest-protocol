@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
@@ -11,10 +14,28 @@ import {Script} from "lib/forge-std/src/Script.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
+import {ynViewer} from "src/ynViewer.sol";
+
+
 import {console} from "lib/forge-std/src/console.sol";
 
 abstract contract BaseYnETHScript is BaseScript {
     using stdJson for string;
+
+    struct DeploymentProxies {
+        ProxyAddresses ynETH;
+        ProxyAddresses stakingNodesManager;
+        ProxyAddresses executionLayerReceiver;
+        ProxyAddresses consensusLayerReceiver;
+        ProxyAddresses rewardsDistributor;
+        ProxyAddresses withdrawalQueueManager;
+        ProxyAddresses ynETHRedemptionAssetsVault;
+        ProxyAddresses withdrawalsProcessor;
+        ProxyAddresses ynViewer;
+    }
 
     struct Deployment {
         ynETH ynETH;
@@ -23,6 +44,11 @@ abstract contract BaseYnETHScript is BaseScript {
         RewardsReceiver consensusLayerReceiver;
         RewardsDistributor rewardsDistributor;
         StakingNode stakingNodeImplementation;
+        WithdrawalQueueManager withdrawalQueueManager;
+        ynETHRedemptionAssetsVault ynETHRedemptionAssetsVaultInstance;
+        WithdrawalsProcessor withdrawalsProcessor;
+        ynViewer ynViewer;
+        DeploymentProxies proxies;
     }
 
     function getDeploymentFile() internal virtual view returns (string memory) {
@@ -39,6 +65,13 @@ abstract contract BaseYnETHScript is BaseScript {
         serializeProxyElements(json, "executionLayerReceiver", address(deployment.executionLayerReceiver));
         serializeProxyElements(json, "consensusLayerReceiver", address(deployment.consensusLayerReceiver));
         serializeProxyElements(json, "rewardsDistributor", address(deployment.rewardsDistributor));
+        serializeProxyElements(json, "ynViewer", address(deployment.ynViewer));
+
+        // withdrawals
+        serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
+        serializeProxyElements(json, "ynETHRedemptionAssetsVault", address(deployment.ynETHRedemptionAssetsVaultInstance));
+        serializeProxyElements(json, "withdrawalsProcessor", address(deployment.withdrawalsProcessor));
+
         vm.serializeAddress(json, "stakingNodeImplementation", address(deployment.stakingNodeImplementation));
 
         ActorAddresses.Actors memory actors = getActors();
@@ -65,13 +98,39 @@ abstract contract BaseYnETHScript is BaseScript {
         string memory deploymentFile = getDeploymentFile();
         string memory jsonContent = vm.readFile(deploymentFile);
         Deployment memory deployment;
-        deployment.ynETH = ynETH(payable(jsonContent.readAddress(".proxy-ynETH")));
-        deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".proxy-stakingNodesManager")));
-        deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".proxy-executionLayerReceiver")));
-        deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".proxy-consensusLayerReceiver")));
-        deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".proxy-rewardsDistributor")));
-        deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
+        DeploymentProxies memory proxies;
 
+        deployment.ynETH = ynETH(payable(jsonContent.readAddress(".proxy-ynETH")));
+        proxies.ynETH = loadProxyAddresses(jsonContent, "ynETH");
+
+        deployment.stakingNodesManager = StakingNodesManager(payable(jsonContent.readAddress(".proxy-stakingNodesManager")));
+        proxies.stakingNodesManager = loadProxyAddresses(jsonContent, "stakingNodesManager");
+
+        deployment.executionLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".proxy-executionLayerReceiver")));
+        proxies.executionLayerReceiver = loadProxyAddresses(jsonContent, "executionLayerReceiver");
+
+        deployment.consensusLayerReceiver = RewardsReceiver(payable(jsonContent.readAddress(".proxy-consensusLayerReceiver")));
+        proxies.consensusLayerReceiver = loadProxyAddresses(jsonContent, "consensusLayerReceiver");
+
+        deployment.rewardsDistributor = RewardsDistributor(payable(jsonContent.readAddress(".proxy-rewardsDistributor")));
+        proxies.rewardsDistributor = loadProxyAddresses(jsonContent, "rewardsDistributor");
+
+        deployment.ynViewer = ynViewer(payable(jsonContent.readAddress(".proxy-ynViewer")));
+        proxies.ynViewer = loadProxyAddresses(jsonContent, "ynViewer");
+
+        deployment.withdrawalQueueManager = WithdrawalQueueManager(payable(jsonContent.readAddress(".proxy-withdrawalQueueManager")));
+        proxies.withdrawalQueueManager = loadProxyAddresses(jsonContent, "withdrawalQueueManager");
+
+        deployment.ynETHRedemptionAssetsVaultInstance = ynETHRedemptionAssetsVault(payable(jsonContent.readAddress(".proxy-ynETHRedemptionAssetsVault")));
+        proxies.ynETHRedemptionAssetsVault = loadProxyAddresses(jsonContent, "ynETHRedemptionAssetsVault");
+
+        deployment.withdrawalsProcessor = WithdrawalsProcessor(payable(jsonContent.readAddress(".proxy-withdrawalsProcessor")));
+        proxies.withdrawalsProcessor = loadProxyAddresses(jsonContent, "withdrawalsProcessor");
+
+        deployment.proxies = proxies;
+
+        deployment.stakingNodeImplementation = StakingNode(payable(jsonContent.readAddress(".stakingNodeImplementation")));
+        
         return deployment;
     }
 }

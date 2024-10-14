@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 
 library depositRootGenerator {
-    uint constant GWEI = 1e9;
+    uint256 constant GWEI = 1e9;
 
     function generateDepositRoot(
         bytes calldata pubkey,
@@ -12,7 +12,7 @@ library depositRootGenerator {
         uint256 _amountIn
     ) internal pure returns (bytes32) {
 
-        uint deposit_amount = _amountIn / GWEI;
+        uint256 deposit_amount = _amountIn / GWEI;
         bytes memory amount = to_little_endian_64(uint64(deposit_amount));
 
         bytes32 pubkey_root = sha256(abi.encodePacked(pubkey, bytes16(0)));

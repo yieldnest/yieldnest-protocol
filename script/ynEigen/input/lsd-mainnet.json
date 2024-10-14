@@ -19,9 +19,9 @@
       "strategy": "0xa4C637e0F704745D182e4D38cAb7E7485321d059"
     },
     {
-      "name": "RETH",
-      "token": "0xae78736Cd615f374D3085123A210448E74Fc6393",
-      "strategy": "0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2"
+      "name": "METH",
+      "token": "0xd5F7838F5C461fefF7FE49ea5ebaF7728bB0ADfa",
+      "strategy": "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2"
     }
   ]
 }
