@@ -295,7 +295,6 @@ contract Base is Test, Utils {
         console.log("EigenPod shares for each StakingNode:");
         for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
             IStakingNode stakingNode = stakingNodesManager.nodes(i);
-            address eigenPodAddress = address(stakingNode.eigenPod());
             uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
             console.log("Node", i, "Shares:", podShares);
         }

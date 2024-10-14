@@ -64,9 +64,6 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         (bool success,) = eigenPodAddress.call{value: rewardsSweeped}("");
         require(success, "Failed to send rewards to EigenPod");
 
-        // Get final pod owner shares
-        int256 finalPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
-
         // Assert that pod owner shares remain the same
         assertEq(initialPodOwnerShares, 0, "Pod owner shares should not change");
     }
@@ -241,8 +238,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
     address user = vm.addr(156737);
 
-
-    uint256 nodeId;
     uint40[] validatorIndices;
     uint256 AMOUNT = 32 ether;
 
