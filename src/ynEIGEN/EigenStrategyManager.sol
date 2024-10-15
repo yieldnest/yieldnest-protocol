@@ -190,9 +190,6 @@ contract EigenStrategyManager is
         _grantRole(STAKING_NODES_WITHDRAWER_ROLE, _withdrawer);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, _withdrawer);
 
-        IERC20(address(wstETH)).forceApprove(address(_wrapper), type(uint256).max);
-        IERC20(address(woETH)).forceApprove(address(_wrapper), type(uint256).max);
-
         IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
         uint256 assetsLength = assets.length;
         for (uint256 i = 0; i < assetsLength; i++) {
@@ -328,8 +325,14 @@ contract EigenStrategyManager is
         IERC20[] memory depositAssets = new IERC20[](assetsLength);
         uint256[] memory depositAmounts = new uint256[](amountsLength);
 
+        IWrapper _wrapper = wrapper;
         for (uint256 i = 0; i < assetsLength; i++) {
-            (uint256 depositAmount, IERC20 depositAsset) = wrapper.unwrap(amounts[i], assets[i]);
+            if (assets[i] == wstETH) {
+                IERC20(address(wstETH)).forceApprove(address(_wrapper), type(uint256).max);
+            } else if (assets[i] == woETH) {
+                IERC20(address(woETH)).forceApprove(address(_wrapper), type(uint256).max);
+            }
+            (uint256 depositAmount, IERC20 depositAsset) = _wrapper.unwrap(amounts[i], assets[i]);
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
 
