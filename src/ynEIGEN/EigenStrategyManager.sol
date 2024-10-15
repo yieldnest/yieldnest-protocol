@@ -368,7 +368,6 @@ contract EigenStrategyManager is
 
         ITokenStakingNode _node = tokenStakingNodesManager.getNodeById(_action.nodeId);
         _node.deallocateTokens(IERC20(_action.asset), _totalAmount);
-        IERC20(_action.asset).safeTransferFrom(address(_node), address(this), _totalAmount);
 
         if (_action.amountToReinvest > 0) {
             IynEigen _ynEigen = ynEigen;

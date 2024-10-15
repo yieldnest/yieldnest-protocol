@@ -236,7 +236,7 @@ contract TokenStakingNode is
      */
     function deallocateTokens(IERC20 _token, uint256 _amount) external onlyYieldNestStrategyManager {
         withdrawn[_token] -= _amount;
-        _token.forceApprove(tokenStakingNodesManager.yieldNestStrategyManager(), _amount);
+        _token.safeTransfer(msg.sender, _amount);
 
         emit DeallocatedTokens(_amount, _token);
     }
