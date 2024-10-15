@@ -18,6 +18,3 @@
 	path = lib/eigenlayer-contracts
 	url = https://github.com/layr-labs/eigenlayer-contracts
 	commit = bda003385c5fec59e35196dc14d01f17d1eb7001
-[submodule "lib/solady"]
-	path = lib/solady
-	url = https://github.com/Vectorized/solady
