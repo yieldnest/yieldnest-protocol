@@ -11,10 +11,19 @@ import {Script} from "lib/forge-std/src/Script.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {console} from "lib/forge-std/src/console.sol";
+
 
 abstract contract BaseScript is Script, Utils {
     using stdJson for string;
+
+    struct ProxyAddresses {
+        TransparentUpgradeableProxy proxy;
+        ProxyAdmin proxyAdmin;
+        address implementation;
+    }
 
     ActorAddresses private _actorAddresses = new ActorAddresses();
     ContractAddresses private _contractAddresses = new ContractAddresses();
@@ -43,6 +52,14 @@ abstract contract BaseScript is Script, Utils {
         vm.serializeAddress(json, string.concat("proxy-", name), proxy);
         vm.serializeAddress(json, string.concat("proxyAdmin-", name), proxyAdmin);
         vm.serializeAddress(json, string.concat("implementation-", name), implementation);
+    }
+
+    function loadProxyAddresses(string memory jsonContent, string memory contractName) internal pure returns (ProxyAddresses memory) {
+        ProxyAddresses memory proxyAddresses;
+        proxyAddresses.proxy = TransparentUpgradeableProxy(payable(jsonContent.readAddress(string.concat(".proxy-", contractName))));
+        proxyAddresses.proxyAdmin = ProxyAdmin(jsonContent.readAddress(string.concat(".proxyAdmin-", contractName)));
+        proxyAddresses.implementation = jsonContent.readAddress(string.concat(".implementation-", contractName));
+        return proxyAddresses;
     }
 
     function getActors() public returns (ActorAddresses.Actors memory actors) {

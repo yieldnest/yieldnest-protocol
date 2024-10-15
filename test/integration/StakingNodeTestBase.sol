@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: BSD 3-Clause License
+pragma solidity ^0.8.24;
+
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
@@ -103,7 +106,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
             // all is zeroed out by defailt
             _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
         }

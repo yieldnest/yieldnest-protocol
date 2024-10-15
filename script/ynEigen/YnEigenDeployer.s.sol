@@ -2,6 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+
+
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
@@ -167,6 +171,11 @@ contract YnEigenDeployer is BaseYnEigenScript {
 
             vm.stopBroadcast();
 
+            ProxyAddresses memory proxyAddressesEmpty = ProxyAddresses(
+                TransparentUpgradeableProxy(payable(address(0))),
+                ProxyAdmin(address(0)),
+                address(0)
+            );
             Deployment memory deployment = Deployment({
                 ynEigen: proxies.ynToken,
                 assetRegistry: proxies.assetRegistry,
@@ -179,7 +188,16 @@ contract YnEigenDeployer is BaseYnEigenScript {
                 viewer: proxies.viewer,
                 redemptionAssetsVault: proxies.redemptionAssetsVault,
                 withdrawalQueueManager: proxies.withdrawalQueueManager,
-                lsdWrapper: proxies.lsdWrapper
+                lsdWrapper: proxies.lsdWrapper,
+                proxies: DeploymentProxies({
+                    ynEigen: proxyAddressesEmpty,
+                    assetRegistry: proxyAddressesEmpty,
+                    eigenStrategyManager: proxyAddressesEmpty,
+                    tokenStakingNodesManager: proxyAddressesEmpty,
+                    ynEigenDepositAdapter: proxyAddressesEmpty,
+                    rateProvider: proxyAddressesEmpty,
+                    ynEigenViewer: proxyAddressesEmpty
+                })
             });
 
             saveDeployment(deployment);

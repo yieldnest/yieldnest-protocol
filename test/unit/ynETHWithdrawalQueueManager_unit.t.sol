@@ -481,7 +481,6 @@ contract ynETHWithdrawalQueueManagerTest is Test {
             uint256 _amount
         ) public {
         vm.assume(_amount > 0 && _amount < 10_000 ether);
-        uint256 _amount = 1 ether;
 
         vm.deal(address(redemptionAssetsVault), _amount);
 
@@ -513,7 +512,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         uint256 _redemptionRateAtRequestTime = redemptionAssetsVault.redemptionRate();
 
-        uint256 finalizationId = finalizeRequest(tokenId);
+        finalizeRequest(tokenId);
 
 
         uint256 extraWithdrawalsAfter = 2;
@@ -766,7 +765,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         for (uint256 i = 0; i < requestIndex; i++) {
             vm.startPrank(user);
             redeemableAsset.approve(address(manager), requestedAmounts[i]);
-            uint256 tokenId = manager.requestWithdrawal(requestedAmounts[i]);
+            manager.requestWithdrawal(requestedAmounts[i]);
             vm.stopPrank();
 
             vm.deal(address(redemptionAssetsVault), requestedAmounts[i]);
@@ -814,7 +813,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
         uint256 amount = 1 ether;
         vm.startPrank(user);
         redeemableAsset.approve(address(manager), amount);
-        uint256 tokenId = manager.requestWithdrawal(amount);
+        manager.requestWithdrawal(amount);
         vm.stopPrank();
 
         // Ensure the request was made successfully
@@ -1054,7 +1053,7 @@ contract ynETHWithdrawalQueueManagerTest is Test {
 
         vm.startPrank(anotherUser);
         redeemableAsset.approve(address(manager), requestAmounts[3]);
-        uint256 request4 = manager.requestWithdrawal(requestAmounts[3]);
+        manager.requestWithdrawal(requestAmounts[3]);
         vm.stopPrank();
 
         // Test: Retrieve withdrawal requests for the main user

@@ -137,7 +137,11 @@ contract M3WithdrawalsTest is Base {
         }
     }
 
-    function testWithdraw() public {
+    function testWithdrawSingleValidator() public {
+        testWithdraw();
+    }
+
+    function testWithdraw() internal {
 
         // setup env
         {
@@ -146,7 +150,7 @@ contract M3WithdrawalsTest is Base {
 
         // queue withdrawals
         {
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             stakingNodesManager.nodes(nodeId).queueWithdrawals(AMOUNT);
             vm.stopPrank();
 
@@ -211,7 +215,7 @@ contract M3WithdrawalsTest is Base {
         {
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
 
@@ -221,6 +225,7 @@ contract M3WithdrawalsTest is Base {
 
         // process principal withdrawals
         uint256 _ynethBalanceBefore = address(yneth).balance;
+        uint256 _ynETHRedemptionAssetsBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
         {
             IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
             _actions[0] = IStakingNodesManager.WithdrawalAction({
@@ -235,7 +240,7 @@ contract M3WithdrawalsTest is Base {
             });
 
             // check that totalDepositedInPool is 16 ETH, ynETH balance is 16 ETH, and ynETHRedemptionAssetsVault balance is 16 ETH
-            _testProcessPrincipalWithdrawals(_ynethBalanceBefore);
+            _testProcessPrincipalWithdrawals(_ynethBalanceBefore, _ynETHRedemptionAssetsBalanceBefore);
         }
     }
 
@@ -343,9 +348,9 @@ contract M3WithdrawalsTest is Base {
         assertEq(IStakingNodeVars(address(stakingNodesManager.nodes(nodeId))).withdrawnETH(), AMOUNT, "_testCompleteQueuedWithdrawals: E2");
     }
 
-    function _testProcessPrincipalWithdrawals(uint256 _ynethBalanceBefore) internal {
+    function _testProcessPrincipalWithdrawals(uint256 _ynethBalanceBefore, uint256 _ynETHRedemptionAssetsBalanceBefore) internal {
         assertEq(yneth.totalDepositedInPool(), _ynethBalanceBefore + (AMOUNT / 2), "_testProcessPrincipalWithdrawals: E0");
         assertEq(address(yneth).balance, _ynethBalanceBefore + (AMOUNT / 2), "_testProcessPrincipalWithdrawals: E1");
-        assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, AMOUNT / 2, "_testProcessPrincipalWithdrawals: E2");
+        assertEq(address(ynETHRedemptionAssetsVaultInstance).balance, _ynETHRedemptionAssetsBalanceBefore + AMOUNT / 2, "_testProcessPrincipalWithdrawals: E2");
     }
 }
