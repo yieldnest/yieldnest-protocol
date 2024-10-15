@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {SafeCast} from "lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
-import {DynamicArrayLib} from "lib/solady/src/utils/DynamicArrayLib.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
@@ -417,9 +416,9 @@ contract EigenStrategyManager is
      * @param assets An array of ERC20 tokens for which balances are to be retrieved.
      * @return stakedBalances An array of total balances for each asset, indexed in the same order as the `assets` array.
      */
-    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory) {
+    function getStakedAssetsBalances(IERC20[] calldata assets) public view returns (uint256[] memory stakedBalances) {
 
-        uint256[] memory stakedBalances = DynamicArrayLib.malloc(assets.length);
+        stakedBalances = new uint256[](assets.length);
         // Add balances contained in each TokenStakingNode, including those managed by strategies.
 
         uint256 assetsCount = assets.length;
@@ -427,12 +426,7 @@ contract EigenStrategyManager is
             IERC20 asset = assets[j];
             IStrategy strategy = strategies[asset];
             StrategyBalance memory balance = strategiesBalance[strategy];
-            DynamicArrayLib.set(
-                stakedBalances,
-                j,
-                wrapper.toUserAssetAmount(asset, balance.stakedBalance)
-                + balance.withdrawnBalance
-            );
+            stakedBalances[j] = wrapper.toUserAssetAmount(asset, balance.stakedBalance) + balance.withdrawnBalance;
         }
 
         return stakedBalances;
