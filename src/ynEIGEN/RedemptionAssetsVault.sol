@@ -179,15 +179,17 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
                     uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
                     ynEigen.processWithdrawn(reqAmountInAsset, address(asset));
                     balances[address(asset)] -= reqAmountInAsset;
+                    emit AssetWithdrawn(address(asset), msg.sender, address(ynEigen), reqAmountInAsset);
                     break;
                 } else {
                     ynEigen.processWithdrawn(assetBalance, address(asset));
                     balances[address(asset)] = 0;
                     amount -= assetBalanceInUnit;
+                    emit AssetWithdrawn(address(asset), msg.sender, address(ynEigen), assetBalance);
                 }
             }
         }
-        emit AssetWithdrawn(ETH_ASSET, msg.sender, address(ynEigen), amount);
+        emit TotalAssetsTransferred(ETH_ASSET, msg.sender, address(ynEigen), amount);
     }
 
     //--------------------------------------------------------------------------------------
