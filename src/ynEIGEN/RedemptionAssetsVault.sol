@@ -139,7 +139,6 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
 
-        uint256 amountTransferred = amount;
         IERC20[] memory assets = assetRegistry.getAssets();
         for (uint256 i = 0; i < assets.length; ++i) {
             IERC20 asset = assets[i];
@@ -150,16 +149,16 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
                     uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
                     IERC20(asset).safeTransfer(to, reqAmountInAsset);
                     balances[address(asset)] -= reqAmountInAsset;
+                    emit AssetTransferred(address(asset), msg.sender, to, reqAmountInAsset);
                     break;
                 } else {
                     IERC20(asset).safeTransfer(to, assetBalance);
                     balances[address(asset)] = 0;
                     amount -= assetBalanceInUnit;
+                    emit AssetTransferred(address(asset), msg.sender, to, assetBalance);
                 }
             }
         }
-
-        emit AssetTransferred(ETH_ASSET, msg.sender, to, amountTransferred);
     }
 
     /** 
