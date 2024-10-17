@@ -9,6 +9,7 @@ interface IRedemptionAssetsVault {
     event AssetsDeposited( address indexed asset, address indexed depositor, uint256 amount);
     event AssetTransferred(address indexed asset, address indexed redeemer, address indexed to, uint256 amount);
     event AssetWithdrawn(address indexed asset, address indexed redeemer, address indexed to, uint256 amount);
+    event TotalAssetsTransferred(address indexed asset, address indexed from, address indexed to, uint256 amount);
 
     /// @notice Transfers redemption assets to a specified address based on redemption.
     /// @dev This is only for INTERNAL USE

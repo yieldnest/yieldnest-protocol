@@ -126,7 +126,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         maxNodeCount = init.maxNodeCount;
     }
 
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
     //--------------------------------------------------------------------------------------
