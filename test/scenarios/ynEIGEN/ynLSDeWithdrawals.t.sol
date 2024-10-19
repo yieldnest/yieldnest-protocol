@@ -565,12 +565,12 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         assertEq(yneigen.totalSupply(), previousTotalSupply, "Total supply mismatch after upgrade");
     }
 
-    function _upgradeContract(address _proxyAddress, address _newImplementation, bytes memory _data) internal {
+    function _upgradeContract(address _proxyAddress, address _newImplementation, bytes memory data_) internal {
         bytes memory _data = abi.encodeWithSignature(
             "upgradeAndCall(address,address,bytes)",
             _proxyAddress, // proxy
             _newImplementation, // implementation
-            _data
+            data_
         );
         vm.startPrank(actors.wallets.YNSecurityCouncil);
         timelockController.schedule(
