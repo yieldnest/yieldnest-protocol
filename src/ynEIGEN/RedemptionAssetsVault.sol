@@ -22,6 +22,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     error ZeroAddress();
     error InsufficientAssetBalance(address asset, uint256 requestedAmount, uint256 balance);
     error ContractPaused();
+    error ContractUnpaused();
     error NotRedeemer(address caller);
     error AssetNotSupported();
     event Paused();
@@ -268,7 +269,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
      * @notice Unpauses the contract, allowing certain actions.
      */
     function unpause() external onlyRole(UNPAUSER_ROLE) {
-        if (!paused) revert ContractPaused();
+        if (!paused) revert ContractUnpaused();
 
         paused = false;
 
