@@ -29,7 +29,6 @@ interface IAssetRegistryEvents {
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error UnsupportedAsset(IERC20 asset);
     error Paused();
     error AssetNotActive(address inactiveAsset);
     error AssetAlreadyActive(address asset);
@@ -37,7 +36,6 @@ interface IAssetRegistryEvents {
     error AssetBalanceNonZeroInPool(uint256 balanceInPool);
     error AssetBalanceNonZeroInStrategyManager(uint256 balanceInStrategyManager);
     error AssetNotFound(address absentAsset);
-    error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyAvailable(address asset);

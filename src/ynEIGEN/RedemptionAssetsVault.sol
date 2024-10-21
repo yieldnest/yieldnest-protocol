@@ -19,7 +19,6 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error TransferFailed(uint256 amount, address destination);
     error ZeroAddress();
     error InsufficientAssetBalance(address asset, uint256 requestedAmount, uint256 balance);
     error ContractPaused();
