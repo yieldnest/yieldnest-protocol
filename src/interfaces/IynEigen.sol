@@ -17,10 +17,19 @@ interface IynEigen is IERC20 {
 
     function previewDeposit(IERC20 asset, uint256 amount) external view returns (uint256);
 
+    function burn(uint256 amount) external;
+
+    function previewRedeem(IERC20 asset, uint256 shares) external view returns (uint256 assets);
+    function previewRedeem(uint256 shares) external view returns (uint256);
+
+    function convertToAssets(IERC20 asset, uint256 shares) external view returns (uint256);
+
     function retrieveAssets(
         IERC20[] calldata assetsToRetrieve,
         uint256[] calldata amounts
     ) external;
+
+    function processWithdrawn(uint256 _amount, address _asset) external;
 
     function assetBalances(IERC20[] calldata assetsArray) external view returns (uint256[] memory balances);
     function assetBalance(IERC20 asset) external view returns (uint256 balance);
