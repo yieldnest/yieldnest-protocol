@@ -15,6 +15,8 @@ import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 
+import {console} from "forge-std/console.sol";
+
 import "./ynLSDeScenarioBaseTest.sol";
 
 contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
@@ -449,7 +451,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // claimWithdrawal
     //
 
-    function testClaimWithdrawal(uint256 _amount) public {
+    function testClaimWithdrawalHAHA(uint256 _amount) public {
         testRequestWithdrawal(_amount);
 
         vm.prank(actors.ops.REQUEST_FINALIZER);

@@ -91,6 +91,29 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         }
     }
 
+    function previewClaim(uint256 amount) external view returns (IERC20[] memory assets, uint256[] memory assetsOut) {
+        uint256 balance = availableRedemptionAssets();
+        if (balance < amount) revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
+
+        assets = assetRegistry.getAssets();
+        assetsOut = new uint256[](assets.length);
+        for (uint256 i = 0; i < assets.length; ++i) {
+            IERC20 asset = assets[i];
+            uint256 assetBalance = balances[address(asset)];
+            if (assetBalance > 0) {
+                uint256 assetBalanceInUnit = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
+                if (assetBalanceInUnit >= amount) {
+                    uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
+                    assetsOut[i] = reqAmountInAsset;
+                    break;
+                } else {
+                    amount -= assetBalanceInUnit;
+                    assetsOut[i] = assetBalance;
+                }
+            }
+        }
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  REDEMPTION  --------------------------------------
     //--------------------------------------------------------------------------------------
