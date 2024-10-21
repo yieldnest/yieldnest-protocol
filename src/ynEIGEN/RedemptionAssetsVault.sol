@@ -52,6 +52,10 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
 
     mapping(address asset => uint256 balance) public balances;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     // Initializer with Init struct and roles
     struct Init {
         address admin;
