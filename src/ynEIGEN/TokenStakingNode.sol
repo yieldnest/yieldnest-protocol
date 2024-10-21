@@ -52,6 +52,7 @@ contract TokenStakingNode is
     error NotStrategyManager();
     error NotTokenStakingNodeDelegator();
     error NotTokenStakingNodesWithdrawer();
+    error ArrayLengthMismatch();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -98,10 +99,15 @@ contract TokenStakingNode is
         uint256[] calldata amounts,
         IStrategy[] calldata strategies
     ) external nonReentrant onlyYieldNestStrategyManager {
+
+        uint256 assetsLength = assets.length;
+        if (assetsLength != amounts.length || assetsLength != strategies.length) {
+            revert ArrayLengthMismatch();
+        }
+
         IStrategyManager strategyManager = tokenStakingNodesManager
             .strategyManager();
 
-        uint256 assetsLength = assets.length;
         for (uint256 i = 0; i < assetsLength; i++) {
             IERC20 asset = assets[i];
             uint256 amount = amounts[i];
