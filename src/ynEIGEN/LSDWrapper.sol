@@ -22,6 +22,8 @@ contract LSDWrapper is IWrapper, Initializable {
     // ============================================================================================
 
     constructor(address _wstETH, address _woETH, address _oETH, address _stETH) {
+        _disableInitializers();
+
         if (_wstETH == address(0) || _woETH == address(0) || _oETH == address(0) || _stETH == address(0)) {
             revert ZeroAddress();
         }
