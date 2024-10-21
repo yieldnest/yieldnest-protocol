@@ -451,7 +451,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // claimWithdrawal
     //
 
-    function testClaimWithdrawalHAHA(uint256 _amount) public {
+    function testClaimWithdrawal(uint256 _amount) public {
         testRequestWithdrawal(_amount);
 
         vm.prank(actors.ops.REQUEST_FINALIZER);
