@@ -127,6 +127,10 @@ contract EigenStrategyManager is
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
+    constructor() {
+        _disableInitializers();
+    }
+
     struct Init {
         IERC20[] assets;
         IStrategy[] strategies;
