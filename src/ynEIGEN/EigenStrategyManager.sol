@@ -184,6 +184,8 @@ contract EigenStrategyManager is
         address _wrapper,
         address _withdrawer
     ) external reinitializer(2) notZeroAddress(_redemptionAssetsVault) notZeroAddress(_wrapper) {
+        __ReentrancyGuard_init();
+
         redemptionAssetsVault = IRedemptionAssetsVaultExt(_redemptionAssetsVault);
         wrapper = IWrapper(_wrapper);
 
