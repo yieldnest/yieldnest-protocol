@@ -103,29 +103,13 @@ interface IAssetRegistryEvents {
         _grantRole(ASSET_MANAGER_ROLE, init.assetManagerRole);
 
         strategyManager = init.yieldNestStrategyManager;
-        
-        uint256 assetsLength = init.assets.length;
-        for (uint256 i = 0; i < assetsLength; i++) {
-            IERC20 asset = init.assets[i];
-            if (address(asset) == address(0)) {
-                revert ZeroAddress();
-            }
-            if (_assetData[asset].status == AssetStatus.Active) {
-                revert AssetAlreadyActive(address(asset));
-            }
-
-            if (!strategyManager.supportsAsset(asset)) {
-                revert NoStrategyDefinedForAsset(asset);
-            }
-
-            assets.push(asset);
-            _assetData[asset] = AssetData({
-                status: AssetStatus.Active
-            });
-        }
-
         rateProvider = init.rateProvider;
         ynEigen = init.ynEigen;
+
+        uint256 assetsLength = init.assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
+            _addAsset(init.assets[i]);
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -142,6 +126,10 @@ interface IAssetRegistryEvents {
     onlyRole(ASSET_MANAGER_ROLE)
     notZeroAddress(address(asset))
     whenNotPaused {
+        _addAsset(asset);
+    }
+
+    function _addAsset(IERC20 asset) private {
         if (_assetData[asset].status != AssetStatus.Unavailable) {
             revert AssetAlreadyAvailable(address(asset));
         }

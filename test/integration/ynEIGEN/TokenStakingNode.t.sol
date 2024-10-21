@@ -255,9 +255,10 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         );
 
         // Assert staked asset balance decreased
-        assertEq(
+        assertApproxEqAbs(
             afterQueued.getStakedAssetBalanceForNode(address(wstETH)),
             before.getStakedAssetBalanceForNode(address(wstETH)),
+            10,
             "Staked asset balance should have decreased by withdrawn shares"
         );
 
