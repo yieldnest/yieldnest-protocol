@@ -226,7 +226,7 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     }
 
     function previewRedeem(uint256 shares) external view returns (uint256) {
-       return convertToAssets(IERC20(address(0)), shares);
+       return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     function convertToAssets(IERC20 asset, uint256 shares) public view returns (uint256) {
