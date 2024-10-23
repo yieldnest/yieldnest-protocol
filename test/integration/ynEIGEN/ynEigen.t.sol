@@ -384,6 +384,16 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         assertEq(amount, ynEigenToken.previewRedeem(amount), "testPreviewRedeemNoAssets: E0");
     }
+
+    function testPreviewRedeemUnknownAsset() public {
+        // Use a random address as an unknown asset
+        address unknownAsset = address(0x1234567890123456789012345678901234567890);
+        uint256 amount = 1 ether;
+
+        // Expect the function to revert with UnsupportedAsset error
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, unknownAsset));
+        ynEigenToken.previewRedeem(IERC20(unknownAsset), amount);
+    }
 }
 
 contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
