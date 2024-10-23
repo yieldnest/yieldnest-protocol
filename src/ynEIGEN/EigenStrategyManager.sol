@@ -333,11 +333,8 @@ contract EigenStrategyManager is
 
         IWrapper _wrapper = wrapper;
         for (uint256 i = 0; i < assetsLength; i++) {
-            if (assets[i] == wstETH) {
-                IERC20(address(wstETH)).forceApprove(address(_wrapper), type(uint256).max);
-            } else if (assets[i] == woETH) {
-                IERC20(address(woETH)).forceApprove(address(_wrapper), type(uint256).max);
-            }
+            // NOTE: approving also token that will not be transferred
+            IERC20(assets[i]).forceApprove(address(_wrapper), amounts[i]);
             (uint256 depositAmount, IERC20 depositAsset) = _wrapper.unwrap(amounts[i], assets[i]);
             depositAssets[i] = depositAsset;
             depositAmounts[i] = depositAmount;
