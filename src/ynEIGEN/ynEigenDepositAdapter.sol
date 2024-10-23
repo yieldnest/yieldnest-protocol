@@ -166,8 +166,13 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
 
     function depositStETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         stETH.safeTransferFrom(msg.sender, address(this), amount);
-        stETH.forceApprove(address(wrapper), amount);
-        (uint256 wstETHAmount,) = wrapper.wrap(amount, stETH);
+        
+        (bool success, bytes memory result) = address(wrapper).delegatecall(
+            abi.encodeWithSignature("wrap(uint256,address)", amount, stETH)
+        );
+        require(success, "Delegatecall failed");
+        (uint256 wstETHAmount,) = abi.decode(result, (uint256, IERC20));
+
         wstETH.forceApprove(address(ynEigen), wstETHAmount);
 
         shares = ynEigen.deposit(IERC20(address(wstETH)), wstETHAmount, receiver);
@@ -177,8 +182,13 @@ contract ynEigenDepositAdapter is IynEigenDepositAdapterEvents, Initializable, A
 
     function depositOETH(uint256 amount, address receiver) internal returns (uint256 shares) {
         oETH.safeTransferFrom(msg.sender, address(this), amount);
-        oETH.forceApprove(address(wrapper), amount);
-        (uint256 woETHShares,) = wrapper.wrap(amount, oETH);
+
+        (bool success, bytes memory result) = address(wrapper).delegatecall(
+            abi.encodeWithSignature("wrap(uint256,address)", amount, oETH)
+        );
+        require(success, "Delegatecall failed");
+        (uint256 woETHShares,) = abi.decode(result, (uint256, IERC20));
+        
         woETH.forceApprove(address(ynEigen), woETHShares);
 
         shares = ynEigen.deposit(IERC20(address(woETH)), woETHShares, receiver);
