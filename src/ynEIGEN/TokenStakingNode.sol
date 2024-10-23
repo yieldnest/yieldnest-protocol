@@ -219,7 +219,12 @@ contract TokenStakingNode is
         uint256 _actualAmountOut = _token.balanceOf(address(this)) - _balanceBefore;
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
-        (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
+        
+        (bool success, bytes memory result) = address(_wrapper).delegatecall(
+            abi.encodeWithSignature("wrap(uint256,address)", _actualAmountOut, _token)
+        );
+        require(success, "Delegatecall failed");
+        (_actualAmountOut, _token) = abi.decode(result, (uint256, IERC20));
 
         queuedShares[_strategy] -= _shares;
         withdrawn[_token] += _actualAmountOut;

@@ -8,7 +8,7 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {console} from "forge-std/console.sol";
-
+import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 
 contract LSDWrapperModuleTest is Test {
@@ -20,7 +20,19 @@ contract LSDWrapperModuleTest is Test {
     TestAssetUtils public testAssetUtils;
 
     function setUp() public {
-        wrapper = new LSDWrapperModule(WSTETH, WOETH, OETH, STETH);
+        // Deploy the implementation contract
+        LSDWrapperModule implementation = new LSDWrapperModule(WSTETH, WOETH, OETH, STETH);
+
+
+
+        // Deploy the TransparentUpgradeableProxy
+        wrapper = LSDWrapperModule(
+            address(new TransparentUpgradeableProxy(
+                address(implementation),
+                address(this),
+                ""
+            ))
+        );
         testAssetUtils = new TestAssetUtils();
     }
 
@@ -103,6 +115,22 @@ contract LSDWrapperModuleTest is Test {
         assertEq(address(unwrappedToken), OETH, "Unwrapped token should be oETH");
         assertGt(unwrappedAmount, 0, "Unwrapped amount should be greater than 0");
         assertApproxEqRel(IERC20(OETH).balanceOf(address(this)), unwrappedAmount, 1e15, "Unwrapped amount should be approximately received");
+    }
+
+    function testToUserAssetAmount() public {
+        uint256 stEthAmount = 100 ether;
+        uint256 oEthAmount = 100 ether;
+        uint256 ethAmount = 100 ether;
+
+        // Test wstETH conversion
+        uint256 wstEthAmount = wrapper.toUserAssetAmount(IERC20(WSTETH), stEthAmount);
+        assertGt(wstEthAmount, 0, "wstETH amount should be greater than 0");
+        assertLt(wstEthAmount, stEthAmount, "wstETH amount should be less than stETH amount");
+
+        // Verify conversion accuracy
+        uint256 backToStEth = IwstETH(WSTETH).getStETHByWstETH(wstEthAmount);
+        assertApproxEqRel(backToStEth, stEthAmount, 1e15, "stETH conversion should be approximately equal");
+
     }
 
 }

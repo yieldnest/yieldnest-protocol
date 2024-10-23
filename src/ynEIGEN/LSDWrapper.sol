@@ -43,15 +43,42 @@ contract LSDWrapper is IWrapper, Initializable {
     // External functions
     // ============================================================================================
 
+    // /// @inheritdoc IWrapper
+    // function wrap(uint256 _amount, IERC20 _token) external returns (uint256, IERC20) {
+    //     if (_token == stETH) {
+    //         stETH.safeTransferFrom(msg.sender, address(this), _amount);
+    //         _amount = IwstETH(address(wstETH)).wrap(_amount);
+    //         wstETH.safeTransfer(msg.sender, _amount);
+    //         return (_amount, wstETH);
+    //     } else if (_token == oETH) {
+    //         oETH.safeTransferFrom(msg.sender, address(this), _amount);
+    //         return (IERC4626(address(woETH)).deposit(_amount, msg.sender), woETH);
+    //     } else {
+    //         return (_amount, _token);
+    //     }
+    // }
+
+    // /// @inheritdoc IWrapper
+    // function unwrap(uint256 _amount, IERC20 _token) external returns (uint256, IERC20) {
+    //     if (_token == wstETH) {
+    //         wstETH.safeTransferFrom(msg.sender, address(this), _amount);
+    //         _amount = IwstETH(address(wstETH)).unwrap(_amount);
+    //         stETH.safeTransfer(msg.sender, _amount);
+    //         return (_amount, stETH);
+    //     } else if (_token == woETH) {
+    //         return (IERC4626(address(woETH)).redeem(_amount, msg.sender, msg.sender), oETH);
+    //     } else {
+    //         return (_amount, _token);
+    //     }
+    // }
+
+
     /// @inheritdoc IWrapper
     function wrap(uint256 _amount, IERC20 _token) external returns (uint256, IERC20) {
         if (_token == stETH) {
-            stETH.safeTransferFrom(msg.sender, address(this), _amount);
             _amount = IwstETH(address(wstETH)).wrap(_amount);
-            wstETH.safeTransfer(msg.sender, _amount);
             return (_amount, wstETH);
         } else if (_token == oETH) {
-            oETH.safeTransferFrom(msg.sender, address(this), _amount);
             return (IERC4626(address(woETH)).deposit(_amount, msg.sender), woETH);
         } else {
             return (_amount, _token);
@@ -61,16 +88,15 @@ contract LSDWrapper is IWrapper, Initializable {
     /// @inheritdoc IWrapper
     function unwrap(uint256 _amount, IERC20 _token) external returns (uint256, IERC20) {
         if (_token == wstETH) {
-            wstETH.safeTransferFrom(msg.sender, address(this), _amount);
             _amount = IwstETH(address(wstETH)).unwrap(_amount);
-            stETH.safeTransfer(msg.sender, _amount);
             return (_amount, stETH);
         } else if (_token == woETH) {
-            return (IERC4626(address(woETH)).redeem(_amount, msg.sender, msg.sender), oETH);
+            return (IERC4626(address(woETH)).redeem(_amount, address(this), address(this)), oETH);
         } else {
             return (_amount, _token);
         }
     }
+
 
     /// @inheritdoc IWrapper
     function toUserAssetAmount(IERC20 _asset, uint256 _userUnderlyingView) external view returns (uint256) {
