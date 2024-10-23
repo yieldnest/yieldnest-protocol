@@ -226,13 +226,14 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     }
 
     function previewRedeem(uint256 shares) external view returns (uint256) {
-       return convertToAssets(IERC20(address(0)), shares);
+       return _convertToAssets(shares, Math.Rounding.Floor);
     }
 
     function convertToAssets(IERC20 asset, uint256 shares) public view returns (uint256) {
-        return assetIsSupported(asset) ?
-            assetRegistry.convertFromUnitOfAccount(asset, _convertToAssets(shares, Math.Rounding.Floor)) :
-            _convertToAssets(shares, Math.Rounding.Floor);
+        if (!assetIsSupported(asset)) {
+            revert UnsupportedAsset(asset);
+        }
+        return assetRegistry.convertFromUnitOfAccount(asset, _convertToAssets(shares, Math.Rounding.Floor));
     }
 
     function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
