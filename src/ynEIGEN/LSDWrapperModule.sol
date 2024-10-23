@@ -56,7 +56,7 @@ contract LSDWrapperModule is IWrapper, Initializable {
             _amount = IwstETH(address(wstETH)).unwrap(_amount);
             return (_amount, stETH);
         } else if (_token == woETH) {
-            return (IERC4626(address(woETH)).redeem(_amount, msg.sender, msg.sender), oETH);
+            return (IERC4626(address(woETH)).redeem(_amount, address(this), address(this)), oETH);
         } else {
             return (_amount, _token);
         }

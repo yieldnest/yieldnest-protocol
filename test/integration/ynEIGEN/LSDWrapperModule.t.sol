@@ -7,6 +7,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {console} from "forge-std/console.sol";
+
 
 
 contract LSDWrapperModuleTest is Test {
@@ -87,6 +89,10 @@ contract LSDWrapperModuleTest is Test {
         
         IERC20 woETH = IERC20(WOETH);
         uint256 balance = testAssetUtils.get_wOETH(address(this), amount);
+
+        // Print maxRedeem(owner) for address(this)
+        uint256 maxRedeemAmount = IERC4626(WOETH).maxRedeem(address(this));
+        console.log("Max redeemable amount for this address:", maxRedeemAmount);
 
         (bool success, bytes memory result) = address(wrapper).delegatecall(
             abi.encodeWithSignature("unwrap(uint256,address)", balance, WOETH)
