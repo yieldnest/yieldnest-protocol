@@ -30,11 +30,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error UnsupportedAsset(IERC20 asset);
     error Unauthorized();
     error InsufficientFunds();
-    error Paused();
-    error ZeroAmount();
     error ZeroAddress();
     error BeaconImplementationAlreadyExists();
     error NoBeaconImplementationExists();
@@ -125,7 +122,6 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         yieldNestStrategyManager = init.yieldNestStrategyManager;
         maxNodeCount = init.maxNodeCount;
     }
-
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------

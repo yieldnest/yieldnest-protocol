@@ -15,10 +15,6 @@
 | ynETH Redemption Assets Vault | [`0xF0207Ffa0b793E009DF9Df62fEE95B8FC6c93EcF`](https://etherscan.io/address/0x5D6e53c42E3B37f82F693937BC508940769c5caf) |
 | WithdrawalsProcessor | [`0x61810a90128ee5c5f5a3730f0449da9e9480f888`](https://etherscan.io/address/0x6d052CdEd3F64aea51f6051F33b68b42016C5FbA) |
 
-
-
-
-
 ## Holesky
 
 ### Contracts

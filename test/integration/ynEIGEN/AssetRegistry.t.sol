@@ -174,6 +174,48 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
     }
 
+    function testWSTETHconvertFromUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS); // Using wstETH as the asset
+        uint256 realRate = IstETH(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18);
+        uint256 expectedConvertedAmount = amount * 1e18 / realRate; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertFromUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
+    function testsfrxETHconvertFromUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        IERC20 asset = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS); // Using wstETH as the asset
+        address FRAX_ASSET = chainAddresses.lsd.SFRXETH_ADDRESS;
+        IFrxEthWethDualOracle FRX_ETH_WETH_DUAL_ORACLE = IFrxEthWethDualOracle(testAssetUtils.FRX_ETH_WETH_DUAL_ORACLE());
+        uint256 realRate = IsfrxETH(FRAX_ASSET).pricePerShare() * FRX_ETH_WETH_DUAL_ORACLE.getCurveEmaEthPerFrxEth() / 1e18;
+        uint256 expectedConvertedAmount = amount * 1e18 / realRate; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertFromUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
+    function testRETHconvertFromUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS); // Using rETH as the asset
+        uint256 realRate = IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
+        uint256 expectedConvertedAmount = amount * 1e18 / realRate; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertFromUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
+    function testWOETHconvertFromUnitOfAccountFuzz(uint256 amount) public {
+        vm.assume(amount < 1000000 ether);
+
+        IERC20 asset = IERC20(chainAddresses.lsd.WOETH_ADDRESS); // Using woETH as the asset
+        uint256 realRate = IERC4626(chainAddresses.lsd.WOETH_ADDRESS).previewRedeem(1e18);
+        uint256 expectedConvertedAmount = amount * 1e18 / realRate; // Calculating the expected converted amount based on the real rate
+        uint256 convertedAmount = assetRegistry.convertFromUnitOfAccount(asset, amount);
+        assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
+    }
+
     function testPauseActions() public {
         vm.prank(actors.ops.PAUSE_ADMIN);
         assetRegistry.pauseActions();
