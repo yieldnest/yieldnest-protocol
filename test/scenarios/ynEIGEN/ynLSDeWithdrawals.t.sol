@@ -38,30 +38,13 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        // upgrade tokenStakingNode implementation
-        {
-            _upgradeTokenStakingNodeImplementation();
-        }
-
-        // upgrade ynLSDe
-        {
-            _upgradeContract(address(yneigen), address(new ynEigen()), "");
-        }
-
-        // upgrade EigenStrategyManager
-        {
-            _upgradeContract(address(eigenStrategyManager), address(new EigenStrategyManager()), "");
-        }
-
-        // upgrade AssetRegistry
-        {
-            _upgradeContract(address(assetRegistry), address(new AssetRegistry()), "");
-        }
-
-        // upgrade TokenStakingNodesManager
-        {
-            _upgradeContract(address(tokenStakingNodesManager), address(new TokenStakingNodesManager()), "");
-        }
+        // upgrade:
+        // (1) tokenStakingNode implementation
+        // (2) ynLSDe
+        // (3) EigenStrategyManager
+        // (4) AssetRegistry
+        // (5) TokenStakingNodesManager
+        _upgradeContracts();
 
         // deal assets to user
         {
@@ -506,67 +489,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.stopPrank();
     }
 
-    function _upgradeTokenStakingNodeImplementation() private {
-
-        ITokenStakingNode[] memory tokenStakingNodesBefore = tokenStakingNodesManager.getAllNodes();
-
-        uint256 previousTotalAssets = yneigen.totalAssets();
-        uint256 previousTotalSupply = IERC20(address(yneigen)).totalSupply();
-
-        TokenStakingNode testStakingNodeV2 = new TokenStakingNode();
-        {
-            bytes memory _data = abi.encodeWithSignature(
-                "upgradeTokenStakingNode(address)",
-                testStakingNodeV2
-            );
-            vm.startPrank(actors.wallets.YNSecurityCouncil);
-            timelockController.schedule(
-                address(tokenStakingNodesManager), // target
-                0, // value
-                _data,
-                bytes32(0), // predecessor
-                bytes32(0), // salt
-                timelockController.getMinDelay() // delay
-            );
-            vm.stopPrank();
-
-            uint256 minDelay;
-            if (block.chainid == 1) { // Mainnet
-                minDelay = 3 days;
-            } else if (block.chainid == 17000) { // Holesky
-                minDelay = 15 minutes;
-            } else {
-                revert("Unsupported chain ID");
-            }
-            skip(minDelay);
-
-            vm.startPrank(actors.wallets.YNSecurityCouncil);
-            timelockController.execute(
-                address(tokenStakingNodesManager), // target
-                0, // value
-                _data,
-                bytes32(0), // predecessor
-                bytes32(0) // salt
-            );
-            vm.stopPrank();
-        }
-
-    
-        UpgradeableBeacon beacon = tokenStakingNodesManager.upgradeableBeacon();
-        address upgradedImplementationAddress = beacon.implementation();
-        assertEq(upgradedImplementationAddress, address(testStakingNodeV2));
-
-        // check tokenStakingNodesManager.getAllNodes is the same as before
-        ITokenStakingNode[] memory tokenStakingNodesAfter = tokenStakingNodesManager.getAllNodes();
-        assertEq(tokenStakingNodesAfter.length, tokenStakingNodesBefore.length, "TokenStakingNodes length mismatch after upgrade");
-        for (uint i = 0; i < tokenStakingNodesAfter.length; i++) {
-            assertEq(address(tokenStakingNodesAfter[i]), address(tokenStakingNodesBefore[i]), "TokenStakingNode address mismatch after upgrade");
-        }
-
-        assertApproxEqRel(yneigen.totalAssets(), previousTotalAssets, 1e17, "Total assets mismatch after upgrade");
-        assertEq(yneigen.totalSupply(), previousTotalSupply, "Total supply mismatch after upgrade");
-    }
-
     function _upgradeContract(address _proxyAddress, address _newImplementation, bytes memory data_) internal {
         bytes memory _data = abi.encodeWithSignature(
             "upgradeAndCall(address,address,bytes)",
@@ -604,5 +526,53 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             bytes32(0) // salt
         );
         vm.stopPrank();
+    }
+
+    function _upgradeContracts() internal {
+
+        address[] memory _proxyAddresses = new address[](4);
+        _proxyAddresses[0] = address(yneigen);
+        _proxyAddresses[1] = address(eigenStrategyManager);
+        _proxyAddresses[2] = address(assetRegistry);
+        _proxyAddresses[3] = address(tokenStakingNodesManager);
+        address[] memory _newImplementations = new address[](4);
+        _newImplementations[0] = address(new ynEigen());
+        _newImplementations[1] = address(new EigenStrategyManager());
+        _newImplementations[2] = address(new AssetRegistry());
+        _newImplementations[3] = address(new TokenStakingNodesManager());
+
+        address[] memory targets = new address[](_proxyAddresses.length + 1);
+        uint256[] memory values = new uint256[](_proxyAddresses.length + 1);
+        bytes[] memory payloads = new bytes[](_proxyAddresses.length + 1);
+        bytes32 predecessor = bytes32(0);
+        bytes32 salt = bytes32(0);
+        uint256 delay = timelockController.getMinDelay();
+
+        for (uint256 i = 0; i < _proxyAddresses.length; i++) {
+            bytes memory _data = abi.encodeWithSignature(
+                "upgradeAndCall(address,address,bytes)",
+                _proxyAddresses[i], // proxy
+                _newImplementations[i], // implementation
+                ""
+            );
+            targets[i] = getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]);
+            values[i] = 0;
+            payloads[i] = _data;
+        }
+
+        targets[4] = address(tokenStakingNodesManager);
+        values[4] = 0;
+        payloads[4] = abi.encodeWithSignature(
+            "upgradeTokenStakingNode(address)",
+            new TokenStakingNode()
+        );
+
+        vm.prank(actors.wallets.YNSecurityCouncil);
+        timelockController.scheduleBatch(targets, values, payloads, predecessor, salt, delay);
+
+        skip(delay);
+
+        vm.prank(actors.wallets.YNSecurityCouncil);
+        timelockController.executeBatch(targets, values, payloads, predecessor, salt);
     }
 }
