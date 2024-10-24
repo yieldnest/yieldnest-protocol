@@ -82,42 +82,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             wrapper = LSDWrapper(address(_proxy));
         }
 
-
-        // Upgrade tokenStakingNode implementation separately
-        {
-            _upgradeTokenStakingNodeImplementation();
-        }
-
-
-        // Upgrade multiple contracts in a single batch
-        {
-            address[] memory proxyAddresses = new address[](4);
-            address[] memory newImplementations = new address[](4);
-            bytes[] memory data = new bytes[](4);
-
-            proxyAddresses[0] = address(yneigen);
-            proxyAddresses[1] = address(eigenStrategyManager);
-            proxyAddresses[2] = address(assetRegistry);
-            proxyAddresses[3] = address(tokenStakingNodesManager);
-
-            newImplementations[0] = address(new ynEigen());
-            newImplementations[1] = address(new EigenStrategyManager());
-            newImplementations[2] = address(new AssetRegistry());
-            newImplementations[3] = address(new TokenStakingNodesManager());
-
-            data[0] = "";
-            data[1] = "";
-            data[2] = "";
-            data[3] = "";
-
-            upgradeContractsBatch(proxyAddresses, newImplementations, data);
-        }
-
-        // initialize eigenStrategyManager
-        {
-            eigenStrategyManager.initializeV2(address(redemptionAssetsVault), address(wrapper), actors.ops.WITHDRAWAL_MANAGER);
-        }
-
         // initialize RedemptionAssetsVault
         {
             RedemptionAssetsVault.Init memory _init = RedemptionAssetsVault.Init({
@@ -145,6 +109,36 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
                 feeReceiver: actors.admin.FEE_RECEIVER
             });
             withdrawalQueueManager.initialize(_init);
+        }
+
+
+        // Upgrade tokenStakingNode implementation separately
+        {
+            _upgradeTokenStakingNodeImplementation();
+        }
+
+        // Upgrade multiple contracts in a single batch
+        {
+            address[] memory proxyAddresses = new address[](4);
+            address[] memory newImplementations = new address[](4);
+            bytes[] memory data = new bytes[](4);
+
+            proxyAddresses[0] = address(yneigen);
+            proxyAddresses[1] = address(eigenStrategyManager);
+            proxyAddresses[2] = address(assetRegistry);
+            proxyAddresses[3] = address(tokenStakingNodesManager);
+
+            newImplementations[0] = address(new ynEigen());
+            newImplementations[1] = address(new EigenStrategyManager());
+            newImplementations[2] = address(new AssetRegistry());
+            newImplementations[3] = address(new TokenStakingNodesManager());
+
+            data[0] = "";
+            data[1] = abi.encodeWithSignature("initializeV2(address,address,address)", address(redemptionAssetsVault), address(wrapper), actors.ops.WITHDRAWAL_MANAGER);
+            data[2] = "";
+            data[3] = "";
+
+            upgradeContractsBatch(proxyAddresses, newImplementations, data);
         }
 
         // unpause transfers
