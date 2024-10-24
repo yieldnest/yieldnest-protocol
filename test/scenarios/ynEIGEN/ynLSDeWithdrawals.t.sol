@@ -38,14 +38,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        // upgrade:
-        // (1) tokenStakingNode implementation
-        // (2) ynLSDe
-        // (3) EigenStrategyManager
-        // (4) AssetRegistry
-        // (5) TokenStakingNodesManager
-        _upgradeContracts();
-
         // deal assets to user
         {
             deal({ token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether });
@@ -89,6 +81,15 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             );
             wrapper = LSDWrapper(address(_proxy));
         }
+
+        // upgrade:
+        // (1) tokenStakingNode implementation
+        // (2) ynLSDe
+        // (3) EigenStrategyManager
+        // (4) AssetRegistry
+        // (5) TokenStakingNodesManager
+        // (6) ynEigenDepositAdapter
+        _upgradeContracts();
 
         // initialize eigenStrategyManager
         {
@@ -489,45 +490,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.stopPrank();
     }
 
-    function _upgradeContract(address _proxyAddress, address _newImplementation, bytes memory data_) internal {
-        bytes memory _data = abi.encodeWithSignature(
-            "upgradeAndCall(address,address,bytes)",
-            _proxyAddress, // proxy
-            _newImplementation, // implementation
-            data_
-        );
-        vm.startPrank(actors.wallets.YNSecurityCouncil);
-        timelockController.schedule(
-            getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
-            0, // value
-            _data,
-            bytes32(0), // predecessor
-            bytes32(0), // salt
-            timelockController.getMinDelay() // delay
-        );
-        vm.stopPrank();
-
-        uint256 minDelay;
-        if (block.chainid == 1) { // Mainnet
-            minDelay = 3 days;
-        } else if (block.chainid == 17000) { // Holesky
-            minDelay = 15 minutes;
-        } else {
-            revert("Unsupported chain ID");
-        }
-        skip(minDelay);
-
-        vm.startPrank(actors.wallets.YNSecurityCouncil);
-        timelockController.execute(
-            getTransparentUpgradeableProxyAdminAddress(_proxyAddress), // target
-            0, // value
-            _data,
-            bytes32(0), // predecessor
-            bytes32(0) // salt
-        );
-        vm.stopPrank();
-    }
-
     function _upgradeContracts() internal {
 
         address[] memory _proxyAddresses = new address[](4);
@@ -541,9 +503,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         _newImplementations[2] = address(new AssetRegistry());
         _newImplementations[3] = address(new TokenStakingNodesManager());
 
-        address[] memory targets = new address[](_proxyAddresses.length + 1);
-        uint256[] memory values = new uint256[](_proxyAddresses.length + 1);
-        bytes[] memory payloads = new bytes[](_proxyAddresses.length + 1);
+        address[] memory targets = new address[](_proxyAddresses.length + 2);
+        uint256[] memory values = new uint256[](_proxyAddresses.length + 2);
+        bytes[] memory payloads = new bytes[](_proxyAddresses.length + 2);
         bytes32 predecessor = bytes32(0);
         bytes32 salt = bytes32(0);
         uint256 delay = timelockController.getMinDelay();
@@ -565,6 +527,15 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         payloads[4] = abi.encodeWithSignature(
             "upgradeTokenStakingNode(address)",
             new TokenStakingNode()
+        );
+
+        targets[5] = getTransparentUpgradeableProxyAdminAddress(address(ynEigenDepositAdapter_));
+        values[5] = 0;
+        payloads[5] = abi.encodeWithSignature(
+            "upgradeAndCall(address,address,bytes)",
+            ynEigenDepositAdapter_, // proxy
+            address(new ynEigenDepositAdapter()), // implementation
+            abi.encodeWithSignature("initializeV2(address)", address(wrapper))
         );
 
         vm.prank(actors.wallets.YNSecurityCouncil);

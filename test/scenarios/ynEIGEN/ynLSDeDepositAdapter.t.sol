@@ -12,15 +12,6 @@ contract ynLSDeDepositAdapterTest is ynLSDeWithdrawalsTest {
     function setUp() public override {
         super.setUp();
 
-        // upgrade deposit adapter
-        {
-            _upgradeContract(
-                address(ynEigenDepositAdapter_),
-                address(new ynEigenDepositAdapter()),
-                abi.encodeWithSignature("initializeV2(address)", address(wrapper))
-            );
-        }
-
         // deploy testAssetUtils
         {
             testAssetUtils = new TestAssetUtils();
