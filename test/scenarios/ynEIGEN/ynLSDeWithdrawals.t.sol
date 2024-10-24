@@ -38,31 +38,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        // upgrade tokenStakingNode implementation
-        {
-            _upgradeTokenStakingNodeImplementation();
-        }
-
-        // upgrade ynLSDe
-        {
-            _upgradeContract(address(yneigen), address(new ynEigen()), "");
-        }
-
-        // upgrade EigenStrategyManager
-        {
-            _upgradeContract(address(eigenStrategyManager), address(new EigenStrategyManager()), "");
-        }
-
-        // upgrade AssetRegistry
-        {
-            _upgradeContract(address(assetRegistry), address(new AssetRegistry()), "");
-        }
-
-        // upgrade TokenStakingNodesManager
-        {
-            _upgradeContract(address(tokenStakingNodesManager), address(new TokenStakingNodesManager()), "");
-        }
-
         // deal assets to user
         {
             deal({ token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether });
@@ -105,6 +80,37 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
                 abi.encodeWithSignature("initialize()")
             );
             wrapper = LSDWrapper(address(_proxy));
+        }
+
+
+        // Upgrade tokenStakingNode implementation separately
+        {
+            _upgradeTokenStakingNodeImplementation();
+        }
+
+
+        // Upgrade multiple contracts in a single batch
+        {
+            address[] memory proxyAddresses = new address[](4);
+            address[] memory newImplementations = new address[](4);
+            bytes[] memory data = new bytes[](4);
+
+            proxyAddresses[0] = address(yneigen);
+            proxyAddresses[1] = address(eigenStrategyManager);
+            proxyAddresses[2] = address(assetRegistry);
+            proxyAddresses[3] = address(tokenStakingNodesManager);
+
+            newImplementations[0] = address(new ynEigen());
+            newImplementations[1] = address(new EigenStrategyManager());
+            newImplementations[2] = address(new AssetRegistry());
+            newImplementations[3] = address(new TokenStakingNodesManager());
+
+            data[0] = "";
+            data[1] = "";
+            data[2] = "";
+            data[3] = "";
+
+            upgradeContractsBatch(proxyAddresses, newImplementations, data);
         }
 
         // initialize eigenStrategyManager
@@ -172,6 +178,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         }
 
         assertApproxEqRel(yneigen.totalAssets(), _totalAssetsBefore, 1e17, "setUp: E0"); // NOTE - not best practice to have it here, but for the time being...
+    }
+
+    function testQueryAssetBalancesFromRegistry() public {
     }
 
     //
@@ -604,5 +613,65 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             bytes32(0) // salt
         );
         vm.stopPrank();
+    }
+
+    function upgradeContractsBatch(
+        address[] memory _proxyAddresses,
+        address[] memory _newImplementations,
+        bytes[] memory _data
+    ) internal {
+        require(
+            _proxyAddresses.length == _newImplementations.length && _proxyAddresses.length == _data.length,
+            "Array lengths must match"
+        );
+
+        for (uint256 i = 0; i < _proxyAddresses.length; i++) {
+            bytes memory _encodedCall = abi.encodeWithSignature(
+                "upgradeAndCall(address,address,bytes)",
+                _proxyAddresses[i],
+                _newImplementations[i],
+                _data[i]
+            );
+
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
+            timelockController.schedule(
+                getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]),
+                0,
+                _encodedCall,
+                bytes32(0),
+                bytes32(0),
+                timelockController.getMinDelay()
+            );
+            vm.stopPrank();
+        }
+
+        uint256 minDelay;
+        if (block.chainid == 1) {
+            minDelay = 3 days;
+        } else if (block.chainid == 17000) {
+            minDelay = 15 minutes;
+        } else {
+            revert("Unsupported chain ID");
+        }
+        skip(minDelay);
+
+        for (uint256 i = 0; i < _proxyAddresses.length; i++) {
+            bytes memory _encodedCall = abi.encodeWithSignature(
+                "upgradeAndCall(address,address,bytes)",
+                _proxyAddresses[i],
+                _newImplementations[i],
+                _data[i]
+            );
+
+            vm.startPrank(actors.wallets.YNSecurityCouncil);
+            timelockController.execute(
+                getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]),
+                0,
+                _encodedCall,
+                bytes32(0),
+                bytes32(0)
+            );
+            vm.stopPrank();
+        }
     }
 }
