@@ -619,25 +619,31 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             "Array lengths must match"
         );
 
+        address[] memory targets = new address[](_proxyAddresses.length);
+        uint256[] memory values = new uint256[](_proxyAddresses.length);
+        bytes[] memory calldatas = new bytes[](_proxyAddresses.length);
+
         for (uint256 i = 0; i < _proxyAddresses.length; i++) {
-            bytes memory _encodedCall = abi.encodeWithSignature(
+            targets[i] = getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]);
+            values[i] = 0;
+            calldatas[i] = abi.encodeWithSignature(
                 "upgradeAndCall(address,address,bytes)",
                 _proxyAddresses[i],
                 _newImplementations[i],
                 _data[i]
             );
-
-            vm.startPrank(actors.wallets.YNSecurityCouncil);
-            timelockController.schedule(
-                getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]),
-                0,
-                _encodedCall,
-                bytes32(0),
-                bytes32(0),
-                timelockController.getMinDelay()
-            );
-            vm.stopPrank();
         }
+
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.scheduleBatch(
+            targets,
+            values,
+            calldatas,
+            bytes32(0),
+            bytes32(0),
+            timelockController.getMinDelay()
+        );
+        vm.stopPrank();
 
         uint256 minDelay;
         if (block.chainid == 1) {
@@ -649,23 +655,14 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         }
         skip(minDelay);
 
-        for (uint256 i = 0; i < _proxyAddresses.length; i++) {
-            bytes memory _encodedCall = abi.encodeWithSignature(
-                "upgradeAndCall(address,address,bytes)",
-                _proxyAddresses[i],
-                _newImplementations[i],
-                _data[i]
-            );
-
-            vm.startPrank(actors.wallets.YNSecurityCouncil);
-            timelockController.execute(
-                getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]),
-                0,
-                _encodedCall,
-                bytes32(0),
-                bytes32(0)
-            );
-            vm.stopPrank();
-        }
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        timelockController.executeBatch(
+            targets,
+            values,
+            calldatas,
+            bytes32(0),
+            bytes32(0)
+        );
+        vm.stopPrank();
     }
 }
