@@ -82,20 +82,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             wrapper = LSDWrapper(address(_proxy));
         }
 
-        // upgrade:
-        // (1) tokenStakingNode implementation
-        // (2) ynLSDe
-        // (3) EigenStrategyManager
-        // (4) AssetRegistry
-        // (5) TokenStakingNodesManager
-        // (6) ynEigenDepositAdapter
-        _upgradeContracts();
-
-        // initialize eigenStrategyManager
-        {
-            eigenStrategyManager.initializeV2(address(redemptionAssetsVault), address(wrapper), actors.ops.WITHDRAWAL_MANAGER);
-        }
-
         // initialize RedemptionAssetsVault
         {
             RedemptionAssetsVault.Init memory _init = RedemptionAssetsVault.Init({
@@ -124,6 +110,15 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             });
             withdrawalQueueManager.initialize(_init);
         }
+
+        // upgrade and initialize:
+        // (1) tokenStakingNode implementation
+        // (2) ynLSDe
+        // (3) EigenStrategyManager
+        // (4) AssetRegistry
+        // (5) TokenStakingNodesManager
+        // (6) ynEigenDepositAdapter
+        _upgradeContracts();
 
         // unpause transfers
         {
@@ -492,20 +487,18 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
     function _upgradeContracts() internal {
 
-        address[] memory _proxyAddresses = new address[](4);
+        address[] memory _proxyAddresses = new address[](3);
         _proxyAddresses[0] = address(yneigen);
-        _proxyAddresses[1] = address(eigenStrategyManager);
-        _proxyAddresses[2] = address(assetRegistry);
-        _proxyAddresses[3] = address(tokenStakingNodesManager);
-        address[] memory _newImplementations = new address[](4);
+        _proxyAddresses[1] = address(assetRegistry);
+        _proxyAddresses[2] = address(tokenStakingNodesManager);
+        address[] memory _newImplementations = new address[](3);
         _newImplementations[0] = address(new ynEigen());
-        _newImplementations[1] = address(new EigenStrategyManager());
-        _newImplementations[2] = address(new AssetRegistry());
-        _newImplementations[3] = address(new TokenStakingNodesManager());
+        _newImplementations[1] = address(new AssetRegistry());
+        _newImplementations[2] = address(new TokenStakingNodesManager());
 
-        address[] memory targets = new address[](_proxyAddresses.length + 2);
-        uint256[] memory values = new uint256[](_proxyAddresses.length + 2);
-        bytes[] memory payloads = new bytes[](_proxyAddresses.length + 2);
+        address[] memory targets = new address[](6);
+        uint256[] memory values = new uint256[](6);
+        bytes[] memory payloads = new bytes[](6);
         bytes32 predecessor = bytes32(0);
         bytes32 salt = bytes32(0);
         uint256 delay = timelockController.getMinDelay();
@@ -522,11 +515,25 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             payloads[i] = _data;
         }
 
-        targets[4] = address(tokenStakingNodesManager);
-        values[4] = 0;
-        payloads[4] = abi.encodeWithSignature(
+        targets[3] = address(tokenStakingNodesManager);
+        values[3] = 0;
+        payloads[3] = abi.encodeWithSignature(
             "upgradeTokenStakingNode(address)",
             new TokenStakingNode()
+        );
+
+        targets[4] = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
+        values[4] = 0;
+        payloads[4] = abi.encodeWithSignature(
+            "upgradeAndCall(address,address,bytes)",
+            address(eigenStrategyManager), // proxy
+            address(new EigenStrategyManager()), // implementation
+            abi.encodeWithSignature(
+                "initializeV2(address,address,address)",
+                address(redemptionAssetsVault),
+                address(wrapper),
+                actors.ops.WITHDRAWAL_MANAGER
+            )
         );
 
         targets[5] = getTransparentUpgradeableProxyAdminAddress(address(ynEigenDepositAdapter_));
