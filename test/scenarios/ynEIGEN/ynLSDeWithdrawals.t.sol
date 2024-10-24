@@ -104,8 +104,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
                 withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
                 redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
                 requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                // withdrawalFee: 500, // 0.05%
-                withdrawalFee: 0,
+                withdrawalFee: 1000,
                 feeReceiver: actors.admin.FEE_RECEIVER
             });
             withdrawalQueueManager.initialize(_init);
