@@ -336,6 +336,7 @@ contract YnUpgrader is BaseYnEigenScript {
 //   _tokenStakingNodesManagerImpl:  0x81f34d0DB58A7934549D9B2B1E76542ED9801B1f
 //   _eigenStrategyManagerImpl:  0x1776deA5799fc7ad10b6039f6E1927fEfd731E85
 //   _ynEigenDepositAdapterImpl:  0x8Ef7a066bf2Cf76baD826C1De8D314badF057b52
+//   _tokenStakingNodeImpl: 0xc602682b9ebc9719181b7a2b2479291cba26f801
 //   =====================================
 //   =====================================
 
