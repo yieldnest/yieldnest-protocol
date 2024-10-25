@@ -12,6 +12,8 @@ import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+
 
 import "forge-std/console.sol";
 
@@ -38,19 +40,26 @@ contract YnUpgrader is BaseYnEigenScript {
     // //
 
     // mainnet
-    address yneigenProxy = 0x071bdC8eDcdD66730f45a3D3A6F794FAA37C75ED;
-    address assetRegistryProxy = 0xaD31546AdbfE1EcD7137310508f112039a35b6F7;
-    address ynEigenDepositAdapterProxy = 0x7d0c1F604571a1c015684e6c15f2DdEc432C5e74;
-    address eigenStrategyManagerProxy = 0xA0a11A9b84bf87c0323bc183715a22eC7881B7FC;
-    address tokenStakingNodesManagerProxy = 0x5c20D1a85C7d9acB503135a498E26Eb55d806552;
-    TimelockController timelockController = TimelockController(payable(address(0x62173555C27C67644C5634e114e42A63A59CD7A5)));
-    //
+    address yneigenProxy = 0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c;
+    address assetRegistryProxy = 0x323C933df2523D5b0C756210446eeE0fB84270fd;
+    address ynEigenDepositAdapterProxy = 0x9e72155d301a6555dc565315be72D295c76753c0;
+    address eigenStrategyManagerProxy = 0x92D904019A92B0Cafce3492Abb95577C285A68fC;
+    address tokenStakingNodesManagerProxy = 0x6B566CB6cDdf7d140C59F84594756a151030a0C3;
+    TimelockController timelockController = TimelockController(payable(address(0xbB73f8a5B0074b27c6df026c77fA08B0111D017A)));
 
     TransparentUpgradeableProxy redemptionAssetsVaultProxy;
     TransparentUpgradeableProxy withdrawalQueueManagerProxy;
     TransparentUpgradeableProxy wrapperProxy;
 
     function run() public {
+
+
+        // Assert proxy admins for existing poxies
+        assertProxyAdminOwnedByTimelock(yneigenProxy);
+        assertProxyAdminOwnedByTimelock(assetRegistryProxy);
+        assertProxyAdminOwnedByTimelock(ynEigenDepositAdapterProxy);
+        assertProxyAdminOwnedByTimelock(eigenStrategyManagerProxy);
+        assertProxyAdminOwnedByTimelock(tokenStakingNodesManagerProxy);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
@@ -60,7 +69,7 @@ contract YnUpgrader is BaseYnEigenScript {
             _redemptionAssetsVaultImpl = address(new RedemptionAssetsVault());
             redemptionAssetsVaultProxy = new TransparentUpgradeableProxy(
                 _redemptionAssetsVaultImpl,
-                actors.admin.PROXY_ADMIN_OWNER,
+                address(timelockController),
                 ""
             );
         }
@@ -71,7 +80,7 @@ contract YnUpgrader is BaseYnEigenScript {
             _withdrawalQueueManagerImpl = address(new WithdrawalQueueManager());
             withdrawalQueueManagerProxy = new TransparentUpgradeableProxy(
                 _withdrawalQueueManagerImpl,
-                actors.admin.PROXY_ADMIN_OWNER,
+                address(timelockController),
                 ""
             );
         }
@@ -87,10 +96,15 @@ contract YnUpgrader is BaseYnEigenScript {
             ));
             wrapperProxy = new TransparentUpgradeableProxy(
                 _wrapperImpl,
-                actors.admin.PROXY_ADMIN_OWNER,
+                address(timelockController),
                 abi.encodeWithSignature("initialize()")
             );
         }
+
+        // Assert proxy admins for new proxies
+        assertProxyAdminOwnedByTimelock(address(redemptionAssetsVaultProxy));
+        assertProxyAdminOwnedByTimelock(address(withdrawalQueueManagerProxy));
+        assertProxyAdminOwnedByTimelock(address(wrapperProxy));
 
         // initialize RedemptionAssetsVault
         {
@@ -111,9 +125,9 @@ contract YnUpgrader is BaseYnEigenScript {
                 redeemableAsset: IRedeemableAsset(yneigenProxy),
                 redemptionAssetsVault: IRedemptionAssetsVault(address(redemptionAssetsVaultProxy)),
                 admin: actors.admin.PROXY_ADMIN_OWNER,
-                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+                withdrawalQueueAdmin: actors.admin.ADMIN,
                 redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
+                requestFinalizer:  actors.ops.YNEIGEN_REQUEST_FINALIZER,
                 withdrawalFee: 1000,
                 feeReceiver: actors.admin.FEE_RECEIVER
             });
@@ -212,7 +226,7 @@ contract YnUpgrader is BaseYnEigenScript {
                 "initializeV2(address,address,address)",
                 address(redemptionAssetsVaultProxy),
                 address(wrapperProxy),
-                actors.ops.WITHDRAWAL_MANAGER
+                actors.ops.YNEIGEN_WITHDRAWAL_MANAGER
             )
         );
 
@@ -248,6 +262,12 @@ contract YnUpgrader is BaseYnEigenScript {
 
         // vm.prank(actors.wallets.YNSecurityCouncil);
         // timelockController.executeBatch(targets, values, payloads, predecessor, salt);
+    }
+
+
+    function assertProxyAdminOwnedByTimelock(address proxyAddress) internal view {
+        address proxyAdminOwner = ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(proxyAddress)).owner();
+        require(proxyAdminOwner == address(timelockController), "Proxy admin not owned by timelock");
     }
 
     function _printBurnerRole() private view {
