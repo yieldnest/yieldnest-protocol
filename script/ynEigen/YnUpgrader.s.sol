@@ -337,6 +337,11 @@ contract YnUpgrader is BaseYnEigenScript {
 //   _eigenStrategyManagerImpl:  0x1776deA5799fc7ad10b6039f6E1927fEfd731E85
 //   _ynEigenDepositAdapterImpl:  0x8Ef7a066bf2Cf76baD826C1De8D314badF057b52
 //   _tokenStakingNodeImpl: 0xc602682b9ebc9719181b7a2b2479291cba26f801
+
+// address redemptionAssetsVaultProxyAdmin = 0xE5E91680FE69F508B92bdCBCA2f867baAF58BAbB;
+// address withdrawalQueueManagerProxyAdmin = 0xe612764D1986693f46e99605d274Bbe28c3F03a7;
+// address wrapperProxyAdmin = 0x151057A14a4c84403e77C1fbc4f22a8156f63A4B;
+
 //   =====================================
 //   =====================================
 
