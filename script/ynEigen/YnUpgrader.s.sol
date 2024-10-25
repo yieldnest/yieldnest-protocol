@@ -28,7 +28,16 @@ import "./BaseYnEigenScript.s.sol";
 
 contract YnUpgrader is BaseYnEigenScript {
 
-    // holesky
+    // // holesky
+    // address yneigenProxy = 0x071bdC8eDcdD66730f45a3D3A6F794FAA37C75ED;
+    // address assetRegistryProxy = 0xaD31546AdbfE1EcD7137310508f112039a35b6F7;
+    // address ynEigenDepositAdapterProxy = 0x7d0c1F604571a1c015684e6c15f2DdEc432C5e74;
+    // address eigenStrategyManagerProxy = 0xA0a11A9b84bf87c0323bc183715a22eC7881B7FC;
+    // address tokenStakingNodesManagerProxy = 0x5c20D1a85C7d9acB503135a498E26Eb55d806552;
+    // TimelockController timelockController = TimelockController(payable(address(0x62173555C27C67644C5634e114e42A63A59CD7A5)));
+    // //
+
+    // mainnet
     address yneigenProxy = 0x071bdC8eDcdD66730f45a3D3A6F794FAA37C75ED;
     address assetRegistryProxy = 0xaD31546AdbfE1EcD7137310508f112039a35b6F7;
     address ynEigenDepositAdapterProxy = 0x7d0c1F604571a1c015684e6c15f2DdEc432C5e74;
