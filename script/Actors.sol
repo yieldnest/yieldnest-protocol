@@ -33,6 +33,9 @@ contract ActorAddresses {
         address STAKING_NODES_WITHDRAWER;
         address STRATEGY_CONTROLLER;
         address TOKEN_STAKING_NODE_OPERATOR;
+        address TOKEN_STAKING_NODES_WITHDRAWER;
+        address YNEIGEN_REQUEST_FINALIZER;
+        address YNEIGEN_WITHDRAWAL_MANAGER;
     }
 
     struct Wallets {
@@ -44,6 +47,7 @@ contract ActorAddresses {
         address YNTokenStakingNodeOperator;
         address YNWithdrawalsETH;
         address YnOperator;
+        address YNnWithdrawalsYnEigen;
     }
 
     struct Actors {
@@ -67,7 +71,8 @@ contract ActorAddresses {
                 // TODO: replace with concrete deployment
                 YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890,
                 YNWithdrawalsETH: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07,
-                YnOperator: 0x530F6057e93b54Ec39D6472DA75712db2178780C
+                YnOperator: 0x530F6057e93b54Ec39D6472DA75712db2178780C,
+                YNnWithdrawalsYnEigen: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07
             });
             actors[17000] = Actors({
                 eoa: EOAActors({
@@ -99,7 +104,10 @@ contract ActorAddresses {
                     WITHDRAWAL_MANAGER: holeskyWallets.YNWithdrawalsETH,
                     REDEMPTION_ASSET_WITHDRAWER: holeskyWallets.YNDev,
                     REQUEST_FINALIZER: holeskyWallets.YNWithdrawalsETH,
-                    STAKING_NODES_WITHDRAWER: holeskyWallets.YNWithdrawalsETH
+                    STAKING_NODES_WITHDRAWER: holeskyWallets.YNWithdrawalsETH,
+                    TOKEN_STAKING_NODES_WITHDRAWER: holeskyWallets.YNnWithdrawalsYnEigen,
+                    YNEIGEN_REQUEST_FINALIZER: holeskyWallets.YNnWithdrawalsYnEigen,
+                    YNEIGEN_WITHDRAWAL_MANAGER: holeskyWallets.YNnWithdrawalsYnEigen
                 }),
                 wallets: holeskyWallets
             });
@@ -114,7 +122,8 @@ contract ActorAddresses {
             // TODO: replace with concrete deployment
             YNTokenStakingNodeOperator: 0xfcad670592a3b24869C0b51a6c6FDED4F95D6975, // same as YNSecurityCouncil
             YNWithdrawalsETH: 0x7f7187fbD6e508bC23268746dff535cfC8EbC87b,
-            YnOperator: 0x591A163AcfDb6F79674b08e5F069b4905a230ddD
+            YnOperator: 0x591A163AcfDb6F79674b08e5F069b4905a230ddD,
+            YNnWithdrawalsYnEigen: 0x15519e68Ca7544d1C919A2A6e9065375A1f0C80A
         });
 
         actors[1] = Actors({
@@ -147,7 +156,10 @@ contract ActorAddresses {
                 WITHDRAWAL_MANAGER: mainnetWallets.YNWithdrawalsETH,
                 REDEMPTION_ASSET_WITHDRAWER: mainnetWallets.YNDev,
                 REQUEST_FINALIZER: mainnetWallets.YNWithdrawalsETH,
-                STAKING_NODES_WITHDRAWER: mainnetWallets.YNWithdrawalsETH
+                STAKING_NODES_WITHDRAWER: mainnetWallets.YNWithdrawalsETH,
+                TOKEN_STAKING_NODES_WITHDRAWER: mainnetWallets.YNnWithdrawalsYnEigen,
+                YNEIGEN_REQUEST_FINALIZER: mainnetWallets.YNnWithdrawalsYnEigen,
+                YNEIGEN_WITHDRAWAL_MANAGER: mainnetWallets.YNnWithdrawalsYnEigen
             }),
             wallets: mainnetWallets
         });
