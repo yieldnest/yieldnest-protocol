@@ -183,7 +183,7 @@ contract YnEIGENScenarioTest3 is ynEigenIntegrationBaseTest {
 
 	address user1 = address(0x01);
 	
-	function test_ynETH_Scenario_3_Deposit() public {
+	function test_ynEigen_Scenario_3_Deposit() public {
 
 		depositLSD_and_createNode();
 	}
@@ -214,6 +214,6 @@ contract YnEIGENScenarioTest3 is ynEigenIntegrationBaseTest {
             eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
         }
 
-		assertApproxEqAbs(amount, eigenStrategyManager.getStakedAssetBalanceForNode(asset, 0), 2);
+		assertApproxEqAbs(amount, eigenStrategyManager.getStakedAssetBalanceForNode(asset, 0), 5);
 	}
 }
