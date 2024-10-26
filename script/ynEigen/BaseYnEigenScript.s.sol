@@ -13,6 +13,7 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {IWrapper} from "src/interfaces/IWrapper.sol";
 
 import {ActorAddresses} from "script/Actors.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
@@ -33,6 +34,9 @@ contract BaseYnEigenScript is BaseScript {
         ProxyAddresses ynEigenDepositAdapter;
         ProxyAddresses rateProvider;
         ProxyAddresses ynEigenViewer;
+        ProxyAddresses redemptionAssetsVault;
+        ProxyAddresses withdrawalQueueManager;
+        ProxyAddresses wrapper;
     }
 
     struct Deployment {
@@ -48,7 +52,7 @@ contract BaseYnEigenScript is BaseScript {
         DeploymentProxies proxies;
         RedemptionAssetsVault redemptionAssetsVault;
         WithdrawalQueueManager withdrawalQueueManager;
-        LSDWrapper lsdWrapper;
+        IWrapper wrapper;
     }
 
     struct Asset {
@@ -131,7 +135,7 @@ contract BaseYnEigenScript is BaseScript {
         vm.serializeAddress(json, "upgradeTimelock", address(deployment.upgradeTimelock));
         serializeProxyElements(json, "redemptionAssetsVault", address(deployment.redemptionAssetsVault));
         serializeProxyElements(json, "withdrawalQueueManager", address(deployment.withdrawalQueueManager));
-        serializeProxyElements(json, "lsdWrapper", address(deployment.lsdWrapper));
+        serializeProxyElements(json, "wrapper", address(deployment.wrapper));
 
 
         // actors
@@ -186,6 +190,15 @@ contract BaseYnEigenScript is BaseScript {
 
         deployment.viewer = ynEigenViewer(payable(jsonContent.readAddress(".proxy-ynEigenViewer")));
         proxies.ynEigenViewer =  loadProxyAddresses(jsonContent, "ynEigenViewer"); 
+
+        deployment.redemptionAssetsVault = RedemptionAssetsVault(payable(jsonContent.readAddress(".proxy-redemptionAssetsVault")));
+        proxies.redemptionAssetsVault = loadProxyAddresses(jsonContent, "redemptionAssetsVault");
+
+        deployment.withdrawalQueueManager = WithdrawalQueueManager(payable(jsonContent.readAddress(".proxy-withdrawalQueueManager")));
+        proxies.withdrawalQueueManager = loadProxyAddresses(jsonContent, "withdrawalQueueManager");
+
+        deployment.wrapper = IWrapper(payable(jsonContent.readAddress(".proxy-wrapper")));
+        proxies.wrapper = loadProxyAddresses(jsonContent, "wrapper");
         
         deployment.upgradeTimelock = TimelockController(payable(jsonContent.readAddress(".upgradeTimelock")));
 

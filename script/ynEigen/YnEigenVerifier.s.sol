@@ -155,6 +155,24 @@ contract YnEigenVerifier is BaseYnEigenScript {
             "ynEigenViewer",
             deployment.proxies.ynEigenViewer
         );
+
+        verifyProxyContract(
+            address(deployment.redemptionAssetsVault),
+            "redemptionAssetsVault",
+            deployment.proxies.redemptionAssetsVault
+        );
+
+        verifyProxyContract(
+            address(deployment.withdrawalQueueManager),
+            "withdrawalQueueManager",
+            deployment.proxies.withdrawalQueueManager
+        );
+
+        verifyProxyContract(
+            address(deployment.wrapper),
+            "wrapper",
+            deployment.proxies.wrapper
+        );
     }
 
     function verifyProxyAdminOwners() internal view {
