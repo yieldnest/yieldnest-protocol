@@ -489,11 +489,11 @@ contract YnEigenVerifier is BaseYnEigenScript {
         // PAUSER_ROLE
         require(
             deployment.redemptionAssetsVault.hasRole(
-                deployment.redemptionAssetsVault.PAUSER_ROLE(), address(actors.ops.PAUSE_ADMIN)
+                deployment.redemptionAssetsVault.PAUSER_ROLE(), address(actors.admin.ADMIN)
             ),
             "redemptionAssetsVault: PAUSER_ROLE INVALID"
         );
-        console.log("\u2705 redemptionAssetsVault: PAUSER_ROLE - ", vm.toString(address(actors.ops.PAUSE_ADMIN)));
+        console.log("\u2705 redemptionAssetsVault: PAUSER_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
 
         // UNPAUSER_ROLE
         require(
