@@ -155,6 +155,24 @@ contract YnEigenVerifier is BaseYnEigenScript {
             "ynEigenViewer",
             deployment.proxies.ynEigenViewer
         );
+
+        verifyProxyContract(
+            address(deployment.redemptionAssetsVault),
+            "redemptionAssetsVault",
+            deployment.proxies.redemptionAssetsVault
+        );
+
+        verifyProxyContract(
+            address(deployment.withdrawalQueueManager),
+            "withdrawalQueueManager",
+            deployment.proxies.withdrawalQueueManager
+        );
+
+        verifyProxyContract(
+            address(deployment.wrapper),
+            "wrapper",
+            deployment.proxies.wrapper
+        );
     }
 
     function verifyProxyAdminOwners() internal view {
@@ -248,7 +266,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
     function verifyRoles() internal view {
         //--------------------------------------------------------------------------------------
-        // YnEigene roles
+        // YnEigen roles
         //--------------------------------------------------------------------------------------
 
         // DEFAULT_ADMIN_ROLE
@@ -271,6 +289,13 @@ contract YnEigenVerifier is BaseYnEigenScript {
             "ynEigen: UNPAUSER_ROLE INVALID"
         );
         console.log("\u2705 ynEigen: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
+
+        // BURNER_ROLE
+        require(
+            deployment.ynEigen.hasRole(deployment.ynEigen.BURNER_ROLE(), address(deployment.withdrawalQueueManager)),
+            "ynEigen: BURNER_ROLE INVALID"
+        );
+        console.log("\u2705 ynEigen: BURNER_ROLE - ", vm.toString(address(deployment.withdrawalQueueManager)));
 
         //--------------------------------------------------------------------------------------
         // assetRegistry roles
@@ -447,6 +472,78 @@ contract YnEigenVerifier is BaseYnEigenScript {
             "ynEigenDepositAdapter: DEFAULT_ADMIN_ROLE INVALID"
         );
         console.log("\u2705 ynEigenDepositAdapter: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+        //--------------------------------------------------------------------------------------
+        // redemptionAssetsVault roles
+        //--------------------------------------------------------------------------------------
+
+        // DEFAULT_ADMIN_ROLE
+        require(
+            deployment.redemptionAssetsVault.hasRole(
+                deployment.redemptionAssetsVault.DEFAULT_ADMIN_ROLE(), address(actors.admin.ADMIN)
+            ),
+            "redemptionAssetsVault: DEFAULT_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 redemptionAssetsVault: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+        // PAUSER_ROLE
+        require(
+            deployment.redemptionAssetsVault.hasRole(
+                deployment.redemptionAssetsVault.PAUSER_ROLE(), address(actors.admin.ADMIN)
+            ),
+            "redemptionAssetsVault: PAUSER_ROLE INVALID"
+        );
+        console.log("\u2705 redemptionAssetsVault: PAUSER_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+        // UNPAUSER_ROLE
+        require(
+            deployment.redemptionAssetsVault.hasRole(
+                deployment.redemptionAssetsVault.UNPAUSER_ROLE(), address(actors.admin.UNPAUSE_ADMIN)
+            ),
+            "redemptionAssetsVault: UNPAUSER_ROLE INVALID"
+        );
+        console.log("\u2705 redemptionAssetsVault: UNPAUSER_ROLE - ", vm.toString(address(actors.admin.UNPAUSE_ADMIN)));
+
+        //--------------------------------------------------------------------------------------
+        // withdrawalQueueManager roles
+        //--------------------------------------------------------------------------------------
+
+        // DEFAULT_ADMIN_ROLE
+        require(
+            deployment.withdrawalQueueManager.hasRole(
+                deployment.withdrawalQueueManager.DEFAULT_ADMIN_ROLE(), address(actors.admin.ADMIN)
+            ),
+            "withdrawalQueueManager: DEFAULT_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 withdrawalQueueManager: DEFAULT_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+
+        // WITHDRAWAL_QUEUE_ADMIN_ROLE
+        require(
+            deployment.withdrawalQueueManager.hasRole(
+                deployment.withdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE(), address(actors.admin.ADMIN)
+            ),
+            "withdrawalQueueManager: WITHDRAWAL_QUEUE_ADMIN_ROLE INVALID"
+        );
+        console.log("\u2705 withdrawalQueueManager: WITHDRAWAL_QUEUE_ADMIN_ROLE - ", vm.toString(address(actors.admin.ADMIN)));
+
+        // REDEMPTION_ASSET_WITHDRAWER_ROLE
+        require(
+            deployment.withdrawalQueueManager.hasRole(
+                deployment.withdrawalQueueManager.REDEMPTION_ASSET_WITHDRAWER_ROLE(), address(actors.ops.REDEMPTION_ASSET_WITHDRAWER)
+            ),
+            "withdrawalQueueManager: REDEMPTION_ASSET_WITHDRAWER_ROLE INVALID"
+        );
+        console.log("\u2705 withdrawalQueueManager: REDEMPTION_ASSET_WITHDRAWER_ROLE - ", vm.toString(address(actors.ops.REDEMPTION_ASSET_WITHDRAWER)));
+
+        // REQUEST_FINALIZER_ROLE
+        require(
+            deployment.withdrawalQueueManager.hasRole(
+                deployment.withdrawalQueueManager.REQUEST_FINALIZER_ROLE(), address(actors.ops.YNEIGEN_REQUEST_FINALIZER)
+            ),
+            "withdrawalQueueManager: REQUEST_FINALIZER_ROLE INVALID"
+        );
+        console.log("\u2705 withdrawalQueueManager: REQUEST_FINALIZER_ROLE - ", vm.toString(address(actors.ops.YNEIGEN_REQUEST_FINALIZER)));
     }
 
     function verifySystemParameters() internal view {
@@ -527,6 +624,13 @@ contract YnEigenVerifier is BaseYnEigenScript {
             "\u2705 ynEigenDepositAdapter: woETH - Value:", address(deployment.ynEigenDepositAdapterInstance.woETH())
         );
 
+        // EXPECTING 10 BPS
+        require(
+            deployment.withdrawalQueueManager.withdrawalFee() == 1000,
+            "WithdrawalQueueManager: withdrawalFee INVALID"
+        );
+        console.log("\u2705 WithdrawalQueueManager: withdrawalFee - Value:", deployment.withdrawalQueueManager.withdrawalFee());
+
         console.log("\u2705 All system parameters verified successfully");
     }
 
@@ -535,6 +639,8 @@ contract YnEigenVerifier is BaseYnEigenScript {
         verifyTokenStakingNodesManagerDependencies();
         verifyAssetRegistryDependencies();
         verifyEigenStrategyManagerDependencies();
+        verifyWithdrawalQueueManagerDependencies();
+        verifyRedemptionAssetsVaultDependencies();
 
         console.log("\u2705 All contract dependencies verified successfully");
     }
@@ -642,20 +748,59 @@ contract YnEigenVerifier is BaseYnEigenScript {
         );
 
         require(
-            address(deployment.eigenStrategyManager.wstETH()) == address(chainAddresses.lsd.WSTETH_ADDRESS),
-            "eigenStrategyManager: wstETH INVALID"
+            address(deployment.eigenStrategyManager.wrapper()) == address(deployment.wrapper),
+            "eigenStrategyManager: wrapper INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: wstETH - Value:", address(deployment.eigenStrategyManager.wstETH()));
+        console.log("\u2705 eigenStrategyManager: wrapper - Value:", address(deployment.eigenStrategyManager.wrapper()));
+    }
+
+    function verifyWithdrawalQueueManagerDependencies() internal view {
+        require(
+            address(deployment.withdrawalQueueManager.redeemableAsset()) == address(deployment.ynEigen),
+            "withdrawalQueueManager: ynEigen INVALID"
+        );
+        console.log("\u2705 withdrawalQueueManager: ynEigen - Value:", address(deployment.withdrawalQueueManager.redeemableAsset()));
 
         require(
-            address(deployment.eigenStrategyManager.woETH()) == address(chainAddresses.lsd.WOETH_ADDRESS),
-            "eigenStrategyManager: woETH INVALID"
+            address(deployment.withdrawalQueueManager.redemptionAssetsVault()) == address(deployment.redemptionAssetsVault),
+            "withdrawalQueueManager: redemptionAssetsVault INVALID"
         );
-        console.log("\u2705 eigenStrategyManager: woETH - Value:", address(deployment.eigenStrategyManager.woETH()));
+        console.log("\u2705 withdrawalQueueManager: redemptionAssetsVault - Value:", address(deployment.withdrawalQueueManager.redemptionAssetsVault()));
+    }
+
+    function verifyRedemptionAssetsVaultDependencies() internal view {
+        require(
+            address(deployment.redemptionAssetsVault.ynEigen()) == address(deployment.ynEigen),
+            "redemptionAssetsVault: ynEigen INVALID"
+        );
+        console.log("\u2705 redemptionAssetsVault: ynEigen - Value:", address(deployment.redemptionAssetsVault.ynEigen()));
+
+        require(
+            address(deployment.redemptionAssetsVault.assetRegistry()) == address(deployment.assetRegistry),
+            "redemptionAssetsVault: assetRegistry INVALID"
+        );
+        console.log("\u2705 redemptionAssetsVault: assetRegistry - Value:", address(deployment.redemptionAssetsVault.assetRegistry()));
+
+        require(
+            address(deployment.redemptionAssetsVault.redeemer()) == address(deployment.withdrawalQueueManager),
+            "redemptionAssetsVault: redeemer INVALID"
+        );
+        console.log("\u2705 redemptionAssetsVault: redeemer - Value:", address(deployment.redemptionAssetsVault.redeemer()));
     }
 
     function ynEigenSanityCheck() internal {
-        require(deployment.assetRegistry.totalAssets() >= 0, "assetRegistry: totalAssets INVALID");
-        console.log("\u2705 assetRegistry: totalAssets - Value:", deployment.assetRegistry.totalAssets());
+
+        // Check that totalSupply is less than totalAssets
+        uint256 totalSupply = deployment.ynEigen.totalSupply();
+        uint256 totalAssets = deployment.ynEigen.totalAssets();
+        require(totalSupply <= totalAssets, "totalSupply should be less than or equal to totalAssets");
+        console.log("\u2705 totalSupply is less than totalAssets");
+
+        // Print totalSupply and totalAssets
+        console.log(string.concat("Total Supply: ", vm.toString(totalSupply), " ynEigen (", vm.toString(totalSupply / 1e18), " units)"));
+        console.log(string.concat("Total Assets: ", vm.toString(totalAssets), " wei (", vm.toString(totalAssets / 1e18), " Unit of Account)"));
+
+        uint256 previewRedeemResult = deployment.ynEigen.previewRedeem(1 ether);
+        console.log(string.concat("previewRedeem of 1 ynEigen: ", vm.toString(previewRedeemResult), " wei (", vm.toString(previewRedeemResult / 1e18), " Unit of Account)"));
     }
 }

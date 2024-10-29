@@ -188,7 +188,7 @@ contract YnEigenDeployer is BaseYnEigenScript {
                 viewer: proxies.viewer,
                 redemptionAssetsVault: proxies.redemptionAssetsVault,
                 withdrawalQueueManager: proxies.withdrawalQueueManager,
-                lsdWrapper: proxies.lsdWrapper,
+                wrapper: proxies.lsdWrapper,
                 proxies: DeploymentProxies({
                     ynEigen: proxyAddressesEmpty,
                     assetRegistry: proxyAddressesEmpty,
@@ -196,7 +196,10 @@ contract YnEigenDeployer is BaseYnEigenScript {
                     tokenStakingNodesManager: proxyAddressesEmpty,
                     rateProvider: proxyAddressesEmpty,
                     ynEigenDepositAdapter: proxyAddressesEmpty,
-                    ynEigenViewer: proxyAddressesEmpty
+                    ynEigenViewer: proxyAddressesEmpty,
+                    redemptionAssetsVault: proxyAddressesEmpty,
+                    withdrawalQueueManager: proxyAddressesEmpty,
+                    wrapper: proxyAddressesEmpty
                 })
             });
 
