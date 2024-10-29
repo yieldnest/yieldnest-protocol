@@ -12,9 +12,13 @@ contract LSDWrapper is IWrapper, Initializable {
 
     using SafeERC20 for IERC20;
 
+    // solhint-disable-next-line var-name-mixedcase
     IERC20 public immutable wstETH;
+    // solhint-disable-next-line var-name-mixedcase
     IERC20 public immutable woETH;
+    // solhint-disable-next-line var-name-mixedcase
     IERC20 public immutable oETH;
+    // solhint-disable-next-line var-name-mixedcase
     IERC20 public immutable stETH;
 
     // ============================================================================================

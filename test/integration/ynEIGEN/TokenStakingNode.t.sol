@@ -221,7 +221,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
         // 3. Queue withdrawals
         vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-        bytes32[] memory withdrawalRoots = tokenStakingNode.queueWithdrawals(
+        tokenStakingNode.queueWithdrawals(
             eigenStrategyManager.strategies(wstETH),
             withdrawnShares
         );
@@ -300,7 +300,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
             // Queue withdrawal
             vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-            bytes32[] memory withdrawalRoots = tokenStakingNode.queueWithdrawals(wstETHStrategy, sharesToWithdraw);
+            tokenStakingNode.queueWithdrawals(wstETHStrategy, sharesToWithdraw);
 
             _startBlock = uint32(block.number);
 

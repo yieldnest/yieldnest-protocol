@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IStakingNodesManager, IStakingNodesManager as WithdrawalAction} from "./interfaces/IStakingNodesManager.sol";
+import {IStakingNodesManager} from "./interfaces/IStakingNodesManager.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 
