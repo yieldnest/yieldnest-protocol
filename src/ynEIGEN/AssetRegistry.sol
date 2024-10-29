@@ -10,7 +10,7 @@ import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
-
+import {IRedemptionAssetsVaultExt} from "src/interfaces/IYieldNestStrategyManager.sol";
 
 interface IAssetRegistryEvents {
     event AssetAdded(address indexed asset);
@@ -29,7 +29,6 @@ interface IAssetRegistryEvents {
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-    error UnsupportedAsset(IERC20 asset);
     error Paused();
     error AssetNotActive(address inactiveAsset);
     error AssetAlreadyActive(address asset);
@@ -37,7 +36,6 @@ interface IAssetRegistryEvents {
     error AssetBalanceNonZeroInPool(uint256 balanceInPool);
     error AssetBalanceNonZeroInStrategyManager(uint256 balanceInStrategyManager);
     error AssetNotFound(address absentAsset);
-    error ZeroAmount();
     error ZeroAddress();
     error LengthMismatch(uint256 length1, uint256 length2);
     error AssetAlreadyAvailable(address asset);
@@ -103,29 +101,13 @@ interface IAssetRegistryEvents {
         _grantRole(ASSET_MANAGER_ROLE, init.assetManagerRole);
 
         strategyManager = init.yieldNestStrategyManager;
-        
-        uint256 assetsLength = init.assets.length;
-        for (uint256 i = 0; i < assetsLength; i++) {
-            IERC20 asset = init.assets[i];
-            if (address(asset) == address(0)) {
-                revert ZeroAddress();
-            }
-            if (_assetData[asset].status == AssetStatus.Active) {
-                revert AssetAlreadyActive(address(asset));
-            }
-
-            if (!strategyManager.supportsAsset(asset)) {
-                revert NoStrategyDefinedForAsset(asset);
-            }
-
-            assets.push(asset);
-            _assetData[asset] = AssetData({
-                status: AssetStatus.Active
-            });
-        }
-
         rateProvider = init.rateProvider;
         ynEigen = init.ynEigen;
+
+        uint256 assetsLength = init.assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
+            _addAsset(init.assets[i]);
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -142,6 +124,10 @@ interface IAssetRegistryEvents {
     onlyRole(ASSET_MANAGER_ROLE)
     notZeroAddress(address(asset))
     whenNotPaused {
+        _addAsset(asset);
+    }
+
+    function _addAsset(IERC20 asset) private {
         if (_assetData[asset].status != AssetStatus.Unavailable) {
             revert AssetAlreadyAvailable(address(asset));
         }
@@ -286,8 +272,15 @@ interface IAssetRegistryEvents {
             revert LengthMismatch(assetsCount, stakedAssetBalances.length);
         }
 
+        IRedemptionAssetsVaultExt redemptionAssetsVault = strategyManager.redemptionAssetsVault();
+        uint256[] memory redemptionAssetBalances = new uint256[](assetsCount);
+        if (address(redemptionAssetsVault) != address(0)) {
+            redemptionAssetBalances = redemptionAssetsVault.assetBalances(assets);
+        }
+
         for (uint256 i = 0; i < assetsCount; i++) {
             assetBalances[i] += stakedAssetBalances[i];
+            assetBalances[i] += redemptionAssetBalances[i];
         }
     }
 
@@ -313,6 +306,14 @@ interface IAssetRegistryEvents {
         return assetDecimals != 18
             ? assetRate * amount / (10 ** assetDecimals)
             : assetRate * amount / 1e18;
+    }
+
+    function convertFromUnitOfAccount(IERC20 asset, uint256 amount) public view returns (uint256) {
+        uint256 assetRate = rateProvider.rate(address(asset));
+        uint8 assetDecimals = IERC20Metadata(address(asset)).decimals();
+        return assetDecimals != 18
+            ? amount * (10 ** assetDecimals) / assetRate
+            : amount * 1e18 / assetRate;
     }
 
     //--------------------------------------------------------------------------------------

@@ -22,7 +22,11 @@ import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
+import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
+import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
@@ -62,9 +66,12 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     AssetRegistry public assetRegistry;
     LSDRateProvider public rateProvider;
     ynEigenDepositAdapter public ynEigenDepositAdapterInstance;
+    RedemptionAssetsVault public redemptionAssetsVault;
+    WithdrawalQueueManager public withdrawalQueueManager;
+    LSDWrapper public wrapper;
 
     // Strategy
-    EigenStrategyManager eigenStrategyManager;
+    EigenStrategyManager public eigenStrategyManager;
 
     // Eigen
     struct EigenLayer {
@@ -92,7 +99,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         setupEigenLayer();
         setupTokenStakingNodesManager();
         setupYnEigen();
-        setupEigenStrategyManagerAndAssetRegistry();
+        setupYieldNestAssets();
         setupYnEigenDepositAdapter();
     }
 
@@ -209,7 +216,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
     }
 
-    function setupEigenStrategyManagerAndAssetRegistry() public {
+    function setupYieldNestAssets() public {
         IERC20[] memory lsdAssets = new IERC20[](5);
         IStrategy[] memory strategies = new IStrategy[](5);
 
@@ -270,6 +277,77 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             assetManagerRole: actors.admin.ASSET_MANAGER
         });
         assetRegistry.initialize(assetRegistryInit);
+
+        // deploy RedemptionAssetsVault
+        {
+            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+                address(new RedemptionAssetsVault()),
+                actors.admin.PROXY_ADMIN_OWNER,
+                ""
+            );
+            redemptionAssetsVault = RedemptionAssetsVault(payable(address(_proxy)));
+        }
+
+        // deploy WithdrawalQueueManager
+        {
+            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+                address(new WithdrawalQueueManager()),
+                actors.admin.PROXY_ADMIN_OWNER,
+                ""
+            );
+            withdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
+        }
+
+        // deploy wrapper
+        {
+            // call `initialize` on LSDWrapper
+            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
+                address(
+                    new LSDWrapper(
+                        chainAddresses.lsd.WSTETH_ADDRESS,
+                        chainAddresses.lsd.WOETH_ADDRESS,
+                        chainAddresses.lsd.OETH_ADDRESS,
+                        chainAddresses.lsd.STETH_ADDRESS)
+                    ),
+                actors.admin.PROXY_ADMIN_OWNER,
+                abi.encodeWithSignature("initialize()")
+            );
+            wrapper = LSDWrapper(address(_proxy));
+        }
+
+        // initialize eigenStrategyManager
+        {
+            eigenStrategyManager.initializeV2(address(redemptionAssetsVault), address(wrapper), actors.ops.WITHDRAWAL_MANAGER);
+        }
+
+        // initialize RedemptionAssetsVault
+        {
+            RedemptionAssetsVault.Init memory _init = RedemptionAssetsVault.Init({
+                admin: actors.admin.PROXY_ADMIN_OWNER,
+                redeemer: address(withdrawalQueueManager),
+                ynEigen: ynEigenToken,
+                assetRegistry: assetRegistry
+            });
+            redemptionAssetsVault.initialize(_init);
+        }
+
+        // initialize WithdrawalQueueManager
+        {
+            WithdrawalQueueManager.Init memory _init = WithdrawalQueueManager.Init({
+                name: "ynLSDe Withdrawal Manager",
+                symbol: "ynLSDeWM",
+                redeemableAsset: IRedeemableAsset(address(ynEigenToken)),
+                redemptionAssetsVault: redemptionAssetsVault,
+                admin: actors.admin.PROXY_ADMIN_OWNER,
+                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
+                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
+                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
+                // withdrawalFee: 500, // 0.05%
+                withdrawalFee: 0,
+                feeReceiver: actors.admin.FEE_RECEIVER
+            });
+            withdrawalQueueManager.initialize(_init);
+        }
     }
 
         function setupYnEigenDepositAdapter() public {
@@ -281,6 +359,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
             });
             vm.prank(actors.admin.PROXY_ADMIN_OWNER);
             ynEigenDepositAdapterInstance.initialize(ynEigenDepositAdapterInit);
+            ynEigenDepositAdapterInstance.initializeV2(address(wrapper));
         }
 }
 
