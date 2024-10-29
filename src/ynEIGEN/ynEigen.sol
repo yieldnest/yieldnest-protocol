@@ -7,6 +7,7 @@ import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
+import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 
 import {ynBase} from "src/ynBase.sol";
 
@@ -17,6 +18,7 @@ interface IynEigenEvents {
     event LSDStakingNodeCreated(uint256 nodeId, address nodeAddress);
     event MaxNodeCountUpdated(uint256 maxNodeCount); 
     event DepositsPausedUpdated(bool paused);
+    event WithdrawProcessed(uint256 amount, uint256 newBalance, address asset);
 }
 
 contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents {
@@ -40,6 +42,13 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     error NotStrategyManager(address msgSender);
     error InsufficientAssetBalance(IERC20 asset, uint256 balance, uint256 requestedAmount);
     error ZeroShares();
+    error CallerNotAuthorized();
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ROLES --------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -204,6 +213,37 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
     }
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  WITHDRAWALS --------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    function burn(uint256 amount) external onlyRole(BURNER_ROLE) {
+        _burn(msg.sender, amount);
+    }
+
+    function previewRedeem(IERC20 asset, uint256 shares) external view returns (uint256) {
+       return convertToAssets(asset, shares);
+    }
+
+    function previewRedeem(uint256 shares) external view returns (uint256) {
+       return _convertToAssets(shares, Math.Rounding.Floor);
+    }
+
+    function convertToAssets(IERC20 asset, uint256 shares) public view returns (uint256) {
+        if (!assetIsSupported(asset)) {
+            revert UnsupportedAsset(asset);
+        }
+        return assetRegistry.convertFromUnitOfAccount(asset, _convertToAssets(shares, Math.Rounding.Floor));
+    }
+
+    function _convertToAssets(uint256 shares, Math.Rounding rounding) internal view returns (uint256) {
+
+        uint256 supply = totalSupply();
+        if (supply == 0) return shares;
+
+        return Math.mulDiv(shares, totalAssets(), supply, rounding);
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  TOTAL ASSETS   -----------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -278,6 +318,23 @@ contract ynEigen is IynEigen, ynBase, ReentrancyGuardUpgradeable, IynEigenEvents
             IERC20(asset).safeTransfer(strategyManagerAddress, amounts[i]);
             emit AssetRetrieved(asset, amounts[i], strategyManagerAddress);
         }
+    }
+
+    function processWithdrawn(uint256 _amount, address _asset) public {
+        if (_amount == 0) revert ZeroAmount();
+
+        IYieldNestStrategyManager _yieldNestStrategyManager = IYieldNestStrategyManager(yieldNestStrategyManager);
+        if (
+            msg.sender != address(_yieldNestStrategyManager) &&
+            msg.sender != address(_yieldNestStrategyManager.redemptionAssetsVault())
+        ) revert CallerNotAuthorized();
+
+        uint256 _newBalance = assets[_asset].balance + _amount;
+        assets[_asset].balance = _newBalance;
+
+        IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);
+
+        emit WithdrawProcessed(_amount, _newBalance, _asset);
     }
 
     //--------------------------------------------------------------------------------------

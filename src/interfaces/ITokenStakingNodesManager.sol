@@ -24,4 +24,6 @@ interface ITokenStakingNodesManager {
     function hasYieldNestStrategyManagerRole(address) external view returns (bool);
 
     function getNodeById(uint256 nodeId) external view returns (ITokenStakingNode);
+
+    function yieldNestStrategyManager() external view returns (address);
 }

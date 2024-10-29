@@ -12,14 +12,37 @@ import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
 
 
 contract ynEigenViewer {
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STRUCTS  -----------------------------------------
+    //--------------------------------------------------------------------------------------
     
     struct AssetInfo {
         address asset;
         string name;
         string symbol;
+        uint256 rate;
         uint256 ratioOfTotalAssets;
-        uint256 totalBalance;
+        uint256 totalBalanceInUnitOfAccount;
+        uint256 totalBalanceInAsset;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ERRORS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    error ArrayLengthMismatch(uint256 expected, uint256 actual);
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  CONSTANTS  ---------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    uint256 public constant DECIMALS = 1_000_000;
+    uint256 public constant UNIT = 1 ether;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  VARIABLES  ---------------------------------------
+    //--------------------------------------------------------------------------------------
     
     /* solhint-disable immutable-vars-naming */
     AssetRegistry public immutable assetRegistry;
@@ -28,8 +51,9 @@ contract ynEigenViewer {
     IRateProvider public immutable rateProvider;
     /* solhint-enable immutable-vars-naming */
 
-    uint256 public constant DECIMALS = 1_000_000;
-    uint256 public constant UNIT = 1 ether;
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INITIALIZATION  ----------------------------------
+    //--------------------------------------------------------------------------------------
 
     constructor(address _assetRegistry, address _ynEIGEN, address _tokenStakingNodesManager, address _rateProvider) {
         assetRegistry = AssetRegistry(_assetRegistry);
@@ -38,24 +62,45 @@ contract ynEigenViewer {
         rateProvider = IRateProvider(_rateProvider);
     }
 
+    /**
+     * @notice Retrieves all staking nodes from the TokenStakingNodesManager
+     * @dev This function calls the getAllNodes() function of the tokenStakingNodesManager contract
+     * @return An array of ITokenStakingNode interfaces representing all staking nodes
+     */
     function getAllStakingNodes() external view returns (ITokenStakingNode[] memory) {
         return tokenStakingNodesManager.getAllNodes();
     }
 
+    /**
+     * @notice Retrieves information about all assets in the ynEigen system
+     * @dev This function fetches asset data from the asset registry and ynEigen system
+     *      and computes various metrics for each asset
+     * @return _assetsInfo An array of AssetInfo structs containing detailed information about each asset
+     */
     function getYnEigenAssets() external view returns (AssetInfo[] memory _assetsInfo) {
         IERC20[] memory _assets = assetRegistry.getAssets();
         uint256 _assetsLength = _assets.length;
         _assetsInfo = new AssetInfo[](_assetsLength);
 
+        uint256[] memory assetBalances = assetRegistry.getAllAssetBalances();
+        // Assert that the lengths of _assets and assetBalances are the same
+        if (_assetsLength != assetBalances.length) {
+            revert ArrayLengthMismatch(_assetsLength, assetBalances.length);
+        }
+
         uint256 _totalAssets = ynEIGEN.totalAssets();
+
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], ynEIGEN.assetBalance(_assets[i]));
+            uint256 assetBalance = assetBalances[i];
+            uint256 _balance = assetRegistry.convertToUnitOfAccount(_assets[i], assetBalance);
             _assetsInfo[i] = AssetInfo({
                 asset: address(_assets[i]),
                 name: IERC20Metadata(address(_assets[i])).name(),
                 symbol: IERC20Metadata(address(_assets[i])).symbol(),
+                rate: rateProvider.rate(address(_assets[i])),
                 ratioOfTotalAssets: (_balance > 0 && _totalAssets > 0) ? _balance * DECIMALS / _totalAssets : 0,
-                totalBalance: _balance
+                totalBalanceInUnitOfAccount: _balance,
+                totalBalanceInAsset: assetBalance
             });
         }
     }

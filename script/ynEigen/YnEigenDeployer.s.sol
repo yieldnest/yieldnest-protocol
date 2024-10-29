@@ -19,11 +19,14 @@ import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
+import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
+import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 
 import {YnEigenFactory} from "./YnEigenFactory.sol";
-import {YnEigenInit, YnEigenActors, YnEigenChainAddresses, YnEigenImplementations} from "./YnEigenStructs.sol";
+import {YnEigenInit, YnEigenActors, YnEigenChainAddresses, YnEigenImplementations, YnEigenProxies} from "./YnEigenStructs.sol";
 
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
@@ -124,7 +127,15 @@ contract YnEigenDeployer is BaseYnEigenScript {
                     tokenStakingNodesManager: address(new TokenStakingNodesManager()),
                     tokenStakingNode: address(new TokenStakingNode()),
                     assetRegistry: address(new AssetRegistry()),
-                    depositAdapter: address(new ynEigenDepositAdapter())
+                    depositAdapter: address(new ynEigenDepositAdapter()),
+                    redemptionAssetsVault: address(new RedemptionAssetsVault()),
+                    withdrawalQueueManager: address(new WithdrawalQueueManager()),
+                    lsdWrapper: address(new LSDWrapper(
+                        chainAddresses.lsd.WSTETH_ADDRESS,
+                        chainAddresses.lsd.WOETH_ADDRESS,
+                        chainAddresses.lsd.OETH_ADDRESS,
+                        chainAddresses.lsd.STETH_ADDRESS
+                    ))
                 });
             }
 
@@ -156,17 +167,7 @@ contract YnEigenDeployer is BaseYnEigenScript {
         {
             YnEigenFactory factory = new YnEigenFactory();
 
-            (
-                ynEigen ynToken,
-                EigenStrategyManager eigenStrategyManager,
-                TokenStakingNodesManager tokenStakingNodesManager,
-                TokenStakingNode tokenStakingNode,
-                AssetRegistry assetRegistry,
-                ynEigenDepositAdapter ynEigenDepositAdapterInstance,
-                IRateProvider rateProvider,
-                TimelockController timelock,
-                ynEigenViewer viewer
-            ) = factory.deploy(init);
+            YnEigenProxies memory proxies = factory.deploy(init);
 
             vm.stopBroadcast();
 
@@ -176,15 +177,18 @@ contract YnEigenDeployer is BaseYnEigenScript {
                 address(0)
             );
             Deployment memory deployment = Deployment({
-                ynEigen: ynToken,
-                assetRegistry: assetRegistry,
-                eigenStrategyManager: eigenStrategyManager,
-                tokenStakingNodesManager: tokenStakingNodesManager,
-                tokenStakingNodeImplementation: tokenStakingNode,
-                ynEigenDepositAdapterInstance: ynEigenDepositAdapterInstance,
-                rateProvider: rateProvider,
-                upgradeTimelock: timelock,
-                viewer: viewer,
+                ynEigen: proxies.ynToken,
+                assetRegistry: proxies.assetRegistry,
+                eigenStrategyManager: proxies.eigenStrategyManager,
+                tokenStakingNodesManager: proxies.tokenStakingNodesManager,
+                tokenStakingNodeImplementation: proxies.tokenStakingNode,
+                ynEigenDepositAdapterInstance: proxies.ynEigenDepositAdapterInstance,
+                rateProvider: proxies.rateProvider,
+                upgradeTimelock: proxies.timelock,
+                viewer: proxies.viewer,
+                redemptionAssetsVault: proxies.redemptionAssetsVault,
+                withdrawalQueueManager: proxies.withdrawalQueueManager,
+                wrapper: proxies.lsdWrapper,
                 proxies: DeploymentProxies({
                     ynEigen: proxyAddressesEmpty,
                     assetRegistry: proxyAddressesEmpty,
@@ -192,7 +196,10 @@ contract YnEigenDeployer is BaseYnEigenScript {
                     tokenStakingNodesManager: proxyAddressesEmpty,
                     rateProvider: proxyAddressesEmpty,
                     ynEigenDepositAdapter: proxyAddressesEmpty,
-                    ynEigenViewer: proxyAddressesEmpty
+                    ynEigenViewer: proxyAddressesEmpty,
+                    redemptionAssetsVault: proxyAddressesEmpty,
+                    withdrawalQueueManager: proxyAddressesEmpty,
+                    wrapper: proxyAddressesEmpty
                 })
             });
 

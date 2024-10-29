@@ -11,9 +11,98 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+
+
 
 import "forge-std/console.sol";
 
+
+interface ITestState {
+    function ynEigenToken() external view returns (IynEigen);
+    function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);
+    function assetRegistry() external view returns (IAssetRegistry);
+    function eigenStrategyManager() external view returns (EigenStrategyManager);
+    function eigenLayerStrategyManager() external view returns (IStrategyManager);
+    function eigenLayerDelegationManager() external view returns (IDelegationManager);
+}
+
+interface ITokenStakingNodesManager {
+    function nodes(uint256 nodeId) external view returns (ITokenStakingNode);
+    function createTokenStakingNode() external returns (ITokenStakingNode);
+}
+
+
+struct StateSnapshot {
+    uint256 totalAssets;
+    uint256 totalSupply;
+    mapping(IStrategy => uint256) strategyQueuedShares;
+    mapping(address => uint256) withdrawnByToken;
+    mapping(address => uint256) stakedAssetBalanceForNode;
+    mapping(address => uint256) strategySharesForNode;
+}
+
+contract NodeStateSnapshot {
+    StateSnapshot public snapshot;
+
+    constructor() {}
+
+    function takeSnapshot(address testAddress, uint256 nodeId) external {
+
+        ITestState state = ITestState(testAddress);
+        ITokenStakingNode node = state.tokenStakingNodesManager().nodes(nodeId);
+
+        snapshot.totalAssets = state.ynEigenToken().totalAssets();
+        snapshot.totalSupply = state.ynEigenToken().totalSupply();  
+
+        IERC20[] memory assets = state.assetRegistry().getAssets();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IERC20 asset = assets[i];
+            IStrategy strategy = state.eigenStrategyManager().strategies(asset);
+            
+            // Store queued shares for each strategy
+            snapshot.strategyQueuedShares[strategy] = node.queuedShares(strategy);
+            
+            // Store withdrawn amount for each token
+            snapshot.withdrawnByToken[address(asset)] = node.withdrawn(asset);
+
+            // Store staked asset balance for each token
+            snapshot.stakedAssetBalanceForNode[address(asset)]
+                = state.eigenStrategyManager().getStakedAssetBalanceForNode(asset, nodeId);
+
+            // Store strategy shares for each token
+            snapshot.strategySharesForNode[address(asset)] = 
+                state.eigenStrategyManager().strategyManager().stakerStrategyShares(address(node), strategy);
+        }
+    }
+
+    function totalAssets() external view returns (uint256) {
+        return snapshot.totalAssets;
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return snapshot.totalSupply;
+    }
+
+    function getStrategyQueuedShares(IStrategy strategy) external view returns (uint256) {
+        return snapshot.strategyQueuedShares[strategy];
+    }
+
+    function getWithdrawnByToken(address token) external view returns (uint256) {
+        return snapshot.withdrawnByToken[token];
+    }
+
+    function getStakedAssetBalanceForNode(address token) external view returns (uint256) {
+        return snapshot.stakedAssetBalanceForNode[token];
+    }
+
+    function getStrategySharesForNode(address token) external view returns (uint256) {
+        return snapshot.strategySharesForNode[token];
+    }
+}
 
 contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
@@ -104,6 +193,180 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		vm.expectRevert("Pausable: index is paused");
 		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
 	}
+
+
+    function testTokenQueueWithdrawals() public {
+
+        uint256 wstethAmount = 100 ether;
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 nodeId = tokenStakingNode.nodeId();
+        {
+            // 1. Obtain wstETH and Deposit assets to ynEigen by User
+            testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
+
+            // 2. Deposit assets to Eigenlayer by Token Staking Node
+
+            IERC20[] memory assets = new IERC20[](1);
+            assets[0] = wstETH;
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = wstethAmount;
+            vm.prank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        }
+
+        NodeStateSnapshot before = new NodeStateSnapshot();
+        before.takeSnapshot(address(this), nodeId);
+
+        uint256 withdrawnShares = 50 ether;
+
+        // 3. Queue withdrawals
+        vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.queueWithdrawals(
+            eigenStrategyManager.strategies(wstETH),
+            withdrawnShares
+        );
+        vm.stopPrank();
+
+        NodeStateSnapshot afterQueued = new NodeStateSnapshot();
+        afterQueued.takeSnapshot(address(this), nodeId);
+
+        // Assert queuedShares increased
+        assertEq(
+            afterQueued.getStrategyQueuedShares(eigenStrategyManager.strategies(wstETH)),
+            before.getStrategyQueuedShares(eigenStrategyManager.strategies(wstETH)) + withdrawnShares,
+            "Queued shares should have increased"
+        );
+
+        // Assert everything else stayed the same
+        assertEq(
+            afterQueued.totalAssets(),
+            before.totalAssets(),
+            "Total assets should not have changed"
+        );
+        assertEq(
+            afterQueued.totalSupply(),
+            before.totalSupply(),
+            "Total supply should not have changed"
+        );
+        assertEq(
+            afterQueued.getWithdrawnByToken(address(wstETH)),
+            before.getWithdrawnByToken(address(wstETH)),
+            "Withdrawn amount should not have changed"
+        );
+
+        // Assert staked asset balance decreased
+        assertApproxEqAbs(
+            afterQueued.getStakedAssetBalanceForNode(address(wstETH)),
+            before.getStakedAssetBalanceForNode(address(wstETH)),
+            10,
+            "Staked asset balance should have decreased by withdrawn shares"
+        );
+
+        // Assert strategy shares decreased
+        assertEq(
+            afterQueued.getStrategySharesForNode(address(wstETH)),
+            before.getStrategySharesForNode(address(wstETH)) - withdrawnShares,
+            "Strategy shares should have decreased by withdrawn shares"
+        );
+    }
+
+    function testQueueAndCompleteWithdrawals() public {
+
+        // Stake some wstETH to the node
+        uint256 stakeAmount = 100 ether;
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 nodeId = tokenStakingNode.nodeId();
+        uint256 sharesToWithdraw;
+        uint256 withdrawAmount;
+        IStrategy wstETHStrategy = eigenStrategyManager.strategies(wstETH);
+        uint32 _startBlock;
+        {
+            // 1. Obtain wstETH and Deposit assets to ynEigen by User
+            testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+            IERC20[] memory assets = new IERC20[](1);
+            assets[0] = IERC20(address(wstETH));
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = stakeAmount;
+
+            vm.prank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+            // Prepare for withdrawal
+            withdrawAmount = stakeAmount / 2;
+            sharesToWithdraw = wstETHStrategy.underlyingToShares(
+                IwstETH(address(wstETH)).getStETHByWstETH(withdrawAmount)
+            );
+
+            // Queue withdrawal
+            vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+            tokenStakingNode.queueWithdrawals(wstETHStrategy, sharesToWithdraw);
+
+            _startBlock = uint32(block.number);
+
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = wstETHStrategy;
+            vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+        }
+
+        // Capture state before completing withdrawal
+        NodeStateSnapshot before = new NodeStateSnapshot();
+        before.takeSnapshot(address(this), nodeId);
+
+        // Complete queued withdrawal
+        vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.completeQueuedWithdrawals(
+            eigenLayer.delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode)) - 1, // _nonce
+            _startBlock, // _startBlock
+            sharesToWithdraw, // _shares
+            wstETHStrategy, // _strategy
+            new uint256[](1), // _middlewareTimesIndexes
+            false
+        );
+        vm.stopPrank();
+
+        NodeStateSnapshot afterCompletion = new NodeStateSnapshot();
+        afterCompletion.takeSnapshot(address(this), nodeId);
+
+        // Assert withdrawn amount increased
+        assertApproxEqAbs(
+            afterCompletion.getWithdrawnByToken(address(wstETH)),
+            before.getWithdrawnByToken(address(wstETH)) + withdrawAmount,
+            3,
+            "Withdrawn amount should have increased by withdrawAmount"
+        );
+
+        // Assert queued shares decreased
+        assertEq(
+            afterCompletion.getStrategyQueuedShares(wstETHStrategy),
+            before.getStrategyQueuedShares(wstETHStrategy) - sharesToWithdraw,
+            "Queued shares should have decreased by sharesToWithdraw"
+        );
+
+        // Assert total supply remained unchanged
+        assertEq(
+            afterCompletion.totalSupply(),
+            before.totalSupply(),
+            "Total supply should remain unchanged"
+        );
+
+        // Assert total assets remained approximately unchanged
+        assertApproxEqAbs(
+            afterCompletion.totalAssets(),
+            before.totalAssets(),
+            3,
+            "Total assets should remain approximately unchanged"
+        );
+
+        eigenStrategyManager.updateTokenStakingNodesBalances(wstETH);
+
+        assertApproxEqAbs(
+            afterCompletion.totalAssets(),
+            ynEigenToken.totalAssets(),
+            3,
+            "Total assets should have decreased by approximately the withdraw amount"
+        );
+    }
 }
 
 
@@ -190,3 +453,4 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
     }
 }
+

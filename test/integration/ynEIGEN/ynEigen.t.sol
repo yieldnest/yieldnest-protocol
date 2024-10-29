@@ -320,6 +320,80 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 ethAmount = assetRegistry.convertToUnitOfAccount(asset, amount);
         assertEq(ethAmount, expectedETHAmount, "convertToEth does not match expected value");
     }
+
+    function testPreviewRedeemWSTETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 10 wei
+        );
+
+        IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+
+        uint256 wstethPrice = rateProvider.rate(chainAddresses.lsd.WSTETH_ADDRESS);
+
+        uint256 expectedRedeemPreview = amount * 1e18 / wstethPrice;
+        uint256 previewRedeem = ynEigenToken.previewRedeem(asset, amount);
+        assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemWSTETH: E0");
+    }
+
+    function testPreviewRedeemWOETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 10 wei
+        );
+
+        IERC20 asset = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+
+        uint256 woethPrice = rateProvider.rate(chainAddresses.lsd.WOETH_ADDRESS);
+
+        uint256 expectedRedeemPreview = amount * 1e18 / woethPrice;
+        uint256 previewRedeem = ynEigenToken.previewRedeem(asset, amount);
+        assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemWOETH: E0");
+    }
+
+    function testPreviewRedeemSFRXETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 10 wei
+        );
+
+        IERC20 asset = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+
+        uint256 sfrxETHPrice = rateProvider.rate(chainAddresses.lsd.SFRXETH_ADDRESS);
+
+        uint256 expectedRedeemPreview = amount * 1e18 / sfrxETHPrice;
+        uint256 previewRedeem = ynEigenToken.previewRedeem(asset, amount);
+        assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemSFRXETH: E0");
+    }
+
+    function testPreviewRedeemRETH(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 10 wei
+        );
+
+        IERC20 asset = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+
+        uint256 rethPrice = rateProvider.rate(chainAddresses.lsd.RETH_ADDRESS);
+
+        uint256 expectedRedeemPreview = amount * 1e18 / rethPrice;
+        uint256 previewRedeem = ynEigenToken.previewRedeem(asset, amount);
+        assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemRETH: E0");
+    }
+
+    function testPreviewRedeemNoAssets(uint256 amount) public {
+        vm.assume(
+            amount < 10000 ether && amount >= 10 wei
+        );
+
+        assertEq(amount, ynEigenToken.previewRedeem(amount), "testPreviewRedeemNoAssets: E0");
+    }
+
+    function testPreviewRedeemUnknownAsset() public {
+        // Use a random address as an unknown asset
+        address unknownAsset = address(0x1234567890123456789012345678901234567890);
+        uint256 amount = 1 ether;
+
+        // Expect the function to revert with UnsupportedAsset error
+        vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, unknownAsset));
+        ynEigenToken.previewRedeem(IERC20(unknownAsset), amount);
+    }
 }
 
 contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
