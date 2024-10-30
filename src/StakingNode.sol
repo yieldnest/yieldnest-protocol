@@ -18,7 +18,7 @@ import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
-     event Undelegated(address indexed operator);
+     event Undelegated(address indexed operator, int256 shares);
      event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
      event ETHReceived(address sender, uint256 value);
      event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
@@ -262,10 +262,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         address operator = delegationManager.delegatedTo(address(this));
-        emit Undelegated(operator);
 
+        // Get current shares before undelegating
+        int256 shares = stakingNodesManager.eigenPodManager().podOwnerShares(address(this));
         delegationManager.undelegate(address(this));
- 
+
+        if (shares > 0) {
+            // Adjust queuedSharesAmount by sharesBefore
+            queuedSharesAmount += uint256(shares);
+        }
+
+        emit Undelegated(operator, shares);
     }
 
     //--------------------------------------------------------------------------------------
@@ -370,6 +377,43 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         withdrawnETH += actualWithdrawalAmount;
 
         emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount, actualWithdrawalAmount);
+    }
+
+
+    /**
+     * @notice Completes queued withdrawals with receiveAsTokens set to false
+     * @param withdrawals Array of withdrawals to complete
+     * @param middlewareTimesIndexes Array of middleware times indexes
+     */
+    function completeQueuedWithdrawalsAsShares(
+        IDelegationManager.Withdrawal[] calldata withdrawals,
+        uint256[] calldata middlewareTimesIndexes
+    ) external onlyStakingNodesWithdrawer {
+        uint256 totalWithdrawalAmount = 0;
+
+        // Create empty tokens array since we're not receiving as tokens
+        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
+
+        // Calculate total shares being withdrawn
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
+            receiveAsTokens[i] = false;
+
+            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
+                totalWithdrawalAmount += withdrawals[i].shares[j];
+            }
+        }
+
+        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+
+        // Complete withdrawals with receiveAsTokens = false
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+
+        // Decrease queued shares amount
+        queuedSharesAmount -= totalWithdrawalAmount;
+
+        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount, 0);
     }
 
     //--------------------------------------------------------------------------------------
