@@ -81,6 +81,11 @@ interface IStakingNode {
         uint256[] memory middlewareTimesIndexes
      ) external;
 
+    function completeQueuedWithdrawalsAsShares(
+        IDelegationManager.Withdrawal[] calldata withdrawals,
+        uint256[] calldata middlewareTimesIndexes
+    ) external;
+
     function getInitializedVersion() external view returns (uint64);
 
     function getUnverifiedStakedETH() external view returns (uint256);
