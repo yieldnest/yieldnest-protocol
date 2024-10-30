@@ -235,26 +235,53 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
-        // Get initial queued shares
-        uint256 initialQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
-        
-        // Undelegate
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNodeInstance.undelegate();
+         assertEq(
+            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            32 ether * validatorIndices.length, "Operator shares should be 32 ETH per validator"
+        );
 
-        // Get final queued shares and verify increase
-        uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
-        assertEq(finalQueuedShares - initialQueuedShares, 32 ether * validatorIndices.length, "Queued shares should increase by 32 ETH per validator");
+         // Get initial total assets
+        uint256 initialTotalAssets = yneth.totalAssets();
+
+        {
+            // Get initial queued shares
+            uint256 initialQueuedShares = stakingNodeInstance.getQueuedSharesAmount(); 
+            // Undelegate
+            vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+            stakingNodeInstance.undelegate();
+
+            // Get final queued shares and verify increase
+            uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
+            assertEq(finalQueuedShares - initialQueuedShares, 32 ether * validatorIndices.length, "Queued shares should increase by 32 ETH per validator");
+
+            // Verify total assets stayed the same
+            assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after undelegation");
+        }
 
         address undelegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+
+        // Complete queued withdrawals as shares
+        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
+        queuedWithdrawals[0] = QueuedWithdrawalInfo({
+            withdrawnAmount: 32 ether * validatorIndices.length
+        });
+        _completeQueuedWithdrawalsAsShares(queuedWithdrawals, nodeId);
 
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
+        // Verify total assets stayed the same after delegation to operator2
+        assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after delegation to operator2");
+
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
+
+         assertEq(
+            delegationManager.operatorShares(operator2, stakingNodeInstance.beaconChainETHStrategy()),
+            32 ether * validatorIndices.length, "Operator shares should be 32 ETH per validator"
+        );
     }
 
     function testImplementViewFunction() public {
