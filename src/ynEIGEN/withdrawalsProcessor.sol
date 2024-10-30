@@ -13,6 +13,9 @@ import {ITokenStakingNode} from "../interfaces/ITokenStakingNode.sol";
 import {IAssetRegistry} from "../interfaces/IAssetRegistry.sol";
 import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
 
+
+/// @dev - there are inefficiencies if stratagies have different withdrawal delays
+///        specifically, in `completeQueuedWithdrawals`, we need to wait for the longest withdrawal delay
 contract withdrawalsProcessor is Ownable {
 
     struct QueuedWithdrawal {
@@ -25,6 +28,7 @@ contract withdrawalsProcessor is Ownable {
     }
 
     uint256 public id;
+    uint256 public completedId;
     uint256 public minNodeShares;
     uint256 public minPendingWithdrawalRequestAmount;
 
@@ -72,8 +76,10 @@ contract withdrawalsProcessor is Ownable {
 
     function queueWithdrawals() external onlyOwner returns (bool) {
 
-        uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount();
-        if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) return true;
+        uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
+        if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
+
+        totalQueuedWithdrawals += _pendingWithdrawalRequests;
 
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
         IERC20[] memory _assets = assetRegistry.getAssets();
@@ -117,20 +123,22 @@ contract withdrawalsProcessor is Ownable {
             _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares);
         }
 
+        totalQueuedWithdrawals -= _pendingWithdrawalRequests;
+
         return false;
     }
 
-    function completeQueuedWithdrawals(uint256 _startId) external {
+    function completeQueuedWithdrawals() external {
 
         uint256 _id = id;
-        if (_startId > _id) revert InvalidInput();
+        uint256 _completedId = completedId;
+        if (_completedId == _id) revert AlreadyCompleted();
 
-        for (uint256 i = _startId; i < _id; ++i) {
+        for (; _completedId < _id; ++_completedId) {
 
-            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[i];
-            if (_queuedWithdrawal.completed) revert AlreadyCompleted();
+            queuedWithdrawals[_completedId].completed = true;
 
-            queuedWithdrawals[i].completed = true;
+            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_completedId];
 
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = _queuedWithdrawal.strategy;
@@ -149,12 +157,29 @@ contract withdrawalsProcessor is Ownable {
                 true // updateTokenStakingNodesBalances
             );
         }
+
+        completedId = _completedId;
     }
 
-    function processPrincipalWithdrawals() external {
-        // 1. check pending withdrawal requests
-        // 2. send everything to queue if can't satisfy (or can satisfy everything without extra)
-        // 3. if extra, reinvest
+    function processPrincipalWithdrawals() external { // @todo - here
+
+        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](3);
+        _actions[0] = IYieldNestStrategyManager.WithdrawalAction({
+            nodeId: tokenStakingNode.nodeId(),
+            amountToReinvest: _availableToWithdraw / 2,
+            amountToQueue: _availableToWithdraw / 2,
+            asset: chainAddresses.lsd.WSTETH_ADDRESS
+        });
+
+        uint256 _id = id;
+        if (_startId > _id) revert InvalidInput();
+
+        // processedId = 
+        for (uint256 i = completedId; i < _id; ++i) {
+
+        }
+
+        eigenStrategyManager.processPrincipalWithdrawals(_actions);
     }
 
     //
@@ -185,8 +210,6 @@ contract withdrawalsProcessor is Ownable {
     //
 
     error InvalidInput();
-    error AlreadyCompleted();
-    error NotReady();
 
     //
     // Events
