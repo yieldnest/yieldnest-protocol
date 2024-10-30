@@ -29,4 +29,5 @@ interface IWithdrawalQueueManager {
     function requestWithdrawal(uint256 amount, bytes calldata data) external returns (uint256);
     function claimWithdrawal(WithdrawalClaim memory claim) external;
     function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex) external returns (uint256);
+    function pendingRequestedRedemptionAmount() external view returns (uint256);
 }
