@@ -104,8 +104,31 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     using stdStorage for StdStorage;
     using BytesLib for bytes;
 
+    address user = vm.addr(156737);
+    uint40[] validatorIndices;
+
+
+    address operator1 = address(0x9999);
+    address operator2 = address(0x8888);
+
     function setUp() public override {
         super.setUp();
+
+        address[] memory operators = new address[](2);
+        operators[0] = operator1;
+        operators[1] = operator2;
+
+        for (uint i = 0; i < operators.length; i++) {
+            vm.prank(operators[i]);
+            delegationManager.registerAsOperator(
+                IDelegationManager.OperatorDetails({
+                    __deprecated_earningsReceiver: address(1),
+                    delegationApprover: address(0),
+                    stakerOptOutWindowBlocks: 1
+                }), 
+                "ipfs://some-ipfs-hash"
+            );
+        }
     }
 
     function testDelegateFailWhenNotAdmin() public {
@@ -122,23 +145,12 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
-        address operator = address(0x123);
 
-        // register as operator
-        vm.prank(operator);
-        delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: address(1), // unused
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
-            "ipfs://some-ipfs-hash"
-        ); 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNodeInstance.delegate(operator, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+        stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
         address delegatedOperator = delegationManager.delegatedTo(address(stakingNodeInstance));
-        assertEq(delegatedOperator, operator, "Delegation is not set to the right operator.");
+        assertEq(delegatedOperator, operator1, "Delegation is not set to the right operator.");
     }
 
     function testStakingNodeUndelegate() public {
@@ -150,19 +162,9 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Unpause delegation manager to allow delegation
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
-
-        // Register as operator and delegate
-        delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: address(1),
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
-            "ipfs://some-ipfs-hash"
-        );
         
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNodeInstance.delegate(address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+        stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
 
         // // Attempt to undelegate with the wrong role
         vm.expectRevert();
@@ -182,24 +184,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     }
 
     function testDelegateUndelegateAndDelegateAgain() public {
-        address operator1 = address(0x9999);
-        address operator2 = address(0x8888);
-
-        address[] memory operators = new address[](2);
-        operators[0] = operator1;
-        operators[1] = operator2;
-
-        for (uint i = 0; i < operators.length; i++) {
-            vm.prank(operators[i]);
-            delegationManager.registerAsOperator(
-                IDelegationManager.OperatorDetails({
-                    __deprecated_earningsReceiver: address(1),
-                    delegationApprover: address(0),
-                    stakerOptOutWindowBlocks: 1
-                }), 
-                "ipfs://some-ipfs-hash"
-            );
-        }
 
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
@@ -215,6 +199,52 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Undelegate
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.undelegate();
+
+        address undelegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
+        assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+
+        // Delegate to operator2
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+
+        address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
+        assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
+    }
+
+     function testDelegateUndelegateAndDelegateAgainWithExistingStake() public {
+
+        uint256 nodeId = createStakingNodes(1)[0];
+        {
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: 1000 ether}(user);
+
+            // Call createValidators with the nodeIds array and validatorCount
+            validatorIndices = createValidators(repeat(nodeId, 1), 1);
+            beaconChain.advanceEpoch_NoRewards();
+            registerValidators(repeat(nodeId, 1));
+            _verifyWithdrawalCredentials(nodeId, validatorIndices[0]);
+        }
+
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        // Delegate to operator1
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+
+        address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
+        assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
+
+        // Get initial queued shares
+        uint256 initialQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
+        
+        // Undelegate
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.undelegate();
+
+        // Get final queued shares and verify increase
+        uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
+        assertEq(finalQueuedShares - initialQueuedShares, 32 ether * validatorIndices.length, "Queued shares should increase by 32 ETH per validator");
 
         address undelegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
