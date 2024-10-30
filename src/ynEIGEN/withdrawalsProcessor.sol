@@ -15,26 +15,29 @@ import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
 
 contract withdrawalsProcessor is Ownable {
 
-    struct PendingWithdrawal {
+    struct QueuedWithdrawal {
         address node;
+        address strategy;
         uint256 nonce;
         uint256 shares;
-        uint32 _startBlock;
+        uint32 startBlock;
+        bool completed;
     }
 
-    uint256 public withdrawalsId;
+    uint256 public id;
     uint256 public minNodeShares;
     uint256 public minPendingWithdrawalRequestAmount;
 
+    // yieldnest
     IWithdrawalQueueManager public immutable withdrawalQueueManager;
     ITokenStakingNodesManager public immutable tokenStakingNodesManager;
     IAssetRegistry public immutable assetRegistry;
     IEigenStrategyManager public immutable eigenStrategyManager;
 
+    // eigenlayer
     IDelegationManager public immutable delegationManager;
 
-    mapping(uint256 id => mapping(IStrategy => PendingWithdrawal[])) public pendingWithdrawals; // @todo - here -- dont use array, use mapping instead (compiler does multi writes anyways)
-
+    mapping(uint256 id => QueuedWithdrawal) public queuedWithdrawals;
 
     //
     // Constructor
@@ -67,7 +70,7 @@ contract withdrawalsProcessor is Ownable {
     // Processor functions
     //
 
-    function queueWithdrawals() public onlyOwner returns (bool) {
+    function queueWithdrawals() external onlyOwner returns (bool) {
 
         uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount();
         if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) return true;
@@ -79,50 +82,76 @@ contract withdrawalsProcessor is Ownable {
         uint256 _nodesLength = _nodes.length;
         uint256 _minNodeShares = minNodeShares;
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            bool _rektStrategy;
             IStrategy _strategy = eigenStrategyManager.strategies(_assets[i]);
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests);
-            Node[] memory _pendingWithdrawals = new Node[](_nodesLength);
             for (uint256 j = 0; j < _nodesLength; ++j) {
-                bool _rektNode;
-                uint256 _nonce;
+                bool _rekt;
                 uint256 _withdrawnShares;
                 address _node = address(_nodes[j]);
                 uint256 _nodeShares = _strategy.shares(_node);
                 if (_nodeShares > _pendingWithdrawalRequestsInShares) {
-                    _rektNode = true;
+                    _rekt = true;
                     _withdrawnShares = _nodeShares - _pendingWithdrawalRequestsInShares;
                     _pendingWithdrawalRequestsInShares = 0;
                 } else if (_nodeShares > _minNodeShares) {
-                    _rektNode = true;
+                    _rekt = true;
                     _withdrawnShares = _nodeShares;
                     _pendingWithdrawalRequestsInShares -= _withdrawnShares;
                 }
 
-                if (_rektNode) {
-                    _rektStrategy = true;
-                    _nonce = delegationManager.cumulativeWithdrawalsQueued(_node);
-                    _pendingWithdrawals[j] = Node(_node, _nonce, _withdrawnShares);
+                if (_rekt) {
+                    queuedWithdrawals[id++] = QueuedWithdrawal(
+                        _node, // stakingNode
+                        address(_strategy), // strategy
+                        delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
+                        _withdrawnShares, // shares
+                        uint32(block.number), // startBlock
+                        false // completed
+                    );
                     ITokenStakingNode(_node).queueWithdrawals(_strategy, _withdrawnShares);
                 }
-            }
 
-            if (_rektStrategy) {
-                // pendingWithdrawals[withdrawalsId++][_strategy] = PendingWithdrawal(_pendingWithdrawals, uint32(block.number));
-                pendingWithdrawals[withdrawalsId][_strategy] = _pendingWithdrawals;
                 if (_pendingWithdrawalRequestsInShares == 0) return true;
             }
 
             _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares);
         }
+
         return false;
     }
 
-    function completeQueuedWithdrawals() public {
-        // complete withdrawals according to data saved in `queueWithdrawals`
+    function completeQueuedWithdrawals(uint256 _startId) external {
+
+        uint256 _id = id;
+        if (_startId > _id) revert InvalidInput();
+
+        for (uint256 i = _startId; i < _id; ++i) {
+
+            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[i];
+            if (_queuedWithdrawal.completed) revert AlreadyCompleted();
+
+            queuedWithdrawals[i].completed = true;
+
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = _queuedWithdrawal.strategy;
+            uint256 _withdrawalDelay = delegationManager.getWithdrawalDelay(_strategies);
+            if (block.number < _queuedWithdrawal.startBlock + _withdrawalDelay) revert NotReady();
+
+            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
+            _middlewareTimesIndexes[0] = 0;
+
+            ITokenStakingNode(_queuedWithdrawal.node).completeQueuedWithdrawals(
+                _queuedWithdrawal.nonce,
+                _queuedWithdrawal.startBlock,
+                _queuedWithdrawal.shares,
+                _queuedWithdrawal.strategy,
+                _middlewareTimesIndexes,
+                true // updateTokenStakingNodesBalances
+            );
+        }
     }
 
-    function processPrincipalWithdrawals() public {
+    function processPrincipalWithdrawals() external {
         // 1. check pending withdrawal requests
         // 2. send everything to queue if can't satisfy (or can satisfy everything without extra)
         // 3. if extra, reinvest
@@ -156,6 +185,8 @@ contract withdrawalsProcessor is Ownable {
     //
 
     error InvalidInput();
+    error AlreadyCompleted();
+    error NotReady();
 
     //
     // Events
