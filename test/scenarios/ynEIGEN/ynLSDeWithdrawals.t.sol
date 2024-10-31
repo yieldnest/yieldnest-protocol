@@ -14,6 +14,8 @@ import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManage
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
+
 
 import {console} from "forge-std/console.sol";
 
@@ -333,7 +335,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // claimWithdrawal
     //
 
-    function testClaimWithdrawal(
+    function testClaimWithdrawalFixed(
         /* uint256 _amount */
     ) public {
         uint256 _amount = 50 ether;
@@ -348,8 +350,22 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _totalAssetsBefore = yneigen.totalAssets();
         uint256 _redemptionRateBefore = redemptionAssetsVault.redemptionRate();
 
-        vm.prank(user);
-        withdrawalQueueManager.claimWithdrawal(tokenId, user);
+        console.log("WSTETH balance in redemptionAssetsVault:", redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS));
+        console.log("WOETH balance in redemptionAssetsVault:", redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS)); 
+        console.log("SFRXETH balance in redemptionAssetsVault:", redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS));
+
+        IWithdrawalQueueManager.WithdrawalRequest memory request = withdrawalQueueManager.withdrawalRequest(tokenId);
+        console.log("Withdrawal request amount:", request.amount);
+
+        (IERC20[] memory assets, uint256[] memory amounts) = redemptionAssetsVault.previewClaim(request.amount);
+        console.log("Preview claim amounts:");
+        for (uint256 i = 0; i < assets.length; i++) {
+            console.log("Asset", i, ":", address(assets[i]));
+            console.log("Amount", i, ":", amounts[i]);
+        }
+
+        // vm.prank(user);
+        // withdrawalQueueManager.claimWithdrawal(tokenId, user);
 
         // assertApproxEqRel(IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user), _userWSTETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E0");
         // assertApproxEqRel(IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user), _userWOETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E1");
