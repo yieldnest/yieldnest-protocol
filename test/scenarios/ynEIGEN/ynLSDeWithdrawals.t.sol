@@ -364,8 +364,8 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             console.log("Amount", i, ":", amounts[i]);
         }
 
-        // vm.prank(user);
-        // withdrawalQueueManager.claimWithdrawal(tokenId, user);
+        vm.prank(user);
+        withdrawalQueueManager.claimWithdrawal(tokenId, user);
 
         // assertApproxEqRel(IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user), _userWSTETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E0");
         // assertApproxEqRel(IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user), _userWOETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E1");
