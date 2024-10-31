@@ -26,9 +26,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     address public constant user = address(0x42069);
 
     ITokenStakingNode public tokenStakingNode;
-    RedemptionAssetsVault public redemptionAssetsVault;
-    WithdrawalQueueManager public withdrawalQueueManager;
-    LSDWrapper public wrapper;
 
     uint256 public constant AMOUNT = 1 ether;
 
@@ -36,100 +33,11 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         super.setUp();
 
-        uint256 _totalAssetsBefore = yneigen.totalAssets();
-
         // deal assets to user
         {
             deal({ token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether });
             deal({ token: chainAddresses.lsd.WOETH_ADDRESS, to: user, give: 1000 ether });
             deal({ token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1000 ether });
-        }
-
-        // deploy RedemptionAssetsVault
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new RedemptionAssetsVault()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            redemptionAssetsVault = RedemptionAssetsVault(payable(address(_proxy)));
-        }
-
-        // deploy WithdrawalQueueManager
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new WithdrawalQueueManager()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            withdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
-        }
-
-        // deploy wrapper
-        {
-            // call `initialize` on LSDWrapper
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(
-                    new LSDWrapper(
-                        chainAddresses.lsd.WSTETH_ADDRESS,
-                        chainAddresses.lsd.WOETH_ADDRESS,
-                        chainAddresses.lsd.OETH_ADDRESS,
-                        chainAddresses.lsd.STETH_ADDRESS)
-                    ),
-                actors.admin.PROXY_ADMIN_OWNER,
-                abi.encodeWithSignature("initialize()")
-            );
-            wrapper = LSDWrapper(address(_proxy));
-        }
-
-        // initialize RedemptionAssetsVault
-        {
-            RedemptionAssetsVault.Init memory _init = RedemptionAssetsVault.Init({
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                redeemer: address(withdrawalQueueManager),
-                ynEigen: yneigen,
-                assetRegistry: assetRegistry
-            });
-            redemptionAssetsVault.initialize(_init);
-        }
-
-        // initialize WithdrawalQueueManager
-        {
-            WithdrawalQueueManager.Init memory _init = WithdrawalQueueManager.Init({
-                name: "ynLSDe Withdrawal Manager",
-                symbol: "ynLSDeWM",
-                redeemableAsset: IRedeemableAsset(address(yneigen)),
-                redemptionAssetsVault: redemptionAssetsVault,
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
-                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                withdrawalFee: 0,
-                feeReceiver: actors.admin.FEE_RECEIVER
-            });
-            withdrawalQueueManager.initialize(_init);
-        }
-
-        // upgrade and initialize:
-        // (1) tokenStakingNode implementation
-        // (2) ynLSDe
-        // (3) EigenStrategyManager
-        // (4) AssetRegistry
-        // (5) TokenStakingNodesManager
-        // (6) ynEigenDepositAdapter
-        _upgradeContracts();
-
-        // unpause transfers
-        {
-            vm.prank(actors.admin.UNPAUSE_ADMIN);
-            yneigen.unpauseTransfers();
-        }
-
-        // grant burner role
-        {
-            vm.startPrank(actors.admin.STAKING_ADMIN);
-            yneigen.grantRole(yneigen.BURNER_ROLE(), address(withdrawalQueueManager));
-            vm.stopPrank();
         }
 
         // top up redemptionAssetsVault
@@ -149,7 +57,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             vm.stopPrank();
         }
 
-        assertApproxEqRel(yneigen.totalAssets(), _totalAssetsBefore, 1e17, "setUp: E0"); // NOTE - not best practice to have it here, but for the time being...
     }
 
     //
@@ -164,7 +71,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalSTETH: E0");
@@ -179,7 +86,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalSFRXETH: E0");
@@ -194,7 +101,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalOETH: E0");
@@ -234,7 +141,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsSTETH: E0");
@@ -262,7 +169,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsSFRXETH: E0");
@@ -289,7 +196,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsOETH: E0");
@@ -345,7 +252,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         eigenStrategyManager.processPrincipalWithdrawals(_actions);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawals: E0");
@@ -388,7 +295,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         eigenStrategyManager.processPrincipalWithdrawals(_actions);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawalsNoReinvest: E0");
@@ -482,74 +389,5 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
         vm.stopPrank();
-    }
-
-    function _upgradeContracts() internal {
-
-        address[] memory _proxyAddresses = new address[](3);
-        _proxyAddresses[0] = address(yneigen);
-        _proxyAddresses[1] = address(assetRegistry);
-        _proxyAddresses[2] = address(tokenStakingNodesManager);
-        address[] memory _newImplementations = new address[](3);
-        _newImplementations[0] = address(new ynEigen());
-        _newImplementations[1] = address(new AssetRegistry());
-        _newImplementations[2] = address(new TokenStakingNodesManager());
-
-        address[] memory targets = new address[](6);
-        uint256[] memory values = new uint256[](6);
-        bytes[] memory payloads = new bytes[](6);
-        bytes32 predecessor = bytes32(0);
-        bytes32 salt = bytes32(0);
-        uint256 delay = timelockController.getMinDelay();
-
-        for (uint256 i = 0; i < _proxyAddresses.length; i++) {
-            bytes memory _data = abi.encodeWithSignature(
-                "upgradeAndCall(address,address,bytes)",
-                _proxyAddresses[i], // proxy
-                _newImplementations[i], // implementation
-                ""
-            );
-            targets[i] = getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]);
-            values[i] = 0;
-            payloads[i] = _data;
-        }
-
-        targets[3] = address(tokenStakingNodesManager);
-        values[3] = 0;
-        payloads[3] = abi.encodeWithSignature(
-            "upgradeTokenStakingNode(address)",
-            new TokenStakingNode()
-        );
-
-        targets[4] = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
-        values[4] = 0;
-        payloads[4] = abi.encodeWithSignature(
-            "upgradeAndCall(address,address,bytes)",
-            address(eigenStrategyManager), // proxy
-            address(new EigenStrategyManager()), // implementation
-            abi.encodeWithSignature(
-                "initializeV2(address,address,address)",
-                address(redemptionAssetsVault),
-                address(wrapper),
-                actors.ops.WITHDRAWAL_MANAGER
-            )
-        );
-
-        targets[5] = getTransparentUpgradeableProxyAdminAddress(address(ynEigenDepositAdapter_));
-        values[5] = 0;
-        payloads[5] = abi.encodeWithSignature(
-            "upgradeAndCall(address,address,bytes)",
-            ynEigenDepositAdapter_, // proxy
-            address(new ynEigenDepositAdapter()), // implementation
-            abi.encodeWithSignature("initializeV2(address)", address(wrapper))
-        );
-
-        vm.prank(actors.wallets.YNSecurityCouncil);
-        timelockController.scheduleBatch(targets, values, payloads, predecessor, salt, delay);
-
-        skip(delay);
-
-        vm.prank(actors.wallets.YNSecurityCouncil);
-        timelockController.executeBatch(targets, values, payloads, predecessor, salt);
     }
 }
