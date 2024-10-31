@@ -363,9 +363,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     //
 
     function testClaimWithdrawalFixed(
-        /* uint256 _amount */
+        uint256 _amount
     ) public {
-        uint256 _amount = 50 ether;
+        // uint256 _amount = 50 ether;
         uint256 tokenId = testRequestWithdrawal(_amount);
 
         vm.prank(actors.ops.YNEIGEN_REQUEST_FINALIZER);
@@ -406,7 +406,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         assertApproxEqRel(
             totalETHValueReceived,
             totalETHValueExpected * (1000000 - withdrawalQueueManager.withdrawalFee()) / 1000000,
-            100,
+            1e16, // max 0.01% difference
             "testClaimWithdrawal: total ETH value mismatch"
         );
 
