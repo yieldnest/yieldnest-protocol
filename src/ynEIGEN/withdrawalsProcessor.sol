@@ -11,7 +11,7 @@ import {IWithdrawalQueueManager} from "../interfaces/IWithdrawalQueueManager.sol
 import {ITokenStakingNodesManager} from "../interfaces/ITokenStakingNodesManager.sol";
 import {ITokenStakingNode} from "../interfaces/ITokenStakingNode.sol";
 import {IAssetRegistry} from "../interfaces/IAssetRegistry.sol";
-import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
+import {IYieldNestStrategyManager} from "../interfaces/IYieldNestStrategyManager.sol";
 
 
 /// @dev - there are inefficiencies if stratagies have different withdrawal delays
@@ -27,8 +27,13 @@ contract withdrawalsProcessor is Ownable {
         bool completed;
     }
 
-    uint256 public id;
+    // @todo - put ids in a struct
+    uint256 public queuedId;
     uint256 public completedId;
+    uint256 public processedId;
+
+    uint256 public totalQueuedWithdrawals;
+
     uint256 public minNodeShares;
     uint256 public minPendingWithdrawalRequestAmount;
 
@@ -36,12 +41,13 @@ contract withdrawalsProcessor is Ownable {
     IWithdrawalQueueManager public immutable withdrawalQueueManager;
     ITokenStakingNodesManager public immutable tokenStakingNodesManager;
     IAssetRegistry public immutable assetRegistry;
-    IEigenStrategyManager public immutable eigenStrategyManager;
+    IYieldNestStrategyManager public immutable ynStrategyManager;
 
     // eigenlayer
     IDelegationManager public immutable delegationManager;
 
     mapping(uint256 id => QueuedWithdrawal) public queuedWithdrawals;
+    mapping(uint256 fromId => uint256 toId) public batch;
 
     //
     // Constructor
@@ -52,21 +58,21 @@ contract withdrawalsProcessor is Ownable {
         address _withdrawalQueueManager,
         address _tokenStakingNodesManager,
         address _assetRegistry,
-        address _eigenStrategyManager,
+        address _ynStrategyManager,
         address _delegationManager
     ) Ownable(_owner) {
         if (
             _withdrawalQueueManager == address(0) ||
             _tokenStakingNodesManager == address(0) ||
             _assetRegistry == address(0) ||
-            _eigenStrategyManager == address(0) ||
+            _ynStrategyManager == address(0) ||
             _delegationManager == address(0)
         ) revert InvalidInput();
 
         withdrawalQueueManager = IWithdrawalQueueManager(_withdrawalQueueManager);
         tokenStakingNodesManager = ITokenStakingNodesManager(_tokenStakingNodesManager);
         assetRegistry = IAssetRegistry(_assetRegistry);
-        eigenStrategyManager = IEigenStrategyManager(_eigenStrategyManager);
+        ynStrategyManager = IYieldNestStrategyManager(_ynStrategyManager);
         delegationManager = IDelegationManager(_delegationManager);
     }
 
@@ -84,12 +90,13 @@ contract withdrawalsProcessor is Ownable {
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
         IERC20[] memory _assets = assetRegistry.getAssets();
 
+        uint256 _queuedIdBefore = queuedId;
         uint256 _assetsLength = _assets.length;
         uint256 _nodesLength = _nodes.length;
         uint256 _minNodeShares = minNodeShares;
         for (uint256 i = 0; i < _assetsLength; ++i) {
-            IStrategy _strategy = eigenStrategyManager.strategies(_assets[i]);
-            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests);
+            IStrategy _strategy = ynStrategyManager.strategies(_assets[i]);
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _assets[i], _strategy);
             for (uint256 j = 0; j < _nodesLength; ++j) {
                 bool _rekt;
                 uint256 _withdrawnShares;
@@ -106,7 +113,7 @@ contract withdrawalsProcessor is Ownable {
                 }
 
                 if (_rekt) {
-                    queuedWithdrawals[id++] = QueuedWithdrawal(
+                    queuedWithdrawals[queuedId++] = QueuedWithdrawal(
                         _node, // stakingNode
                         address(_strategy), // strategy
                         delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
@@ -117,33 +124,39 @@ contract withdrawalsProcessor is Ownable {
                     ITokenStakingNode(_node).queueWithdrawals(_strategy, _withdrawnShares);
                 }
 
-                if (_pendingWithdrawalRequestsInShares == 0) return true;
+                if (_pendingWithdrawalRequestsInShares == 0) {
+                    batch[_queuedIdBefore] = queuedId;
+                    return true;
+                }
             }
 
-            _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares);
+            _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _assets[i], _strategy);
         }
 
         totalQueuedWithdrawals -= _pendingWithdrawalRequests;
+        batch[_queuedIdBefore] = queuedId;
 
         return false;
     }
 
     function completeQueuedWithdrawals() external {
 
-        uint256 _id = id;
         uint256 _completedId = completedId;
-        if (_completedId == _id) revert AlreadyCompleted();
+        uint256 _queuedId = batch[_completedId];
+        if (_completedId == _queuedId) revert NoQueuedWithdrawals();
 
-        for (; _completedId < _id; ++_completedId) {
+        for (; _completedId < _queuedId; ++_completedId) {
 
             queuedWithdrawals[_completedId].completed = true;
 
             QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_completedId];
 
+            // @todo redundant check - will fail on `completeQueuedWithdrawals` if not ready
             IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = _queuedWithdrawal.strategy;
+            _strategies[0] = IStrategy(_queuedWithdrawal.strategy);
             uint256 _withdrawalDelay = delegationManager.getWithdrawalDelay(_strategies);
             if (block.number < _queuedWithdrawal.startBlock + _withdrawalDelay) revert NotReady();
+            //
 
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
@@ -152,7 +165,7 @@ contract withdrawalsProcessor is Ownable {
                 _queuedWithdrawal.nonce,
                 _queuedWithdrawal.startBlock,
                 _queuedWithdrawal.shares,
-                _queuedWithdrawal.strategy,
+                IStrategy(_queuedWithdrawal.strategy),
                 _middlewareTimesIndexes,
                 true // updateTokenStakingNodesBalances
             );
@@ -161,25 +174,25 @@ contract withdrawalsProcessor is Ownable {
         completedId = _completedId;
     }
 
-    function processPrincipalWithdrawals() external { // @todo - here
+    function processPrincipalWithdrawals() external {
 
-        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](3);
-        _actions[0] = IYieldNestStrategyManager.WithdrawalAction({
-            nodeId: tokenStakingNode.nodeId(),
-            amountToReinvest: _availableToWithdraw / 2,
-            amountToQueue: _availableToWithdraw / 2,
-            asset: chainAddresses.lsd.WSTETH_ADDRESS
-        });
-
-        uint256 _id = id;
-        if (_startId > _id) revert InvalidInput();
-
-        // processedId = 
-        for (uint256 i = completedId; i < _id; ++i) {
-
+        uint256 _completedId = completedId;
+        uint256 _processedId = processedId;
+        uint256 _batchLength = batch[_processedId];
+        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](_batchLength);
+        for (; _processedId < _completedId; ++_processedId) {
+            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_processedId];
+            _actions[_processedId] = IYieldNestStrategyManager.WithdrawalAction({
+                nodeId: ITokenStakingNode(_queuedWithdrawal.node).nodeId(),
+                amountToReinvest: 0,
+                amountToQueue: _queuedWithdrawal.shares,
+                asset: address(IStrategy(_queuedWithdrawal.strategy).underlyingToken()) // @todo if steth/oeth ?
+            });
         }
 
-        eigenStrategyManager.processPrincipalWithdrawals(_actions);
+        processedId = _processedId;
+
+        ynStrategyManager.processPrincipalWithdrawals(_actions);
     }
 
     //
@@ -202,14 +215,24 @@ contract withdrawalsProcessor is Ownable {
     // Private functions
     //
 
-    function _unitToShares(uint256 _unit) private pure returns (uint256) {}
-    function _sharesToUnit(uint256 _shares) private pure returns (uint256) {}
+    function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
+        _amount = assetRegistry.convertFromUnitOfAccount(_asset, _amount);
+        return _strategy.underlyingToSharesView(_amount);
+    }
+
+    function _sharesToUnit(uint256 _shares, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
+        uint256 _amount = _strategy.sharesToUnderlyingView(_shares);
+        return assetRegistry.convertToUnitOfAccount(_asset, _amount);
+    }
 
     //
     // Errors
     //
 
     error InvalidInput();
+    error PendingWithdrawalRequestsTooLow();
+    error NoQueuedWithdrawals();
+    error NotReady();
 
     //
     // Events

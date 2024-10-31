@@ -5,7 +5,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
-
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
 interface IRedemptionAssetsVaultExt is IRedemptionAssetsVault {
     function deposit(uint256 amount, address asset) external;
@@ -41,4 +41,6 @@ interface IYieldNestStrategyManager {
     function isStakingNodesWithdrawer(address _address) external view returns (bool);
 
     function updateTokenStakingNodesBalances(IERC20 asset) external;
+
+    function strategies(IERC20 asset) external view returns (IStrategy);
 }
