@@ -5,42 +5,46 @@ import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 
 import "./ynLSDeWithdrawals.t.sol";
 
-// contract ynLSDeDepositAdapterTest is ynLSDeWithdrawalsTest {
+contract ynLSDeDepositAdapterTest is ynLSDeScenarioBaseTest {
 
-//     TestAssetUtils public testAssetUtils;
+    TestAssetUtils public testAssetUtils;
 
-//     function setUp() public override {
-//         super.setUp();
+    address public constant user = address(0x42069);
 
-//         // deploy testAssetUtils
-//         {
-//             testAssetUtils = new TestAssetUtils();
-//         }
-//     }
+    uint256 public constant AMOUNT = 1 ether;
 
-//     function testDepositSTETH(uint256 _amount) public {
-//         vm.assume(_amount > 10_000 && _amount <= 10 ether);
+    function setUp() public override {
+        super.setUp();
 
-//         testAssetUtils.get_stETH(user, _amount);
+        // deploy testAssetUtils
+        {
+            testAssetUtils = new TestAssetUtils();
+        }
+    }
 
-//         vm.startPrank(user);
-//         IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
-//         uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.STETH_ADDRESS), _amount, user);
-//         vm.stopPrank();
+    function testDepositSTETH(uint256 _amount) public {
+        vm.assume(_amount > 10_000 && _amount <= 10 ether);
 
-//         assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositSTETH");
-//     }
+        testAssetUtils.get_stETH(user, _amount);
 
-//     function testDepositOETH(uint256 _amount) public {
-//         vm.assume(_amount > 10_000 && _amount <= 10 ether);
+        vm.startPrank(user);
+        IERC20(chainAddresses.lsd.STETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
+        uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.STETH_ADDRESS), _amount, user);
+        vm.stopPrank();
 
-//         testAssetUtils.get_OETH(user, _amount + 10);
+        assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositSTETH");
+    }
 
-//         vm.startPrank(user);
-//         IERC20(chainAddresses.lsd.OETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
-//         uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.OETH_ADDRESS), _amount, user);
-//         vm.stopPrank();
+    function testDepositOETH(uint256 _amount) public {
+        vm.assume(_amount > 10_000 && _amount <= 10 ether);
 
-//         assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositOETH");
-//     }
-// }
+        testAssetUtils.get_OETH(user, _amount + 10);
+
+        vm.startPrank(user);
+        IERC20(chainAddresses.lsd.OETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
+        uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.OETH_ADDRESS), _amount, user);
+        vm.stopPrank();
+
+        assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositOETH");
+    }
+}
