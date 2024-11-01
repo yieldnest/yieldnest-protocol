@@ -13,10 +13,11 @@ import {ITokenStakingNode} from "../interfaces/ITokenStakingNode.sol";
 import {IAssetRegistry} from "../interfaces/IAssetRegistry.sol";
 import {IYieldNestStrategyManager} from "../interfaces/IYieldNestStrategyManager.sol";
 
+import "forge-std/console.sol";
 
 /// @dev - there are inefficiencies if stratagies have different withdrawal delays
 ///        specifically, in `completeQueuedWithdrawals`, we need to wait for the longest withdrawal delay
-contract withdrawalsProcessor is Ownable {
+contract WithdrawalsProcessor is Ownable {
 
     struct QueuedWithdrawal {
         address node;
@@ -74,6 +75,9 @@ contract withdrawalsProcessor is Ownable {
         assetRegistry = IAssetRegistry(_assetRegistry);
         ynStrategyManager = IYieldNestStrategyManager(_ynStrategyManager);
         delegationManager = IDelegationManager(_delegationManager);
+
+        minNodeShares = 1 ether;
+        minPendingWithdrawalRequestAmount = 0.1 ether;
     }
 
     //
