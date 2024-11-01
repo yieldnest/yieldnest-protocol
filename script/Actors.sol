@@ -72,7 +72,7 @@ contract ActorAddresses {
                 YNTokenStakingNodeOperator: 0x2234567890123456789012345678901234567890,
                 YNWithdrawalsETH: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07,
                 YnOperator: 0x530F6057e93b54Ec39D6472DA75712db2178780C,
-                YNnWithdrawalsYnEigen: 0x0e36E2bCD71059E02822DFE52cBa900730b07c07
+                YNnWithdrawalsYnEigen: 0xbc345A8aEd2ff40308Cf923216dF39B5bE1146b2
             });
             actors[17000] = Actors({
                 eoa: EOAActors({

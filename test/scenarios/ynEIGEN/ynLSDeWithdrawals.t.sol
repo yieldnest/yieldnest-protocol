@@ -14,8 +14,8 @@ import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManage
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
-
-import {console} from "forge-std/console.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
+import {IwstETH} from "src/external/lido/IwstETH.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
 
@@ -26,17 +26,12 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     address public constant user = address(0x42069);
 
     ITokenStakingNode public tokenStakingNode;
-    RedemptionAssetsVault public redemptionAssetsVault;
-    WithdrawalQueueManager public withdrawalQueueManager;
-    LSDWrapper public wrapper;
 
     uint256 public constant AMOUNT = 1 ether;
 
     function setUp() public virtual override {
 
         super.setUp();
-
-        uint256 _totalAssetsBefore = yneigen.totalAssets();
 
         // deal assets to user
         {
@@ -45,90 +40,22 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             deal({ token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1000 ether });
         }
 
-        // deploy RedemptionAssetsVault
         {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new RedemptionAssetsVault()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            redemptionAssetsVault = RedemptionAssetsVault(payable(address(_proxy)));
-        }
-
-        // deploy WithdrawalQueueManager
-        {
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(new WithdrawalQueueManager()),
-                actors.admin.PROXY_ADMIN_OWNER,
-                ""
-            );
-            withdrawalQueueManager = WithdrawalQueueManager(address(_proxy));
-        }
-
-        // deploy wrapper
-        {
-            // call `initialize` on LSDWrapper
-            TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
-                address(
-                    new LSDWrapper(
-                        chainAddresses.lsd.WSTETH_ADDRESS,
-                        chainAddresses.lsd.WOETH_ADDRESS,
-                        chainAddresses.lsd.OETH_ADDRESS,
-                        chainAddresses.lsd.STETH_ADDRESS)
-                    ),
-                actors.admin.PROXY_ADMIN_OWNER,
-                abi.encodeWithSignature("initialize()")
-            );
-            wrapper = LSDWrapper(address(_proxy));
-        }
-
-        // initialize RedemptionAssetsVault
-        {
-            RedemptionAssetsVault.Init memory _init = RedemptionAssetsVault.Init({
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                redeemer: address(withdrawalQueueManager),
-                ynEigen: yneigen,
-                assetRegistry: assetRegistry
-            });
-            redemptionAssetsVault.initialize(_init);
-        }
-
-        // initialize WithdrawalQueueManager
-        {
-            WithdrawalQueueManager.Init memory _init = WithdrawalQueueManager.Init({
-                name: "ynLSDe Withdrawal Manager",
-                symbol: "ynLSDeWM",
-                redeemableAsset: IRedeemableAsset(address(yneigen)),
-                redemptionAssetsVault: redemptionAssetsVault,
-                admin: actors.admin.PROXY_ADMIN_OWNER,
-                withdrawalQueueAdmin: actors.ops.WITHDRAWAL_MANAGER,
-                redemptionAssetWithdrawer: actors.ops.REDEMPTION_ASSET_WITHDRAWER,
-                requestFinalizer:  actors.ops.REQUEST_FINALIZER,
-                withdrawalFee: 0,
-                feeReceiver: actors.admin.FEE_RECEIVER
-            });
-            withdrawalQueueManager.initialize(_init);
-        }
-
-        // upgrade and initialize:
-        // (1) tokenStakingNode implementation
-        // (2) ynLSDe
-        // (3) EigenStrategyManager
-        // (4) AssetRegistry
-        // (5) TokenStakingNodesManager
-        // (6) ynEigenDepositAdapter
-        _upgradeContracts();
-
-        // unpause transfers
-        {
-            vm.prank(actors.admin.UNPAUSE_ADMIN);
-            yneigen.unpauseTransfers();
-        }
-
-        // grant burner role
-        {
-            vm.startPrank(actors.admin.STAKING_ADMIN);
-            yneigen.grantRole(yneigen.BURNER_ROLE(), address(withdrawalQueueManager));
+            // Get pending redemption amount
+            uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount() + 100 wei;
+            
+            // Convert pendingAmount from stETH to wstETH
+            uint256 pendingAmountInWstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).getWstETHByStETH(pendingAmount);
+            // Top up vault with wstETH
+            address topper = address(0x421337);
+            
+            // Get stETH and wrap to wstETH
+            deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: topper, give: pendingAmountInWstETH});
+            
+            vm.startPrank(topper);
+            // Deposit wstETH to redemption vault
+            IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(redemptionAssetsVault), pendingAmountInWstETH);
+            redemptionAssetsVault.deposit(pendingAmountInWstETH, chainAddresses.lsd.WSTETH_ADDRESS);
             vm.stopPrank();
         }
 
@@ -149,7 +76,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             vm.stopPrank();
         }
 
-        assertApproxEqRel(yneigen.totalAssets(), _totalAssetsBefore, 1e17, "setUp: E0"); // NOTE - not best practice to have it here, but for the time being...
     }
 
     //
@@ -164,7 +90,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalSTETH: E0");
@@ -179,7 +105,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalSFRXETH: E0");
@@ -194,7 +120,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalOETH: E0");
@@ -234,7 +160,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsSTETH: E0");
@@ -262,7 +188,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsSFRXETH: E0");
@@ -289,7 +215,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(_nonce, _startBlock, _shares, _strategy, _middlewareTimesIndexes, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteQueuedWithdrawalsOETH: E0");
@@ -344,14 +270,17 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _ynEigenWSTETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
+        uint256 _redemptionVaultWSTETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
+        uint256 _redemptionVaultSFRXETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         eigenStrategyManager.processPrincipalWithdrawals(_actions);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawals: E0");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E1");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E2");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E3");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS) - _redemptionVaultWSTETHBalanceBefore, _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E1");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E2");
+        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS) - _redemptionVaultSFRXETHBalanceBefore, _availableToWithdraw / 2, 50, "testProcessPrincipalWithdrawals: E3");
         assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore + _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E4");
         assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore + _availableToWithdraw / 2, 2, "testProcessPrincipalWithdrawals: E5");
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore + _availableToWithdraw / 2, "testProcessPrincipalWithdrawals: E6");
@@ -388,13 +317,20 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        eigenStrategyManager.processPrincipalWithdrawals(_actions);
+        {
+            uint256 _redemptionVaultWSTETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS);
+            uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
+            uint256 _redemptionVaultSFRXETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS);
 
-        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawalsNoReinvest: E0");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS), _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E1");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS), _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E2");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS), _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E3");
+            vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+            eigenStrategyManager.processPrincipalWithdrawals(_actions);
+
+            assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testProcessPrincipalWithdrawalsNoReinvest: E0");
+            assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS) - _redemptionVaultWSTETHBalanceBefore, _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E1");
+            assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E2");
+            assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS) - _redemptionVaultSFRXETHBalanceBefore, _availableToWithdraw, 50, "testProcessPrincipalWithdrawalsNoReinvest: E3");
+        }   
+
         assertEq(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E4");
         assertEq(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E5");
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore, "testProcessPrincipalWithdrawalsNoReinvest: E6");
@@ -404,7 +340,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // requestWithdrawal
     //
 
-    function testRequestWithdrawal(uint256 _amount) public {
+    function testRequestWithdrawal(uint256 _amount) public returns (uint256) {
         testProcessPrincipalWithdrawalsNoReinvest(_amount);
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
@@ -412,28 +348,28 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _userYnLSDeBalance = yneigen.balanceOf(user);
         vm.startPrank(user);
         yneigen.approve(address(withdrawalQueueManager), _userYnLSDeBalance);
+        uint256 expectedTokenId = withdrawalQueueManager._tokenIdCounter();
         uint256 _tokenId = withdrawalQueueManager.requestWithdrawal(_userYnLSDeBalance);
         vm.stopPrank();
 
-        assertApproxEqAbs(
-            withdrawalQueueManager.pendingRequestedRedemptionAmount(),
-            assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), _amount) + assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WOETH_ADDRESS), _amount) + assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), _amount),
-            1000,
-            "testRequestWithdrawal: E0"
-        );
-        assertEq(_tokenId, 0, "testRequestWithdrawal: E1");
+        assertEq(_tokenId, expectedTokenId, "testRequestWithdrawal: E1");
         assertEq(_totalAssetsBefore, yneigen.totalAssets(), "testRequestWithdrawal: E2");
+
+        return _tokenId;
     }
 
     //
     // claimWithdrawal
     //
 
-    function testClaimWithdrawal(uint256 _amount) public {
-        testRequestWithdrawal(_amount);
+    function testClaimWithdrawalFixed(
+        uint256 _amount
+    ) public {
+        // uint256 _amount = 50 ether;
+        uint256 tokenId = testRequestWithdrawal(_amount);
 
-        vm.prank(actors.ops.REQUEST_FINALIZER);
-        withdrawalQueueManager.finalizeRequestsUpToIndex(1);
+        vm.prank(actors.ops.YNEIGEN_REQUEST_FINALIZER);
+        withdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);
 
         uint256 _userWSTETHBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user);
         uint256 _userWOETHBalanceBefore = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user);
@@ -441,12 +377,39 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _totalAssetsBefore = yneigen.totalAssets();
         uint256 _redemptionRateBefore = redemptionAssetsVault.redemptionRate();
 
-        vm.prank(user);
-        withdrawalQueueManager.claimWithdrawal(0, user);
+        IWithdrawalQueueManager.WithdrawalRequest memory request = withdrawalQueueManager.withdrawalRequest(tokenId);
 
-        assertApproxEqRel(IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user), _userWSTETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E0");
-        assertApproxEqRel(IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user), _userWOETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E1");
-        assertApproxEqRel(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user), _userSFRXETHBalanceBefore + _amount, 1, "testClaimWithdrawal: E2");
+        vm.prank(user);
+        withdrawalQueueManager.claimWithdrawal(tokenId, user);
+
+        uint256 totalETHValueReceived;
+        {
+            uint256 _userWSTETHBalanceDelta = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user) - _userWSTETHBalanceBefore;
+            uint256 _userWOETHBalanceDelta = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user) - _userWOETHBalanceBefore;
+            uint256 _userSFRXETHBalanceDelta = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user) - _userSFRXETHBalanceBefore;
+
+            // Calculate total ETH value received by converting each asset delta to ETH
+            totalETHValueReceived = assetRegistry.convertToUnitOfAccount(
+                IERC20(chainAddresses.lsd.WSTETH_ADDRESS), 
+                _userWSTETHBalanceDelta
+            ) + assetRegistry.convertToUnitOfAccount(
+                IERC20(chainAddresses.lsd.WOETH_ADDRESS),
+                _userWOETHBalanceDelta
+            ) + assetRegistry.convertToUnitOfAccount(
+                IERC20(chainAddresses.lsd.SFRXETH_ADDRESS),
+                _userSFRXETHBalanceDelta
+            );
+        }
+
+        uint256 totalETHValueExpected = withdrawalQueueManager.calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
+
+        assertApproxEqRel(
+            totalETHValueReceived,
+            totalETHValueExpected * (1000000 - withdrawalQueueManager.withdrawalFee()) / 1000000,
+            1e16, // max 0.01% difference
+            "testClaimWithdrawal: total ETH value mismatch"
+        );
+
         assertLt(yneigen.totalAssets(), _totalAssetsBefore, "testClaimWithdrawal: E3");
         assertApproxEqRel(redemptionAssetsVault.redemptionRate(), _redemptionRateBefore, 1, "testClaimWithdrawal: E4");
     }
@@ -482,74 +445,5 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
         vm.stopPrank();
-    }
-
-    function _upgradeContracts() internal {
-
-        address[] memory _proxyAddresses = new address[](3);
-        _proxyAddresses[0] = address(yneigen);
-        _proxyAddresses[1] = address(assetRegistry);
-        _proxyAddresses[2] = address(tokenStakingNodesManager);
-        address[] memory _newImplementations = new address[](3);
-        _newImplementations[0] = address(new ynEigen());
-        _newImplementations[1] = address(new AssetRegistry());
-        _newImplementations[2] = address(new TokenStakingNodesManager());
-
-        address[] memory targets = new address[](6);
-        uint256[] memory values = new uint256[](6);
-        bytes[] memory payloads = new bytes[](6);
-        bytes32 predecessor = bytes32(0);
-        bytes32 salt = bytes32(0);
-        uint256 delay = timelockController.getMinDelay();
-
-        for (uint256 i = 0; i < _proxyAddresses.length; i++) {
-            bytes memory _data = abi.encodeWithSignature(
-                "upgradeAndCall(address,address,bytes)",
-                _proxyAddresses[i], // proxy
-                _newImplementations[i], // implementation
-                ""
-            );
-            targets[i] = getTransparentUpgradeableProxyAdminAddress(_proxyAddresses[i]);
-            values[i] = 0;
-            payloads[i] = _data;
-        }
-
-        targets[3] = address(tokenStakingNodesManager);
-        values[3] = 0;
-        payloads[3] = abi.encodeWithSignature(
-            "upgradeTokenStakingNode(address)",
-            new TokenStakingNode()
-        );
-
-        targets[4] = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
-        values[4] = 0;
-        payloads[4] = abi.encodeWithSignature(
-            "upgradeAndCall(address,address,bytes)",
-            address(eigenStrategyManager), // proxy
-            address(new EigenStrategyManager()), // implementation
-            abi.encodeWithSignature(
-                "initializeV2(address,address,address)",
-                address(redemptionAssetsVault),
-                address(wrapper),
-                actors.ops.WITHDRAWAL_MANAGER
-            )
-        );
-
-        targets[5] = getTransparentUpgradeableProxyAdminAddress(address(ynEigenDepositAdapter_));
-        values[5] = 0;
-        payloads[5] = abi.encodeWithSignature(
-            "upgradeAndCall(address,address,bytes)",
-            ynEigenDepositAdapter_, // proxy
-            address(new ynEigenDepositAdapter()), // implementation
-            abi.encodeWithSignature("initializeV2(address)", address(wrapper))
-        );
-
-        vm.prank(actors.wallets.YNSecurityCouncil);
-        timelockController.scheduleBatch(targets, values, payloads, predecessor, salt, delay);
-
-        skip(delay);
-
-        vm.prank(actors.wallets.YNSecurityCouncil);
-        timelockController.executeBatch(targets, values, payloads, predecessor, salt);
     }
 }

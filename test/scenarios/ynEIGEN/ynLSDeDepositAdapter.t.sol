@@ -5,9 +5,13 @@ import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 
 import "./ynLSDeWithdrawals.t.sol";
 
-contract ynLSDeDepositAdapterTest is ynLSDeWithdrawalsTest {
+contract ynLSDeDepositAdapterTest is ynLSDeScenarioBaseTest {
 
     TestAssetUtils public testAssetUtils;
+
+    address public constant user = address(0x42069);
+
+    uint256 public constant AMOUNT = 1 ether;
 
     function setUp() public override {
         super.setUp();
