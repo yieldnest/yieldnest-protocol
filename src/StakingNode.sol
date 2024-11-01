@@ -257,7 +257,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @dev This function revokes the delegation by calling the `undelegate` method on the `DelegationManager`.
      * It emits an `Undelegated` event with the address of the operator from whom the delegation is being removed.
      */
-    function undelegate() public onlyDelegator {
+    function undelegate() public onlyDelegator returns (bytes32[] memory withdrawalRoots) {
    
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
@@ -265,7 +265,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         // Get current shares before undelegating
         int256 shares = stakingNodesManager.eigenPodManager().podOwnerShares(address(this));
-        delegationManager.undelegate(address(this));
+        withdrawalRoots = delegationManager.undelegate(address(this));
 
         if (shares > 0) {
             // Adjust queuedSharesAmount by sharesBefore

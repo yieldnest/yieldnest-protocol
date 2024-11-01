@@ -43,7 +43,7 @@ interface IStakingNode {
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
         bytes32 approverSalt
     ) external;
-    function undelegate() external;
+    function undelegate() external returns (bytes32[] memory withdrawalRoots);
 
     function implementation() external view returns (address);
 
