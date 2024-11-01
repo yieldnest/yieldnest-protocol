@@ -112,9 +112,13 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         }
     }
 
-    function _completeQueuedWithdrawalsAsShares(QueuedWithdrawalInfo[] memory queuedWithdrawals, uint256 nodeId) internal {
+    function _completeQueuedWithdrawalsAsShares(
+        QueuedWithdrawalInfo[] memory queuedWithdrawals,
+        uint256 nodeId,
+        address operator
+    ) internal {
 
-        IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+        IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId, operator);
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
@@ -138,7 +142,20 @@ contract StakingNodeTestBase is IntegrationBaseTest {
     function _getWithdrawals(
         QueuedWithdrawalInfo[] memory queuedWithdrawals,
         uint256 nodeId
+    ) internal returns (IDelegationManager.Withdrawal[] memory) {
+        return _getWithdrawals(
+            queuedWithdrawals,
+            nodeId,
+            delegationManager.delegatedTo(address(stakingNodesManager.nodes(nodeId)))
+        );
+    }
+
+    function _getWithdrawals(
+        QueuedWithdrawalInfo[] memory queuedWithdrawals,
+        uint256 nodeId,
+        address operator
     ) internal returns (IDelegationManager.Withdrawal[] memory _withdrawals) {
+
 
         _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
 
@@ -150,7 +167,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             address _stakingNode = address(stakingNodesManager.nodes(nodeId));
             _withdrawals[i] = IDelegationManager.Withdrawal({
                 staker: _stakingNode,
-                delegatedTo: delegationManager.delegatedTo(_stakingNode),
+                delegatedTo: operator,
                 withdrawer: _stakingNode,
                 nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
                 startBlock: uint32(block.number),
