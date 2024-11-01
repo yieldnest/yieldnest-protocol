@@ -18,6 +18,10 @@ import {AssetRegistry} from "../../../src/ynEIGEN/AssetRegistry.sol";
 import {EigenStrategyManager} from "../../../src/ynEIGEN/EigenStrategyManager.sol";
 import {LSDRateProvider} from "../../../src/ynEIGEN/LSDRateProvider.sol";
 import {ynEigenDepositAdapter} from "../../../src/ynEIGEN/ynEigenDepositAdapter.sol";
+import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
+
 
 import {Test} from "forge-std/Test.sol";
 
@@ -42,6 +46,11 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
     // Assets
     ynEigen public yneigen;
+
+    // ynEIGEN Withdrawals
+    RedemptionAssetsVault public redemptionAssetsVault;
+    WithdrawalQueueManager public withdrawalQueueManager;
+    LSDWrapper public wrapper;
 
     // Eigen
     IEigenPodManager public eigenPodManager;
@@ -77,6 +86,9 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         tokenStakingNodesManager = TokenStakingNodesManager(chainAddresses.ynEigen.TOKEN_STAKING_NODES_MANAGER_ADDRESS);
         yneigen = ynEigen(chainAddresses.ynEigen.YNEIGEN_ADDRESS);
         timelockController = TimelockController(payable(chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS));
+        redemptionAssetsVault = RedemptionAssetsVault(chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS);
+        withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
+        wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
 
     }
 }
