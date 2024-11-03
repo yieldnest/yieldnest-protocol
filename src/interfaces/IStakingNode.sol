@@ -92,5 +92,11 @@ interface IStakingNode {
     function getQueuedSharesAmount() external view returns (uint256);
     function getWithdrawnETH() external view returns (uint256);
     function startCheckpoint(bool revertIfNoBalance) external;
+
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
+    function initializeV3() external;
+
+    function isSynchronized() external view returns (bool);
+
+    function synchronize(uint256 queuedShares, uint32 lastQueuedWithdrawalBlockNumber) external; 
 }

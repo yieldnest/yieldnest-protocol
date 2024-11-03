@@ -9,15 +9,6 @@ import {IWithdrawalQueueManager} from "../../../src/interfaces/IWithdrawalQueueM
 
 import "./Base.t.sol";
 
-interface IPod {
-    function verifyWithdrawalCredentials(uint64 beaconTimestamp, BeaconChainProofs.StateRootProof calldata stateRootProof, uint40[] calldata validatorIndices, bytes[] calldata validatorFieldsProofs, bytes32[][] calldata validatorFields) external;
-    function verifyCheckpointProofs(BeaconChainProofs.BalanceContainerProof calldata balanceContainerProof, BeaconChainProofs.BalanceProof[] calldata proofs) external;
-}
-
-interface IStakingNodeVars {
-    function queuedSharesAmount() external view returns (uint256);
-    function withdrawnETH() external view returns (uint256);
-}
 
 contract DelegationTest is Base {
 
