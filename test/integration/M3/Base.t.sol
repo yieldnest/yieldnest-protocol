@@ -122,6 +122,31 @@ contract Base is Test, Utils {
             vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
+
+        upgradeStakingNodesManagerAndStakingNode();
+    }
+
+    function upgradeStakingNodesManagerAndStakingNode() internal {
+
+        // Upgrade StakingNode implementation
+        address newStakingNodeImpl = address(new StakingNode());
+
+        // Upgrade StakingNodesManager
+        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, newStakingNodeImpl);
+
+        address newStakingNodesManagerImpl = address(new StakingNodesManager());
+
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
+            ITransparentUpgradeableProxy(address(stakingNodesManager)),
+            newStakingNodesManagerImpl,
+            initializeV3Data
+        );
+
+
+        // Register new implementation
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation( newStakingNodeImpl);
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
