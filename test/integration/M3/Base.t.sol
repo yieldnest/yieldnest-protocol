@@ -194,6 +194,8 @@ contract Base is Test, Utils {
         uint256 previousTotalSupply,
         uint256[] memory previousStakingNodeBalances
     ) public {  
+
+        stakingNodesManager.updateTotalETHStaked();
         assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 

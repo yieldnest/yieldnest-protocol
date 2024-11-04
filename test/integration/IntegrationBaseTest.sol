@@ -99,6 +99,7 @@ contract IntegrationBaseTest is Test, Utils {
         setupYnETH();
         setupUtils();
         setupWithdrawalQueueManager();
+        setupInitialization();
     }
 
     function setupYnETHPoxies() public {
@@ -290,6 +291,12 @@ contract IntegrationBaseTest is Test, Utils {
                 stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
             })
         );
+    }
+
+    function setupInitialization() internal {
+
+        // Initialize V3 of StakingNodesManager with new implementation
+        stakingNodesManager.initializeV3(address(stakingNodeImplementation));
     }
 
     //--------------------------------------------------------------------------------------
