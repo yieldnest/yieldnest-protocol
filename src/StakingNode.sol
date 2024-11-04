@@ -403,7 +403,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals,
         uint256[] calldata middlewareTimesIndexes
-    ) external onlyStakingNodesWithdrawer onlyWhenSynchronized {
+    ) external onlyDelegator onlyWhenSynchronized {
         uint256 totalWithdrawalAmount = 0;
 
         // Create empty tokens array since we're not receiving as tokens
@@ -445,7 +445,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return delegatedTo == delegationManager.delegatedTo(address(this));
     }
 
-    function synchronize(uint256 queuedShares, uint32 lastQueuedWithdrawalBlockNumber) public {
+    function synchronize(
+        uint256 queuedShares,
+        uint32 lastQueuedWithdrawalBlockNumber
+    ) public onlyDelegator {
+
         if (isSynchronized()) {
             revert AlreadySynchronized();
         }
@@ -458,7 +462,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         shares[0] = queuedShares;
 
         address thisNode = address(this);
-
+        
+        // We can assume that the Withdrawal queued by the undelegate() call made by the operator
+        // is the LAST queued withdrawal since to call queueWithdrawals you require isSynchronized() == true. 
         IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
             staker: thisNode,
             delegatedTo: delegatedTo,
@@ -469,6 +475,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             shares: shares
         });
 
+        // IMPORTANT: withdrawalRoot is not spoofable because nonce is a strictly increasing value that
+        // gets incremented for each new withdrawal.
+        // This function only works with this pre-condition
         bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
 
         // Withdrawal MUST exist and must be the last

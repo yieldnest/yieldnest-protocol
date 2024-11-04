@@ -290,7 +290,7 @@ contract StakingNodesManager is
         }
 
         // After registering validators, update the total ETH staked
-        updateTotalETHStaked();
+        totalETHStaked += newValidatorCount * DEFAULT_VALIDATOR_STAKE;
     }
 
     /**
