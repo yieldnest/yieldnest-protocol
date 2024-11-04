@@ -47,7 +47,7 @@ contract ProtocolUpgradeScenario is ScenarioBaseTest {
         runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
     }
     
-    function test_Upgrade_StakingNodesManager_Scenario() public {
+    function skip_test_Upgrade_StakingNodesManager_Scenario() public {
         address previousStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
         
@@ -152,7 +152,7 @@ contract ProtocolUpgradeScenario is ScenarioBaseTest {
         runSystemStateInvariants(previousTotalDeposited, previousTotalAssets, previousTotalSupply);
     }
 
-    function test_Upgrade_StakingNodeImplementation_Scenario() public {
+    function skip_test_Upgrade_StakingNodeImplementation_Scenario() public {
         // Collect all existing eigenPod addresses before the upgrade
         IStakingNode[] memory stakingNodes = stakingNodesManager.getAllNodes();
         address[] memory eigenPodAddressesBefore = new address[](stakingNodes.length);

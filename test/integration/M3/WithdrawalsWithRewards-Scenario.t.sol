@@ -256,6 +256,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         // Rewards accumulated are accounted after verifying the checkpoint
         state.totalAssetsBefore += accumulatedRewards;
         state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         uint256 withdrawnAmount = 32 ether * validatorIndices.length + accumulatedRewards;
