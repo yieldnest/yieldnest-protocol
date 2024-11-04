@@ -84,12 +84,19 @@ contract WithdrawalsProcessor is Ownable {
     // Processor functions
     //
 
+    /// @notice Queues withdrawals
+    /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
+    /// @dev Skips nodes with shares below the minimum threshold
+    /// @dev Tries to satisfy the pending withdrawal requests while prioritizing withdrawals in one asset
+    /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
+    /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals() external onlyOwner returns (bool) {
 
         uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
         if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
 
         totalQueuedWithdrawals += _pendingWithdrawalRequests;
+        console.log("_pendingWithdrawalRequests: %d", _pendingWithdrawalRequests);
 
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
         IERC20[] memory _assets = assetRegistry.getAssets();
@@ -107,14 +114,37 @@ contract WithdrawalsProcessor is Ownable {
                 address _node = address(_nodes[j]);
                 uint256 _nodeShares = _strategy.shares(_node);
                 if (_nodeShares > _pendingWithdrawalRequestsInShares) {
+                    console.log("111---hihihihi");
+                    console.log("_pendingWithdrawalRequestsInShares: %d", _pendingWithdrawalRequestsInShares);
                     _rekt = true;
-                    _withdrawnShares = _nodeShares - _pendingWithdrawalRequestsInShares;
+                    _withdrawnShares = _pendingWithdrawalRequestsInShares;
                     _pendingWithdrawalRequestsInShares = 0;
+                    console.log("_withdrawnShares: %d", _withdrawnShares);
+                    console.log("_nodeShares: %d", _nodeShares);
+                    console.log("111---hihihihi");
+                    // 7274259991855779532
+                    // 10518550782133633014
                 } else if (_nodeShares > _minNodeShares) {
                     _rekt = true;
                     _withdrawnShares = _nodeShares;
-                    _pendingWithdrawalRequestsInShares -= _withdrawnShares;
+                    console.log("---hihihihi");
+                    console.log("_pendingWithdrawalRequestsInShares: %d", _pendingWithdrawalRequestsInShares);
+                    _pendingWithdrawalRequestsInShares -= _nodeShares;
+                    console.log("_withdrawnShares: %d", _withdrawnShares);
+                    console.log("_nodeShares: %d", _nodeShares);
+                    console.log("_pendingWithdrawalRequestsInShares: %d", _pendingWithdrawalRequestsInShares);
+                    console.log("---hihihihi");
+                    // 17348102464940935451
+                    // 10725592388507048938
                 }
+                // 6622190002198804021
+                // 6915645044869965739
+                // 11283719525851138925
+                // 16030236567314352571
+                // 19909326780564267353
+
+                // 10725592388507048938
+                // 6621064578151499834
 
                 if (_rekt) {
                     queuedWithdrawals[queuedId++] = QueuedWithdrawal(
@@ -135,6 +165,7 @@ contract WithdrawalsProcessor is Ownable {
             }
 
             _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _assets[i], _strategy);
+            console.log("111_pendingWithdrawalRequests: %d", _pendingWithdrawalRequests);
         }
 
         totalQueuedWithdrawals -= _pendingWithdrawalRequests;
@@ -219,6 +250,7 @@ contract WithdrawalsProcessor is Ownable {
     // Private functions
     //
 
+    // @todo - here -- there's some problem with the conversion
     function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
         _amount = assetRegistry.convertFromUnitOfAccount(_asset, _amount);
         return _strategy.underlyingToSharesView(_amount);
