@@ -8,26 +8,25 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
+import {Utils} from "script/Utils.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
+import {ActorAddresses} from "script/Actors.sol";
 
-import {Utils} from "../../../script/Utils.sol";
-import {ContractAddresses} from "../../../script/ContractAddresses.sol";
-import {ActorAddresses} from "../../../script/Actors.sol";
+import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 
-import {IDepositContract} from "../../../src/external/ethereum/IDepositContract.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
 
-import {IRedeemableAsset} from "../../../src/interfaces/IRedeemableAsset.sol";
-import {IRedemptionAssetsVault} from "../../../src/interfaces/IRedemptionAssetsVault.sol";
-import {IynETH} from "../../../src/interfaces/IynETH.sol";
-
-import {ynETH} from "../../../src/ynETH.sol";
-import {StakingNodesManager, IStakingNodesManager} from "../../../src/StakingNodesManager.sol";
-import {StakingNode} from "../../../src/StakingNode.sol";
-import {RewardsReceiver} from "../../../src/RewardsReceiver.sol";
-import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
-import {StakingNode} from "../../../src/StakingNode.sol";
-import {WithdrawalQueueManager} from "../../../src/WithdrawalQueueManager.sol";
-import {ynETHRedemptionAssetsVault} from "../../../src/ynETHRedemptionAssetsVault.sol";
-import {IStakingNode} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {ynETH} from "src/ynETH.sol";
+import {StakingNodesManager, IStakingNodesManager} from "src/StakingNodesManager.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {RewardsReceiver} from "src/RewardsReceiver.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
 
 import "forge-std/console.sol";
