@@ -55,7 +55,7 @@ contract UpgradesTest is IntegrationBaseTest {
             .upgradeAndCall(
                 ITransparentUpgradeableProxy(address(stakingNodesManager)),
                 newStakingNodesManagerV2Impl,
-                abi.encodeWithSelector(TestStakingNodesManagerV2.initializeV3.selector, reInit)
+                abi.encodeWithSelector(TestStakingNodesManagerV2.initializeV4.selector, reInit)
             );
 
         address currentStakingNodesManagerImpl = getTransparentUpgradeableProxyImplementationAddress(address(stakingNodesManager));
