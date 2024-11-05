@@ -3,10 +3,9 @@ pragma solidity ^0.8.24;
 
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {StakingNode} from "src/StakingNode.sol";
-
-import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
-import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
-import {IWithdrawalQueueManager} from "../../../src/interfaces/IWithdrawalQueueManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 
 import "./Base.t.sol";
 
