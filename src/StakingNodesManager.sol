@@ -290,7 +290,7 @@ contract StakingNodesManager is
         }
 
         // After registering validators, update the total ETH staked
-        totalETHStaked += newValidatorCount * DEFAULT_VALIDATOR_STAKE;
+        updateTotalETHStaked();
     }
 
     /**
@@ -451,10 +451,12 @@ contract StakingNodesManager is
 
         if (initializedVersion == 1) {
             node.initializeV2(0);
+            initializedVersion = node.getInitializedVersion();
         }
 
         if (initializedVersion == 2) {
             node.initializeV3();
+            initializedVersion = node.getInitializedVersion();
         }
 
         // NOTE: For future versions, add additional if clauses that initialize the node 
