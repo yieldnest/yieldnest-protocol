@@ -40,6 +40,9 @@ contract DelegationTest is Base {
         delegationManager.undelegate(address(stakingNode));
         vm.stopPrank();
 
+        // Assert node is no longer delegated after undelegation
+        assertEq(delegationManager.delegatedTo(address(stakingNode)), address(0), "Node should not be delegated after undelegation");
+
         // Assert total assets remain unchanged after undelegation
         assertEq(totalAssetsBefore,  yneth.totalAssets(), "Total assets should not change after undelegation");
 
@@ -57,6 +60,12 @@ contract DelegationTest is Base {
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after synchronization");
 
         assertEq(totalAssetsBefore,  yneth.totalAssets(), "Total assets should not change after synchronization");
+
+        // Assert staking node balance remains unchanged after completing withdrawals
+        assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after completing withdrawals");
+
+        // Assert total assets remain unchanged after completing withdrawals
+        assertEq(totalAssetsBefore, yneth.totalAssets(), "Total assets should not change after completing withdrawals");
     }
 
     function test_undelegate_Scenario_undelegateByDelegator() public {
@@ -81,16 +90,20 @@ contract DelegationTest is Base {
         stakingNode.undelegate();
         vm.stopPrank();
 
+        // Assert node is no longer delegated after undelegation
+        assertEq(delegationManager.delegatedTo(address(stakingNode)), address(0), "Node should not be delegated after undelegation");
+
+
         // Assert total assets remain unchanged after undelegation
         assertEq(totalAssetsBefore, yneth.totalAssets(), "Total assets should not change after undelegation");
 
         // Assert staking node balance dropped by pod shares amount
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should stay the same");
 
-        // Assert node is not synchronized after undelegation
+        // Assert node is synchronized after undelegation
         assertTrue(stakingNode.isSynchronized(), "Node should be synchronized after undelegation");
 
-        // Call synchronize after verifying not synchronized
+        // Call synchronize after verifying synchronized
         vm.expectRevert(StakingNode.AlreadySynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNode.synchronize(podSharesBefore, blockNumberBefore);
