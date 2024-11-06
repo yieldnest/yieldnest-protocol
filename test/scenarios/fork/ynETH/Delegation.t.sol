@@ -7,10 +7,10 @@ import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 
-import "./Base.t.sol";
+import {WithdrawalsScenarioTestBase} from "./WithdrawalsScenarioTestBase.sol";
 
 
-contract DelegationTest is Base {
+contract DelegationScenarioTest is WithdrawalsScenarioTestBase {
 
     function test_undelegate_Scenario_undelegateByOperator() public {
 
@@ -58,10 +58,29 @@ contract DelegationTest is Base {
         // Assert staking node balance remains unchanged after synchronization
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after synchronization");
 
+        stakingNodesManager.updateTotalETHStaked();
+
         assertEq(totalAssetsBefore,  yneth.totalAssets(), "Total assets should not change after synchronization");
+
+        // Complete queued withdrawals as shares
+        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
+        queuedWithdrawals[0] = QueuedWithdrawalInfo({
+            nodeId: 0,
+            withdrawnAmount: podSharesBefore
+        });
+        address[] memory operators = new address[](1);
+        operators[0] = operator;
+
+        uint256 queuedSharesBefore = stakingNode.getQueuedSharesAmount();
+
+        completeQueuedWithdrawalsAsShares(0, queuedWithdrawals, operators);
+
+        assertEq(queuedSharesBefore - podSharesBefore, stakingNode.getQueuedSharesAmount(), "Queued shares should decrease by pod shares amount");
 
         // Assert staking node balance remains unchanged after completing withdrawals
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after completing withdrawals");
+
+        stakingNodesManager.updateTotalETHStaked();
 
         // Assert total assets remain unchanged after completing withdrawals
         assertEq(totalAssetsBefore, yneth.totalAssets(), "Total assets should not change after completing withdrawals");

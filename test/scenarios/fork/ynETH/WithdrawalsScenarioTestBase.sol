@@ -14,7 +14,7 @@ contract WithdrawalsScenarioTestBase is Base {
         uint256 withdrawnAmount;
     }
 
-    function getDelegationManagerWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private view returns (IDelegationManager.Withdrawal[] memory) {
+    function getDelegationManagerWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals, address[] memory operators) private view returns (IDelegationManager.Withdrawal[] memory) {
         // create Withdrawal struct
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
         {
@@ -26,7 +26,7 @@ contract WithdrawalsScenarioTestBase is Base {
                 address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
                 _withdrawals[i] = IDelegationManager.Withdrawal({
                     staker: _stakingNode,
-                    delegatedTo: delegationManager.delegatedTo(_stakingNode),
+                    delegatedTo: operators[i],
                     withdrawer: _stakingNode,
                     nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
                     startBlock: uint32(block.number),
@@ -40,8 +40,17 @@ contract WithdrawalsScenarioTestBase is Base {
     }
 
     function completeQueuedWithdrawals(uint256 nodeId, QueuedWithdrawalInfo[] memory queuedWithdrawals) internal {
+
         // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
+        address[] memory operators = new address[](queuedWithdrawals.length);
+        for (uint256 i = 0; i < operators.length; i++) {
+            address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
+            operators[i] = delegationManager.delegatedTo(_stakingNode);
+        }
+        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(
+            queuedWithdrawals,
+            operators
+        );
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
@@ -62,13 +71,51 @@ contract WithdrawalsScenarioTestBase is Base {
         }
     }
 
+    function completeQueuedWithdrawalsAsShares(
+        uint256 nodeId,
+        QueuedWithdrawalInfo[] memory queuedWithdrawals,
+        address[] memory operators
+        ) internal {
+
+        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(
+            queuedWithdrawals,
+            operators
+        );
+
+        {
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+
+            // advance time to allow completion
+            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        }
+
+        // complete queued withdrawals
+        {
+            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
+            // all is zeroed out by defailt
+            _middlewareTimesIndexes[0] = 0;
+            vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(_withdrawals, _middlewareTimesIndexes);
+            vm.stopPrank();
+        }
+    }
+
     function completeAndProcessWithdrawals(
         IStakingNodesManager.WithdrawalAction memory withdrawalAction,
         QueuedWithdrawalInfo[] memory queuedWithdrawals
     ) public {
-
-
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
+        
+        // create Withdrawal struct
+        address[] memory operators = new address[](queuedWithdrawals.length);
+        for (uint256 i = 0; i < operators.length; i++) {
+            address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
+            operators[i] = delegationManager.delegatedTo(_stakingNode);
+        }
+        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(
+            queuedWithdrawals,
+            operators
+        );
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
