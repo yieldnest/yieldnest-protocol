@@ -35,7 +35,6 @@ contract WithdrawalsProcessor is Ownable {
 
     uint256 public totalQueuedWithdrawals;
 
-    uint256 public minNodeShares;
     uint256 public minPendingWithdrawalRequestAmount;
 
     // yieldnest
@@ -49,6 +48,7 @@ contract WithdrawalsProcessor is Ownable {
 
     mapping(uint256 id => QueuedWithdrawal) public queuedWithdrawals;
     mapping(uint256 fromId => uint256 toId) public batch;
+    mapping (IERC20 asset => uint256 minShares) public minShares;
 
     //
     // Constructor
@@ -76,8 +76,13 @@ contract WithdrawalsProcessor is Ownable {
         ynStrategyManager = IYieldNestStrategyManager(_ynStrategyManager);
         delegationManager = IDelegationManager(_delegationManager);
 
-        minNodeShares = 1 ether;
         minPendingWithdrawalRequestAmount = 0.1 ether;
+
+        // @todo - fix that
+        IERC20[] memory _assets = assetRegistry.getAssets();
+        for (uint256 i = 0; i < _assets.length; ++i) {
+            minShares[_assets[i]] = 1 ether;
+        }
     }
 
     //
@@ -87,16 +92,17 @@ contract WithdrawalsProcessor is Ownable {
     /// @notice Queues withdrawals
     /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
     /// @dev Skips nodes with shares below the minimum threshold
+    /// @dev If a nodes has more shares than the minimum threshold, exits the node entirely
     /// @dev Tries to satisfy the pending withdrawal requests while prioritizing withdrawals in one asset
     /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
     /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals() external onlyOwner returns (bool) {
 
+        uint256 _minPendingWithdrawalRequestAmount = minPendingWithdrawalRequestAmount;
         uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
         if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
 
         totalQueuedWithdrawals += _pendingWithdrawalRequests;
-        console.log("_pendingWithdrawalRequests: %d", _pendingWithdrawalRequests);
 
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
         IERC20[] memory _assets = assetRegistry.getAssets();
@@ -104,68 +110,32 @@ contract WithdrawalsProcessor is Ownable {
         uint256 _queuedIdBefore = queuedId;
         uint256 _assetsLength = _assets.length;
         uint256 _nodesLength = _nodes.length;
-        uint256 _minNodeShares = minNodeShares;
         for (uint256 i = 0; i < _assetsLength; ++i) {
+            uint256 _minShares = minShares[_assets[i]];
             IStrategy _strategy = ynStrategyManager.strategies(_assets[i]);
-            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _assets[i], _strategy);
             for (uint256 j = 0; j < _nodesLength; ++j) {
-                bool _rekt;
-                uint256 _withdrawnShares;
                 address _node = address(_nodes[j]);
                 uint256 _nodeShares = _strategy.shares(_node);
-                if (_nodeShares > _pendingWithdrawalRequestsInShares) {
-                    console.log("111---hihihihi");
-                    console.log("_pendingWithdrawalRequestsInShares: %d", _pendingWithdrawalRequestsInShares);
-                    _rekt = true;
-                    _withdrawnShares = _pendingWithdrawalRequestsInShares;
-                    _pendingWithdrawalRequestsInShares = 0;
-                    console.log("_withdrawnShares: %d", _withdrawnShares);
-                    console.log("_nodeShares: %d", _nodeShares);
-                    console.log("111---hihihihi");
-                    // 7274259991855779532
-                    // 10518550782133633014
-                } else if (_nodeShares > _minNodeShares) {
-                    _rekt = true;
-                    _withdrawnShares = _nodeShares;
-                    console.log("---hihihihi");
-                    console.log("_pendingWithdrawalRequestsInShares: %d", _pendingWithdrawalRequestsInShares);
-                    _pendingWithdrawalRequestsInShares -= _nodeShares;
-                    console.log("_withdrawnShares: %d", _withdrawnShares);
-                    console.log("_nodeShares: %d", _nodeShares);
-                    console.log("_pendingWithdrawalRequestsInShares: %d", _pendingWithdrawalRequestsInShares);
-                    console.log("---hihihihi");
-                    // 17348102464940935451
-                    // 10725592388507048938
-                }
-                // 6622190002198804021
-                // 6915645044869965739
-                // 11283719525851138925
-                // 16030236567314352571
-                // 19909326780564267353
-
-                // 10725592388507048938
-                // 6621064578151499834
-
-                if (_rekt) {
+                if (_nodeShares > _minShares) {
+                    uint256 _unitWithdrawalAmount = _sharesToUnit(_nodeShares, _assets[i], _strategy);
+                    _pendingWithdrawalRequests =
+                        _unitWithdrawalAmount < _pendingWithdrawalRequests ? _pendingWithdrawalRequests - _unitWithdrawalAmount : 0;
                     queuedWithdrawals[queuedId++] = QueuedWithdrawal(
-                        _node, // stakingNode
-                        address(_strategy), // strategy
+                        _node,
+                        address(_strategy),
                         delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
-                        _withdrawnShares, // shares
+                        _nodeShares,
                         uint32(block.number), // startBlock
                         false // completed
                     );
-                    ITokenStakingNode(_node).queueWithdrawals(_strategy, _withdrawnShares);
+                    ITokenStakingNode(_node).queueWithdrawals(_strategy, _nodeShares);
                 }
 
-                if (_pendingWithdrawalRequestsInShares == 0) {
+                if (_pendingWithdrawalRequests <= _minPendingWithdrawalRequestAmount) {
                     batch[_queuedIdBefore] = queuedId;
                     return true;
                 }
             }
-
-            _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _assets[i], _strategy);
-            console.log("111_pendingWithdrawalRequests: %d", _pendingWithdrawalRequests);
         }
 
         totalQueuedWithdrawals -= _pendingWithdrawalRequests;
@@ -209,6 +179,7 @@ contract WithdrawalsProcessor is Ownable {
         completedId = _completedId;
     }
 
+    // @todo - check how much to re-invest
     function processPrincipalWithdrawals() external {
 
         uint256 _completedId = completedId;
@@ -234,11 +205,12 @@ contract WithdrawalsProcessor is Ownable {
     // Management functions
     //
 
-    function updateMinNodeShares(uint256 _minNodeShares) external onlyOwner {
-        if (_minNodeShares == 0) revert InvalidInput();
-        minNodeShares = _minNodeShares;
-        emit MinNodeSharesUpdated(_minNodeShares);
-    }
+    // @todo - add setter to minShares mapping
+    // function updateMinNodeShares(uint256 _minNodeShares) external onlyOwner {
+    //     if (_minNodeShares == 0) revert InvalidInput();
+    //     minNodeShares = _minNodeShares;
+    //     emit MinNodeSharesUpdated(_minNodeShares);
+    // }
 
     function updateMinPendingWithdrawalRequestAmount(uint256 _minPendingWithdrawalRequestAmount) external onlyOwner {
         if (_minPendingWithdrawalRequestAmount == 0) revert InvalidInput();
@@ -250,11 +222,11 @@ contract WithdrawalsProcessor is Ownable {
     // Private functions
     //
 
-    // @todo - here -- there's some problem with the conversion
-    function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
-        _amount = assetRegistry.convertFromUnitOfAccount(_asset, _amount);
-        return _strategy.underlyingToSharesView(_amount);
-    }
+    // // @todo - here -- there's some problem with the conversion
+    // function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
+    //     _amount = assetRegistry.convertFromUnitOfAccount(_asset, _amount);
+    //     return _strategy.underlyingToSharesView(_amount);
+    // }
 
     function _sharesToUnit(uint256 _shares, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
         uint256 _amount = _strategy.sharesToUnderlyingView(_shares);

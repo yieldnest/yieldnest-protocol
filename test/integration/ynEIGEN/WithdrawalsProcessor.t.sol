@@ -82,9 +82,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         uint256 _sfrxethShares = _sfrxethStrategy.shares((address(tokenStakingNode)));
 
         vm.prank(owner);
-        bool _queueEverything = withdrawalsProcessor.queueWithdrawals();
+        bool _queuedEverything = withdrawalsProcessor.queueWithdrawals();
 
-        assertTrue(_queueEverything, "testQueueWithdrawal: E0");
+        assertTrue(_queuedEverything, "testQueueWithdrawal: E0");
         assertEq(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "testQueueWithdrawal: E1");
         assertEq(tokenStakingNode.queuedShares(_oethStrategy), _oethShares, "testQueueWithdrawal: E2");
         assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "testQueueWithdrawal: E3");
