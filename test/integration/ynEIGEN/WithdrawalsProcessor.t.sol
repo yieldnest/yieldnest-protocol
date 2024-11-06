@@ -70,8 +70,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     // queueWithdrawals
     //
 
-    function testQueueWithdrawal() public {
-        uint256 _amount = 10 ether;
+    function testQueueWithdrawal(uint256 _amount) public {
         if (_setup) setup_(_amount);
 
         IStrategy _stethStrategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
@@ -150,7 +149,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     // (4) user request withdrawal
     function setup_(uint256 _amount) private {
         vm.assume(
-            _amount > (withdrawalsProcessor.minPendingWithdrawalRequestAmount() / 3) &&
+            _amount > 1 ether &&
             _amount < 100 ether
         );
 
