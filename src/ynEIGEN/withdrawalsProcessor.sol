@@ -41,7 +41,6 @@ contract WithdrawalsProcessor is Ownable {
         uint256 minNodeShares;
         uint96 maxNodeAllocation;
         uint8 nodeCursor;
-        uint96 currentNodeAllocation;
     }
 
     // @todo - put ids in a struct
@@ -75,7 +74,6 @@ contract WithdrawalsProcessor is Ownable {
 
     uint96 public maxNodeAllocation;
     uint8 public nodeCursor;
-    uint96 public currentNodeAllocation;
 
     //
     // Constructor
@@ -122,6 +120,10 @@ contract WithdrawalsProcessor is Ownable {
         uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
         if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
 
+        if (_pendingWithdrawalRequests > maxNodeAllocation) {
+            _pendingWithdrawalRequests = maxNodeAllocation;
+        }
+
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
@@ -129,7 +131,6 @@ contract WithdrawalsProcessor is Ownable {
         QueuedWithdrawalsVars memory vars = QueuedWithdrawalsVars({
             maxNodeAllocation: maxNodeAllocation,
             nodeCursor: nodeCursor,
-            currentNodeAllocation: currentNodeAllocation,
             queuedId: queuedId,
             assetsLength: _assets.length,
             nodesLength: _nodes.length,
@@ -141,9 +142,13 @@ contract WithdrawalsProcessor is Ownable {
             IStrategy _strategy = ynStrategyManager.strategies(_assets[i]);
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _assets[i], _strategy);
 
-            for (uint256 j = 0; j < vars.nodesLength; ++j) {
+            uint256 j = 0;
+            for (j = 0; j < vars.nodesLength; ++j) {
                 uint256 _withdrawnShares;
-                address _node = address(_nodes[j]);
+
+                uint256 nodeIndex = (j + vars.nodeCursor) % vars.nodesLength;
+
+                address _node = address(_nodes[nodeIndex]);
                 uint256 _nodeShares = _strategy.shares(_node);
                 if (_nodeShares > _pendingWithdrawalRequestsInShares) {
                     _withdrawnShares =
@@ -172,18 +177,29 @@ contract WithdrawalsProcessor is Ownable {
                     batch[queuedId] = vars.queuedId;
                     queuedId = vars.queuedId;
                     totalQueuedWithdrawals += _toBeQueued;
+
+                    vars.nodeCursor = uint8(j);
+                    nodeCursor = vars.nodeCursor;
+
                     return true;
                 }
             }
 
+            vars.nodeCursor = uint8(j);
+  
+
             _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _assets[i], _strategy);
         }
+
+        
 
         if (_pendingWithdrawalRequests < _toBeQueued) {
             batch[queuedId] = vars.queuedId;
             queuedId = vars.queuedId;
             totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
         }
+
+        nodeCursor = vars.nodeCursor;
 
         return false;
     }
@@ -279,6 +295,10 @@ contract WithdrawalsProcessor is Ownable {
                 _asset, address(_asset) == address(WSTETH) ? WSTETH.getWstETHByStETH(_amount) : WOETH.previewDeposit(_amount)
             )
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
+    }
+
+    function _min(uint256 a, uint256 b) private pure returns (uint256) {
+        return a < b ? a : b;
     }
 
     //
