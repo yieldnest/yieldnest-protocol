@@ -124,15 +124,29 @@ contract WithdrawalsProcessor is Ownable {
                 uint256 _withdrawnShares;
                 address _node = address(_nodes[j]);
                 uint256 _nodeShares = _strategy.shares(_node);
-                if (_nodeShares > _pendingWithdrawalRequestsInShares) {
-                    _withdrawnShares =
+                // if (_nodeShares > _pendingWithdrawalRequestsInShares) {
+                //     _withdrawnShares =
+                //         (_nodeShares - _pendingWithdrawalRequestsInShares) < MIN_DELTA
+                //             ? _nodeShares
+                //             : _pendingWithdrawalRequestsInShares;
+                //     _pendingWithdrawalRequestsInShares = 0;
+                // } else if (_nodeShares > _minNodeShares) {
+                //     _withdrawnShares = _nodeShares;
+                //     _pendingWithdrawalRequestsInShares -= _nodeShares;
+                // }
+
+                if (_nodeShares > _minNodeShares) {
+                    _nodeShares = (_nodeShares > _maxNodesShares) ? _maxNodesShares : _nodeShares;
+                    if (_nodeShares > _pendingWithdrawalRequestsInShares) {
+                        _withdrawnShares =
                         (_nodeShares - _pendingWithdrawalRequestsInShares) < MIN_DELTA
                             ? _nodeShares
                             : _pendingWithdrawalRequestsInShares;
-                    _pendingWithdrawalRequestsInShares = 0;
-                } else if (_nodeShares > _minNodeShares) {
-                    _withdrawnShares = _nodeShares;
-                    _pendingWithdrawalRequestsInShares -= _nodeShares;
+                        _pendingWithdrawalRequestsInShares = 0;
+                    } else {
+                        _withdrawnShares = _nodeShares;
+                        _pendingWithdrawalRequestsInShares -= _nodeShares;
+                    }
                 }
 
                 if (_withdrawnShares > 0) {
