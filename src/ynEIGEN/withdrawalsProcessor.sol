@@ -21,6 +21,7 @@ interface IWSTETH {
     function getWstETHByStETH(uint256 _stETHAmount) external view returns (uint256);
 }
 
+// @todo - change onlyOwner to role
 /// @dev - there are inefficiencies if stratagies have different withdrawal delays
 ///        specifically, in `completeQueuedWithdrawals`, we need to wait for the longest withdrawal delay
 contract WithdrawalsProcessor is Ownable {
@@ -97,13 +98,44 @@ contract WithdrawalsProcessor is Ownable {
     // Processor functions
     //
 
+    function getQueueWithdrawalsArgs() view returns (address _asset, uint256 _min, uint256 _max) {
+        ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
+        IERC20[] memory _assets = assetRegistry.getAssets();
+        uint256 _queuedId = queuedId;
+        uint256 _assetsLength = _assets.length;
+        uint256 _nodesLength = _nodes.length;
+
+        for (uint256 i = 0; i < _assetsLength; ++i) {
+            // check dominant asset
+            // populate _asset
+        }
+
+        // figure out min max
+        for (uint256 i = 0; i < _nodesLength; ++i) {
+            // 1. 10 nodes
+            // 2. 5 nodes - 90 shares
+            // 3. 5 nodes - 100 shares
+            // 4. we want to withdraw 50 shares
+            // 5. `_minNodeShares == 90`
+            // 6. `_maxNodeShares == 10`
+
+            // populate _min, _max
+        }
+    }
+
+    function shouldQueueWithdrawals() view returns (bool) {
+        uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
+        if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) return false;
+        return true;
+    }
+
     /// @notice Queues withdrawals
     /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
     /// @dev Skips nodes with shares below the minimum threshold
     /// @dev Tries to satisfy the pending withdrawal requests while prioritizing withdrawals in one asset
     /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
     /// @return True if all pending withdrawal requests were queued, false otherwise
-    function queueWithdrawals() external onlyOwner returns (bool) {
+    function queueWithdrawals(address asset, uint256 min, uint256 max) external onlyOwner returns (bool) {
 
         uint256 _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
         if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
@@ -135,8 +167,20 @@ contract WithdrawalsProcessor is Ownable {
                 //     _pendingWithdrawalRequestsInShares -= _nodeShares;
                 // }
 
+                // 1. 10 nodes
+                // 2. 5 nodes - 90 shares
+                // 3. 5 nodes - 100 shares
+                // 4. we want to withdraw 50 shares
+                // 5. `_minNodeShares == 90`
+                // 6. `_maxNodeShares == 10`
+
+                // 2. 5 nodes - 95 shares
+                // 3. 5 nodes - 90 shares
+
+                // assets goal --> ideally 10steth/10sfrxeth/100oeth --> oeth, min, max
+
                 if (_nodeShares > _minNodeShares) {
-                    _nodeShares = (_nodeShares > _maxNodesShares) ? _maxNodesShares : _nodeShares;
+                    _nodeShares = (_nodeShares > _maxNodeShares) ? _maxNodeShares : _nodeShares;
                     if (_nodeShares > _pendingWithdrawalRequestsInShares) {
                         _withdrawnShares =
                         (_nodeShares - _pendingWithdrawalRequestsInShares) < MIN_DELTA
