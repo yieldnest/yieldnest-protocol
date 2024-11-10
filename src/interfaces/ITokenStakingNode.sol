@@ -17,6 +17,8 @@ interface ITokenStakingNode {
     function nodeId() external returns (uint256);
 
     function initialize(Init calldata init) external;
+
+    function initializeV2() external;
     
     function depositAssetsToEigenlayer(
         IERC20[] memory assets,
@@ -53,4 +55,11 @@ interface ITokenStakingNode {
 
     function queuedShares(IStrategy _strategy) external view returns (uint256);
     function withdrawn(IERC20 _token) external view returns (uint256);
+
+    /**
+     * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.
+     * @dev Compares the locally stored delegatedTo address with the actual delegation in DelegationManager.
+     * @return True if the delegation state is synced, false otherwise.
+     */
+    function isSynchronized() external view returns (bool);
 }
