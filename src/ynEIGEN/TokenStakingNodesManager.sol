@@ -178,6 +178,12 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
              emit NodeInitialized(address(node), initializedVersion);
          }
 
+         if (initializedVersion == 1) {
+             node.initializeV2();
+             initializedVersion = node.getInitializedVersion();
+             emit NodeInitialized(address(node), initializedVersion);
+         }
+
          // NOTE: for future versions add additional if clauses that initialize the node 
          // for the next version while keeping the previous initializers
     }
