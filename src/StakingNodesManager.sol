@@ -9,6 +9,7 @@ import {depositRootGenerator} from "src/external/ethereum/DepositRootGenerator.s
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {IRewardsDistributor,IRewardsReceiver, RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
@@ -133,6 +134,8 @@ contract StakingNodesManager is
     IRedemptionAssetsVault public redemptionAssetsVault;
     uint256 public totalETHStaked;
 
+    IRewardsCoordinator public rewardsCoordinator;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -241,8 +244,11 @@ contract StakingNodesManager is
         ___deprecated_delayedWithdrawalRouter = address(0);
     }
 
-    function initializeV3(address newStakingNodeImplementation) external reinitializer(3) {
-
+    function initializeV3(
+        address newStakingNodeImplementation,
+        IRewardsCoordinator _rewardsCoordinator
+    ) external reinitializer(3) {
+        rewardsCoordinator = _rewardsCoordinator;
         _upgradeStakingNodeImplementation(newStakingNodeImplementation);
         updateTotalETHStaked();
     }
