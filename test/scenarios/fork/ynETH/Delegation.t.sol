@@ -10,7 +10,7 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {WithdrawalsScenarioTestBase} from "./WithdrawalsScenarioTestBase.sol";
 
 
-contract DelegationScenarioTest is WithdrawalsScenarioTestBase {
+contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
 
     function test_undelegate_Scenario_undelegateByOperator() public {
 

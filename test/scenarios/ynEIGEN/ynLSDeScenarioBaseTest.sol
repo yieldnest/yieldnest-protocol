@@ -22,6 +22,9 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+
 
 import {Test} from "forge-std/Test.sol";
 
@@ -59,6 +62,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
+        upgradeTokenStakingNodesManagerAndTokenStakingNode();
     }
 
     function assignContracts() internal {
@@ -90,5 +94,29 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
 
+    }
+
+    function upgradeTokenStakingNodesManagerAndTokenStakingNode() internal {
+        // Deploy new TokenStakingNode implementation
+        address newTokenStakingNodeImpl = address(new TokenStakingNode());
+
+        // Upgrade TokenStakingNodesManager
+        bytes memory initializeV3Data = abi.encodeWithSelector(
+            tokenStakingNodesManager.initializeV2.selector,
+            chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS
+        );
+
+        address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
+
+        vm.prank(address(timelockController));
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager))).upgradeAndCall(
+            ITransparentUpgradeableProxy(address(tokenStakingNodesManager)),
+            newTokenStakingNodesManagerImpl,
+            initializeV3Data
+        );
+
+        // Register new implementation
+        vm.prank(address(timelockController));
+        tokenStakingNodesManager.upgradeTokenStakingNode(newTokenStakingNodeImpl);
     }
 }
