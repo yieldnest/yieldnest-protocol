@@ -7,6 +7,7 @@ import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationMan
 import {IDelegationManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon.sol";
@@ -37,6 +38,7 @@ interface StakingNodeEvents {
 
     event QueuedWithdrawals(uint256 sharesAmount, bytes32[] fullWithdrawalRoots);
     event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount, uint256 actualWithdrawalAmount);
+    event ClaimerSet(address indexed claimer);
 }
 
 /**
@@ -288,6 +290,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         delegatedTo = address(0);
 
         emit Undelegated(operator, shares);
+    }
+
+    /**
+     * @notice Sets the claimer for rewards using the rewards coordinator
+     * @dev Only callable by delegator. Sets the claimer address for this staking node's rewards.
+     * @param claimer The address to set as the claimer
+     */
+    function setClaimer(address claimer) external onlyDelegator {
+        IRewardsCoordinator rewardsCoordinator = stakingNodesManager.rewardsCoordinator();
+        rewardsCoordinator.setClaimerFor(claimer);
+        emit ClaimerSet(claimer);
     }
 
     //--------------------------------------------------------------------------------------
