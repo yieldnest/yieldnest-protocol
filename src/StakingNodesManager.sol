@@ -30,6 +30,7 @@ interface StakingNodesManagerEvents {
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
     event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue, uint256 rewardsAmount);
     event ETHReceived(address sender, uint256 amount);
+    event TotalETHStakedUpdated(uint256 totalETHStaked);
 }
 
 /**
@@ -666,6 +667,8 @@ contract StakingNodesManager is
             updatedTotalETHStaked += allNodes[i].getETHBalance();
         }
 
+        emit TotalETHStakedUpdated(updatedTotalETHStaked);
+        
         totalETHStaked = updatedTotalETHStaked;
     }
 

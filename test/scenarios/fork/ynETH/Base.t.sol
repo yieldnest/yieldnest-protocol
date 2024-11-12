@@ -131,7 +131,7 @@ contract Base is Test, Utils {
         address newStakingNodeImpl = address(new StakingNode());
 
         // Upgrade StakingNodesManager
-        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, newStakingNodeImpl);
+        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, newStakingNodeImpl, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
 

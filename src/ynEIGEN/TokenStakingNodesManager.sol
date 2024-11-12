@@ -10,6 +10,8 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+
 
 interface ITokenStakingNodesManagerEvents {
 
@@ -67,6 +69,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     ITokenStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
+    IRewardsCoordinator public rewardsCoordinator;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -121,6 +125,14 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         delegationManager = init.delegationManager;
         yieldNestStrategyManager = init.yieldNestStrategyManager;
         maxNodeCount = init.maxNodeCount;
+    }
+
+    function initializeV2(IRewardsCoordinator _rewardsCoordinator) 
+        external 
+        notZeroAddress(address(_rewardsCoordinator))
+        reinitializer(2)
+    {
+        rewardsCoordinator = _rewardsCoordinator;
     }
 
     //--------------------------------------------------------------------------------------

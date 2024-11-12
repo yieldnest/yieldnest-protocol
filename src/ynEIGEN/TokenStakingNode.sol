@@ -10,6 +10,7 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
@@ -30,6 +31,7 @@ interface ITokenStakingNodeEvents {
     event CompletedQueuedWithdrawals(uint256 shares, uint256 amountOut, address strategy);
     event DeallocatedTokens(uint256 amount, IERC20 token);
     event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
+    event ClaimerSet(address indexed claimer);
 }
 
 /**
@@ -372,6 +374,16 @@ contract TokenStakingNode is
         emit Undelegated(withdrawalRoots);
     }
 
+        /**
+     * @notice Sets the claimer for rewards using the rewards coordinator
+     * @dev Only callable by delegator. Sets the claimer address for this staking node's rewards.
+     * @param claimer The address to set as the claimer
+     */
+    function setClaimer(address claimer) external onlyDelegator {
+        IRewardsCoordinator rewardsCoordinator = tokenStakingNodesManager.rewardsCoordinator();
+        rewardsCoordinator.setClaimerFor(claimer);
+        emit ClaimerSet(claimer);
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  SYNCHRONIZATION  ---------------------------------
