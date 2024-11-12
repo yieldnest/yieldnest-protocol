@@ -29,6 +29,7 @@ interface ITokenStakingNodeEvents {
     event QueuedWithdrawals(IStrategy strategies, uint256 shares, bytes32[] fullWithdrawalRoots);
     event CompletedQueuedWithdrawals(uint256 shares, uint256 amountOut, address strategy);
     event DeallocatedTokens(uint256 amount, IERC20 token);
+    event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
 }
 
 /**
@@ -57,6 +58,7 @@ contract TokenStakingNode is
     error AlreadySynchronized();
     error WithdrawalMismatch(IStrategy singleStrategy, uint256 singleShare);
     error NotSynchronized();
+    error StrategyNotFound(address strategy);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -243,6 +245,77 @@ contract TokenStakingNode is
         }
 
         emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
+    }
+
+    /**
+     * @notice Struct containing strategy and shares information
+     * @param strategy The strategy contract address
+     * @param shares The number of shares
+     */
+    struct StrategyShares {
+        IStrategy strategy;
+        uint256 shares;
+    }
+
+    /**
+     * @notice Completes queued withdrawals with receiveAsTokens set to false
+     * @param withdrawals Array of withdrawals to complete
+     * @param middlewareTimesIndexes Array of middleware times indexes
+     */
+    function completeQueuedWithdrawalsAsShares(
+        IDelegationManager.Withdrawal[] calldata withdrawals,
+        uint256[] calldata middlewareTimesIndexes,
+        IStrategy[] calldata strategies
+    ) external onlyDelegator onlyWhenSynchronized {
+        uint256 totalWithdrawalAmount = 0;
+
+        // Create array of StrategyShares for tracking
+        StrategyShares[] memory strategyShares = new StrategyShares[](strategies.length);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            strategyShares[i] = StrategyShares({
+                strategy: strategies[i],
+                shares: 0
+            });
+        }
+
+        // Create empty tokens array since we're not receiving as tokens
+        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
+
+        // Calculate total shares being withdrawn
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
+            receiveAsTokens[i] = false;
+
+            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
+                totalWithdrawalAmount += withdrawals[i].shares[j];
+                
+                // Find matching strategy in strategyShares array and update shares
+                for (uint256 k = 0; k < strategyShares.length; k++) {
+                    bool found = false;
+                    if (withdrawals[i].strategies[j] == strategyShares[k].strategy) {
+                        strategyShares[k].shares += withdrawals[i].shares[j];
+                        found = true;
+                        break;
+                    }
+                    if (!found) {
+                        revert StrategyNotFound(address(withdrawals[i].strategies[j]));
+                    }
+                }
+            }
+        }
+
+        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
+
+        // Complete withdrawals with receiveAsTokens = false
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+
+        // Decrease queued shares for each strategy
+        for (uint256 i = 0; i < strategyShares.length; i++) {
+            queuedShares[strategyShares[i].strategy] -= strategyShares[i].shares;
+        }
+
+        emit CompletedManyQueuedWithdrawals(withdrawals);
     }
 
     /**
