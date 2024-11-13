@@ -349,6 +349,8 @@ contract TokenStakingNode is
             .delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
 
+        delegatedTo = operator;
+
         emit Delegated(operator, approverSalt);
     }
 
@@ -370,6 +372,8 @@ contract TokenStakingNode is
         for (uint256 i = 0; i < strategies.length; i++) {
             queuedShares[strategies[i]] += shares[i];
         }
+
+        delegatedTo = address(0);
 
         emit Undelegated(withdrawalRoots);
     }
