@@ -375,6 +375,12 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
     IDelegationManager delegationManager;
     address operatorAddress;
 
+    TestAssetUtils testAssetUtils;
+
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
     function setUp() public virtual override {
         super.setUp();
 
@@ -405,6 +411,10 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
         address delegatedTo = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(delegatedTo, operatorAddress, "Delegation did not occur as expected.");
+
+        // Verify delegatedTo is set correctly in the TokenStakingNode contract
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operatorAddress, "TokenStakingNode delegatedTo not set correctly");
+
     }
 
     function testTokenStakingNodeUndelegate() public {
@@ -429,6 +439,78 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Verify undelegation
         address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+
+        // Verify delegatedTo is set to zero in the TokenStakingNode contract
+        assertEq(tokenStakingNodeInstance.delegatedTo(), address(0), "TokenStakingNode delegatedTo not cleared after undelegation");
+    }
+
+    function testTokenStakingNodeUndelegateWithStake() public {
+
+        uint256 wstethAmount = 100 ether;
+        uint256 sfrxethAmount = 100 ether;
+        
+		// 1. Obtain wstETH and sfrxETH and deposit assets to ynEigen by User
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
+        testAssetUtils.depositAsset(ynEigenToken, address(sfrxETH), sfrxethAmount, address(this));
+
+		// 2. Deposit assets to Eigenlayer by Token Staking Node
+		IERC20[] memory assets = new IERC20[](2);
+		assets[0] = wstETH;
+		assets[1] = sfrxETH;
+		uint256[] memory amounts = new uint256[](2);
+		amounts[0] = wstethAmount;
+		amounts[1] = sfrxethAmount;
+        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+		vm.prank(actors.ops.STRATEGY_CONTROLLER);
+		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
+
+        // Build array of strategies based on assets
+        IStrategy[] memory strategies = new IStrategy[](2);
+        for(uint256 i = 0; i < assets.length; i++) {
+            strategies[i] = eigenStrategyManager.strategies(assets[i]);
+        }
+
+        // Verify delegation
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operatorAddress, "TokenStakingNode not delegated correctly");
+
+        // Get initial operator shares for each strategy
+        uint256[] memory initialShares = new uint256[](3);
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        for(uint256 i = 0; i < strategies.length; i++) {
+            initialShares[i] = delegationManager.operatorShares(operatorAddress, strategies[i]);
+            assertGt(initialShares[i], 0, "Operator should have shares");
+        }
+
+        // Get initial queued shares
+        uint256[] memory initialQueuedShares = new uint256[](3);
+        for(uint256 i = 0; i < strategies.length; i++) {
+            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+        }
+
+        // Undelegate
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        bytes32[] memory withdrawalRoots = tokenStakingNodeInstance.undelegate();
+        
+        // Verify undelegation state
+        assertEq(tokenStakingNodeInstance.delegatedTo(), address(0), "TokenStakingNode delegatedTo not cleared");
+        assertEq(delegationManager.delegatedTo(address(tokenStakingNodeInstance)), address(0), "Delegation not cleared in DelegationManager");
+
+        // Verify queued shares increased by the correct amount
+        for(uint256 i = 0; i < strategies.length; i++) {
+            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            assertEq(finalQueuedShares - initialQueuedShares[i], initialShares[i], "Queued shares should increase by operator shares amount");
+        }
+
+        // Verify withdrawal roots were created
+        assertGt(withdrawalRoots.length, 0, "Should have withdrawal roots");
     }
 }
 
