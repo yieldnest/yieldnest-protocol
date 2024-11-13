@@ -371,18 +371,18 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
 
 contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
+    ITokenStakingNode tokenStakingNodeInstance;
+    IDelegationManager delegationManager;
+    address operatorAddress;
 
-    
-	function testTokenStakingNodeDelegate() public {
+    function setUp() public virtual override {
+        super.setUp();
+
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
-        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
+        delegationManager = tokenStakingNodesManager.delegationManager();
 
-        IPausable pauseDelegationManager = IPausable(address(delegationManager));
-        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-        pauseDelegationManager.unpause(0);
-
-        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
+        operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
 
         // TODO: handle operatorAddress as payments receiver in PaymentsReceiver
         // register as operator
@@ -395,45 +395,23 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             }), 
             "ipfs://some-ipfs-hash"
         );
+    }
 
-		ISignatureUtils.SignatureWithExpiry memory signature;
-		bytes32 approverSalt;
+    function testTokenStakingNodeDelegate() public {
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
 
-		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
         address delegatedTo = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(delegatedTo, operatorAddress, "Delegation did not occur as expected.");
     }
 
     function testTokenStakingNodeUndelegate() public {
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
-        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
-        IPausable pauseDelegationManager = IPausable(address(delegationManager));
-        
-        // Unpause delegation manager to allow delegation
-        vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
-        pauseDelegationManager.unpause(0);
-
-        address operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
-
-        // TODO: handle operatorAddress as payments receiver in PaymentsReceiver
-
-        // Register as operator and delegate
-        vm.prank(operatorAddress);
-        delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: operatorAddress,
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
-            "ipfs://some-ipfs-hash"
-        );
-				
         ISignatureUtils.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
 
-		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
 
         // Attempt to undelegate
@@ -445,7 +423,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
         
         // Now actually undelegate with the correct role
-		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.undelegate();
         
         // Verify undelegation
