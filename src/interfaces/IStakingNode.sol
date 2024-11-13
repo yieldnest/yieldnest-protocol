@@ -99,4 +99,6 @@ interface IStakingNode {
     function isSynchronized() external view returns (bool);
 
     function synchronize(uint256 queuedShares, uint32 lastQueuedWithdrawalBlockNumber) external; 
+
+    function delegatedTo() external view returns (address);
 }

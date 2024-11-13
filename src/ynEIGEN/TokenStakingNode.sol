@@ -357,14 +357,14 @@ contract TokenStakingNode is
     /**
      * @notice Undelegates the staking operation.
      */
-    function undelegate() public override onlyDelegator onlyWhenSynchronized {
+    function undelegate() public override onlyDelegator onlyWhenSynchronized returns (bytes32[] memory withdrawalRoots) {
         IDelegationManagerExtended delegationManager = IDelegationManagerExtended(
             address(tokenStakingNodesManager.delegationManager())
         );
 
         (IStrategy[] memory strategies, uint256[] memory shares) = delegationManager.getDelegatableShares(address(this));
 
-        bytes32[] memory withdrawalRoots = delegationManager.undelegate(
+        withdrawalRoots = delegationManager.undelegate(
             address(this)
         );
 

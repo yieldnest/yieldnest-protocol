@@ -17,6 +17,8 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
+import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
+
 
 import "./ynLSDeScenarioBaseTest.sol";
 
@@ -24,6 +26,8 @@ import "./ynLSDeScenarioBaseTest.sol";
 contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
     
   function test_undelegate_Scenario_undelegateByOperator() public {
+
+        updateTokenStakingNodesBalancesForAllAssets();
 
         // Log total assets before undelegation
         uint256 totalAssetsBefore = yneigen.totalAssets();
@@ -34,6 +38,11 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         address operator = delegationManager.delegatedTo(address(stakingNode));
 
         uint32 blockNumberBefore = uint32(block.number);
+        
+        // Get strategies and shares before undelegating
+        (IStrategy[] memory strategies, uint256[] memory shares) = IDelegationManagerExtended(
+            address(delegationManager)
+        ).getDelegatableShares(address(stakingNode));
 
         // Call undelegate from operator
         vm.startPrank(operator);
@@ -49,18 +58,13 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         // Assert node is not synchronized after undelegation
         assertFalse(stakingNode.isSynchronized(), "Node should not be synchronized after undelegation");
 
-        // TODO: finalize
-        // Call synchronize after verifying not synchronized
-        // vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        // stakingNode.synchronize(podSharesBefore, blockNumberBefore);
+        //Call synchronize after verifying not synchronized
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNode.synchronize(shares, blockNumberBefore, strategies);
 
-        // // Update token staking nodes balances for all assets
-        // IERC20[] memory assets = yneigen.assetRegistry().getAssets();
-        // for (uint256 i = 0; i < assets.length; i++) {
-        //     eigenStrategyManager.updateTokenStakingNodesBalances(assets[i]);
-        // }
+        updateTokenStakingNodesBalancesForAllAssets();
 
-        // assertEq(totalAssetsBefore, yneigen.totalAssets(), "Total assets should not change after synchronization");
+        assertApproxEqAbs(totalAssetsBefore, yneigen.totalAssets(), 10, "Total assets should not change after synchronization");
 
         // Complete queued withdrawals as shares
         // IWithdrawalQueueManager.QueuedWithdrawalInfo[] memory queuedWithdrawals = new IWithdrawalQueueManager.QueuedWithdrawalInfo[](1);
