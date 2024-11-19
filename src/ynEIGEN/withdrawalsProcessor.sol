@@ -13,6 +13,9 @@ import {ITokenStakingNodesManager} from "../interfaces/ITokenStakingNodesManager
 import {ITokenStakingNode} from "../interfaces/ITokenStakingNode.sol";
 import {IAssetRegistry} from "../interfaces/IAssetRegistry.sol";
 import {IYieldNestStrategyManager} from "../interfaces/IYieldNestStrategyManager.sol";
+import {IynEigen} from "../interfaces/IynEigen.sol";
+import {IRedemptionAssetsVault} from "../interfaces/IRedemptionAssetsVault.sol";
+import {IWrapper} from "../interfaces/IWrapper.sol";
 
 import "forge-std/console.sol";
 
@@ -50,6 +53,9 @@ contract WithdrawalsProcessor is Ownable {
     ITokenStakingNodesManager public immutable tokenStakingNodesManager;
     IAssetRegistry public immutable assetRegistry;
     IYieldNestStrategyManager public immutable ynStrategyManager;
+    IynEigen public immutable yneigen;
+    IRedemptionAssetsVault public immutable redemptionAssetsVault;
+    IWrapper public immutable wrapper;
 
     // eigenlayer
     IDelegationManager public immutable delegationManager;
@@ -74,14 +80,20 @@ contract WithdrawalsProcessor is Ownable {
         address _tokenStakingNodesManager,
         address _assetRegistry,
         address _ynStrategyManager,
-        address _delegationManager
+        address _delegationManager,
+        address _yneigen,
+        address _redemptionAssetsVault,
+        address _wrapper
     ) Ownable(_owner) {
         if (
             _withdrawalQueueManager == address(0) ||
             _tokenStakingNodesManager == address(0) ||
             _assetRegistry == address(0) ||
             _ynStrategyManager == address(0) ||
-            _delegationManager == address(0)
+            _delegationManager == address(0) ||
+            _yneigen == address(0) ||
+            _redemptionAssetsVault == address(0) ||
+            _wrapper == address(0)
         ) revert InvalidInput();
 
         withdrawalQueueManager = IWithdrawalQueueManager(_withdrawalQueueManager);
@@ -89,6 +101,9 @@ contract WithdrawalsProcessor is Ownable {
         assetRegistry = IAssetRegistry(_assetRegistry);
         ynStrategyManager = IYieldNestStrategyManager(_ynStrategyManager);
         delegationManager = IDelegationManager(_delegationManager);
+        yneigen = IynEigen(_yneigen);
+        redemptionAssetsVault = IRedemptionAssetsVault(_redemptionAssetsVault);
+        wrapper = IWrapper(_wrapper);
 
         minNodeShares = 1 ether;
         minPendingWithdrawalRequestAmount = 0.1 ether;
@@ -98,26 +113,32 @@ contract WithdrawalsProcessor is Ownable {
     // Processor functions - view
     //
 
-    function shouldQueueWithdrawals() view returns (bool) {
+    function shouldQueueWithdrawals() external view returns (bool) {
         return
             withdrawalQueueManager.pendingRequestedRedemptionAmount()
             - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets()
-            > minPendingWithdrawalRequestAmount
+            > minPendingWithdrawalRequestAmount;
     }
 
-    // _minNodeShares -- the second highest shares balance (so that we only withdraw from the highest balance node)
-    /// @notice Gets the arguments for `queueWithdrawals`
-    /// @param _asset The asset to withdraw:
-    ///               the asset with the highest balance
-    /// @param _minNodeShares The second highest shares balance:
-    ///                       meaning that we only withdraw from the highest balance node(s)
-    /// @param _maxSharesToWithdraw The maximum amount of shares that can be withdrawn from a node:
-    ///                             we try to bring the highest balance node(s) to have the same balance
-    ///                             as the second highest balance node(s)
-    function getQueueWithdrawalsArgs() view returns (IERC20 _asset, uint256 _minNodeShares, uint256 _maxSharesToWithdraw) {
+    function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
+        _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount()
+            - totalQueuedWithdrawals
+            - redemptionAssetsVault.availableRedemptionAssets();
+        if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
+    }
 
-        // get `_asset`
+    /// @notice Gets the arguments for `queueWithdrawals`
+    /// @param _asset The asset to withdraw: the asset with the highest balance
+    /// @param _nodes The list of nodes to withdraw from
+    /// @param _shares The share amounts to withdraw from each node to achieve balanced distribution
+    function getQueueWithdrawalsArgs() external view returns (
+        IERC20 _asset,
+        ITokenStakingNode[] memory _nodes,
+        uint256[] memory _shares
+    ) {
+
+        // get `_asset` with the highest balance
         {
             IERC20[] memory _assets = assetRegistry.getAssets();
             uint256[] memory _balances = yneigen.assetBalances(_assets);
@@ -132,39 +153,52 @@ contract WithdrawalsProcessor is Ownable {
             }
         }
 
-        ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
-        uint256 _nodesLength = _nodes.length;
+        IStrategy _strategy = ynStrategyManager.strategies(_asset);
+        ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
+        uint256 _nodesLength = _nodesArray.length;
+        uint256 _minNodeShares = type(uint256).max;
         uint256[] memory _nodesShares = new uint256[](_nodesLength);
 
-        // get `_minNodeShares`
+        // get all nodes and their shares
         {
-            IStrategy _strategy = ynStrategyManager.strategies(_asset);
+            _nodes = new ITokenStakingNode[](_nodesLength);
 
-            uint256 _highest;
-            uint256 _secondHighest;
+            // populate node shares and find the minimum balance
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                uint256 _nodeShares = wrapper.toUserAssetAmount(_asset, _strategy.userUnderlyingView(address(_nodes[i]))); // @todo
-                if (_nodeShares > _highest) {
-                    _secondHighest = _highest;
-                    _highest = _nodeShares;
-                } else if (_nodeShares > _secondHighest && _nodeShares < _highest) {
-                    _secondHighest = _nodeShares;
+                ITokenStakingNode _node = _nodesArray[i];
+                uint256 _nodeShares = wrapper.toUserAssetAmount(_asset, _strategy.userUnderlyingView(address(_node)));
+                _nodesBalances[i] = _nodeBalance;
+                _nodes[i] = _node;
+
+                if (_nodeBalance < _minNodeBalance) {
+                    _minNodeBalance = _nodeBalance;
                 }
-
-                _nodesShares[i] = _nodeShares;
             }
-
-            _minNodeShares = _secondHighest;
         }
 
-        // get `_maxSharesToWithdraw`
+        // calculate withdrawal amounts for each node
         {
-            for (uint256 i = 0; i < _nodesLength; ++i) {
-                if (nodeShares[i] > _minNodeShares) {
-                    uint256 _availableToWithdraw = nodeShares[i] - _minNodeShares;
-                    if (_availableToWithdraw < _maxSharesToWithdraw || _maxSharesToWithdraw == 0) {
-                        _maxSharesToWithdraw = _availableToWithdraw;
-                    }
+            _shares = new uint256[](_nodesLength);
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);;
+
+            // first pass: equalize all nodes to the minimum balance
+            for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
+                if (_nodesBalances[i] > _minNodeBalance) {
+                    uint256 _availableToWithdraw = _nodesBalances[i] - _minNodeBalance;
+                    uint256 _toWithdraw =
+                        _availableToWithdraw < _pendingWithdrawalRequestsInShares
+                            ? _availableToWithdraw
+                            : _pendingWithdrawalRequestsInShares;
+                    _shares[i] = _toWithdraw;
+                    _pendingWithdrawalRequestsInShares -= _toWithdraw;
+                }
+            }
+
+            // second pass: withdraw evenly from all nodes if there is still more to withdraw
+            if (_pendingWithdrawalRequestsInShares > minPendingWithdrawalRequestAmount) { // NOTE: here we compare shares to unit... nbd?
+                uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength;
+                for (uint256 i = 0; i < _nodesLength; ++i) {
+                    _shares[i] += _equalWithdrawal;
                 }
             }
         }
@@ -184,28 +218,24 @@ contract WithdrawalsProcessor is Ownable {
     /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals(
         IERC20 _asset,
-        uint256 _minNodeShares,
-        uint256 _maxSharesToWithdraw
+        ITokenStakingNode[] memory _nodes,
+        uint256[] memory _amounts
     ) external onlyOwner returns (bool) {
 
-        uint256 _pendingWithdrawalRequests =
-            withdrawalQueueManager.pendingRequestedRedemptionAmount()
-            - totalQueuedWithdrawals
-            - redemptionAssetsVault.availableRedemptionAssets();
-        if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
-
+        uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests();
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
-        ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
+        // ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
 
         uint256 _queuedId = queuedId;
         uint256 _nodesLength = _nodes.length;
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
         for (uint256 j = 0; j < _nodesLength; ++j) {
             uint256 _withdrawnShares;
+            uint256 _amount
             address _node = address(_nodes[j]);
-            uint256 _nodeShares = _strategy.shares(_node);
+            // uint256 _nodeShares = _strategy.shares(_node);
             if (_nodeShares > _minNodeShares) {
                 _nodeShares = (_nodeShares > _maxSharesToWithdraw) ? _maxSharesToWithdraw : _nodeShares;
                 if (_nodeShares > _pendingWithdrawalRequestsInShares) {
@@ -250,6 +280,78 @@ contract WithdrawalsProcessor is Ownable {
 
         return false;
     }
+
+    // /// @notice Queues withdrawals
+    // /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
+    // /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
+    // /// @dev Before calling this function, call `getQueueWithdrawalsArgs()` to get the arguments
+    // /// @param _asset The asset to withdraw
+    // /// @param _minNodeShares The minimum amount of shares a node must have so that its shares can be withdrawn
+    // /// @param _maxSharesToWithdraw The maximum amount of shares that can be withdrawn from a node
+    // /// @return True if all pending withdrawal requests were queued, false otherwise
+    // function queueWithdrawals(
+    //     IERC20 _asset,
+    //     uint256 _minNodeShares,
+    //     uint256 _maxSharesToWithdraw
+    // ) external onlyOwner returns (bool) {
+
+    //     uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests();
+    //     uint256 _toBeQueued = _pendingWithdrawalRequests;
+
+    //     IStrategy _strategy = ynStrategyManager.strategies(_asset);
+    //     ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
+
+    //     uint256 _queuedId = queuedId;
+    //     uint256 _nodesLength = _nodes.length;
+    //     uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
+    //     for (uint256 j = 0; j < _nodesLength; ++j) {
+    //         uint256 _withdrawnShares;
+    //         address _node = address(_nodes[j]);
+    //         uint256 _nodeShares = _strategy.shares(_node);
+    //         if (_nodeShares > _minNodeShares) {
+    //             _nodeShares = (_nodeShares > _maxSharesToWithdraw) ? _maxSharesToWithdraw : _nodeShares;
+    //             if (_nodeShares > _pendingWithdrawalRequestsInShares) {
+    //                 _withdrawnShares =
+    //                 (_nodeShares - _pendingWithdrawalRequestsInShares) < MIN_DELTA
+    //                     ? _nodeShares
+    //                     : _pendingWithdrawalRequestsInShares;
+    //                 _pendingWithdrawalRequestsInShares = 0;
+    //             } else {
+    //                 _withdrawnShares = _nodeShares;
+    //                 _pendingWithdrawalRequestsInShares -= _nodeShares;
+    //             }
+    //         }
+
+    //         if (_withdrawnShares > 0) {
+    //             queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
+    //                 _node,
+    //                 address(_strategy),
+    //                 delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
+    //                 _withdrawnShares,
+    //                 uint32(block.number), // startBlock
+    //                 false // completed
+    //             );
+    //             ITokenStakingNode(_node).queueWithdrawals(_strategy, _withdrawnShares);
+    //         }
+
+    //         if (_pendingWithdrawalRequestsInShares == 0) {
+    //             batch[queuedId] = _queuedId;
+    //             queuedId = _queuedId;
+    //             totalQueuedWithdrawals += _toBeQueued;
+    //             return true;
+    //         }
+    //     }
+
+    //     _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _asset, _strategy);
+
+    //     if (_pendingWithdrawalRequests < _toBeQueued) {
+    //         batch[queuedId] = _queuedId;
+    //         queuedId = _queuedId;
+    //         totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
+    //     }
+
+    //     return false;
+    // }
 
     function completeQueuedWithdrawals() external {
 
