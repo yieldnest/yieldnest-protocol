@@ -148,17 +148,17 @@ contract WithdrawalsProcessor is Ownable {
         {
             IERC20[] memory _assets = assetRegistry.getAssets();
 
-            uint128 _highestBalance;
+            uint256 _highestBalance;
             uint256 _assetsLength = _assets.length;
             for (uint256 i = 0; i < _assetsLength; ++i) {
-                (uint128 _stakedBalance, /* uint128 _withdrawnBalance */) =
-                    IYNStrategyManagerExt(address(ynStrategyManager)).strategiesBalance(ynStrategyManager.strategies(_assets[i]));
+                uint256 _stakedBalance = _getStakedBalanceForStrategy(_assets[i]);
                 if (_stakedBalance > _highestBalance) {
                     _highestBalance = _stakedBalance;
                     _asset = _assets[i];
                 }
             }
         }
+        console.log("asset: %s", address(_asset));
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
@@ -205,7 +205,7 @@ contract WithdrawalsProcessor is Ownable {
             if (_pendingWithdrawalRequestsInShares > minPendingWithdrawalRequestAmount) { // NOTE: here we compare shares to unit... nbd?
                 uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength;
                 for (uint256 i = 0; i < _nodesLength; ++i) {
-                    _shares[i] = _equalWithdrawal > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
+                    _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
                 }
             }
         }
@@ -355,6 +355,15 @@ contract WithdrawalsProcessor is Ownable {
     //
     // Private functions
     //
+
+    function _getStakedBalanceForStrategy(IERC20 _asset) public view returns (uint256 _stakedBalance) {
+        ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
+        IStrategy _strategy = ynStrategyManager.strategies(_asset);
+        uint256 _nodesLength = _nodesArray.length;
+        for (uint256 i = 0; i < _nodesLength; ++i) {
+            _stakedBalance += _strategy.shares(address(_nodesArray[i]));
+        }
+    }
 
     function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
         return _strategy.underlyingToSharesView(
