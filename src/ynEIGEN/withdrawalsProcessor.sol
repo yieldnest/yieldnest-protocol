@@ -166,12 +166,12 @@ contract WithdrawalsProcessor is Ownable {
             // populate node shares and find the minimum balance
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 ITokenStakingNode _node = _nodesArray[i];
-                uint256 _nodeShares = wrapper.toUserAssetAmount(_asset, _strategy.userUnderlyingView(address(_node)));
-                _nodesBalances[i] = _nodeBalance;
+                uint256 _nodeShares = _strategy.shares(address(_node));
+                _nodesShares[i] = _nodeShares;
                 _nodes[i] = _node;
 
-                if (_nodeBalance < _minNodeBalance) {
-                    _minNodeBalance = _nodeBalance;
+                if (_nodeShares < _minNodeShares) {
+                    _minNodeShares = _nodeShares;
                 }
             }
         }
@@ -179,12 +179,12 @@ contract WithdrawalsProcessor is Ownable {
         // calculate withdrawal amounts for each node
         {
             _shares = new uint256[](_nodesLength);
-            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);;
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
-                if (_nodesBalances[i] > _minNodeBalance) {
-                    uint256 _availableToWithdraw = _nodesBalances[i] - _minNodeBalance;
+                if (_nodesShares[i] > _minNodeShares) {
+                    uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
                     uint256 _toWithdraw =
                         _availableToWithdraw < _pendingWithdrawalRequestsInShares
                             ? _availableToWithdraw
@@ -213,8 +213,8 @@ contract WithdrawalsProcessor is Ownable {
     /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
     /// @dev Before calling this function, call `getQueueWithdrawalsArgs()` to get the arguments
     /// @param _asset The asset to withdraw
-    /// @param _minNodeShares The minimum amount of shares a node must have so that its shares can be withdrawn
-    /// @param _maxSharesToWithdraw The maximum amount of shares that can be withdrawn from a node
+    /// @param _nodes The list of nodes to withdraw from
+    /// @param _amounts The share amounts to withdraw from each node
     /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals(
         IERC20 _asset,
@@ -222,44 +222,34 @@ contract WithdrawalsProcessor is Ownable {
         uint256[] memory _amounts
     ) external onlyOwner returns (bool) {
 
-        uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests();
+        uint256 _nodesLength = _nodes.length;
+        if (_nodesLength != _amounts.length) revert InvalidInput();
+
+        uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests(); // NOTE: reverts if too low
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
-        // ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
+        if (_strategy == IStrategy(address(0))) revert InvalidInput();
 
         uint256 _queuedId = queuedId;
-        uint256 _nodesLength = _nodes.length;
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
         for (uint256 j = 0; j < _nodesLength; ++j) {
-            uint256 _withdrawnShares;
-            uint256 _amount
-            address _node = address(_nodes[j]);
-            // uint256 _nodeShares = _strategy.shares(_node);
-            if (_nodeShares > _minNodeShares) {
-                _nodeShares = (_nodeShares > _maxSharesToWithdraw) ? _maxSharesToWithdraw : _nodeShares;
-                if (_nodeShares > _pendingWithdrawalRequestsInShares) {
-                    _withdrawnShares =
-                    (_nodeShares - _pendingWithdrawalRequestsInShares) < MIN_DELTA
-                        ? _nodeShares
-                        : _pendingWithdrawalRequestsInShares;
-                    _pendingWithdrawalRequestsInShares = 0;
-                } else {
-                    _withdrawnShares = _nodeShares;
-                    _pendingWithdrawalRequestsInShares -= _nodeShares;
-                }
-            }
+            uint256 _toWithdraw = _amounts[j];
+            if (_toWithdraw > 0) {
+                _toWithdraw > _pendingWithdrawalRequestsInShares
+                    ? _pendingWithdrawalRequestsInShares = 0
+                    : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
-            if (_withdrawnShares > 0) {
+                address _node = address(_nodes[j]);
                 queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
                     _node,
                     address(_strategy),
                     delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
-                    _withdrawnShares,
+                    _toWithdraw,
                     uint32(block.number), // startBlock
                     false // completed
                 );
-                ITokenStakingNode(_node).queueWithdrawals(_strategy, _withdrawnShares);
+                ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
             }
 
             if (_pendingWithdrawalRequestsInShares == 0) {
@@ -280,78 +270,6 @@ contract WithdrawalsProcessor is Ownable {
 
         return false;
     }
-
-    // /// @notice Queues withdrawals
-    // /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
-    // /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
-    // /// @dev Before calling this function, call `getQueueWithdrawalsArgs()` to get the arguments
-    // /// @param _asset The asset to withdraw
-    // /// @param _minNodeShares The minimum amount of shares a node must have so that its shares can be withdrawn
-    // /// @param _maxSharesToWithdraw The maximum amount of shares that can be withdrawn from a node
-    // /// @return True if all pending withdrawal requests were queued, false otherwise
-    // function queueWithdrawals(
-    //     IERC20 _asset,
-    //     uint256 _minNodeShares,
-    //     uint256 _maxSharesToWithdraw
-    // ) external onlyOwner returns (bool) {
-
-    //     uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests();
-    //     uint256 _toBeQueued = _pendingWithdrawalRequests;
-
-    //     IStrategy _strategy = ynStrategyManager.strategies(_asset);
-    //     ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
-
-    //     uint256 _queuedId = queuedId;
-    //     uint256 _nodesLength = _nodes.length;
-    //     uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
-    //     for (uint256 j = 0; j < _nodesLength; ++j) {
-    //         uint256 _withdrawnShares;
-    //         address _node = address(_nodes[j]);
-    //         uint256 _nodeShares = _strategy.shares(_node);
-    //         if (_nodeShares > _minNodeShares) {
-    //             _nodeShares = (_nodeShares > _maxSharesToWithdraw) ? _maxSharesToWithdraw : _nodeShares;
-    //             if (_nodeShares > _pendingWithdrawalRequestsInShares) {
-    //                 _withdrawnShares =
-    //                 (_nodeShares - _pendingWithdrawalRequestsInShares) < MIN_DELTA
-    //                     ? _nodeShares
-    //                     : _pendingWithdrawalRequestsInShares;
-    //                 _pendingWithdrawalRequestsInShares = 0;
-    //             } else {
-    //                 _withdrawnShares = _nodeShares;
-    //                 _pendingWithdrawalRequestsInShares -= _nodeShares;
-    //             }
-    //         }
-
-    //         if (_withdrawnShares > 0) {
-    //             queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
-    //                 _node,
-    //                 address(_strategy),
-    //                 delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
-    //                 _withdrawnShares,
-    //                 uint32(block.number), // startBlock
-    //                 false // completed
-    //             );
-    //             ITokenStakingNode(_node).queueWithdrawals(_strategy, _withdrawnShares);
-    //         }
-
-    //         if (_pendingWithdrawalRequestsInShares == 0) {
-    //             batch[queuedId] = _queuedId;
-    //             queuedId = _queuedId;
-    //             totalQueuedWithdrawals += _toBeQueued;
-    //             return true;
-    //         }
-    //     }
-
-    //     _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _asset, _strategy);
-
-    //     if (_pendingWithdrawalRequests < _toBeQueued) {
-    //         batch[queuedId] = _queuedId;
-    //         queuedId = _queuedId;
-    //         totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
-    //     }
-
-    //     return false;
-    // }
 
     function completeQueuedWithdrawals() external {
 
