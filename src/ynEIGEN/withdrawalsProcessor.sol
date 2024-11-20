@@ -24,6 +24,10 @@ interface IWSTETH {
     function getWstETHByStETH(uint256 _stETHAmount) external view returns (uint256);
 }
 
+interface IYNStrategyManagerExt {
+    function strategiesBalance(IStrategy _strategy) external view returns (uint128 _stakedBalance, uint128 _withdrawnBalance);
+}
+
 // @todo - change onlyOwner to role
 /// @dev - there are inefficiencies if stratagies have different withdrawal delays
 ///        specifically, in `completeQueuedWithdrawals`, we need to wait for the longest withdrawal delay
@@ -107,6 +111,8 @@ contract WithdrawalsProcessor is Ownable {
 
         minNodeShares = 1 ether;
         minPendingWithdrawalRequestAmount = 0.1 ether;
+
+        // @todo - consider initializing `totalQueuedWithdrawals` or wait till all current withdrawals are processed
     }
 
     //
@@ -141,13 +147,14 @@ contract WithdrawalsProcessor is Ownable {
         // get `_asset` with the highest balance
         {
             IERC20[] memory _assets = assetRegistry.getAssets();
-            uint256[] memory _balances = yneigen.assetBalances(_assets);
 
-            uint256 _highestBalance;
+            uint128 _highestBalance;
             uint256 _assetsLength = _assets.length;
             for (uint256 i = 0; i < _assetsLength; ++i) {
-                if (_balances[i] > _highestBalance) {
-                    _highestBalance = _balances[i];
+                (uint128 _stakedBalance, /* uint128 _withdrawnBalance */) =
+                    IYNStrategyManagerExt(address(ynStrategyManager)).strategiesBalance(ynStrategyManager.strategies(_assets[i]));
+                if (_stakedBalance > _highestBalance) {
+                    _highestBalance = _stakedBalance;
                     _asset = _assets[i];
                 }
             }
@@ -198,7 +205,7 @@ contract WithdrawalsProcessor is Ownable {
             if (_pendingWithdrawalRequestsInShares > minPendingWithdrawalRequestAmount) { // NOTE: here we compare shares to unit... nbd?
                 uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength;
                 for (uint256 i = 0; i < _nodesLength; ++i) {
-                    _shares[i] += _equalWithdrawal;
+                    _shares[i] = _equalWithdrawal > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
                 }
             }
         }
