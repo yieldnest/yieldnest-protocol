@@ -229,7 +229,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     }
 
     //
-    // processPrincipalWithdrawals -- @todo - here
+    // processPrincipalWithdrawals @todo - here
     //
 
     //
