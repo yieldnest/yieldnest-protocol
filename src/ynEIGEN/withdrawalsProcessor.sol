@@ -29,8 +29,6 @@ interface IYNStrategyManagerExt {
 }
 
 // @todo - change onlyOwner to role
-/// @dev - there are inefficiencies if stratagies have different withdrawal delays
-///        specifically, in `completeQueuedWithdrawals`, we need to wait for the longest withdrawal delay
 contract WithdrawalsProcessor is Ownable {
 
     struct QueuedWithdrawal {
@@ -49,7 +47,6 @@ contract WithdrawalsProcessor is Ownable {
 
     uint256 public totalQueuedWithdrawals;
 
-    uint256 public minNodeShares;
     uint256 public minPendingWithdrawalRequestAmount;
 
     // yieldnest
@@ -109,7 +106,6 @@ contract WithdrawalsProcessor is Ownable {
         redemptionAssetsVault = IRedemptionAssetsVault(_redemptionAssetsVault);
         wrapper = IWrapper(_wrapper);
 
-        minNodeShares = 1 ether;
         minPendingWithdrawalRequestAmount = 0.1 ether;
 
         // @todo - consider initializing `totalQueuedWithdrawals` or wait till all current withdrawals are processed
@@ -125,6 +121,24 @@ contract WithdrawalsProcessor is Ownable {
             - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets()
             > minPendingWithdrawalRequestAmount;
+    }
+
+    function shouldCompleteQueuedWithdrawals() external view returns (bool) {
+        uint256 _queuedId = queuedId;
+        uint256 _completedId = completedId;
+        if (_queuedId == _completedId) return false;
+
+        for (; _completedId < _queuedId; ++_completedId) {
+
+            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_completedId];
+
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(_queuedWithdrawal.strategy);
+            uint256 _withdrawalDelay = delegationManager.getWithdrawalDelay(_strategies);
+            if (block.number < _queuedWithdrawal.startBlock + _withdrawalDelay) return false;
+        }
+
+        return true;
     }
 
     function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
@@ -158,7 +172,6 @@ contract WithdrawalsProcessor is Ownable {
                 }
             }
         }
-        console.log("asset: %s", address(_asset));
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
@@ -189,7 +202,7 @@ contract WithdrawalsProcessor is Ownable {
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
-            for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
+            for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) { // @todo - test this
                 if (_nodesShares[i] > _minNodeShares) {
                     uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
                     uint256 _toWithdraw =
@@ -290,13 +303,6 @@ contract WithdrawalsProcessor is Ownable {
 
             QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_completedId];
 
-            // @todo redundant check - will fail on `completeQueuedWithdrawals` if not ready
-            IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = IStrategy(_queuedWithdrawal.strategy);
-            uint256 _withdrawalDelay = delegationManager.getWithdrawalDelay(_strategies);
-            if (block.number < _queuedWithdrawal.startBlock + _withdrawalDelay) revert NotReady();
-            //
-
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
 
@@ -339,12 +345,6 @@ contract WithdrawalsProcessor is Ownable {
     //
     // Management functions
     //
-
-    function updateMinNodeShares(uint256 _minNodeShares) external onlyOwner {
-        if (_minNodeShares == 0) revert InvalidInput();
-        minNodeShares = _minNodeShares;
-        emit MinNodeSharesUpdated(_minNodeShares);
-    }
 
     function updateMinPendingWithdrawalRequestAmount(uint256 _minPendingWithdrawalRequestAmount) external onlyOwner {
         if (_minPendingWithdrawalRequestAmount == 0) revert InvalidInput();
@@ -389,12 +389,10 @@ contract WithdrawalsProcessor is Ownable {
     error InvalidInput();
     error PendingWithdrawalRequestsTooLow();
     error NoQueuedWithdrawals();
-    error NotReady();
 
     //
     // Events
     //
 
-    event MinNodeSharesUpdated(uint256 minNodeShares);
     event MinPendingWithdrawalRequestAmountUpdated(uint256 minPendingWithdrawalRequestAmount);
 }

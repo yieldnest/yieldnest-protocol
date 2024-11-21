@@ -25,6 +25,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     ITokenStakingNode public tokenStakingNode;
     WithdrawalsProcessor public withdrawalsProcessor;
 
+    IStrategy private _stethStrategy;
+    IStrategy private _oethStrategy;
+    IStrategy private _sfrxethStrategy;
+
     function setUp() public virtual override {
 
         super.setUp();
@@ -70,21 +74,24 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             eigenStrategyManager.grantRole(eigenStrategyManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor));
             vm.stopPrank();
         }
+
+        // set some vars
+        {
+            _stethStrategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
+            _oethStrategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+            _sfrxethStrategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+        }
     }
 
     //
     // queueWithdrawals
     //
 
-    function testQueueWithdrawal() public {
-        uint256 _amount = 10 ether;
+    function testQueueWithdrawal(uint256 _amount) public {
         if (_setup) setup_(_amount);
 
-        IStrategy _stethStrategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
         uint256 _stethShares = _stethStrategy.shares((address(tokenStakingNode)));
-        IStrategy _oethStrategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
         uint256 _oethShares = _oethStrategy.shares((address(tokenStakingNode)));
-        IStrategy _sfrxethStrategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
         uint256 _sfrxethShares = _sfrxethStrategy.shares((address(tokenStakingNode)));
 
         bool _queuedEverything;
@@ -166,6 +173,64 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
         assertEq(withdrawalsProcessor.totalQueuedWithdrawals(), withdrawalQueueManager.pendingRequestedRedemptionAmount(), "testQueueWithdrawal: E31");
     }
+
+    //
+    // completeQueuedWithdrawals
+    //
+
+    function testCompleteQueuedWithdrawals(uint256 _amount) public {
+        testQueueWithdrawal(_amount);
+
+        // skip withdrawal delay
+        {
+            assertFalse(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E0");
+
+            IStrategy[] memory _strategies = new IStrategy[](3);
+            _strategies[0] = _stethStrategy;
+            _strategies[1] = _oethStrategy;
+            _strategies[2] = _sfrxethStrategy;
+            vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+        }
+        
+        // complete queued withdrawals -- steth
+        {
+            assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E1");
+
+            vm.prank(owner);
+            withdrawalsProcessor.completeQueuedWithdrawals();
+
+            assertEq(tokenStakingNode.queuedShares(_stethStrategy), 0, "testCompleteQueuedWithdrawals: E2");
+            assertEq(withdrawalsProcessor.completedId(), 1, "testCompleteQueuedWithdrawals: E3");
+        }
+
+        // complete queued withdrawals -- oeth
+        {
+            assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E4");
+
+            vm.prank(owner);
+            withdrawalsProcessor.completeQueuedWithdrawals();
+
+            assertEq(tokenStakingNode.queuedShares(_oethStrategy), 0, "testCompleteQueuedWithdrawals: E5");
+            assertEq(withdrawalsProcessor.completedId(), 2, "testCompleteQueuedWithdrawals: E6");
+        }
+
+        // complete queued withdrawals -- sfrxeth
+        {
+            assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E7");
+
+            vm.prank(owner);
+            withdrawalsProcessor.completeQueuedWithdrawals();
+
+            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), 0, "testCompleteQueuedWithdrawals: E8");
+            assertEq(withdrawalsProcessor.completedId(), 3, "testCompleteQueuedWithdrawals: E9");
+        }
+
+        assertFalse(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E10");
+    }
+
+    //
+    // processPrincipalWithdrawals -- @todo - here
+    //
 
     //
     // internal helpers
