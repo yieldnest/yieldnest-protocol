@@ -14,8 +14,8 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-
-
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 
 import "forge-std/console.sol";
 
@@ -511,6 +511,27 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify withdrawal roots were created
         assertGt(withdrawalRoots.length, 0, "Should have withdrawal roots");
+    }
+
+    function testSetClaimerOnTokenStakingNode() public {
+        // Create token staking node
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
+
+        // Create a claimer address
+        address claimer = vm.addr(12345);
+
+        // Set claimer should fail from non-delegator
+        vm.expectRevert(TokenStakingNode.NotTokenStakingNodeDelegator.selector);
+        tokenStakingNodeInstance.setClaimer(claimer);
+
+        // Set claimer from delegator
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.setClaimer(claimer);
+
+        // Verify claimer is set correctly in rewards coordinator
+        IRewardsCoordinator rewardsCoordinator = tokenStakingNodesManager.rewardsCoordinator();
+        assertEq(rewardsCoordinator.claimerFor(address(tokenStakingNodeInstance)), claimer, "Claimer not set correctly");
     }
 }
 

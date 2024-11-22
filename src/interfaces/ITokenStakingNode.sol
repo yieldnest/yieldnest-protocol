@@ -78,4 +78,6 @@ interface ITokenStakingNode {
     function isSynchronized() external view returns (bool);
 
     function delegatedTo() external view returns (address);
+
+    function setClaimer(address claimer) external;
 }

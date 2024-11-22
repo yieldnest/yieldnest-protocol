@@ -17,7 +17,6 @@ import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
 
-
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(
         IERC20 indexed asset,
