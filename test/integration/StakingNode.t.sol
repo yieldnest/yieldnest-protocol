@@ -25,6 +25,8 @@ import { ProofParsingV1 } from "test/eigenlayer-utils/ProofParsingV1.sol";
 import {Utils} from "script/Utils.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {StakingNodeTestBase, IEigenPodSimplified } from "./StakingNodeTestBase.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+
 
 
 contract StakingNodeEigenPod is StakingNodeTestBase {
@@ -339,6 +341,26 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             "Pod owner shares should be 32 ETH per validator"
         );
 
+    }
+
+    function testSetClaimer() public {
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+
+        // Create a claimer address
+        address claimer = vm.addr(12345);
+
+        // Set claimer should fail from non-delegator
+        vm.expectRevert(StakingNode.NotStakingNodesDelegator.selector);
+        stakingNodeInstance.setClaimer(claimer);
+
+        // Set claimer from delegator
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.setClaimer(claimer);
+
+        // Verify claimer is set correctly in rewards coordinator
+        IRewardsCoordinator rewardsCoordinator = stakingNodesManager.rewardsCoordinator();
+        assertEq(rewardsCoordinator.claimerFor(address(stakingNodeInstance)), claimer, "Claimer not set correctly");
     }
 
     function testImplementViewFunction() public {

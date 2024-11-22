@@ -101,4 +101,6 @@ interface IStakingNode {
     function synchronize(uint256 queuedShares, uint32 lastQueuedWithdrawalBlockNumber) external; 
 
     function delegatedTo() external view returns (address);
+
+    function setClaimer(address claimer) external;
 }
