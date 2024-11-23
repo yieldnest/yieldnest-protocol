@@ -291,17 +291,18 @@ contract TokenStakingNode is
             for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
                 totalWithdrawalAmount += withdrawals[i].shares[j];
                 
+                bool found = false;
                 // Find matching strategy in strategyShares array and update shares
                 for (uint256 k = 0; k < strategyShares.length; k++) {
-                    bool found = false;
                     if (withdrawals[i].strategies[j] == strategyShares[k].strategy) {
                         strategyShares[k].shares += withdrawals[i].shares[j];
                         found = true;
                         break;
                     }
-                    if (!found) {
-                        revert StrategyNotFound(address(withdrawals[i].strategies[j]));
-                    }
+                }
+
+                if (!found) {
+                    revert StrategyNotFound(address(withdrawals[i].strategies[j]));
                 }
             }
         }
