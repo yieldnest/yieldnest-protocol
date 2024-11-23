@@ -417,6 +417,39 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         testAssetUtils = new TestAssetUtils();
     }
 
+
+    struct QueuedWithdrawalInfo {
+        uint256 withdrawnAmount;
+        IStrategy strategy;
+        address operator;
+    }
+
+    function _getWithdrawals(
+        QueuedWithdrawalInfo[] memory queuedWithdrawals,
+        uint256 nodeId
+    ) internal returns (IDelegationManager.Withdrawal[] memory _withdrawals) {
+
+
+        _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
+
+        for (uint256 i = 0; i < queuedWithdrawals.length; i++) {
+            uint256[] memory _shares = new uint256[](1);
+            _shares[0] = queuedWithdrawals[i].withdrawnAmount;
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = queuedWithdrawals[i].strategy; // beacon chain eth strat
+            address _stakingNode = address(tokenStakingNodesManager.nodes(nodeId));
+            _withdrawals[i] = IDelegationManager.Withdrawal({
+                staker: _stakingNode,
+                delegatedTo: queuedWithdrawals[i].operator,
+                withdrawer: _stakingNode,
+                nonce: eigenLayer.delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
+                startBlock: uint32(block.number),
+                strategies: _strategies,
+                shares: _shares
+            });   
+        }
+    }
+
     function testTokenStakingNodeDelegate() public {
         ISignatureUtils.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
@@ -508,6 +541,17 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
         }
 
+        // Create array of queued withdrawals based on strategies
+        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](strategies.length);
+
+        for(uint256 i = 0; i < strategies.length; i++) {
+            queuedWithdrawals[i] = QueuedWithdrawalInfo({
+                withdrawnAmount: initialQueuedShares[i],
+                strategy: strategies[i],
+                operator: operator1
+            });
+        }
+
         // Undelegate
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         bytes32[] memory withdrawalRoots = tokenStakingNodeInstance.undelegate();
@@ -524,6 +568,26 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify withdrawal roots were created
         assertGt(withdrawalRoots.length, 0, "Should have withdrawal roots");
+
+        {
+
+            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+
+            {
+                // advance time to allow completion
+                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+            }
+
+            // complete queued withdrawals
+            {
+                uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
+                // all is zeroed out by default
+                _middlewareTimesIndexes[0] = 0;
+                vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+                tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(_withdrawals, _middlewareTimesIndexes, strategies);
+                vm.stopPrank();
+            }
+        }
     }
 
     function testSetClaimerOnTokenStakingNode() public {
