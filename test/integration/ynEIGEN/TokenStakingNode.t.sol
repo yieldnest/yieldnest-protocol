@@ -9,6 +9,8 @@ import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPaus
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol"; 
+import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
@@ -371,36 +373,48 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
 
 contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
+
+    using stdStorage for StdStorage;
+    using BytesLib for bytes;
+
     ITokenStakingNode tokenStakingNodeInstance;
-    IDelegationManager delegationManager;
-    address operatorAddress;
+    uint256 nodeId;
 
     TestAssetUtils testAssetUtils;
 
-    constructor() {
-        testAssetUtils = new TestAssetUtils();
-    }
+    address user = vm.addr(156737);
 
-    function setUp() public virtual override {
+    address operator1 = address(0x9999);
+    address operator2 = address(0x8888);
+
+    function setUp() public override {
         super.setUp();
+
+        address[] memory operators = new address[](2);
+        operators[0] = operator1;
+        operators[1] = operator2;
+
+        
+
+        for (uint i = 0; i < operators.length; i++) {
+            vm.prank(operators[i]);
+            eigenLayer.delegationManager.registerAsOperator(
+                IDelegationManager.OperatorDetails({
+                    __deprecated_earningsReceiver: address(1),
+                    delegationApprover: address(0),
+                    stakerOptOutWindowBlocks: 1
+                }), 
+                "ipfs://some-ipfs-hash"
+            );
+        }
 
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
-        delegationManager = tokenStakingNodesManager.delegationManager();
+        nodeId = tokenStakingNodeInstance.nodeId();
+    }
 
-        operatorAddress = address(uint160(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)))));
-
-        // TODO: handle operatorAddress as payments receiver in PaymentsReceiver
-        // register as operator
-        vm.prank(operatorAddress);
-        delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: operatorAddress, // deprecated
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
-            "ipfs://some-ipfs-hash"
-        );
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
     }
 
     function testTokenStakingNodeDelegate() public {
@@ -408,21 +422,20 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         bytes32 approverSalt;
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
-        address delegatedTo = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
-        assertEq(delegatedTo, operatorAddress, "Delegation did not occur as expected.");
+        tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
+        address delegatedTo = eigenLayer.delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(delegatedTo, operator1, "Delegation did not occur as expected.");
 
         // Verify delegatedTo is set correctly in the TokenStakingNode contract
-        assertEq(tokenStakingNodeInstance.delegatedTo(), operatorAddress, "TokenStakingNode delegatedTo not set correctly");
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode delegatedTo not set correctly");
 
     }
-
     function testTokenStakingNodeUndelegate() public {
         ISignatureUtils.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
+        tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
 
         // Attempt to undelegate
         vm.expectRevert();
@@ -437,7 +450,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         tokenStakingNodeInstance.undelegate();
         
         // Verify undelegation
-        address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        address delegatedAddress = eigenLayer.delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
 
         // Verify delegatedTo is set to zero in the TokenStakingNode contract
@@ -470,7 +483,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         ISignatureUtils.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.delegate(operatorAddress, signature, approverSalt);
+        tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
 
         // Build array of strategies based on assets
         IStrategy[] memory strategies = new IStrategy[](2);
@@ -479,13 +492,13 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         // Verify delegation
-        assertEq(tokenStakingNodeInstance.delegatedTo(), operatorAddress, "TokenStakingNode not delegated correctly");
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
         uint256[] memory initialShares = new uint256[](3);
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
         for(uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = delegationManager.operatorShares(operatorAddress, strategies[i]);
+            initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
