@@ -9,18 +9,25 @@ import "./ynEigenIntegrationBaseTest.sol";
 import "forge-std/console.sol";
 
 interface IWithdrawalsProcessor { // @todo - move to interfaces
+
     function shouldQueueWithdrawals() external view returns (bool);
     function getQueueWithdrawalsArgs()
         external
         view
         returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares);
-    function queueWithdrawals(IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _amounts)
-        external
-        returns (bool);
-    function queuedWithdrawals(uint256 _id) external view returns (WithdrawalsProcessor.QueuedWithdrawal memory);
+    function queueWithdrawals(
+        IERC20 _asset,
+        ITokenStakingNode[] memory _nodes,
+        uint256[] memory _amounts
+    ) external returns (bool);
+    function queuedWithdrawals(
+        uint256 _id
+    ) external view returns (WithdrawalsProcessor.QueuedWithdrawal memory);
+
 }
 
 contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
+
     uint256 tokenId;
 
     bool private _setup = true;
@@ -99,7 +106,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     //
     // queueWithdrawals
     //
-    function testQueueWithdrawal(uint256 _amount) public {
+    function testQueueWithdrawal(
+        uint256 _amount
+    ) public {
         if (_setup) setup_(_amount);
 
         uint256 _stethShares = _stethStrategy.shares((address(tokenStakingNode)));
@@ -196,7 +205,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     //
     // completeQueuedWithdrawals
     //
-    function testCompleteQueuedWithdrawals(uint256 _amount) public {
+    function testCompleteQueuedWithdrawals(
+        uint256 _amount
+    ) public {
         testQueueWithdrawal(_amount);
 
         // skip withdrawal delay
@@ -249,7 +260,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     //
     // processPrincipalWithdrawals
     //
-    function testProcessPrincipalWithdrawals(uint256 _amount) public {
+    function testProcessPrincipalWithdrawals(
+        uint256 _amount
+    ) public {
         testCompleteQueuedWithdrawals(_amount);
 
         // process principal withdrawals -- steth
@@ -283,7 +296,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     //
     // claimWithdrawal
     //
-    function testClaimWithdrawal(uint256 _amount) public {
+    function testClaimWithdrawal(
+        uint256 _amount
+    ) public {
         testProcessPrincipalWithdrawals(_amount);
 
         uint256 _userStethBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user);
@@ -295,7 +310,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         vm.prank(user);
         withdrawalQueueManager.claimWithdrawal(tokenId, user);
 
-        uint256 _expectedAmount = _amount * (1000000 - withdrawalQueueManager.withdrawalFee()) / 1000000;
+        uint256 _expectedAmount = _amount * (1_000_000 - withdrawalQueueManager.withdrawalFee()) / 1_000_000;
         assertApproxEqAbs(
             IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user),
             _userStethBalanceBefore + _expectedAmount,
@@ -324,7 +339,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     // (2) user deposit
     // (3) stake assets to node
     // (4) user request withdrawal
-    function setup_(uint256 _amount) private {
+    function setup_(
+        uint256 _amount
+    ) private {
         vm.assume(_amount > 1 ether && _amount < 100 ether);
 
         // create token staking node
@@ -387,4 +404,5 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.SFRXETH_ADDRESS);
         vm.stopPrank();
     }
+
 }

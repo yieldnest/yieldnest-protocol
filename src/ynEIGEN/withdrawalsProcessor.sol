@@ -21,18 +21,24 @@ import "forge-std/console.sol";
 
 // @todo - move to interfaces
 interface IWSTETH {
-    function getWstETHByStETH(uint256 _stETHAmount) external view returns (uint256);
+
+    function getWstETHByStETH(
+        uint256 _stETHAmount
+    ) external view returns (uint256);
+
 }
 
 interface IYNStrategyManagerExt {
-    function strategiesBalance(IStrategy _strategy)
-        external
-        view
-        returns (uint128 _stakedBalance, uint128 _withdrawnBalance);
+
+    function strategiesBalance(
+        IStrategy _strategy
+    ) external view returns (uint128 _stakedBalance, uint128 _withdrawnBalance);
+
 }
 
 // @todo - change onlyOwner to role
 contract WithdrawalsProcessor is Ownable {
+
     struct QueuedWithdrawal {
         address node;
         address strategy;
@@ -71,7 +77,7 @@ contract WithdrawalsProcessor is Ownable {
     IERC20 private constant OETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
 
     // used to prevent rounding errors
-    uint256 private constant MIN_DELTA = 1_000;
+    uint256 private constant MIN_DELTA = 1000;
 
     mapping(uint256 id => QueuedWithdrawal) public queuedWithdrawals;
     mapping(uint256 fromId => uint256 toId) public batch;
@@ -186,9 +192,7 @@ contract WithdrawalsProcessor is Ownable {
                 _nodesShares[i] = _nodeShares;
                 _nodes[i] = _node;
 
-                if (_nodeShares < _minNodeShares) {
-                    _minNodeShares = _nodeShares;
-                }
+                if (_nodeShares < _minNodeShares) _minNodeShares = _nodeShares;
             }
         }
 
@@ -234,11 +238,11 @@ contract WithdrawalsProcessor is Ownable {
     /// @param _nodes The list of nodes to withdraw from
     /// @param _amounts The share amounts to withdraw from each node
     /// @return True if all pending withdrawal requests were queued, false otherwise
-    function queueWithdrawals(IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _amounts)
-        external
-        onlyOwner
-        returns (bool)
-    {
+    function queueWithdrawals(
+        IERC20 _asset,
+        ITokenStakingNode[] memory _nodes,
+        uint256[] memory _amounts
+    ) external onlyOwner returns (bool) {
         uint256 _nodesLength = _nodes.length;
         if (_nodesLength != _amounts.length) revert InvalidInput();
 
@@ -368,7 +372,9 @@ contract WithdrawalsProcessor is Ownable {
     //
     // Management functions
     //
-    function updateMinPendingWithdrawalRequestAmount(uint256 _minPendingWithdrawalRequestAmount) external onlyOwner {
+    function updateMinPendingWithdrawalRequestAmount(
+        uint256 _minPendingWithdrawalRequestAmount
+    ) external onlyOwner {
         if (_minPendingWithdrawalRequestAmount == 0) revert InvalidInput();
         minPendingWithdrawalRequestAmount = _minPendingWithdrawalRequestAmount;
         emit MinPendingWithdrawalRequestAmountUpdated(_minPendingWithdrawalRequestAmount);
@@ -377,7 +383,9 @@ contract WithdrawalsProcessor is Ownable {
     //
     // Private functions
     //
-    function _stakedBalanceForStrategy(IERC20 _asset) public view returns (uint256 _stakedBalance) {
+    function _stakedBalanceForStrategy(
+        IERC20 _asset
+    ) public view returns (uint256 _stakedBalance) {
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         uint256 _nodesLength = _nodesArray.length;
@@ -386,7 +394,9 @@ contract WithdrawalsProcessor is Ownable {
         }
     }
 
-    function _underlyingTokenForStrategy(IStrategy _strategy) private view returns (address) {
+    function _underlyingTokenForStrategy(
+        IStrategy _strategy
+    ) private view returns (address) {
         address _token = address(_strategy.underlyingToken());
         if (_token == address(STETH)) return address(WSTETH);
         if (_token == address(OETH)) return address(WOETH);
@@ -424,4 +434,5 @@ contract WithdrawalsProcessor is Ownable {
     // Events
     //
     event MinPendingWithdrawalRequestAmountUpdated(uint256 minPendingWithdrawalRequestAmount);
+
 }
