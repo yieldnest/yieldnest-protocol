@@ -309,6 +309,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         _ids.completed = _completedId;
     }
 
+    // @note -- must be called immediately after `completeQueuedWithdrawals` so that the shares value does't change
     function processPrincipalWithdrawals() external onlyRole(KEEPER_ROLE) {
         uint256 _completedId = _ids.completed;
         uint256 _processedId = _ids.processed;
@@ -331,7 +332,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 _asset = _underlyingTokenForStrategy(IStrategy(_strategy));
             }
 
-            uint256 _queuedAmountInUnit = _sharesToUnit(queuedWithdrawal_.shares, IERC20(_asset), IStrategy(_strategy)); // @todo - this will equal more now. need to get rate when was queued
+            uint256 _queuedAmountInUnit = _sharesToUnit(queuedWithdrawal_.shares, IERC20(_asset), IStrategy(_strategy));
             _totalWithdrawn += _queuedAmountInUnit;
 
             _actions[i] = IYieldNestStrategyManager.WithdrawalAction({

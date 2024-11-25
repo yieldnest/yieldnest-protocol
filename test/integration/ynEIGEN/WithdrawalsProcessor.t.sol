@@ -16,6 +16,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
+    address public constant keeper = address(0x4206942069);
 
     ITokenStakingNode public tokenStakingNode;
     IWithdrawalsProcessor public withdrawalsProcessor;
@@ -62,7 +63,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
             withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
 
-            WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, owner);
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
         }
 
         // grant roles to withdrawalsProcessor
@@ -107,7 +108,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testQueueWithdrawal: E0");
             (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
                 withdrawalsProcessor.getQueueWithdrawalsArgs();
-            vm.prank(owner);
+            vm.prank(keeper);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
             assertFalse(_queuedEverything, "testQueueWithdrawal: E1");
@@ -129,7 +130,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testQueueWithdrawal: E10");
             (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
                 withdrawalsProcessor.getQueueWithdrawalsArgs();
-            vm.prank(owner);
+            vm.prank(keeper);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
             assertFalse(_queuedEverything, "testQueueWithdrawal: E11");
@@ -151,7 +152,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testQueueWithdrawal: E20");
             (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
                 withdrawalsProcessor.getQueueWithdrawalsArgs();
-            vm.prank(owner);
+            vm.prank(keeper);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
             assertTrue(_queuedEverything, "testQueueWithdrawal: E21");
@@ -210,7 +211,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E1");
 
-            vm.prank(owner);
+            vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
             assertEq(tokenStakingNode.queuedShares(_stethStrategy), 0, "testCompleteQueuedWithdrawals: E2");
@@ -221,7 +222,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E4");
 
-            vm.prank(owner);
+            vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
             assertEq(tokenStakingNode.queuedShares(_oethStrategy), 0, "testCompleteQueuedWithdrawals: E5");
@@ -232,7 +233,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E7");
 
-            vm.prank(owner);
+            vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
             assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), 0, "testCompleteQueuedWithdrawals: E8");
@@ -254,7 +255,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E0");
 
-            vm.prank(owner);
+            vm.prank(keeper);
             withdrawalsProcessor.processPrincipalWithdrawals();
         }
 
@@ -262,7 +263,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E1");
 
-            vm.prank(owner);
+            vm.prank(keeper);
             withdrawalsProcessor.processPrincipalWithdrawals();
         }
 
@@ -270,7 +271,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E2");
 
-            vm.prank(owner);
+            vm.prank(keeper);
             withdrawalsProcessor.processPrincipalWithdrawals();
         }
 
