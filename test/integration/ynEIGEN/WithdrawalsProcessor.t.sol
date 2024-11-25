@@ -68,10 +68,11 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             );
         }
 
-        // grant withdrawer role to withdrawalsProcessor
+        // grant roles to withdrawalsProcessor
         {
             vm.startPrank(actors.wallets.YNSecurityCouncil);
             eigenStrategyManager.grantRole(eigenStrategyManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor));
+            eigenStrategyManager.grantRole(eigenStrategyManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor));
             vm.stopPrank();
         }
 
@@ -229,7 +230,42 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     }
 
     //
-    // processPrincipalWithdrawals @todo - here
+    // processPrincipalWithdrawals
+    //
+
+    function testProcessPrincipalWithdrawals(uint256 _amount) public {
+        testCompleteQueuedWithdrawals(_amount);
+
+        // process principal withdrawals -- steth
+        {
+            assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E0");
+
+            vm.prank(owner);
+            withdrawalsProcessor.processPrincipalWithdrawals();
+        }
+
+        // process principal withdrawals -- oeth
+        {
+            assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E1");
+
+            vm.prank(owner);
+            withdrawalsProcessor.processPrincipalWithdrawals();
+        }
+
+        // process principal withdrawals -- sfrxeth
+        {
+            assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E2");
+
+            vm.prank(owner);
+            withdrawalsProcessor.processPrincipalWithdrawals();
+        }
+
+        assertFalse(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testProcessPrincipalWithdrawals: E3");
+        assertEq(withdrawalsProcessor.totalQueuedWithdrawals(), 0, "testProcessPrincipalWithdrawals: E4");
+    }
+
+    //
+    // claimWithdrawal -- @todo
     //
 
     //

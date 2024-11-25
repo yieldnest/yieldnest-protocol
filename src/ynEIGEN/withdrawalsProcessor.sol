@@ -134,6 +134,10 @@ contract WithdrawalsProcessor is Ownable {
         return true;
     }
 
+    function shouldProcessPrincipalWithdrawals() public returns (bool) {
+        return completedId != processedId;
+    }
+
     function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
         _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets();
@@ -309,39 +313,40 @@ contract WithdrawalsProcessor is Ownable {
         completedId = _completedId;
     }
 
-    // @todo - revert if not needed
-    // @todo - add shouldCallProcessPrincipalWithdrawals
     function processPrincipalWithdrawals() external {
         uint256 _completedId = completedId;
         uint256 _processedId = processedId;
-        uint256 _batchLength = batch[_processedId];
+        if (_completedId == _processedId) revert NothingToProcess();
+
+        uint256 _batchLength = batch[_processedId] - _processedId;
         IYieldNestStrategyManager.WithdrawalAction[] memory _actions =
             new IYieldNestStrategyManager.WithdrawalAction[](_batchLength);
 
         address _asset;
         address _strategy;
         uint256 _totalWithdrawn;
-        for (; _processedId < _completedId; ++_processedId) {
-            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_processedId];
+        uint256 _processedIdAtStart = _processedId;
+        for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
+            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_processedId++];
 
             if (_asset == address(0)) {
                 _strategy = _queuedWithdrawal.strategy;
                 _asset = _underlyingTokenForStrategy(IStrategy(_strategy));
             }
 
-            _totalWithdrawn += _queuedWithdrawal.shares;
+            uint256 _queuedAmountInUnit = _sharesToUnit(_queuedWithdrawal.shares, IERC20(_asset), IStrategy(_strategy)); // @todo - this will equal more now. need to get rate when was queued
+            _totalWithdrawn += _queuedAmountInUnit;
 
-            _actions[_processedId] = IYieldNestStrategyManager.WithdrawalAction({
+            _actions[i] = IYieldNestStrategyManager.WithdrawalAction({
                 nodeId: ITokenStakingNode(_queuedWithdrawal.node).nodeId(),
                 amountToReinvest: 0,
-                amountToQueue: _queuedWithdrawal.shares,
+                amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit),
                 asset: _asset
             });
         }
 
         processedId = _processedId;
 
-        _totalWithdrawn = _sharesToUnit(_totalWithdrawn, IERC20(_asset), IStrategy(_strategy));
         uint256 _totalQueuedWithdrawals = totalQueuedWithdrawals;
         totalQueuedWithdrawals =
             _totalWithdrawn > _totalQueuedWithdrawals ? 0 : _totalQueuedWithdrawals - _totalWithdrawn;
@@ -401,6 +406,7 @@ contract WithdrawalsProcessor is Ownable {
     error InvalidInput();
     error PendingWithdrawalRequestsTooLow();
     error NoQueuedWithdrawals();
+    error NothingToProcess();
 
     //
     // Events
