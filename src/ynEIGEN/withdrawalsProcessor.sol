@@ -38,6 +38,7 @@ contract WithdrawalsProcessor is Ownable {
         address strategy;
         uint256 nonce;
         uint256 shares;
+        uint256 tokenIdToFinalize;
         uint32 startBlock;
         bool completed;
     }
@@ -262,6 +263,7 @@ contract WithdrawalsProcessor is Ownable {
                     address(_strategy),
                     delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
                     _toWithdraw,
+                    withdrawalQueueManager._tokenIdCounter(),
                     uint32(block.number), // startBlock
                     false // completed
                 );
@@ -325,6 +327,7 @@ contract WithdrawalsProcessor is Ownable {
         address _asset;
         address _strategy;
         uint256 _totalWithdrawn;
+        uint256 _tokenIdToFinalize;
         uint256 _processedIdAtStart = _processedId;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
             QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_processedId++];
@@ -343,7 +346,11 @@ contract WithdrawalsProcessor is Ownable {
                 amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit),
                 asset: _asset
             });
+
+            if (_tokenIdToFinalize == 0) _tokenIdToFinalize = _queuedWithdrawal.tokenIdToFinalize;
         }
+
+        if (_tokenIdToFinalize == 0) revert SanityCheck();
 
         processedId = _processedId;
 
@@ -352,6 +359,10 @@ contract WithdrawalsProcessor is Ownable {
             _totalWithdrawn > _totalQueuedWithdrawals ? 0 : _totalQueuedWithdrawals - _totalWithdrawn;
 
         ynStrategyManager.processPrincipalWithdrawals(_actions);
+
+        if (withdrawalQueueManager.lastFinalizedIndex() < _tokenIdToFinalize) {
+            withdrawalQueueManager.finalizeRequestsUpToIndex(_tokenIdToFinalize);
+        }
     }
 
     //
@@ -407,6 +418,7 @@ contract WithdrawalsProcessor is Ownable {
     error PendingWithdrawalRequestsTooLow();
     error NoQueuedWithdrawals();
     error NothingToProcess();
+    error SanityCheck();
 
     //
     // Events

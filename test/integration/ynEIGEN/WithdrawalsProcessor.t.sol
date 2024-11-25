@@ -10,12 +10,18 @@ import "forge-std/console.sol";
 
 interface IWithdrawalsProcessor { // @todo - move to interfaces
     function shouldQueueWithdrawals() external view returns (bool);
-    function getQueueWithdrawalsArgs() external view returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares);
-    function queueWithdrawals(IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _amounts) external returns (bool);
+    function getQueueWithdrawalsArgs()
+        external
+        view
+        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares);
+    function queueWithdrawals(IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _amounts)
+        external
+        returns (bool);
     function queuedWithdrawals(uint256 _id) external view returns (WithdrawalsProcessor.QueuedWithdrawal memory);
 }
 
 contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
+    uint256 tokenId;
 
     bool private _setup = true;
 
@@ -30,14 +36,13 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     IStrategy private _sfrxethStrategy;
 
     function setUp() public virtual override {
-
         super.setUp();
 
         // deal assets to user
         {
-            deal({ token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether });
-            deal({ token: chainAddresses.lsd.WOETH_ADDRESS, to: user, give: 1000 ether });
-            deal({ token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1000 ether });
+            deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether});
+            deal({token: chainAddresses.lsd.WOETH_ADDRESS, to: user, give: 1000 ether});
+            deal({token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1000 ether});
         }
 
         // unpause transfers
@@ -71,8 +76,15 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // grant roles to withdrawalsProcessor
         {
             vm.startPrank(actors.wallets.YNSecurityCouncil);
-            eigenStrategyManager.grantRole(eigenStrategyManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor));
-            eigenStrategyManager.grantRole(eigenStrategyManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor));
+            eigenStrategyManager.grantRole(
+                eigenStrategyManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor)
+            );
+            eigenStrategyManager.grantRole(
+                eigenStrategyManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor)
+            );
+            withdrawalQueueManager.grantRole(
+                withdrawalQueueManager.REQUEST_FINALIZER_ROLE(), address(withdrawalsProcessor)
+            );
             vm.stopPrank();
         }
 
@@ -87,7 +99,6 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     //
     // queueWithdrawals
     //
-
     function testQueueWithdrawal(uint256 _amount) public {
         if (_setup) setup_(_amount);
 
@@ -100,7 +111,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // 1st queue withdrawals -- steth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testQueueWithdrawal: E0");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) = withdrawalsProcessor.getQueueWithdrawalsArgs();
+            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+                withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(owner);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
@@ -121,7 +133,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // 2st queue withdrawals -- oeth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testQueueWithdrawal: E10");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) = withdrawalsProcessor.getQueueWithdrawalsArgs();
+            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+                withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(owner);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
@@ -142,7 +155,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // 3st queue withdrawals -- sfrxeth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testQueueWithdrawal: E20");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) = withdrawalsProcessor.getQueueWithdrawalsArgs();
+            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+                withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(owner);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
@@ -172,13 +186,16 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(_queuedWithdrawal.completed, false, "testQueueWithdrawal: E30");
         }
 
-        assertEq(withdrawalsProcessor.totalQueuedWithdrawals(), withdrawalQueueManager.pendingRequestedRedemptionAmount(), "testQueueWithdrawal: E31");
+        assertEq(
+            withdrawalsProcessor.totalQueuedWithdrawals(),
+            withdrawalQueueManager.pendingRequestedRedemptionAmount(),
+            "testQueueWithdrawal: E31"
+        );
     }
 
     //
     // completeQueuedWithdrawals
     //
-
     function testCompleteQueuedWithdrawals(uint256 _amount) public {
         testQueueWithdrawal(_amount);
 
@@ -192,7 +209,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             _strategies[2] = _sfrxethStrategy;
             vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
         }
-        
+
         // complete queued withdrawals -- steth
         {
             assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E1");
@@ -232,7 +249,6 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     //
     // processPrincipalWithdrawals
     //
-
     function testProcessPrincipalWithdrawals(uint256 _amount) public {
         testCompleteQueuedWithdrawals(_amount);
 
@@ -265,11 +281,43 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     }
 
     //
-    // claimWithdrawal -- @todo
+    // claimWithdrawal
     //
+    function testClaimWithdrawal(uint256 _amount) public {
+        testProcessPrincipalWithdrawals(_amount);
+
+        uint256 _userStethBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user);
+        uint256 _userOethBalanceBefore = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user);
+        uint256 _userSfrxethBalanceBefore = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user);
+
+        _topUpRedemptionAssetsVault();
+
+        vm.prank(user);
+        withdrawalQueueManager.claimWithdrawal(tokenId, user);
+
+        uint256 _expectedAmount = _amount * (1000000 - withdrawalQueueManager.withdrawalFee()) / 1000000;
+        assertApproxEqAbs(
+            IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user),
+            _userStethBalanceBefore + _expectedAmount,
+            1e4,
+            "testClaimWithdrawal: E0"
+        );
+        assertApproxEqAbs(
+            IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user),
+            _userOethBalanceBefore + _expectedAmount,
+            1e4,
+            "testClaimWithdrawal: E1"
+        );
+        assertApproxEqAbs(
+            IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user),
+            _userSfrxethBalanceBefore + _expectedAmount,
+            1e4,
+            "testClaimWithdrawal: E2"
+        );
+    }
 
     //
-    // internal helpers
+    // private helpers
     //
 
     // (1) create token staking node
@@ -277,10 +325,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     // (3) stake assets to node
     // (4) user request withdrawal
     function setup_(uint256 _amount) private {
-        vm.assume(
-            _amount > 1 ether &&
-            _amount < 100 ether
-        );
+        vm.assume(_amount > 1 ether && _amount < 100 ether);
 
         // create token staking node
         {
@@ -322,8 +367,24 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             uint256 _balance = ynEigenToken.balanceOf(user);
             vm.startPrank(user);
             ynEigenToken.approve(address(withdrawalQueueManager), _balance);
-            withdrawalQueueManager.requestWithdrawal(_balance);
+            tokenId = withdrawalQueueManager.requestWithdrawal(_balance);
             vm.stopPrank();
         }
+    }
+
+    function _topUpRedemptionAssetsVault() private {
+        address _topper = address(0x4204206969);
+        uint256 _amount = 50; // 50 wei
+        deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: _topper, give: _amount});
+        deal({token: chainAddresses.lsd.WOETH_ADDRESS, to: _topper, give: _amount});
+        deal({token: chainAddresses.lsd.SFRXETH_ADDRESS, to: _topper, give: _amount});
+        vm.startPrank(_topper);
+        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+        redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WSTETH_ADDRESS);
+        IERC20(chainAddresses.lsd.WOETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+        redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WOETH_ADDRESS);
+        IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+        redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.SFRXETH_ADDRESS);
+        vm.stopPrank();
     }
 }
