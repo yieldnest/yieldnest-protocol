@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
-import {IStrategy} from "@eigenlayer/src/contracts/interfaces/IStrategy.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+
+import {IwstETH} from "../external/lido/IwstETH.sol";
 
 import {IWithdrawalQueueManager} from "../interfaces/IWithdrawalQueueManager.sol";
 import {ITokenStakingNodesManager} from "../interfaces/ITokenStakingNodesManager.sol";
@@ -16,47 +19,19 @@ import {IYieldNestStrategyManager} from "../interfaces/IYieldNestStrategyManager
 import {IynEigen} from "../interfaces/IynEigen.sol";
 import {IRedemptionAssetsVault} from "../interfaces/IRedemptionAssetsVault.sol";
 import {IWrapper} from "../interfaces/IWrapper.sol";
+import {IWithdrawalsProcessor} from "../interfaces/IWithdrawalsProcessor.sol";
 
-import "forge-std/console.sol";
-
-// @todo - move to interfaces
-interface IWSTETH {
-
-    function getWstETHByStETH(
-        uint256 _stETHAmount
-    ) external view returns (uint256);
-
-}
-
-interface IYNStrategyManagerExt {
-
-    function strategiesBalance(
-        IStrategy _strategy
-    ) external view returns (uint128 _stakedBalance, uint128 _withdrawnBalance);
-
-}
-
-// @todo - change onlyOwner to role
-contract WithdrawalsProcessor is Ownable {
-
-    struct QueuedWithdrawal {
-        address node;
-        address strategy;
-        uint256 nonce;
-        uint256 shares;
-        uint256 tokenIdToFinalize;
-        uint32 startBlock;
-        bool completed;
-    }
-
-    // @todo - put ids in a struct
-    uint256 public queuedId;
-    uint256 public completedId;
-    uint256 public processedId;
+// @todo move natspec to interface
+contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessControlUpgradeable {
 
     uint256 public totalQueuedWithdrawals;
 
     uint256 public minPendingWithdrawalRequestAmount;
+
+    IDs private _ids;
+
+    mapping(uint256 id => QueuedWithdrawal) private _queuedWithdrawals;
+    mapping(uint256 fromId => uint256 toId) public batch;
 
     // yieldnest
     IWithdrawalQueueManager public immutable withdrawalQueueManager;
@@ -72,21 +47,20 @@ contract WithdrawalsProcessor is Ownable {
 
     // assets
     IERC20 private constant STETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    IWSTETH private constant WSTETH = IWSTETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    IwstETH private constant WSTETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
     IERC4626 private constant WOETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
     IERC20 private constant OETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
 
     // used to prevent rounding errors
     uint256 private constant MIN_DELTA = 1000;
 
-    mapping(uint256 id => QueuedWithdrawal) public queuedWithdrawals;
-    mapping(uint256 fromId => uint256 toId) public batch;
+    // roles
+    bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
     //
     // Constructor
     //
     constructor(
-        address _owner,
         address _withdrawalQueueManager,
         address _tokenStakingNodesManager,
         address _assetRegistry,
@@ -95,7 +69,7 @@ contract WithdrawalsProcessor is Ownable {
         address _yneigen,
         address _redemptionAssetsVault,
         address _wrapper
-    ) Ownable(_owner) {
+    ) {
         if (
             _withdrawalQueueManager == address(0) || _tokenStakingNodesManager == address(0)
                 || _assetRegistry == address(0) || _ynStrategyManager == address(0) || _delegationManager == address(0)
@@ -110,27 +84,43 @@ contract WithdrawalsProcessor is Ownable {
         yneigen = IynEigen(_yneigen);
         redemptionAssetsVault = IRedemptionAssetsVault(_redemptionAssetsVault);
         wrapper = IWrapper(_wrapper);
+    }
 
+    function initialize(address _owner, address _keeper)  public  initializer {
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
+        _grantRole(KEEPER_ROLE, _keeper);
+        
         minPendingWithdrawalRequestAmount = 0.1 ether;
 
         // @todo - consider initializing `totalQueuedWithdrawals` or wait till all current withdrawals are processed
     }
 
     //
-    // Processor functions - view
+    // view functions
     //
+    function ids() external view returns (IDs memory) {
+        return _ids;
+    }
+
+    function queuedWithdrawals(
+        uint256 _id
+    ) external view returns (QueuedWithdrawal memory) {
+        return _queuedWithdrawals[_id];
+    }
+
     function shouldQueueWithdrawals() external view returns (bool) {
         return withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets() > minPendingWithdrawalRequestAmount;
     }
 
     function shouldCompleteQueuedWithdrawals() external view returns (bool) {
-        uint256 _queuedId = queuedId;
-        uint256 _completedId = completedId;
+        uint256 _queuedId = _ids.queued;
+        uint256 _completedId = _ids.completed;
         if (_queuedId == _completedId) return false;
 
         for (; _completedId < _queuedId; ++_completedId) {
-            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_completedId];
+            QueuedWithdrawal memory _queuedWithdrawal = _queuedWithdrawals[_completedId];
 
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(_queuedWithdrawal.strategy);
@@ -142,7 +132,7 @@ contract WithdrawalsProcessor is Ownable {
     }
 
     function shouldProcessPrincipalWithdrawals() public returns (bool) {
-        return completedId != processedId;
+        return _ids.completed != _ids.processed;
     }
 
     function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
@@ -227,7 +217,7 @@ contract WithdrawalsProcessor is Ownable {
     }
 
     //
-    // Processor functions - mutative
+    // mutative functions
     //
 
     /// @notice Queues withdrawals
@@ -242,7 +232,7 @@ contract WithdrawalsProcessor is Ownable {
         IERC20 _asset,
         ITokenStakingNode[] memory _nodes,
         uint256[] memory _amounts
-    ) external onlyOwner returns (bool) {
+    ) external onlyRole(KEEPER_ROLE) returns (bool) {
         uint256 _nodesLength = _nodes.length;
         if (_nodesLength != _amounts.length) revert InvalidInput();
 
@@ -252,7 +242,7 @@ contract WithdrawalsProcessor is Ownable {
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         if (_strategy == IStrategy(address(0))) revert InvalidInput();
 
-        uint256 _queuedId = queuedId;
+        uint256 _queuedId = _ids.queued;
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
         for (uint256 j = 0; j < _nodesLength; ++j) {
             uint256 _toWithdraw = _amounts[j];
@@ -262,7 +252,7 @@ contract WithdrawalsProcessor is Ownable {
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
                 address _node = address(_nodes[j]);
-                queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
+                _queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
                     _node,
                     address(_strategy),
                     delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
@@ -275,8 +265,8 @@ contract WithdrawalsProcessor is Ownable {
             }
 
             if (_pendingWithdrawalRequestsInShares == 0) {
-                batch[queuedId] = _queuedId;
-                queuedId = _queuedId;
+                batch[_ids.queued] = _queuedId;
+                _ids.queued = _queuedId;
                 totalQueuedWithdrawals += _toBeQueued;
                 return true;
             }
@@ -285,43 +275,43 @@ contract WithdrawalsProcessor is Ownable {
         _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _asset, _strategy);
 
         if (_pendingWithdrawalRequests < _toBeQueued) {
-            batch[queuedId] = _queuedId;
-            queuedId = _queuedId;
+            batch[_ids.queued] = _queuedId;
+            _ids.queued = _queuedId;
             totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
         }
 
         return false;
     }
 
-    function completeQueuedWithdrawals() external {
-        uint256 _completedId = completedId;
+    function completeQueuedWithdrawals() external onlyRole(KEEPER_ROLE) {
+        uint256 _completedId = _ids.completed;
         uint256 _queuedId = batch[_completedId];
         if (_completedId == _queuedId) revert NoQueuedWithdrawals();
 
         for (; _completedId < _queuedId; ++_completedId) {
-            queuedWithdrawals[_completedId].completed = true;
+            _queuedWithdrawals[_completedId].completed = true;
 
-            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_completedId];
+            QueuedWithdrawal memory queuedWithdrawal_ = _queuedWithdrawals[_completedId];
 
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
 
-            ITokenStakingNode(_queuedWithdrawal.node).completeQueuedWithdrawals(
-                _queuedWithdrawal.nonce,
-                _queuedWithdrawal.startBlock,
-                _queuedWithdrawal.shares,
-                IStrategy(_queuedWithdrawal.strategy),
+            ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
+                queuedWithdrawal_.nonce,
+                queuedWithdrawal_.startBlock,
+                queuedWithdrawal_.shares,
+                IStrategy(queuedWithdrawal_.strategy),
                 _middlewareTimesIndexes,
                 true // updateTokenStakingNodesBalances
             );
         }
 
-        completedId = _completedId;
+        _ids.completed = _completedId;
     }
 
-    function processPrincipalWithdrawals() external {
-        uint256 _completedId = completedId;
-        uint256 _processedId = processedId;
+    function processPrincipalWithdrawals() external onlyRole(KEEPER_ROLE) {
+        uint256 _completedId = _ids.completed;
+        uint256 _processedId = _ids.processed;
         if (_completedId == _processedId) revert NothingToProcess();
 
         uint256 _batchLength = batch[_processedId] - _processedId;
@@ -334,29 +324,29 @@ contract WithdrawalsProcessor is Ownable {
         uint256 _tokenIdToFinalize;
         uint256 _processedIdAtStart = _processedId;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
-            QueuedWithdrawal memory _queuedWithdrawal = queuedWithdrawals[_processedId++];
+            QueuedWithdrawal memory queuedWithdrawal_ = _queuedWithdrawals[_processedId++];
 
             if (_asset == address(0)) {
-                _strategy = _queuedWithdrawal.strategy;
+                _strategy = queuedWithdrawal_.strategy;
                 _asset = _underlyingTokenForStrategy(IStrategy(_strategy));
             }
 
-            uint256 _queuedAmountInUnit = _sharesToUnit(_queuedWithdrawal.shares, IERC20(_asset), IStrategy(_strategy)); // @todo - this will equal more now. need to get rate when was queued
+            uint256 _queuedAmountInUnit = _sharesToUnit(queuedWithdrawal_.shares, IERC20(_asset), IStrategy(_strategy)); // @todo - this will equal more now. need to get rate when was queued
             _totalWithdrawn += _queuedAmountInUnit;
 
             _actions[i] = IYieldNestStrategyManager.WithdrawalAction({
-                nodeId: ITokenStakingNode(_queuedWithdrawal.node).nodeId(),
+                nodeId: ITokenStakingNode(queuedWithdrawal_.node).nodeId(),
                 amountToReinvest: 0,
                 amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit),
                 asset: _asset
             });
 
-            if (_tokenIdToFinalize == 0) _tokenIdToFinalize = _queuedWithdrawal.tokenIdToFinalize;
+            if (_tokenIdToFinalize == 0) _tokenIdToFinalize = queuedWithdrawal_.tokenIdToFinalize;
         }
 
         if (_tokenIdToFinalize == 0) revert SanityCheck();
 
-        processedId = _processedId;
+        _ids.processed = _processedId;
 
         uint256 _totalQueuedWithdrawals = totalQueuedWithdrawals;
         totalQueuedWithdrawals =
@@ -370,18 +360,18 @@ contract WithdrawalsProcessor is Ownable {
     }
 
     //
-    // Management functions
+    // management functions
     //
     function updateMinPendingWithdrawalRequestAmount(
         uint256 _minPendingWithdrawalRequestAmount
-    ) external onlyOwner {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_minPendingWithdrawalRequestAmount == 0) revert InvalidInput();
         minPendingWithdrawalRequestAmount = _minPendingWithdrawalRequestAmount;
         emit MinPendingWithdrawalRequestAmountUpdated(_minPendingWithdrawalRequestAmount);
     }
 
     //
-    // Private functions
+    // private functions
     //
     function _stakedBalanceForStrategy(
         IERC20 _asset
@@ -420,19 +410,5 @@ contract WithdrawalsProcessor is Ownable {
             )
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
     }
-
-    //
-    // Errors
-    //
-    error InvalidInput();
-    error PendingWithdrawalRequestsTooLow();
-    error NoQueuedWithdrawals();
-    error NothingToProcess();
-    error SanityCheck();
-
-    //
-    // Events
-    //
-    event MinPendingWithdrawalRequestAmountUpdated(uint256 minPendingWithdrawalRequestAmount);
 
 }

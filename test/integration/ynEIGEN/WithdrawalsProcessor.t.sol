@@ -4,27 +4,9 @@ pragma solidity 0.8.24;
 import {WithdrawalsProcessor} from "../../../src/ynEIGEN/withdrawalsProcessor.sol";
 
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
+import {IWithdrawalsProcessor} from "../../../src/interfaces/IWithdrawalsProcessor.sol";
 
 import "./ynEigenIntegrationBaseTest.sol";
-import "forge-std/console.sol";
-
-interface IWithdrawalsProcessor { // @todo - move to interfaces
-
-    function shouldQueueWithdrawals() external view returns (bool);
-    function getQueueWithdrawalsArgs()
-        external
-        view
-        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares);
-    function queueWithdrawals(
-        IERC20 _asset,
-        ITokenStakingNode[] memory _nodes,
-        uint256[] memory _amounts
-    ) external returns (bool);
-    function queuedWithdrawals(
-        uint256 _id
-    ) external view returns (WithdrawalsProcessor.QueuedWithdrawal memory);
-
-}
 
 contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
@@ -36,7 +18,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     address public constant owner = address(0x42069420);
 
     ITokenStakingNode public tokenStakingNode;
-    WithdrawalsProcessor public withdrawalsProcessor;
+    IWithdrawalsProcessor public withdrawalsProcessor;
 
     IStrategy private _stethStrategy;
     IStrategy private _oethStrategy;
@@ -68,7 +50,6 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // deploy withdrawalsProcessor
         {
             withdrawalsProcessor = new WithdrawalsProcessor(
-                owner,
                 address(withdrawalQueueManager),
                 address(tokenStakingNodesManager),
                 address(assetRegistry),
@@ -78,6 +59,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
                 address(redemptionAssetsVault),
                 address(wrapper)
             );
+
+            withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
+
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, owner);
         }
 
         // grant roles to withdrawalsProcessor
@@ -229,7 +214,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor.completeQueuedWithdrawals();
 
             assertEq(tokenStakingNode.queuedShares(_stethStrategy), 0, "testCompleteQueuedWithdrawals: E2");
-            assertEq(withdrawalsProcessor.completedId(), 1, "testCompleteQueuedWithdrawals: E3");
+            assertEq(withdrawalsProcessor.ids().completed, 1, "testCompleteQueuedWithdrawals: E3");
         }
 
         // complete queued withdrawals -- oeth
@@ -240,7 +225,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor.completeQueuedWithdrawals();
 
             assertEq(tokenStakingNode.queuedShares(_oethStrategy), 0, "testCompleteQueuedWithdrawals: E5");
-            assertEq(withdrawalsProcessor.completedId(), 2, "testCompleteQueuedWithdrawals: E6");
+            assertEq(withdrawalsProcessor.ids().completed, 2, "testCompleteQueuedWithdrawals: E6");
         }
 
         // complete queued withdrawals -- sfrxeth
@@ -251,7 +236,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor.completeQueuedWithdrawals();
 
             assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), 0, "testCompleteQueuedWithdrawals: E8");
-            assertEq(withdrawalsProcessor.completedId(), 3, "testCompleteQueuedWithdrawals: E9");
+            assertEq(withdrawalsProcessor.ids().completed, 3, "testCompleteQueuedWithdrawals: E9");
         }
 
         assertFalse(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testCompleteQueuedWithdrawals: E10");
