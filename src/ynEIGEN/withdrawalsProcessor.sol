@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {AccessControlUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
@@ -21,7 +22,6 @@ import {IRedemptionAssetsVault} from "../interfaces/IRedemptionAssetsVault.sol";
 import {IWrapper} from "../interfaces/IWrapper.sol";
 import {IWithdrawalsProcessor} from "../interfaces/IWithdrawalsProcessor.sol";
 
-// @todo move natspec to interface
 contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessControlUpgradeable {
 
     uint256 public totalQueuedWithdrawals;
@@ -86,32 +86,42 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         wrapper = IWrapper(_wrapper);
     }
 
-    function initialize(address _owner, address _keeper)  public  initializer {
+    function initialize(address _owner, address _keeper) public initializer {
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         _grantRole(KEEPER_ROLE, _keeper);
-        
+
         minPendingWithdrawalRequestAmount = 0.1 ether;
     }
 
     //
     // view functions
     //
+
+    /// @notice IDs of the queued, completed, and processed withdrawals, used for internal accounting
+    /// @return The IDs
     function ids() external view returns (IDs memory) {
         return _ids;
     }
 
+    /// @notice Gets the queued withdrawal at the given ID
+    /// @param _id The ID of the queued withdrawal
+    /// @return The queued withdrawal
     function queuedWithdrawals(
         uint256 _id
     ) external view returns (QueuedWithdrawal memory) {
         return _queuedWithdrawals[_id];
     }
 
+    /// @notice Checks if withdrawals should be queued
+    /// @return True if withdrawals should be queued, false otherwise
     function shouldQueueWithdrawals() external view returns (bool) {
         return withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets() > minPendingWithdrawalRequestAmount;
     }
 
+    /// @notice Checks if queued withdrawals should be completed
+    /// @return True if queued withdrawals should be completed, false otherwise
     function shouldCompleteQueuedWithdrawals() external view returns (bool) {
         uint256 _queuedId = _ids.queued;
         uint256 _completedId = _ids.completed;
@@ -129,10 +139,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         return true;
     }
 
+    /// @notice Checks if principal withdrawals should be processed
+    /// @return True if principal withdrawals should be processed, false otherwise
     function shouldProcessPrincipalWithdrawals() public returns (bool) {
         return _ids.completed != _ids.processed;
     }
 
+    /// @notice Gets the total pending withdrawal requests
+    /// @return The total pending withdrawal requests
     function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
         _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets();
@@ -140,7 +154,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     }
 
     /// @notice Gets the arguments for `queueWithdrawals`
-    /// @param _asset The asset to withdraw: the asset with the highest balance
+    /// @param _asset The asset to withdraw - the asset with the highest balance
     /// @param _nodes The list of nodes to withdraw from
     /// @param _shares The share amounts to withdraw from each node to achieve balanced distribution
     function getQueueWithdrawalsArgs()
@@ -192,7 +206,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
-                // @todo - test this
                 if (_nodesShares[i] > _minNodeShares) {
                     uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
                     uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares
@@ -281,6 +294,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         return false;
     }
 
+    /// @notice Completes queued withdrawals
+    /// @dev Completes the queued withdrawals in a batch
     function completeQueuedWithdrawals() external onlyRole(KEEPER_ROLE) {
         uint256 _completedId = _ids.completed;
         uint256 _queuedId = batch[_completedId];
@@ -307,7 +322,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         _ids.completed = _completedId;
     }
 
-    // @note -- must be called immediately after `completeQueuedWithdrawals` so that the shares value does't change
+    /// @notice Processes principal withdrawals
+    /// @dev Must be called immediately after `completeQueuedWithdrawals` so that the shares value does't change
     function processPrincipalWithdrawals() external onlyRole(KEEPER_ROLE) {
         uint256 _completedId = _ids.completed;
         uint256 _processedId = _ids.processed;
@@ -361,6 +377,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     //
     // management functions
     //
+
+    /// @notice Updates the minimum pending withdrawal request amount
+    /// @param _minPendingWithdrawalRequestAmount The new minimum pending withdrawal request amount
     function updateMinPendingWithdrawalRequestAmount(
         uint256 _minPendingWithdrawalRequestAmount
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
