@@ -92,8 +92,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         _grantRole(KEEPER_ROLE, _keeper);
         
         minPendingWithdrawalRequestAmount = 0.1 ether;
-
-        // @todo - consider initializing `totalQueuedWithdrawals` or wait till all current withdrawals are processed
     }
 
     //

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity 0.8.24;
 
-import {WithdrawalsProcessor} from "../../../src/ynEIGEN/withdrawalsProcessor.sol";
-
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 import {IWithdrawalsProcessor} from "../../../src/interfaces/IWithdrawalsProcessor.sol";
+
+import {WithdrawalsProcessor} from "../../../src/ynEIGEN/withdrawalsProcessor.sol";
 
 import "./ynEigenIntegrationBaseTest.sol";
 
@@ -14,16 +14,16 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
     bool private _setup = true;
 
-    address public constant user = address(0x42069);
-    address public constant owner = address(0x42069420);
-    address public constant keeper = address(0x4206942069);
-
     ITokenStakingNode public tokenStakingNode;
     IWithdrawalsProcessor public withdrawalsProcessor;
 
     IStrategy private _stethStrategy;
     IStrategy private _oethStrategy;
     IStrategy private _sfrxethStrategy;
+
+    address public constant user = address(0x42069);
+    address public constant owner = address(0x42069420);
+    address public constant keeper = address(0x4206942069);
 
     function setUp() public virtual override {
         super.setUp();
