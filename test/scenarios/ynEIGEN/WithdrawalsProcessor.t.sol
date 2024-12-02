@@ -9,7 +9,7 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 import {IWithdrawalsProcessor} from "../../../src/interfaces/IWithdrawalsProcessor.sol";
 
-import {WithdrawalsProcessor} from "../../../src/ynEIGEN/withdrawalsProcessor.sol";
+import {WithdrawalsProcessor} from "../../../src/ynEIGEN/WithdrawalsProcessor.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
 

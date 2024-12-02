@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 import {IWithdrawalsProcessor} from "../../../src/interfaces/IWithdrawalsProcessor.sol";
 
-import {WithdrawalsProcessor} from "../../../src/ynEIGEN/withdrawalsProcessor.sol";
+import {WithdrawalsProcessor} from "../../../src/ynEIGEN/WithdrawalsProcessor.sol";
 
 import "./ynEigenIntegrationBaseTest.sol";
 

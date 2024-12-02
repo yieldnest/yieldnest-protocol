@@ -146,7 +146,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     }
 
     /// @notice Gets the total pending withdrawal requests
-    /// @return The total pending withdrawal requests
+    /// @return _pendingWithdrawalRequests The total pending withdrawal requests
     function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
         _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
             - redemptionAssetsVault.availableRedemptionAssets();
