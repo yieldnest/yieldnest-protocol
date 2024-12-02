@@ -23,3 +23,6 @@ single_line_statement_blocks = "single"
 multiline_func_header = "params_first"
 contract_new_lines = true
 number_underscore = "thousands"
+
+[fuzz]
+seed = "420"
