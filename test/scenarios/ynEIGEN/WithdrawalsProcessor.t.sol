@@ -85,9 +85,11 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
     }
 
     function testSatisfyAllWithdrawals(
-        uint256 _amount
+        /* uint256 _amount */
     ) public {
         if (_isOngoingWithdrawals()) return;
+
+        uint256 _amount = 10 ether;
         if (_setup) setup_(_amount);
 
         // queue withdrawals until `shouldQueueWithdrawals() == false`
