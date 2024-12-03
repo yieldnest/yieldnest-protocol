@@ -247,8 +247,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     // processPrincipalWithdrawals
     //
     function testProcessPrincipalWithdrawals(
-        uint256 _amount
+        /* uint256 _amount */
     ) public {
+        uint256 _amount = 10 ether;
         testCompleteQueuedWithdrawals(_amount);
 
         // process principal withdrawals -- steth
@@ -283,9 +284,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     // claimWithdrawal
     //
     function testClaimWithdrawal(
-        uint256 _amount
+        /* uint256 _amount */
     ) public {
-        testProcessPrincipalWithdrawals(_amount);
+        uint256 _amount = 10 ether;
+        testProcessPrincipalWithdrawals();
 
         uint256 _userStethBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user);
         uint256 _userOethBalanceBefore = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user);
