@@ -46,10 +46,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     IDelegationManager public immutable delegationManager;
 
     // assets
-    IERC20 private constant STETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    IwstETH private constant WSTETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-    IERC4626 private constant WOETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
-    IERC20 private constant OETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
+    IERC20 private immutable STETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+    IwstETH private immutable WSTETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
+    IERC20 private immutable OETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
+    IERC4626 private immutable WOETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
 
     // used to prevent rounding errors
     uint256 private constant MIN_DELTA = 1000;
@@ -68,7 +68,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         address _delegationManager,
         address _yneigen,
         address _redemptionAssetsVault,
-        address _wrapper
+        address _wrapper,
+        address _steth,
+        address _wsteth,
+        address _oeth,
+        address _woeth
     ) {
         if (
             _withdrawalQueueManager == address(0) || _tokenStakingNodesManager == address(0)
@@ -84,6 +88,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         yneigen = IynEigen(_yneigen);
         redemptionAssetsVault = IRedemptionAssetsVault(_redemptionAssetsVault);
         wrapper = IWrapper(_wrapper);
+
+        STETH = IERC20(_steth);
+        WSTETH = IwstETH(_wsteth);
+        OETH = IERC20(_oeth);
+        WOETH = IERC4626(_woeth);
     }
 
     function initialize(address _owner, address _keeper) public initializer {

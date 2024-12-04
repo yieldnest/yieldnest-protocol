@@ -14,10 +14,12 @@ import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
 
 import {YnEigenDeployer} from "./YnEigenDeployer.s.sol";
 
+import {console} from "lib/forge-std/src/console.sol";
+
 // ---- Usage ----
 
 // deploy:
-// forge script script/DeployWithdrawalsProcessor.s.sol:DeployWithdrawalsProcessor --verify --slow --legacy --etherscan-api-key $KEY --rpc-url $RPC_URL --broadcast
+// forge script script/ynEigen/DeployWithdrawalsProcessor.s.sol:DeployWithdrawalsProcessor --verify --slow --legacy --etherscan-api-key $KEY --rpc-url $RPC_URL --broadcast
 
 contract DeployWithdrawalsProcessor is YnEigenDeployer {
 
@@ -38,8 +40,9 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
         }
 
         // deploy withdrawalsProcessor
+        WithdrawalsProcessor withdrawalsProcessor;
         {
-            WithdrawalsProcessor withdrawalsProcessor = new WithdrawalsProcessor(
+            withdrawalsProcessor = new WithdrawalsProcessor(
                 chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS, // address(withdrawalQueueManager)
                 chainAddresses.ynEigen.TOKEN_STAKING_NODES_MANAGER_ADDRESS, // address(tokenStakingNodesManager)
                 chainAddresses.ynEigen.ASSET_REGISTRY_ADDRESS, // address(assetRegistry)
@@ -47,7 +50,11 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
                 chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS, // address(delegationManager)
                 chainAddresses.ynEigen.YNEIGEN_ADDRESS, // address(yneigen)
                 chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS, // address(redemptionAssetsVault)
-                chainAddresses.ynEigen.WRAPPER // address(wrapper)
+                chainAddresses.ynEigen.WRAPPER, // address(wrapper)
+                chainAddresses.lsd.STETH_ADDRESS,
+                chainAddresses.lsd.WSTETH_ADDRESS,
+                chainAddresses.lsd.OETH_ADDRESS,
+                chainAddresses.lsd.WOETH_ADDRESS
             );
 
             withdrawalsProcessor = WithdrawalsProcessor(
@@ -61,21 +68,27 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
         }
 
-        // @todo - queue manually?
-        // // grant roles to withdrawalsProcessor
-        // {
-        //     vm.startPrank(actors.wallets.YNSecurityCouncil);
-        //     eigenStrategyManager.grantRole(
-        //         eigenStrategyManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor)
-        //     );
-        //     eigenStrategyManager.grantRole(
-        //         eigenStrategyManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor)
-        //     );
-        //     withdrawalQueueManager.grantRole(
-        //         withdrawalQueueManager.REQUEST_FINALIZER_ROLE(), address(withdrawalsProcessor)
-        //     );
-        //     vm.stopPrank();
-        // }
+        // grant roles to withdrawalsProcessor
+        {
+            // vm.startPrank(actors.wallets.YNSecurityCouncil);
+            // eigenStrategyManager.grantRole(
+            //     eigenStrategyManager.STAKING_NODES_WITHDRAWER_ROLE(), address(withdrawalsProcessor)
+            // );
+            // eigenStrategyManager.grantRole(
+            //     eigenStrategyManager.WITHDRAWAL_MANAGER_ROLE(), address(withdrawalsProcessor)
+            // );
+            // withdrawalQueueManager.grantRole(
+            //     withdrawalQueueManager.REQUEST_FINALIZER_ROLE(), address(withdrawalsProcessor)
+            // );
+            // vm.stopPrank();
+            console.log("----------------------------------");
+            console.log("Grant roles to WithdrawalsProcessor:");
+            console.log("YNSecurityCouncil: ", actors.wallets.YNSecurityCouncil);
+            console.log("WithdrawalsProcessor: ", address(withdrawalsProcessor));
+            console.log("EigenStrategyManager: ", chainAddresses.ynEigen.EIGEN_STRATEGY_MANAGER_ADDRESS);
+            console.log("withdrawalQueueManager: ", chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
+            console.log("----------------------------------");
+        }
     }
 
     function _isOngoingWithdrawals() private returns (bool) {
@@ -90,7 +103,11 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
                             _assets[i]
                         )
                     ) > 0
-                ) return true;
+                ) {
+                    console.log("Ongoing withdrawals - asset: ", address(_assets[i]));
+                    console.log("Ongoing withdrawals - node: ", address(_nodes[j]));
+                    return true;
+                }
             }
         }
         return false;

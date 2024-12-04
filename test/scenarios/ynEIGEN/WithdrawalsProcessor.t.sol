@@ -49,7 +49,11 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                 address(delegationManager),
                 address(yneigen),
                 address(redemptionAssetsVault),
-                address(wrapper)
+                address(wrapper),
+                chainAddresses.lsd.STETH_ADDRESS,
+                chainAddresses.lsd.WSTETH_ADDRESS,
+                chainAddresses.lsd.OETH_ADDRESS,
+                chainAddresses.lsd.WOETH_ADDRESS
             );
 
             withdrawalsProcessor = WithdrawalsProcessor(

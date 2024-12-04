@@ -58,7 +58,11 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
                 address(eigenLayer.delegationManager),
                 address(ynEigenToken),
                 address(redemptionAssetsVault),
-                address(wrapper)
+                address(wrapper),
+                chainAddresses.lsd.STETH_ADDRESS,
+                chainAddresses.lsd.WSTETH_ADDRESS,
+                chainAddresses.lsd.OETH_ADDRESS,
+                chainAddresses.lsd.WOETH_ADDRESS
             );
 
             withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
