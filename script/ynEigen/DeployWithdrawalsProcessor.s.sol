@@ -88,6 +88,14 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
             console.log("EigenStrategyManager: ", chainAddresses.ynEigen.EIGEN_STRATEGY_MANAGER_ADDRESS);
             console.log("withdrawalQueueManager: ", chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
             console.log("----------------------------------");
+
+            // ----------------------------------
+            // Grant roles to WithdrawalsProcessor:
+            // YNSecurityCouncil:  0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913
+            // WithdrawalsProcessor:  0xA1C5E681D143377F78eF727db73Deaa70EE4441f
+            // EigenStrategyManager:  0xA0a11A9b84bf87c0323bc183715a22eC7881B7FC
+            // withdrawalQueueManager:  0xaF8052DC454318D52A4478a91aCa14305590389f
+            // ----------------------------------
         }
     }
 
