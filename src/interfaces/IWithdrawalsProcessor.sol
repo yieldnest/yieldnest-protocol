@@ -74,6 +74,7 @@ interface IWithdrawalsProcessor {
     error NoQueuedWithdrawals();
     error NothingToProcess();
     error SanityCheck();
+    error CurrentRedemptionAssetsSufficient();
 
     //
     // Events

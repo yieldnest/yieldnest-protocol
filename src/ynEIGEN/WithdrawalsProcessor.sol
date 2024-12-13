@@ -125,8 +125,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @notice Checks if withdrawals should be queued
     /// @return True if withdrawals should be queued, false otherwise
     function shouldQueueWithdrawals() external view returns (bool) {
-        return withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
-            - redemptionAssetsVault.availableRedemptionAssets() > minPendingWithdrawalRequestAmount;
+        uint256 _pendingUnqueudRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
+        uint256 _availableRedemptionAssets = redemptionAssetsVault.availableRedemptionAssets();
+        if (_availableRedemptionAssets >= _pendingUnqueudRequests) return false;
+        return _pendingUnqueudRequests - _availableRedemptionAssets > minPendingWithdrawalRequestAmount;
     }
 
     /// @notice Checks if queued withdrawals should be completed
@@ -150,15 +152,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     /// @notice Checks if principal withdrawals should be processed
     /// @return True if principal withdrawals should be processed, false otherwise
-    function shouldProcessPrincipalWithdrawals() public returns (bool) {
+    function shouldProcessPrincipalWithdrawals() public view returns (bool) {
         return _ids.completed != _ids.processed;
     }
 
     /// @notice Gets the total pending withdrawal requests
     /// @return _pendingWithdrawalRequests The total pending withdrawal requests
     function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
-        _pendingWithdrawalRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals
-            - redemptionAssetsVault.availableRedemptionAssets();
+        uint256 _pendingUnqueudRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
+        uint256 _availableRedemptionAssets = redemptionAssetsVault.availableRedemptionAssets();
+        if (_availableRedemptionAssets >= _pendingUnqueudRequests) revert CurrentRedemptionAssetsSufficient();
+        _pendingWithdrawalRequests = _pendingUnqueudRequests - _availableRedemptionAssets;
         if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
     }
 
