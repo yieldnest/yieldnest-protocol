@@ -125,10 +125,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @notice Checks if withdrawals should be queued
     /// @return True if withdrawals should be queued, false otherwise
     function shouldQueueWithdrawals() external view returns (bool) {
-        uint256 _pendingUnqueudRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
+        uint256 _pendingUnqueuedRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
         uint256 _availableRedemptionAssets = redemptionAssetsVault.availableRedemptionAssets();
-        if (_availableRedemptionAssets >= _pendingUnqueudRequests) return false;
-        return _pendingUnqueudRequests - _availableRedemptionAssets > minPendingWithdrawalRequestAmount;
+        if (_availableRedemptionAssets >= _pendingUnqueuedRequests) return false;
+        return _pendingUnqueuedRequests - _availableRedemptionAssets > minPendingWithdrawalRequestAmount;
     }
 
     /// @notice Checks if queued withdrawals should be completed
