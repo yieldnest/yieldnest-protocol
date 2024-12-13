@@ -152,7 +152,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     /// @notice Checks if principal withdrawals should be processed
     /// @return True if principal withdrawals should be processed, false otherwise
-    function shouldProcessPrincipalWithdrawals() public view returns (bool) {
+    function shouldProcessPrincipalWithdrawals() external view returns (bool) {
         return _ids.completed != _ids.processed;
     }
 
