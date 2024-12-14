@@ -46,13 +46,13 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     IDelegationManager public immutable delegationManager;
 
     // assets
-    IERC20 private immutable STETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    IwstETH private immutable WSTETH = IwstETH(0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0);
-    IERC20 private immutable OETH = IERC20(0x856c4Efb76C1D1AE02e20CEB03A2A6a08b0b8dC3);
-    IERC4626 private immutable WOETH = IERC4626(0xDcEe70654261AF21C44c093C300eD3Bb97b78192);
+    IERC20 public immutable STETH;
+    IwstETH public immutable WSTETH;
+    IERC20 public immutable OETH;
+    IERC4626 public immutable WOETH;
 
     // used to prevent rounding errors
-    uint256 private constant MIN_DELTA = 1000;
+    uint256 public constant MIN_DELTA = 1000;
 
     // roles
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
