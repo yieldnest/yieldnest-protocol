@@ -42,30 +42,30 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
         // deploy withdrawalsProcessor
         WithdrawalsProcessor withdrawalsProcessor;
         {
-            // withdrawalsProcessor = new WithdrawalsProcessor(
-            //     chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS, // address(withdrawalQueueManager)
-            //     chainAddresses.ynEigen.TOKEN_STAKING_NODES_MANAGER_ADDRESS, // address(tokenStakingNodesManager)
-            //     chainAddresses.ynEigen.ASSET_REGISTRY_ADDRESS, // address(assetRegistry)
-            //     chainAddresses.ynEigen.EIGEN_STRATEGY_MANAGER_ADDRESS, // address(eigenStrategyManager)
-            //     chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS, // address(delegationManager)
-            //     chainAddresses.ynEigen.YNEIGEN_ADDRESS, // address(yneigen)
-            //     chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS, // address(redemptionAssetsVault)
-            //     chainAddresses.ynEigen.WRAPPER, // address(wrapper)
-            //     chainAddresses.lsd.STETH_ADDRESS,
-            //     chainAddresses.lsd.WSTETH_ADDRESS,
-            //     chainAddresses.lsd.OETH_ADDRESS,
-            //     chainAddresses.lsd.WOETH_ADDRESS
-            // );
+            withdrawalsProcessor = new WithdrawalsProcessor(
+                chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS, // address(withdrawalQueueManager)
+                chainAddresses.ynEigen.TOKEN_STAKING_NODES_MANAGER_ADDRESS, // address(tokenStakingNodesManager)
+                chainAddresses.ynEigen.ASSET_REGISTRY_ADDRESS, // address(assetRegistry)
+                chainAddresses.ynEigen.EIGEN_STRATEGY_MANAGER_ADDRESS, // address(eigenStrategyManager)
+                chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS, // address(delegationManager)
+                chainAddresses.ynEigen.YNEIGEN_ADDRESS, // address(yneigen)
+                chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS, // address(redemptionAssetsVault)
+                chainAddresses.ynEigen.WRAPPER, // address(wrapper)
+                chainAddresses.lsd.STETH_ADDRESS,
+                chainAddresses.lsd.WSTETH_ADDRESS,
+                chainAddresses.lsd.OETH_ADDRESS,
+                chainAddresses.lsd.WOETH_ADDRESS
+            );
 
-            // withdrawalsProcessor = WithdrawalsProcessor(
-            //     address(
-            //         new TransparentUpgradeableProxy(
-            //             address(withdrawalsProcessor), chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS, ""
-            //         )
-            //     )
-            // );
+            withdrawalsProcessor = WithdrawalsProcessor(
+                address(
+                    new TransparentUpgradeableProxy(
+                        address(withdrawalsProcessor), chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS, ""
+                    )
+                )
+            );
 
-            // WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
         }
 
         // grant roles to withdrawalsProcessor
@@ -81,14 +81,15 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
             //     withdrawalQueueManager.REQUEST_FINALIZER_ROLE(), address(withdrawalsProcessor)
             // );
             // vm.stopPrank();
-            // console.log("----------------------------------");
-            // console.log("Grant roles to WithdrawalsProcessor:");
-            // console.log("YNSecurityCouncil: ", actors.wallets.YNSecurityCouncil);
-            // console.log("WithdrawalsProcessor: ", address(withdrawalsProcessor));
-            // console.log("EigenStrategyManager: ", chainAddresses.ynEigen.EIGEN_STRATEGY_MANAGER_ADDRESS);
-            // console.log("withdrawalQueueManager: ", chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
-            // console.log("----------------------------------");
+            console.log("----------------------------------");
+            console.log("Grant roles to WithdrawalsProcessor:");
+            console.log("YNSecurityCouncil: ", actors.wallets.YNSecurityCouncil);
+            console.log("WithdrawalsProcessor: ", address(withdrawalsProcessor));
+            console.log("EigenStrategyManager: ", chainAddresses.ynEigen.EIGEN_STRATEGY_MANAGER_ADDRESS);
+            console.log("withdrawalQueueManager: ", chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
+            console.log("----------------------------------");
 
+            // HOLESKY
             // ----------------------------------
             // Grant roles to WithdrawalsProcessor:
             // YNSecurityCouncil:  0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913
@@ -99,6 +100,23 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
 
             // ----------------------------------
             // WithdrawalsProcessor:  0xdDb2282f56A7355DD904E7d1074980d69A6bAFd3 -- V2
+            // ----------------------------------
+
+            // ----------------------------------
+            // Grant roles to WithdrawalsProcessor:
+            // YNSecurityCouncil:  0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913
+            // WithdrawalsProcessor:  0x6eceD9B156C3747bc3A94BCD20D94265d904842e  -- new proxy
+            // EigenStrategyManager:  0xA0a11A9b84bf87c0323bc183715a22eC7881B7FC
+            // withdrawalQueueManager:  0xaF8052DC454318D52A4478a91aCa14305590389f
+            // ----------------------------------
+
+            // MAINNET
+            // ----------------------------------
+            // Grant roles to WithdrawalsProcessor:
+            // YNSecurityCouncil:  0xfcad670592a3b24869C0b51a6c6FDED4F95D6975
+            // WithdrawalsProcessor:  0x57F6991f1205Ba50D0Acc30aF08555721Dc4A117
+            // EigenStrategyManager:  0x92D904019A92B0Cafce3492Abb95577C285A68fC
+            // withdrawalQueueManager:  0x8Face3283E20b19d98a7a132274B69C1304D60b4
             // ----------------------------------
         }
 
