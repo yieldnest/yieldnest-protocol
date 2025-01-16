@@ -2,8 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {console} from "lib/forge-std/src/console.sol";
-import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin-v5/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin-v5/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 

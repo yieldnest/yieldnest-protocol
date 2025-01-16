@@ -1,10 +1,10 @@
 // // SPDX-License-Identifier: BSD 3-Clause License
 // pragma solidity ^0.8.24;
 
-// import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-// import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
-// import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+// import {IERC20} from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
+// import {ITransparentUpgradeableProxy} from "@openzeppelin-v5/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+// import {UpgradeableBeacon} from "@openzeppelin-v5/contracts/proxy/beacon/UpgradeableBeacon.sol";
+// import {Ownable} from "@openzeppelin-v5/contracts/access/Ownable.sol";
 
 // import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 

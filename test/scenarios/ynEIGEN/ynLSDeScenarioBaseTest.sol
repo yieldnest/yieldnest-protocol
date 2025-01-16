@@ -5,7 +5,7 @@ import {IEigenPodManager} from "@eigenlayer/src/contracts/interfaces/IEigenPodMa
 import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategyManager} from "@eigenlayer/src/contracts/interfaces/IStrategyManager.sol";
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v5/contracts/governance/TimelockController.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ActorAddresses} from "../../../script/Actors.sol";

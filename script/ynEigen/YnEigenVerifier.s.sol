@@ -1,9 +1,9 @@
 /// SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC20} from "@openzeppelin-v5/contracts/token/ERC20/IERC20.sol";
+import {ProxyAdmin} from "@openzeppelin-v5/contracts/proxy/transparent/ProxyAdmin.sol";
+import {Strings} from "@openzeppelin-v5/contracts/utils/Strings.sol";
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 

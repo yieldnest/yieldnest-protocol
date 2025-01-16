@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v5/contracts/governance/TimelockController.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ProxyAdmin} from "@openzeppelin-v5/contracts/proxy/transparent/ProxyAdmin.sol";
 
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -34,7 +34,7 @@ import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v5/contracts/governance/TimelockController.sol";
 import {IRateProvider} from "src/interfaces/IRateProvider.sol";
 
 contract YnEigenDeployer is BaseYnEigenScript {

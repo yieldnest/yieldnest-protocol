@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
-import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TimelockController} from "@openzeppelin-v5/contracts/governance/TimelockController.sol";
+import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "@openzeppelin-v5/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
@@ -12,7 +12,7 @@ import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {ynEigen} from "src/ynEIGEN/ynEigen.sol";
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ProxyAdmin} from "@openzeppelin-v5/contracts/proxy/transparent/ProxyAdmin.sol";
 
 
 import "forge-std/console.sol";

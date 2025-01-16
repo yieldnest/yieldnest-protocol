@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {IERC20, IERC20Metadata} from "@openzeppelin-v5/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {IwstETH} from "../external/lido/IwstETH.sol";
 import {IynEigen} from "../interfaces/IynEigen.sol";
 import {IRateProvider} from "../interfaces/IRateProvider.sol";
 import {ITokenStakingNodesManager,ITokenStakingNode} from "../interfaces/ITokenStakingNodesManager.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import {IERC4626} from "@openzeppelin-v5/contracts/interfaces/IERC4626.sol";
 import {AssetRegistry} from "./AssetRegistry.sol";
 import {IEigenStrategyManager} from "../interfaces/IEigenStrategyManager.sol";
 

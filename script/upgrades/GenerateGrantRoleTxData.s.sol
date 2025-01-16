@@ -16,8 +16,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import { IwstETH } from "src/external/lido/IwstETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
-import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin-v5/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin-v5/contracts/proxy/transparent/ProxyAdmin.sol";
 import {BaseScript} from "script/BaseScript.s.sol";
 
 import { BaseYnEigenScript } from "script/ynEigen/BaseYnEigenScript.s.sol";

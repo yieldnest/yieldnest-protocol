@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause License
 pragma solidity ^0.8.24;
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {TimelockController} from "@openzeppelin-v5/contracts/governance/TimelockController.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
