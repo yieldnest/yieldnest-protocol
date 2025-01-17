@@ -1,0 +1,42 @@
+[[dependencies]]
+name = "eigenlayer"
+version = "1.0.3"
+git = "https://github.com/Layr-Labs/eigenlayer-contracts.git"
+rev = "ecaff6304de6cb0f43b42024ad55d0e8a0430790"
+
+[[dependencies]]
+name = "forge-std"
+version = "1.9.5"
+url = "https://soldeer-revisions.s3.amazonaws.com/forge-std/1_9_5_21-12-2024_15:04:05_forge-std-1.9.zip"
+checksum = "57ada736f383289db77fac4472d48f820e7c98172cf9b01681b0c37065ce043f"
+integrity = "4753ffdfa0dde40878372b6a4d8e8fd1648b190b33996896c8b92f6f1680850f"
+
+[[dependencies]]
+name = "oz"
+version = "v5"
+git = "https://github.com/openzeppelin/openzeppelin-contracts.git"
+rev = "ea736bd45bd844d7968a64c5707d97710fe1c077"
+
+[[dependencies]]
+name = "oz-eigenlayer"
+version = "v4"
+git = "https://github.com/openzeppelin/openzeppelin-contracts.git"
+rev = "dc44c9f1a4c3b10af99492eed84f83ed244203f6"
+
+[[dependencies]]
+name = "oz-upgradeable"
+version = "v5"
+git = "https://github.com/openzeppelin/openzeppelin-contracts-upgradeable.git"
+rev = "67f0ee6b406638ef19b4935eeaa59d43b1f1fe4f"
+
+[[dependencies]]
+name = "oz-upgradeable-eigenlayer"
+version = "v4"
+git = "https://github.com/openzeppelin/openzeppelin-contracts-upgradeable.git"
+rev = "2d081f24cac1a867f6f73d512f2022e1fa987854"
+
+[[dependencies]]
+name = "safe-smart-accounts"
+version = "v1.4"
+git = "https://github.com/safe-global/safe-smart-account.git"
+rev = "2a599c423f772c4d404be9adbe270a28f4ee722a"

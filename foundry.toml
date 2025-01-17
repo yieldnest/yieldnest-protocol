@@ -1,7 +1,7 @@
 [profile.default]
 src = 'src'
 out = 'out'
-libs = ['lib']
+libs = ["dependencies"]
 test = 'test'
 cache_path = 'cache'
 
@@ -26,3 +26,16 @@ number_underscore = "thousands"
 
 [fuzz]
 seed = "420"
+
+# Remove soldeer.lock ; double-check `rev=`
+[dependencies]
+forge-std = "1"
+
+eigenlayer = { version = "1.0.3", git = "https://github.com/Layr-Labs/eigenlayer-contracts.git", rev = "ecaff6304de6cb0f43b42024ad55d0e8a0430790" }
+safe-smart-accounts = { version = "v1.4", git = "https://github.com/safe-global/safe-smart-account.git", rev = "2a599c423f772c4d404be9adbe270a28f4ee722a" }
+
+oz = { version = "v5", git = "https://github.com/openzeppelin/openzeppelin-contracts.git", rev = "ea736bd45bd844d7968a64c5707d97710fe1c077" }
+oz-upgradeable = { version = "v5", git = "https://github.com/openzeppelin/openzeppelin-contracts-upgradeable.git", rev = "67f0ee6b406638ef19b4935eeaa59d43b1f1fe4f" }
+
+oz-eigenlayer = { version = "v4", git = "https://github.com/openzeppelin/openzeppelin-contracts.git", rev = "dc44c9f1a4c3b10af99492eed84f83ed244203f6" }
+oz-upgradeable-eigenlayer = { version = "v4", git = "https://github.com/openzeppelin/openzeppelin-contracts-upgradeable.git", rev = "2d081f24cac1a867f6f73d512f2022e1fa987854" }
