@@ -14,6 +14,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
+import {IERC20 as IERC20V4 } from "@openzeppelin-eigenlayer-v4/contracts/token/ERC20/IERC20.sol";
 
 interface StakingNodeEvents {
      event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
@@ -327,7 +328,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 totalWithdrawalAmount = 0;
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
-        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
 
             // Set receiveAsTokens to true to receive ETH when completeQueuedWithdrawals runs.
@@ -339,7 +340,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
-            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
+            tokens[i] = new IERC20V4[](withdrawals[i].strategies.length);
 
             for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
                 totalWithdrawalAmount += withdrawals[i].shares[j];
