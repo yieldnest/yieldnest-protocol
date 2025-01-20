@@ -5,6 +5,8 @@ import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/pr
 import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon.sol";
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20 as IERC20V4} from "@openzeppelin-eigenlayer-v4/contracts/token/ERC20/IERC20.sol";
+
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
@@ -117,7 +119,7 @@ contract TokenStakingNode is
 
             uint256 eigenShares = strategyManager.depositIntoStrategy(
                 IStrategy(strategy),
-                asset,
+                IERC20V4(address(asset)),
                 amount
             );
             emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
@@ -198,15 +200,17 @@ contract TokenStakingNode is
             });
         }
 
-        IERC20 _token = _strategy.underlyingToken();
+        IERC20 _token = IERC20(address(_strategy.underlyingToken()));
         uint256 _balanceBefore = _token.balanceOf(address(this));
 
         {
             bool[] memory _receiveAsTokens = new bool[](1);
             _receiveAsTokens[0] = true;
-            IERC20[][] memory _tokens = new IERC20[][](1);
-            _tokens[0] = new IERC20[](1);
-            _tokens[0][0] = _token;
+
+
+            IERC20V4[][] memory _tokens = new IERC20V4[][](1);
+            _tokens[0] = new IERC20V4[](1);
+            _tokens[0][0] = IERC20V4(address(_token));
 
             _delegationManager.completeQueuedWithdrawals(
                 _withdrawals,
