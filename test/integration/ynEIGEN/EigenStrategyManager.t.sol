@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD 3-Clause License
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import "./ynEigenIntegrationBaseTest.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -80,7 +80,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             initialBalances[i] = assetsToDeposit[i].balanceOf(address(ynEigenToken));
         }
 
-        uint256 totalAssetsBefore = ynEigenToken.totalAssets();       
+        uint256 totalAssetsBefore = ynEigenToken.totalAssets();
 
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), assetsToDeposit, amounts);
@@ -96,7 +96,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             uint256 expectedUserUnderlyingView = initialBalance;
             if (address(assetsToDeposit[i]) == chainAddresses.lsd.WSTETH_ADDRESS || address(assetsToDeposit[i]) == chainAddresses.lsd.WOETH_ADDRESS) {
 
-                // TODO: come back to this to see why the reverse operation of converting the 
+                // TODO: come back to this to see why the reverse operation of converting the
                 // userUnderlyingView to the wrapped asset using the Rate Provider does not give the same result
 
                 //expectedUserUnderlyingView = expectedUserUnderlyingView * wrappedAssetRate / 1e18;
@@ -173,7 +173,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             );
         }
 
-        {     
+        {
             uint256 userUnderlyingViewNode1 = eigenStrategyManager.strategies(assets2[0]).userUnderlyingView(address(tokenStakingNodesManager.nodes(1)));
             IERC4626 woETH = IERC4626(chainAddresses.lsd.WOETH_ADDRESS);
             uint256 woETHAmountNode1 =  woETH.previewDeposit(userUnderlyingViewNode1);
@@ -217,7 +217,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
     }
 
     function testAddStrategyTwice() public {
-        IERC20 existingAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS); 
+        IERC20 existingAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy existingStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
         // Setup: Add a strategy initially
