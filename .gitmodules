@@ -14,3 +14,7 @@
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
 	commit = dbb6104ce834628e473d2173bbc9d47f81a9eec3
+[submodule "lib/eigenlayer-contracts"]
+	path = lib/eigenlayer-contracts
+	url = https://github.com/yieldnest/eigenlayer-contracts
+	branch = oz-4-remapping
