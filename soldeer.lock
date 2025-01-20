@@ -2,7 +2,7 @@
 name = "eigenlayer"
 version = "1.0.3"
 git = "https://github.com/Layr-Labs/eigenlayer-contracts.git"
-rev = "ecaff6304de6cb0f43b42024ad55d0e8a0430790"
+rev = "44ece6d81ae87fddee8fd15c5b5e04fcee22143c"
 
 [[dependencies]]
 name = "forge-std"

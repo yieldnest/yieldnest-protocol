@@ -13,7 +13,7 @@ fs_permissions = [
 optimizer = true
 optimizer-runs = 200
 evm_version = "cancun"
-solc_version = "0.8.24"
+solc_version = "0.8.27"
 prompt_timeout = 120
 
 ignored_error_codes = [5159, 2018, 5574, 3860]
@@ -31,7 +31,7 @@ seed = "420"
 [dependencies]
 forge-std = "1"
 
-eigenlayer = { version = "1.0.3", git = "https://github.com/Layr-Labs/eigenlayer-contracts.git", rev = "ecaff6304de6cb0f43b42024ad55d0e8a0430790" }
+eigenlayer = { version = "1.0.3", git = "https://github.com/Layr-Labs/eigenlayer-contracts.git", rev = "44ece6d81ae87fddee8fd15c5b5e04fcee22143c" }
 safe-smart-accounts = { version = "v1.4", git = "https://github.com/safe-global/safe-smart-account.git", rev = "2a599c423f772c4d404be9adbe270a28f4ee722a" }
 
 oz = { version = "v5", git = "https://github.com/openzeppelin/openzeppelin-contracts.git", rev = "ea736bd45bd844d7968a64c5707d97710fe1c077" }
