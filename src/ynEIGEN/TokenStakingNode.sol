@@ -10,7 +10,7 @@ import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/
 import {ArrayLib} from "src/lib/ArrayLib.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
@@ -143,8 +143,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         _strategiesArray[0] = _strategy;
         uint256[] memory _sharesArray = new uint256[](1);
         _sharesArray[0] = _shares;
-        IDelegationManager.QueuedWithdrawalParams[] memory _params = new IDelegationManager.QueuedWithdrawalParams[](1);
-        _params[0] = IDelegationManager.QueuedWithdrawalParams({
+        IDelegationManagerTypes.QueuedWithdrawalParams[] memory _params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
+        _params[0] = IDelegationManagerTypes.QueuedWithdrawalParams({
             strategies: _strategiesArray,
             shares: _sharesArray,
             withdrawer: address(this)
