@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD 3-Clause License
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import {ynEigenIntegrationBaseTest} from "test/integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
@@ -55,17 +55,17 @@ contract NodeStateSnapshot {
         ITokenStakingNode node = state.tokenStakingNodesManager().nodes(nodeId);
 
         snapshot.totalAssets = state.ynEigenToken().totalAssets();
-        snapshot.totalSupply = state.ynEigenToken().totalSupply();  
+        snapshot.totalSupply = state.ynEigenToken().totalSupply();
 
         IERC20[] memory assets = state.assetRegistry().getAssets();
 
         for (uint256 i = 0; i < assets.length; i++) {
             IERC20 asset = assets[i];
             IStrategy strategy = state.eigenStrategyManager().strategies(asset);
-            
+
             // Store queued shares for each strategy
             snapshot.strategyQueuedShares[strategy] = node.queuedShares(strategy);
-            
+
             // Store withdrawn amount for each token
             snapshot.withdrawnByToken[address(asset)] = node.withdrawn(asset);
 
@@ -74,7 +74,7 @@ contract NodeStateSnapshot {
                 = state.eigenStrategyManager().getStakedAssetBalanceForNode(asset, nodeId);
 
             // Store strategy shares for each token
-            snapshot.strategySharesForNode[address(asset)] = 
+            snapshot.strategySharesForNode[address(asset)] =
                 state.eigenStrategyManager().strategyManager().stakerStrategyShares(address(node), strategy);
         }
     }
@@ -118,7 +118,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 	}
-	
+
 	function testNodeIdView() public {
 		uint256 _nodeId = tokenStakingNode.nodeId();
 		assertEq(_nodeId, 0);
@@ -137,7 +137,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
      ) public {
         vm.assume(
             wstethAmount < 10000 ether && wstethAmount >= 2 wei
-        ); 
+        );
 
 		// 1. Obtain wstETH and Deposit assets to ynEigen by User
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
@@ -160,7 +160,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         //     compareWithThreshold(deposits[0], expectedStETHAmount, 2),
         //     "Strategy user underlying view does not match expected stETH amount within threshold"
         // );
-  
+
         uint256 treshold = wstethAmount / 1e17 + 3;
 		uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
 		assertTrue(
@@ -372,7 +372,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
 contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
-    
+
 	function testTokenStakingNodeDelegate() public {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
@@ -392,7 +392,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 __deprecated_earningsReceiver: operatorAddress, // deprecated
                 delegationApprover: address(0),
                 stakerOptOutWindowBlocks: 1
-            }), 
+            }),
             "ipfs://some-ipfs-hash"
         );
 
@@ -410,7 +410,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
-        
+
         // Unpause delegation manager to allow delegation
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
@@ -426,10 +426,10 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 __deprecated_earningsReceiver: operatorAddress,
                 delegationApprover: address(0),
                 stakerOptOutWindowBlocks: 1
-            }), 
+            }),
             "ipfs://some-ipfs-hash"
         );
-				
+
         ISignatureUtils.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
 
@@ -443,14 +443,13 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 stakerStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
         assertEq(stakerStrategyListLength, 0, "Staker strategy list length should be 0.");
-        
+
         // Now actually undelegate with the correct role
 		vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.undelegate();
-        
+
         // Verify undelegation
         address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
     }
 }
-
