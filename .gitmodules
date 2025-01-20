@@ -2,18 +2,10 @@
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
 	commit = 2f112697506eab12d433a65fdc31a639548fe365
-[submodule "lib/openzeppelin-contracts-upgradeable"]
-	path = lib/openzeppelin-contracts-upgradeable
-	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
-	commit = 22489db15621b9a42ebddb1facade6962034e9b9
 [submodule "lib/safe-smart-account"]
 	path = lib/safe-smart-account
 	url = https://github.com/safe-global/safe-smart-account
 	branch = v1.4.1 
-[submodule "lib/openzeppelin-contracts"]
-	path = lib/openzeppelin-contracts
-	url = https://github.com/openzeppelin/openzeppelin-contracts
-	commit = dbb6104ce834628e473d2173bbc9d47f81a9eec3
 [submodule "lib/eigenlayer-contracts"]
 	path = lib/eigenlayer-contracts
 	url = https://github.com/yieldnest/eigenlayer-contracts
