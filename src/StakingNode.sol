@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
-import {IDelegationManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
@@ -12,7 +12,7 @@ import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+import {IERC20} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
@@ -284,7 +284,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
-        IDelegationManager.QueuedWithdrawalParams[] memory params = new IDelegationManager.QueuedWithdrawalParams[](1);
+        IDelegationManagerTypes.QueuedWithdrawalParams[] memory params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
         IStrategy[] memory strategies = new IStrategy[](1);
 
         // Assumption: 1 Share of beaconChainETHStrategy = 1 ETH.
@@ -293,10 +293,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         strategies[0] = beaconChainETHStrategy;
         shares[0] = sharesAmount;
         // The delegationManager requires the withdrawer == msg.sender (the StakingNode in this case).
-        params[0] = IDelegationManager.QueuedWithdrawalParams({
+        params[0] = IDelegationManagerTypes.QueuedWithdrawalParams({
             strategies: strategies,
-            shares: shares,
-            withdrawer: address(this)
+            depositShares: shares,
+            __deprecated_withdrawer: address(this)
         });
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
@@ -341,8 +341,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // but does not need actual values in the case of the beaconChainETHStrategy
             tokens[i] = new IERC20[](withdrawals[i].strategies.length);
 
-            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
-                totalWithdrawalAmount += withdrawals[i].shares[j];
+            for (uint256 j = 0; j < withdrawals[i].scaledShares.length; j++) {
+                totalWithdrawalAmount += withdrawals[i].scaledShares[j];
             }
         }
 
@@ -356,7 +356,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 2. For beaconChainETHStrategy, the DelegationManager calls _withdrawSharesAsTokens interacts with the EigenPodManager.withdrawSharesAsTokens
         // 3. Finally, the EigenPodManager calls withdrawRestakedBeaconChainETH on the EigenPod of this StakingNode to finalize the withdrawal.
         // 4. the EigenPod decrements withdrawableRestakedExecutionLayerGwei and send the ETH to address(this)
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, receiveAsTokens);
 
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
@@ -418,7 +418,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 4. podOwnerShares: Active shares in Eigenlayer, representing staked ETH
         int256 totalETHBalance =
             int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount)
-            + eigenPodManager.podOwnerShares(address(this));
+            + eigenPodManager.podOwnerDepositShares(address(this));
 
         if (totalETHBalance < 0) {
             return 0;
