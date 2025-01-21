@@ -6,6 +6,7 @@ import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon
 import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20 as IERC20V4} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ArrayLib} from "src/lib/ArrayLib.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
@@ -114,7 +115,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
             asset.forceApprove(address(strategyManager), amount);
 
-            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), IERC20V4(address(asset)), amount);
             emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
         }
     }
@@ -146,8 +147,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IDelegationManagerTypes.QueuedWithdrawalParams[] memory _params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
         _params[0] = IDelegationManagerTypes.QueuedWithdrawalParams({
             strategies: _strategiesArray,
-            shares: _sharesArray,
-            withdrawer: address(this)
+            depositShares: _sharesArray,
+            __deprecated_withdrawer: address(this)
         });
 
         queuedShares[_strategy] += _shares;

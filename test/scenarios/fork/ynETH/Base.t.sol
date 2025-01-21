@@ -6,7 +6,7 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 import {Utils} from "script/Utils.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
@@ -327,7 +327,7 @@ contract Base is Test, Utils {
         console.log("EigenPod shares for each StakingNode:");
         for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
             IStakingNode stakingNode = stakingNodesManager.nodes(i);
-            uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
+            uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerDepositShares(address(stakingNode)));
             console.log("Node", i, "Shares:", podShares);
         }
     }
