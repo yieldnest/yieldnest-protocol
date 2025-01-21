@@ -149,9 +149,9 @@ contract M3WithdrawalsWithRewardsTest is Base {
         uint256 withdrawnAmount;
     }
 
-    function getDelegationManagerWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private view returns (IDelegationManager.Withdrawal[] memory) {
+    function getDelegationManagerWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private view returns (IDelegationManagerTypes.Withdrawal[] memory) {
         // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
+        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](queuedWithdrawals.length);
         {
             for (uint256 i = 0; i < queuedWithdrawals.length; i++) {
                 uint256[] memory _shares = new uint256[](1);
@@ -159,14 +159,14 @@ contract M3WithdrawalsWithRewardsTest is Base {
                 IStrategy[] memory _strategies = new IStrategy[](1);
                 _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
                 address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
-                _withdrawals[i] = IDelegationManager.Withdrawal({
+                _withdrawals[i] = IDelegationManagerTypes.Withdrawal({
                     staker: _stakingNode,
                     delegatedTo: delegationManager.delegatedTo(_stakingNode),
                     withdrawer: _stakingNode,
                     nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
                     startBlock: uint32(block.number),
                     strategies: _strategies,
-                    shares: _shares
+                    scaledShares: _shares
                 });   
             }
         }
@@ -176,14 +176,14 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
     function completeQueuedWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private {
         // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
+        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
         }
 
         // complete queued withdrawals
@@ -203,14 +203,14 @@ contract M3WithdrawalsWithRewardsTest is Base {
     ) public {
 
 
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
+        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
         }
 
 
@@ -630,7 +630,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         
         // Assert that the node's podOwnerShares is accumulatedRewards after completing withdrawals
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
             int256(accumulatedRewards),
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );
@@ -733,7 +733,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         );
         // Assert that the node's podOwnerShares is 0
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
             int256(0),
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );
@@ -778,7 +778,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
 
         // check podOwnerShares are now negative becaose validators were slashed after withdrawals were queued up
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
             0 - int256(totalSlashAmount),
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );

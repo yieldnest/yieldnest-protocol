@@ -12,7 +12,7 @@ import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 // import {IBeaconChainOracle} from "lib/eigenlayer-contracts/src/contracts/interfaces/IBeaconChainOracle.sol";
 // import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -214,17 +214,17 @@ contract StakingNodeTestBase is ScenarioBaseTest, ProofParsingV1 {
 
         uint256[] memory shares = new uint256[](1);
         shares[0] = withdrawalAmount;
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
             staker: address(stakingNodeInstance),
             delegatedTo: delegationManager.delegatedTo(address(stakingNodeInstance)),
             withdrawer: address(stakingNodeInstance),
             nonce: nonce,
             startBlock: uint32(block.number),
             strategies: strategies,
-            shares: shares
+            scaledShares: shares
         });
 
-        IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](1);
+        IDelegationManagerTypes.Withdrawal[] memory withdrawals = new IDelegationManagerTypes.Withdrawal[](1);
         withdrawals[0] = withdrawal;
 
         uint256[] memory middlewareTimesIndexes = new uint256[](1);
