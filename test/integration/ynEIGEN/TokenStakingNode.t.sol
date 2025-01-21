@@ -81,7 +81,7 @@ contract NodeStateSnapshot {
 
             // Store strategy shares for each token
             snapshot.strategySharesForNode[address(asset)] =
-                state.eigenStrategyManager().strategyManager().stakerStrategyShares(address(node), strategy);
+                state.eigenStrategyManager().strategyManager().stakerDepositShares(address(node), strategy); // FIXME double check
         }
     }
 
