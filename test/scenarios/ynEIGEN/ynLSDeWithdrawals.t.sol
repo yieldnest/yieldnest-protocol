@@ -156,7 +156,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
-        vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
@@ -184,7 +184,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
-        vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
@@ -211,7 +211,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
-        vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+        vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 

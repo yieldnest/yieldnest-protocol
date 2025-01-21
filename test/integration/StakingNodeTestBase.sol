@@ -29,7 +29,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         uint256 queuedShares;
         uint256 withdrawnETH;
         uint256 unverifiedStakedETH;
-        int256 podOwnerShares;
+        int256 podOwnerDepositShares;
     }
 
     function createStakingNodes(uint nodeCount) public returns (uint256[] memory) {
@@ -67,7 +67,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             queuedShares: stakingNodesManager.nodes(nodeId).getQueuedSharesAmount(),
             withdrawnETH: stakingNodesManager.nodes(nodeId).getWithdrawnETH(),
             unverifiedStakedETH: stakingNodesManager.nodes(nodeId).unverifiedStakedETH(),
-            podOwnerShares: eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))
+            podOwnerDepositShares: eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))
         });
     }
 

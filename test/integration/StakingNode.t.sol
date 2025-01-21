@@ -127,11 +127,8 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // register as operator
         vm.prank(operator);
         delegationManager.registerAsOperator(
-            IDelegationManagerTypes.OperatorDetails({
-                __deprecated_earningsReceiver: address(1), // unused
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
+            address(0), // initDelegationApprover
+            0, // allocationDelay
             "ipfs://some-ipfs-hash"
         ); 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
@@ -153,11 +150,8 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         // Register as operator and delegate
         delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: address(1),
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }), 
+            address(0), // initDelegationApprover
+            0, // allocationDelay
             "ipfs://some-ipfs-hash"
         );
         
@@ -192,11 +186,8 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         for (uint i = 0; i < operators.length; i++) {
             vm.prank(operators[i]);
             delegationManager.registerAsOperator(
-                IDelegationManager.OperatorDetails({
-                    __deprecated_earningsReceiver: address(1),
-                    delegationApprover: address(0),
-                    stakerOptOutWindowBlocks: 1
-                }), 
+                address(0), // initDelegationApprover
+                0, // allocationDelay
                 "ipfs://some-ipfs-hash"
             );
         }

@@ -75,7 +75,7 @@ contract NodeStateSnapshot {
 
             // Store strategy shares for each token
             snapshot.strategySharesForNode[address(asset)] =
-                state.eigenStrategyManager().strategyManager().stakerStrategyShares(address(node), strategy);
+                state.eigenStrategyManager().strategyManager().stakerDepositShares(address(node), strategy); // FIXME double check
         }
     }
 
@@ -306,7 +306,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = wstETHStrategy;
-            vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + 0); // eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
         }
 
         // Capture state before completing withdrawal
@@ -388,13 +388,10 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // register as operator
         vm.prank(operatorAddress);
         delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: operatorAddress, // deprecated
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }),
+            address(0), // initDelegationApprover
+            0, // allocationDelay
             "ipfs://some-ipfs-hash"
-        );
+        ); 
 
 		ISignatureUtils.SignatureWithExpiry memory signature;
 		bytes32 approverSalt;
@@ -422,13 +419,10 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Register as operator and delegate
         vm.prank(operatorAddress);
         delegationManager.registerAsOperator(
-            IDelegationManager.OperatorDetails({
-                __deprecated_earningsReceiver: operatorAddress,
-                delegationApprover: address(0),
-                stakerOptOutWindowBlocks: 1
-            }),
+            address(0), // initDelegationApprover
+            0, // allocationDelay
             "ipfs://some-ipfs-hash"
-        );
+        ); 
 
         ISignatureUtils.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
