@@ -550,7 +550,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
         
         // Assert that the node's podOwnerShares is accumulatedRewards after completing withdrawals
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
             int256(accumulatedRewards),
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );
@@ -652,7 +652,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
         );
         // Assert that the node's podOwnerShares is 0
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
             int256(0),
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );
@@ -697,7 +697,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
 
         // check podOwnerShares are now negative becaose validators were slashed after withdrawals were queued up
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId))),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
             0 - int256(totalSlashAmount),
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );

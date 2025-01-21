@@ -15,7 +15,9 @@ import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-import {IERC20} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+
+import {IERC20 as IERC20V4} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
@@ -370,7 +372,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 totalWithdrawalAmount = 0;
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
-        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
             if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
                 revert InvalidWithdrawal();
@@ -384,7 +386,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
-            tokens[i] = new IERC20[](1);
+            tokens[i] = new IERC20V4[](1);
 
             totalWithdrawalAmount += withdrawals[i].scaledShares[0];
         }
