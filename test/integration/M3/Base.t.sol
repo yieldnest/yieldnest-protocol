@@ -36,7 +36,7 @@ import "forge-std/Test.sol";
 contract Base is Test, Utils {
 
     bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-    bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
+    bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -75,7 +75,7 @@ contract Base is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
-        
+
         // Roles are granted here just for testing purposes.
         // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
         // them separately as well if needed.
@@ -149,7 +149,7 @@ contract Base is Test, Utils {
 
     function registerValidators(uint256[] memory validatorNodeIds) public {
         IStakingNodesManager.ValidatorData[] memory validatorData = new IStakingNodesManager.ValidatorData[](validatorNodeIds.length);
-        
+
         for (uint256 i = 0; i < validatorNodeIds.length; i++) {
             bytes memory publicKey = abi.encodePacked(uint256(i));
             publicKey = bytes.concat(publicKey, new bytes(ZERO_PUBLIC_KEY.length - publicKey.length));
@@ -167,7 +167,7 @@ contract Base is Test, Utils {
             bytes32 depositDataRoot = stakingNodesManager.generateDepositRoot(validatorData[i].publicKey, validatorData[i].signature, withdrawalCredentials, amount);
             validatorData[i].depositDataRoot = depositDataRoot;
         }
-        
+
         vm.prank(actors.ops.VALIDATOR_MANAGER);
         stakingNodesManager.registerValidators(validatorData);
     }
@@ -176,7 +176,7 @@ contract Base is Test, Utils {
         uint256 previousTotalAssets,
         uint256 previousTotalSupply,
         uint256[] memory previousStakingNodeBalances
-    ) public {  
+    ) public {
         assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 

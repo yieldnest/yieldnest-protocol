@@ -19,7 +19,7 @@ import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol"
 
 
 interface StakingNodesManagerEvents {
-    event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);   
+    event StakingNodeCreated(address indexed nodeAddress, address indexed podAddress);
     event ValidatorRegistered(uint256 nodeId, bytes signature, bytes pubKey, bytes32 depositRoot, bytes withdrawalCredentials);
     event MaxNodeCountUpdated(uint256 maxNodeCount);
     event ValidatorRegistrationPausedSet(bool isPaused);
@@ -32,13 +32,13 @@ interface StakingNodesManagerEvents {
 }
 
 /**
- * @notice Each node in the StakingNodesManager manages an EigenPod. 
- * An EigenPod represents a collection of validators and their associated staking activities within the EigenLayer protocol. 
+ * @notice Each node in the StakingNodesManager manages an EigenPod.
+ * An EigenPod represents a collection of validators and their associated staking activities within the EigenLayer protocol.
  * The StakingNode contract, which each node is an instance of, interacts with the EigenPod to perform various operations such as:
  * - Creating the EigenPod upon the node's initialization if it does not already exist.
  * - Delegating staking operations to the EigenPod, including processing rewards and managing withdrawals.
  * - Verifying withdrawal credentials and managing expedited withdrawals before restaking.
- * 
+ *
  * This design allows for delegating to multiple operators simultaneously while also being gas efficient.
  * Grouping multuple validators per EigenPod allows delegation of all their stake with 1 delegationManager.delegateTo(operator) call.
  */
@@ -116,7 +116,7 @@ contract StakingNodesManager is
     /// @dev redemptionAssetsVault replaces the slot formerly used by: IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     address private ___deprecated_delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
-    
+
     UpgradeableBeacon public upgradeableBeacon;
 
     IynETH public ynETH;
@@ -154,7 +154,7 @@ contract StakingNodesManager is
         // internal
         uint256 maxNodeCount;
         IynETH ynETH;
-        IRewardsDistributor rewardsDistributor; 
+        IRewardsDistributor rewardsDistributor;
 
         // external contracts
         IDepositContract depositContract;
@@ -168,7 +168,7 @@ contract StakingNodesManager is
         address withdrawalManager;
         address stakingNodesWithdrawer;
     }
-    
+
     function initialize(Init calldata init)
     external
     notZeroAddress(address(init.ynETH))
@@ -213,10 +213,10 @@ contract StakingNodesManager is
         notZeroAddress(address(init.delegationManager))
         notZeroAddress(address(init.strategyManager)) {
         // Ethereum
-        depositContractEth2 = init.depositContract;    
+        depositContractEth2 = init.depositContract;
 
         // Eigenlayer
-        eigenPodManager = init.eigenPodManager;    
+        eigenPodManager = init.eigenPodManager;
         delegationManager = init.delegationManager;
         strategyManager = init.strategyManager;
     }
@@ -229,7 +229,7 @@ contract StakingNodesManager is
         notZeroAddress(address(init.stakingNodesWithdrawer))
         reinitializer(2)
         onlyRole(DEFAULT_ADMIN_ROLE) {
-        
+
         // TODO: review role access here for what can execute this
         redemptionAssetsVault = init.redemptionAssetsVault;
         _grantRole(WITHDRAWAL_MANAGER_ROLE, init.withdrawalManager);
@@ -302,7 +302,7 @@ contract StakingNodesManager is
     /// @notice Creates validator object and deposits into beacon chain
     /// @param validator Data structure to hold all data needed for depositing to the beacon chain
     function _registerValidator(
-        ValidatorData calldata validator, 
+        ValidatorData calldata validator,
         uint256 _depositAmount
     ) internal {
 
@@ -361,7 +361,7 @@ contract StakingNodesManager is
      * @param _address Address associated with the validator for the withdraw credentials
      * @return The generated withdraw key for the node
      */
-    function generateWithdrawalCredentials(address _address) public pure returns (bytes memory) {   
+    function generateWithdrawalCredentials(address _address) public pure returns (bytes memory) {
         return abi.encodePacked(bytes1(0x01), bytes11(0x0), _address);
     }
 
@@ -394,7 +394,7 @@ contract StakingNodesManager is
     function createStakingNode()
         public
         notZeroAddress((address(upgradeableBeacon)))
-        onlyRole(STAKING_NODE_CREATOR_ROLE) 
+        onlyRole(STAKING_NODE_CREATOR_ROLE)
         returns (IStakingNode) {
 
         uint256 nodeCount = nodes.length;
@@ -442,7 +442,11 @@ contract StakingNodesManager is
             node.initializeV2(0);
         }
 
-        // NOTE: For future versions, add additional if clauses that initialize the node 
+        if (initializedVersion == 2) {
+            node.initializeV3();
+        }
+
+        // NOTE: For future versions, add additional if clauses that initialize the node
         // for the next version while keeping the previous initializers.
     }
 
@@ -460,7 +464,7 @@ contract StakingNodesManager is
             revert BeaconImplementationAlreadyExists();
         }
 
-        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));     
+        upgradeableBeacon = new UpgradeableBeacon(_implementationContract, address(this));
 
         emit RegisteredStakingNodeImplementationContract(address(upgradeableBeacon), _implementationContract);
     }
@@ -488,7 +492,7 @@ contract StakingNodesManager is
 
         emit UpgradedStakingNodeImplementationContract(_implementationContract, nodeCount);
     }
-    
+
     /**
      * @notice Sets the maximum number of staking nodes allowed
      * @param _maxNodeCount The maximum number of staking nodes
@@ -561,9 +565,9 @@ contract StakingNodesManager is
         // the initial stake and the total withdrawn amount.
         //
         // This design trade-off is a result of how Eigenlayer M3 pepe no long providees
-        // clear separation between principal and rewards amount and they both exit through the 
+        // clear separation between principal and rewards amount and they both exit through the
         // Queued Withdrawals mechanism.
-        // 
+        //
         // SECURITY NOTE:
         // The accuracy and integrity of this value relies on the off-chain process
         // that calculates it. There's an implicit trust that the WITHDRAWAL_MANAGER_ROLE
@@ -678,7 +682,7 @@ contract StakingNodesManager is
      * @return totalETHDeposited The total amount of ETH deposited in the system.
      */
     function totalDeposited() external view returns (uint256) {
-       
+
         uint256 _nodesLength = nodes.length;
 
         uint256 totalETHDeposited = 0;
