@@ -1,12 +1,13 @@
 /// SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
 import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
-import {IDelegationManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-import {IEigenPod } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -18,17 +19,20 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
-     event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
-     event Delegated(address indexed operator, bytes32 approverSalt);
-     event Undelegated(address indexed operator, int256 shares);
-     event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
-     event ETHReceived(address sender, uint256 value);
-     event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
-     event AllocatedStakedETH(uint256 currentUnverifiedStakedETH, uint256 newAmount);
-     event DeallocatedStakedETH(uint256 amount, uint256 currentWithdrawnETH);
-     event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
-     event VerifyWithdrawalCredentialsCompleted(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
-     event WithdrawalProcessed(
+
+    event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);
+    event Delegated(address indexed operator, bytes32 approverSalt);
+    event Undelegated(address indexed operator, int256 shares);
+    event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
+    event ETHReceived(address sender, uint256 value);
+    event WithdrawnNonBeaconChainETH(uint256 amount, uint256 remainingBalance);
+    event AllocatedStakedETH(uint256 currentUnverifiedStakedETH, uint256 newAmount);
+    event DeallocatedStakedETH(uint256 amount, uint256 currentWithdrawnETH);
+    event ValidatorRestaked(uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei);
+    event VerifyWithdrawalCredentialsCompleted(
+        uint40 indexed validatorIndex, uint64 oracleTimestamp, uint256 effectiveBalanceGwei
+    );
+    event WithdrawalProcessed(
         uint40 indexed validatorIndex,
         uint256 effectiveBalance,
         bytes32 withdrawalCredentials,
@@ -37,8 +41,11 @@ interface StakingNodeEvents {
     );
 
     event QueuedWithdrawals(uint256 sharesAmount, bytes32[] fullWithdrawalRoots);
-    event CompletedQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount, uint256 actualWithdrawalAmount);
+    event CompletedQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] withdrawals, uint256 totalWithdrawalAmount, uint256 actualWithdrawalAmount
+    );
     event ClaimerSet(address indexed claimer);
+
 }
 
 /**
@@ -47,6 +54,7 @@ interface StakingNodeEvents {
  * Each StakingNode owns exactl one EigenPod which acts as a delegation unit, as it can be associated with exactly one operator.
  */
 contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradeable {
+
     using BeaconChainProofs for *;
 
     //--------------------------------------------------------------------------------------
@@ -83,23 +91,26 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     IEigenPod public eigenPod;
     uint256 public nodeId;
 
-    /** @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode */
+    /**
+     * @dev Monitors the ETH balance that was committed to validators allocated to this StakingNode
+     */
     uint256 private _unused_former_allocatedETH;
 
-    /** @dev Accounts for withdrawn ETH balance that can be withdrawn by the StakingNodesManager contract
-            This is made up of both validator principal, rewards and arbitrary ETH sent to the Eigenpod
-            that are withdrawn from Eigenlayer.
+    /**
+     * @dev Accounts for withdrawn ETH balance that can be withdrawn by the StakingNodesManager contract
+     *         This is made up of both validator principal, rewards and arbitrary ETH sent to the Eigenpod
+     *         that are withdrawn from Eigenlayer.
      */
     uint256 public withdrawnETH;
 
-    /** 
+    /**
      * @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
      * that is not yet verified with verifyWithdrawalCredentials.
      * Increases when calling allocateETH, and decreases when verifying with verifyWithdrawalCredentials
      */
     uint256 public unverifiedStakedETH;
 
-    /** 
+    /**
      * @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
      * Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals.
      */
@@ -107,9 +118,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     address public delegatedTo;
 
-    /** @dev Allows only a whitelisted address to configure the contract */
+    /**
+     * @dev Allows only a whitelisted address to configure the contract
+     */
     modifier onlyOperator() {
-        if(!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesOperator();
+        if (!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesOperator();
         _;
     }
 
@@ -119,7 +132,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     modifier onlyStakingNodesManager() {
-        if(msg.sender != address(stakingNodesManager)) revert NotStakingNodesManager();
+        if (msg.sender != address(stakingNodesManager)) revert NotStakingNodesManager();
         _;
     }
 
@@ -134,27 +147,26 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     receive() external payable {
         // Consensus Layer rewards and the validator principal will be sent this way.
-        if (msg.sender != address(eigenPod)) {
-            revert ETHDepositorNotEigenPod();
-        }
+        if (msg.sender != address(eigenPod)) revert ETHDepositorNotEigenPod();
         emit ETHReceived(msg.sender, msg.value);
     }
 
     constructor() {
-       _disableInitializers();
+        _disableInitializers();
     }
 
-    function initialize(Init memory init)
-        external
-        notZeroAddress(address(init.stakingNodesManager))
-        initializer {
+    function initialize(
+        Init memory init
+    ) external notZeroAddress(address(init.stakingNodesManager)) initializer {
         __ReentrancyGuard_init();
 
         stakingNodesManager = init.stakingNodesManager;
         nodeId = init.nodeId;
     }
 
-    function initializeV2(uint256 initialUnverifiedStakedETH) external onlyStakingNodesManager reinitializer(2) {
+    function initializeV2(
+        uint256 initialUnverifiedStakedETH
+    ) external onlyStakingNodesManager reinitializer(2) {
         unverifiedStakedETH = initialUnverifiedStakedETH;
     }
 
@@ -185,7 +197,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
-    
+
     /**
      * @dev Validates the withdrawal credentials for a withdrawal.
      * This activates the staked funds within EigenLayer as shares.
@@ -205,13 +217,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bytes[] calldata validatorFieldsProofs,
         bytes32[][] calldata validatorFields
     ) external onlyOperator onlyWhenSynchronized {
-
         IEigenPod(address(eigenPod)).verifyWithdrawalCredentials(
-            beaconTimestamp,
-            stateRootProof,
-            validatorIndices,
-            validatorFieldsProofs,
-            validatorFields
+            beaconTimestamp, stateRootProof, validatorIndices, validatorFieldsProofs, validatorFields
         );
 
         for (uint256 i = 0; i < validatorIndices.length; i++) {
@@ -221,7 +228,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
             emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], beaconTimestamp, effectiveBalanceGwei);
-            
+
             // If the effectiveBalanceGwei is not 0, then the full stake of the validator
             // is verified as part of this process and shares are credited to this StakingNode instance.
             // verifyWithdrawalCredentials can only be called for non-exited validators
@@ -238,7 +245,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * This function can only be called by the Operator.
      * @param revertIfNoBalance Forces a revert if the pod ETH balance is 0.
      */
-    function startCheckpoint(bool revertIfNoBalance) external onlyOperator {
+    function startCheckpoint(
+        bool revertIfNoBalance
+    ) external onlyOperator {
         eigenPod.startCheckpoint(revertIfNoBalance);
     }
 
@@ -258,7 +267,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
         bytes32 approverSalt
     ) public override onlyDelegator onlyWhenSynchronized {
-
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
         delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
 
@@ -273,7 +281,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * It emits an `Undelegated` event with the address of the operator from whom the delegation is being removed.
      */
     function undelegate() public onlyDelegator onlyWhenSynchronized returns (bytes32[] memory withdrawalRoots) {
-   
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         address operator = delegationManager.delegatedTo(address(this));
@@ -297,7 +304,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @dev Only callable by delegator. Sets the claimer address for this staking node's rewards.
      * @param claimer The address to set as the claimer
      */
-    function setClaimer(address claimer) external onlyDelegator {
+    function setClaimer(
+        address claimer
+    ) external onlyDelegator {
         IRewardsCoordinator rewardsCoordinator = stakingNodesManager.rewardsCoordinator();
         rewardsCoordinator.setClaimerFor(claimer);
         emit ClaimerSet(claimer);
@@ -316,7 +325,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function queueWithdrawals(
         uint256 sharesAmount
     ) external onlyStakingNodesWithdrawer onlyWhenSynchronized returns (bytes32[] memory fullWithdrawalRoots) {
-
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         IDelegationManager.QueuedWithdrawalParams[] memory params = new IDelegationManager.QueuedWithdrawalParams[](1);
@@ -335,7 +343,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         });
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
-        
+
         // After running queueWithdrawals, eigenPodManager.podOwnerShares(address(this)) decreases by `sharesAmount`.
         // Therefore queuedSharesAmount increase by `sharesAmount`.
 
@@ -348,7 +356,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *      Withdrawals can only be completed if
      *      max(delegationManager.minWithdrawalDelayBlocks(), delegationManager.strategyWithdrawalDelayBlocks(beaconChainETHStrategy))
      *      number of blocks have passed since withdrawal was queued.
-     * @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the 
+     * @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the
      *                    the withdrawal created as part of the queueWithdrawals call.
      * @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
      *       with the Slasher, which currently does nothing. As of M2, this parameter
@@ -357,14 +365,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         uint256[] memory middlewareTimesIndexes
-        ) external onlyStakingNodesWithdrawer onlyWhenSynchronized {
-
+    ) external onlyStakingNodesWithdrawer onlyWhenSynchronized {
         uint256 totalWithdrawalAmount = 0;
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
         IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
-
             // Set receiveAsTokens to true to receive ETH when completeQueuedWithdrawals runs.
             ///IMPORTANT: beaconChainETHStrategy shares are non-transferrable, so if `receiveAsTokens = false`
             // and `withdrawal.withdrawer != withdrawal.staker`, any beaconChainETHStrategy shares
@@ -374,11 +380,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
-            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
+            tokens[i] = new IERC20[](1);
 
-            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
-                totalWithdrawalAmount += withdrawals[i].shares[j];
-            }
+            totalWithdrawalAmount += withdrawals[i].shares[0];
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
@@ -407,7 +411,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount, actualWithdrawalAmount);
     }
 
-
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
      * @param withdrawals Array of withdrawals to complete
@@ -425,12 +428,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         // Calculate total shares being withdrawn
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
+            tokens[i] = new IERC20[](1);
             receiveAsTokens[i] = false;
-
-            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
-                totalWithdrawalAmount += withdrawals[i].shares[j];
-            }
+            totalWithdrawalAmount += withdrawals[i].shares[0];
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
@@ -458,14 +458,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return delegatedTo == delegationManager.delegatedTo(address(this));
     }
 
-    function synchronize(
-        uint256 queuedShares,
-        uint32 lastQueuedWithdrawalBlockNumber
-    ) public onlyDelegator {
-
-        if (isSynchronized()) {
-            revert AlreadySynchronized();
-        }
+    function synchronize(uint256 queuedShares, uint32 undelegateBlockNumber) public onlyDelegator {
+        if (isSynchronized()) revert AlreadySynchronized();
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
@@ -475,15 +469,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         shares[0] = queuedShares;
 
         address thisNode = address(this);
-        
+
         // We can assume that the Withdrawal queued by the undelegate() call made by the operator
-        // is the LAST queued withdrawal since to call queueWithdrawals you require isSynchronized() == true. 
+        // is the LAST queued withdrawal since to call queueWithdrawals you require isSynchronized() == true.
         IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
             staker: thisNode,
             delegatedTo: delegatedTo,
             withdrawer: thisNode,
             nonce: delegationManager.cumulativeWithdrawalsQueued(thisNode) - 1, // must be the last withdrawal
-            startBlock: lastQueuedWithdrawalBlockNumber,
+            startBlock: undelegateBlockNumber,
             strategies: strategies,
             shares: shares
         });
@@ -501,7 +495,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // queue shares
         queuedSharesAmount += queuedShares;
 
-        delegatedTo = delegationManager.delegatedTo(address(this));
+        delegatedTo = address(0);
     }
 
     //--------------------------------------------------------------------------------------
@@ -511,7 +505,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /**
      * @dev Record total staked ETH for this StakingNode
      */
-    function allocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
+    function allocateStakedETH(
+        uint256 amount
+    ) external payable onlyStakingNodesManager {
         emit AllocatedStakedETH(unverifiedStakedETH, amount);
 
         unverifiedStakedETH += amount;
@@ -519,45 +515,39 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @notice Deallocates a specified amount of staked ETH from the withdrawn validator principal
-    *          and transfers it to the StakingNodesManager.
+     *          and transfers it to the StakingNodesManager.
      * @dev This function can only be called by the StakingNodesManager. It emits a DeallocatedStakedETH
      *      event upon successful deallocation.
      * @param amount The amount of ETH to deallocate and transfer.
      */
-    function deallocateStakedETH(uint256 amount) external payable onlyStakingNodesManager {
-        if (amount > withdrawnETH) {
-            revert InsufficientWithdrawnETH(amount, withdrawnETH);
-        }
+    function deallocateStakedETH(
+        uint256 amount
+    ) external payable onlyStakingNodesManager {
+        if (amount > withdrawnETH) revert InsufficientWithdrawnETH(amount, withdrawnETH);
 
         emit DeallocatedStakedETH(amount, withdrawnETH);
 
         withdrawnETH -= amount;
 
-        (bool success, ) = address(stakingNodesManager).call{value: amount}("");
-        if (!success) {
-            revert TransferFailed();
-        }
+        (bool success,) = address(stakingNodesManager).call{value: amount}("");
+        if (!success) revert TransferFailed();
     }
-    function getETHBalance() public view returns (uint256) {
 
+    function getETHBalance() public view returns (uint256) {
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
-    
+
         // Compute the total ETH balance of the StakingNode
         // This includes:
         // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
         // 2. unverifiedStakedETH: ETH staked with validators but not yet verified
         // 3. queuedSharesAmount: Shares queued for withdrawal (1 share = 1 ETH)
         // 4. podOwnerShares: Active shares in Eigenlayer, representing staked ETH
-        int256 totalETHBalance =
-            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount)
+        int256 totalETHBalance = int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount)
             + eigenPodManager.podOwnerShares(address(this));
 
-        if (totalETHBalance < 0) {
-            return 0;
-        }
+        if (totalETHBalance < 0) return 0;
 
         return uint256(totalETHBalance);
-        
     }
 
     /**
@@ -578,21 +568,20 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @notice Retrieves the amount of ETH that has been withdrawn from Eigenlayer and is held by this StakingNode.
-               Composed of validator principal, validator staking rewards and arbitrary ETH sent to the Eigenpod.
+     *            Composed of validator principal, validator staking rewards and arbitrary ETH sent to the Eigenpod.
      * @return The amount of withdrawn ETH.
      */
     function getWithdrawnETH() public view returns (uint256) {
         return withdrawnETH;
     }
 
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  BEACON IMPLEMENTATION  ---------------------------
     //--------------------------------------------------------------------------------------
 
     /**
-      Beacons slot value is defined here:
-      https://github.com/OpenZeppelin/openzeppelin-contracts/blob/afb20119b33072da041c97ea717d3ce4417b5e01/contracts/proxy/ERC1967/ERC1967Upgrade.sol#L142
+     * Beacons slot value is defined here:
+     *   https://github.com/OpenZeppelin/openzeppelin-contracts/blob/afb20119b33072da041c97ea717d3ce4417b5e01/contracts/proxy/ERC1967/ERC1967Upgrade.sol#L142
      */
     function implementation() public view returns (address) {
         bytes32 slot = bytes32(uint256(keccak256("eip1967.proxy.beacon")) - 1);
@@ -621,17 +610,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Ensure that the given address is not the zero address.
      * @param _address The address to check.
      */
-    modifier notZeroAddress(address _address) {
-        if (_address == address(0)) {
-            revert ZeroAddress();
-        }
+    modifier notZeroAddress(
+        address _address
+    ) {
+        if (_address == address(0)) revert ZeroAddress();
         _;
-    } 
+    }
 
     modifier onlyWhenSynchronized() {
-        if (!isSynchronized()) {
-            revert NotSynchronized();
-        }
+        if (!isSynchronized()) revert NotSynchronized();
         _;
-    }   
+    }
+
 }
