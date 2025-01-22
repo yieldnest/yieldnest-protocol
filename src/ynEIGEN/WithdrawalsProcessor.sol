@@ -332,14 +332,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
 
-            ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
-                queuedWithdrawal_.nonce,
-                queuedWithdrawal_.startBlock,
-                queuedWithdrawal_.shares,
-                IStrategy(queuedWithdrawal_.strategy),
-                _middlewareTimesIndexes,
-                true // updateTokenStakingNodesBalances
-            );
+            // ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
+            //     queuedWithdrawal_.nonce,
+            //     queuedWithdrawal_.startBlock,
+            //     queuedWithdrawal_.shares,
+            //     IStrategy(queuedWithdrawal_.strategy),
+            //     _middlewareTimesIndexes,
+            //     true // updateTokenStakingNodesBalances
+            // );
         }
 
         _ids.completed = _completedId;
