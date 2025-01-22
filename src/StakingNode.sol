@@ -18,7 +18,7 @@ import {IERC20 as IERC20V4} from "lib/eigenlayer-contracts/lib/openzeppelin-cont
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
-     event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);
+     event EigenPodCreated(address indexed nodeAddress, address indexed podAddress);   
      event Delegated(address indexed operator, bytes32 approverSalt);
      event Undelegated(address indexed operator);
      event NonBeaconChainETHWithdrawalsProcessed(uint256 claimedAmount);
@@ -87,14 +87,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     uint256 public withdrawnETH;
 
-    /**
+    /** 
      * @dev Accounts for ETH staked with validators whose withdrawal address is this Node's eigenPod.
      * that is not yet verified with verifyWithdrawalCredentials.
      * Increases when calling allocateETH, and decreases when verifying with verifyWithdrawalCredentials
      */
     uint256 public unverifiedStakedETH;
 
-    /**
+    /** 
      * @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
      * Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals.
      */
@@ -178,7 +178,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     //--------------------------------------------------------------------------------------
     //----------------------------------  VERIFICATION AND DELEGATION   --------------------
     //--------------------------------------------------------------------------------------
-
+    
     /**
      * @dev Validates the withdrawal credentials for a withdrawal.
      * This activates the staked funds within EigenLayer as shares.
@@ -214,7 +214,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             uint256 effectiveBalanceGwei = validatorFields[i].getEffectiveBalanceGwei();
 
             emit VerifyWithdrawalCredentialsCompleted(validatorIndices[i], beaconTimestamp, effectiveBalanceGwei);
-
+            
             // If the effectiveBalanceGwei is not 0, then the full stake of the validator
             // is verified as part of this process and shares are credited to this StakingNode instance.
             // verifyWithdrawalCredentials can only be called for non-exited validators
@@ -264,14 +264,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * It emits an `Undelegated` event with the address of the operator from whom the delegation is being removed.
      */
     function undelegate() public onlyDelegator {
-
+   
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         address operator = delegationManager.delegatedTo(address(this));
         emit Undelegated(operator);
 
         delegationManager.undelegate(address(this));
-
+ 
     }
 
     //--------------------------------------------------------------------------------------
@@ -306,7 +306,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         });
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
-
+        
         // After running queueWithdrawals, eigenPodManager.podOwnerShares(address(this)) decreases by `sharesAmount`.
         // Therefore queuedSharesAmount increase by `sharesAmount`.
 
@@ -319,7 +319,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *      Withdrawals can only be completed if
      *      max(delegationManager.minWithdrawalDelayBlocks(), delegationManager.strategyWithdrawalDelayBlocks(beaconChainETHStrategy))
      *      number of blocks have passed since withdrawal was queued.
-     * @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the
+     * @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the 
      *                    the withdrawal created as part of the queueWithdrawals call.
      * @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
      *       with the Slasher, which currently does nothing. As of M2, this parameter
@@ -415,7 +415,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function getETHBalance() public view returns (uint256) {
 
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
-
+    
         // Compute the total ETH balance of the StakingNode
         // This includes:
         // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
@@ -431,7 +431,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         }
 
         return uint256(totalETHBalance);
-
+        
     }
 
     /**
@@ -499,5 +499,5 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert ZeroAddress();
         }
         _;
-    }
+    }    
 }
