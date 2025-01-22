@@ -72,6 +72,14 @@ contract ScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
+
+        // Upgrade StakingNode implementation with EL slashing upgrade changes
+        if (block.chainid == 17000) { // Holesky chain ID
+            address newStakingNodeImplementation = address(new StakingNode());
+            vm.startPrank(actors.admin.STAKING_ADMIN);
+            stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImplementation);
+            vm.stopPrank();
+        }
     }
     function assignContracts() internal {
         uint256 chainId = block.chainid;
