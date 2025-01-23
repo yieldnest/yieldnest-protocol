@@ -18,6 +18,7 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
+import "forge-std/console.sol";
 
 contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
@@ -55,6 +56,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             vm.startPrank(topper);
             // Deposit wstETH to redemption vault
             IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(redemptionAssetsVault), pendingAmountInWstETH);
+            console.log("deposit 1");
             redemptionAssetsVault.deposit(pendingAmountInWstETH, chainAddresses.lsd.WSTETH_ADDRESS);
             vm.stopPrank();
         }
@@ -68,11 +70,18 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             deal({ token: chainAddresses.lsd.SFRXETH_ADDRESS, to: _topper, give: _amount });
             vm.startPrank(_topper);
             IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+            console.log("deposit 2");
             redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WSTETH_ADDRESS);
-            IERC20(chainAddresses.lsd.WOETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
-            redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WOETH_ADDRESS);
+            console.log("deposit 3");
+            console.log("deposit 4");
+            if (!_isHolestky()) {
+                IERC20(chainAddresses.lsd.WOETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+                redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.WOETH_ADDRESS);
+            }
             IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).approve(address(redemptionAssetsVault), _amount);
+            console.log("deposit 5");
             redemptionAssetsVault.deposit(_amount, chainAddresses.lsd.SFRXETH_ADDRESS);
+            console.log("deposit 6");
             vm.stopPrank();
         }
 
@@ -231,7 +240,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         _setup = false;
         testCompleteQueuedWithdrawalsSTETH(_amount);
         testCompleteQueuedWithdrawalsSFRXETH(_amount);
-        testCompleteQueuedWithdrawalsOETH(_amount);
+        if (!_isHolestky()) testCompleteQueuedWithdrawalsOETH(_amount);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "testCompleteAllWithdrawals: E0");
     }
@@ -290,22 +299,27 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         testCompleteAllWithdrawals(_amount);
 
         uint256 _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](3);
+        
+        uint256 _len = _isHolestky() ? 2 : 3;
+
+        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](_len);
         _actions[0] = IYieldNestStrategyManager.WithdrawalAction({
             nodeId: tokenStakingNode.nodeId(),
             amountToReinvest: 0,
             amountToQueue: _availableToWithdraw,
             asset: chainAddresses.lsd.WSTETH_ADDRESS
         });
-        _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
-        _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
-            nodeId: tokenStakingNode.nodeId(),
-            amountToReinvest: 0,
-            amountToQueue: _availableToWithdraw,
-            asset: chainAddresses.lsd.WOETH_ADDRESS
-        });
+        if (!_isHolestky()) {
+            _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+            _actions[2] = IYieldNestStrategyManager.WithdrawalAction({
+                nodeId: tokenStakingNode.nodeId(),
+                amountToReinvest: 0,
+                amountToQueue: _availableToWithdraw,
+                asset: chainAddresses.lsd.WOETH_ADDRESS
+            });
+        }
         _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
-        _actions[2] = IYieldNestStrategyManager.WithdrawalAction({
+        _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
             nodeId: tokenStakingNode.nodeId(),
             amountToReinvest: 0,
             amountToQueue: _availableToWithdraw,
@@ -424,16 +438,20 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 
-        uint256 _len = 3;
+        uint256 _len = _isHolestky() ? 2 : 3;
         IERC20[] memory _assetsToDeposit = new IERC20[](_len);
         _assetsToDeposit[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        _assetsToDeposit[1] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
-        _assetsToDeposit[2] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        _assetsToDeposit[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        if (!_isHolestky()) {
+            console.log("_setupTokenStakingNode 1");
+            _assetsToDeposit[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+            console.log("_setupTokenStakingNode 2");
+        }
 
         uint256[] memory _amounts = new uint256[](_len);
         _amounts[0] = _amount;
         _amounts[1] = _amount;
-        _amounts[2] = _amount;
+        if (!_isHolestky()) _amounts[2] = _amount;
 
         vm.startPrank(user);
         for (uint256 i = 0; i < _len; i++) {
@@ -445,5 +463,9 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
         vm.stopPrank();
+    }
+
+    function _isHolestky() private view returns (bool) {
+        return block.chainid == 17000;
     }
 }

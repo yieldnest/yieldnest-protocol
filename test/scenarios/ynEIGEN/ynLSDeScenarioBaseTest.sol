@@ -4,8 +4,10 @@ pragma solidity ^0.8.24;
 import {IEigenPodManager} from "@eigenlayer/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategyManager} from "@eigenlayer/src/contracts/interfaces/IStrategyManager.sol";
+import {IStrategy} from "@eigenlayer/src/contracts/interfaces/IStrategy.sol";
 
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ActorAddresses} from "../../../script/Actors.sol";
@@ -21,7 +23,6 @@ import {ynEigenDepositAdapter} from "../../../src/ynEIGEN/ynEigenDepositAdapter.
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
-
 
 import {Test} from "forge-std/Test.sol";
 
@@ -89,6 +90,5 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         redemptionAssetsVault = RedemptionAssetsVault(chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS);
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
-
     }
 }
