@@ -58,6 +58,14 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
+
+        // Upgrade StakingNode implementation with EL slashing upgrade changes
+        if (block.chainid == 17000) {
+            address newStakingNodeImplementation = address(new TokenStakingNode());
+            vm.startPrank(0x62173555C27C67644C5634e114e42A63A59CD7A5);
+            tokenStakingNodesManager.upgradeTokenStakingNode(newStakingNodeImplementation);
+            vm.stopPrank();
+        }
     }
 
     function assignContracts() internal {
