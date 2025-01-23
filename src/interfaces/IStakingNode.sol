@@ -88,5 +88,4 @@ interface IStakingNode {
     function getWithdrawnETH() external view returns (uint256);
     function startCheckpoint(bool revertIfNoBalance) external;
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
-    function initializeV3() external;
 }

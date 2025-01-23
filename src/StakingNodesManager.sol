@@ -442,10 +442,6 @@ contract StakingNodesManager is
             node.initializeV2(0);
         }
 
-        if (initializedVersion == 2) {
-            node.initializeV3();
-        }
-
         // NOTE: For future versions, add additional if clauses that initialize the node 
         // for the next version while keeping the previous initializers.
     }
