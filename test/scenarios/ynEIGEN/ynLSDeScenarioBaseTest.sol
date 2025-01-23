@@ -4,10 +4,8 @@ pragma solidity ^0.8.24;
 import {IEigenPodManager} from "@eigenlayer/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategyManager} from "@eigenlayer/src/contracts/interfaces/IStrategyManager.sol";
-import {IStrategy} from "@eigenlayer/src/contracts/interfaces/IStrategy.sol";
 
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import {Utils} from "../../../script/Utils.sol";
 import {ActorAddresses} from "../../../script/Actors.sol";
