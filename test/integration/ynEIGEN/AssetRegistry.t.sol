@@ -142,7 +142,6 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     }
 
     function testsfrxETHConvertToUnitOfAccountFuzz(uint256 amount) public skipOnHolesky {
-        vm.skip(block.chainid == 17000, "Impossible to test on Holesky");
         vm.assume(amount < 1000000 ether);
 
         // End of the Selection

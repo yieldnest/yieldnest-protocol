@@ -159,14 +159,7 @@ contract TestAssetUtils is Test {
     }
 
     function get_rETH(address receiver, uint256 amount) public returns (uint256) {
-        if (block.chainid == chainIds.holeksy) {
-            deal(chainAddresses.lsd.RETH_ADDRESS, receiver, amount, true);
-        } else {
-            IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-            address rethWhale = 0xCc9EE9483f662091a1de4795249E24aC0aC2630f;
-            vm.prank(rethWhale);
-            rETH.transfer(receiver, amount);
-        }
+        deal(chainAddresses.lsd.RETH_ADDRESS, receiver, amount, true);
 
         return amount;
     }
