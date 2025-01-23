@@ -87,7 +87,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     IERC20[] public assets;
 
     modifier skipOnHolesky() {
-        vm.skip(block.chainid == 17000, "Impossible to test on Holesky");
+        vm.skip(block.chainid == chainIds.holeksy, "Impossible to test on Holesky");
 
         _;
     }
