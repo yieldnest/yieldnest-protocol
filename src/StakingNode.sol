@@ -151,10 +151,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         unverifiedStakedETH = initialUnverifiedStakedETH;
     }
 
-    function initializeV3() external onlyStakingNodesManager reinitializer(3) {
-        // TODO - Should we initialize if there is nothing to set? only new version?
-    }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  EIGENPOD CREATION   ------------------------------
     //--------------------------------------------------------------------------------------
