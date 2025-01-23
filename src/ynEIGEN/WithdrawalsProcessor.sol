@@ -332,6 +332,27 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             uint256[] memory _middlewareTimesIndexes = new uint256[](1);
             _middlewareTimesIndexes[0] = 0;
 
+            IStrategy[] memory _strategies = new IStrategy[](1);
+            _strategies[0] = IStrategy(queuedWithdrawal_.strategy);
+
+            uint256[] memory _shares = new uint256[](1);
+            _shares[0] = queuedWithdrawal_.shares;
+
+            IDelegationManager.Withdrawal memory _withdrawal = IDelegationManager.Withdrawal({
+                staker: address(queuedWithdrawal_.node),
+                delegatedTo: address(0), // TODO: get delegatedTo
+                withdrawer: address(queuedWithdrawal_.node),
+                nonce: queuedWithdrawal_.nonce,
+                startBlock: queuedWithdrawal_.startBlock,
+                strategies: _strategies,
+                shares: _shares
+            });
+            ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
+                _withdrawal,
+                0,
+                true // updateTokenStakingNodesBalances
+            );
+
             // ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
             //     queuedWithdrawal_.nonce,
             //     queuedWithdrawal_.startBlock,
