@@ -82,7 +82,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         uint256 wstethAmount,
         uint256 woethAmount,
         uint256 rethAmount
-        ) public {
+        ) public skipOnHolesky {
         vm.assume(
             wstethAmount < 100 ether && wstethAmount >= 1 wei &&
             woethAmount < 100 ether && woethAmount >= 1 wei &&
@@ -141,7 +141,8 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
     }
 
-    function testsfrxETHConvertToUnitOfAccountFuzz(uint256 amount) public {
+    function testsfrxETHConvertToUnitOfAccountFuzz(uint256 amount) public skipOnHolesky {
+        vm.skip(block.chainid == 17000, "Impossible to test on Holesky");
         vm.assume(amount < 1000000 ether);
 
         // End of the Selection
@@ -184,7 +185,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(convertedAmount, expectedConvertedAmount, "Converted amount should match expected value based on real rate");
     }
 
-    function testsfrxETHconvertFromUnitOfAccountFuzz(uint256 amount) public {
+    function testsfrxETHconvertFromUnitOfAccountFuzz(uint256 amount) public skipOnHolesky {
         vm.assume(amount < 1000000 ether);
 
         IERC20 asset = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS); // Using wstETH as the asset
@@ -253,7 +254,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     // AssetRegistry.addAsset
     // ============================================================================================
 
-    function testAddAsset() public {
+    function testAddAsset() public skipOnHolesky {
         uint256 totalAssetsBefore = assetRegistry.totalAssets();
 
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
@@ -273,7 +274,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertEq(totalAssetsBefore, totalAssetsAfter, "Total assets count should remain the same after adding an asset");
     }
 
-    function testAddDuplicateAssetShouldFail() public {
+    function testAddDuplicateAssetShouldFail() public skipOnHolesky {
 
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
 
@@ -301,7 +302,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.addAsset(assetWithoutPriceFeed); // This should fail as there's no price feed for SWELL
     }
 
-    function testAddDisabledAssetShouldFail() public {
+    function testAddDisabledAssetShouldFail() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -342,7 +343,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
     // AssetRegistry.disableAsset
     // ============================================================================================
 
-    function testDisableAsset() public {
+    function testDisableAsset() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -379,7 +380,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.disableAsset(nonexistentAsset); // This should fail as the asset does not exist
     }
 
-    function testDisableAssetWithoutPermissionShouldFail() public {
+    function testDisableAssetWithoutPermissionShouldFail() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -393,7 +394,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.disableAsset(swellAsset);
     }
 
-    function testDisableAlreadyDisabledAssetShouldFail() public {
+    function testDisableAlreadyDisabledAssetShouldFail() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -413,7 +414,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.disableAsset(swellAsset); // This should fail as the asset is already disabled
     }
 
-    function testDeleteAsset() public {
+    function testDeleteAsset() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -455,7 +456,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assertFalse(assetFound, "Asset should not be found after deletion");
     }
 
-    function testDeleteAssetWithBalanceShouldFail() public {
+    function testDeleteAssetWithBalanceShouldFail() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -485,7 +486,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.deleteAsset(swellAsset);
     }
 
-    function testDeleteAssetNotDisabledShouldFail() public {
+    function testDeleteAssetNotDisabledShouldFail() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 
@@ -528,7 +529,7 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         assetRegistry.deleteAsset(rETHAsset);
     }
 
-    function testDeleteAssetWithoutPermissionShouldFail() public {
+    function testDeleteAssetWithoutPermissionShouldFail() public skipOnHolesky {
         IERC20 swellAsset = IERC20(chainAddresses.lsd.SWELL_ADDRESS);
         IStrategy swellStrategy = IStrategy(chainAddresses.lsdStrategies.SWELL_STRATEGY_ADDRESS);
 

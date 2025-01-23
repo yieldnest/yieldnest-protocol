@@ -54,6 +54,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
+    ContractAddresses.ChainIds chainIds;
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
 
@@ -85,6 +86,11 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     // LSD
     IERC20[] public assets;
 
+    modifier skipOnHolesky() {
+        vm.skip(block.chainid == 17000, "Impossible to test on Holesky");
+
+        _;
+    }
 
     function setUp() public virtual {
 
@@ -92,6 +98,9 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         // Setup Addresses
         contractAddresses = new ContractAddresses();
         actorAddresses = new ActorAddresses();
+
+        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
+        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
 
         // Setup Protocol
         setupUtils();
