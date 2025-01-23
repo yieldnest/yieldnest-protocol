@@ -21,6 +21,7 @@ contract TestAssetUtils is Test {
 
     ContractAddresses.ChainAddresses chainAddresses;
     ContractAddresses contractAddresses;
+    ContractAddresses.ChainIds chainIds;
 
     address public FRX_ETH_WETH_DUAL_ORACLE;
 
@@ -28,6 +29,9 @@ contract TestAssetUtils is Test {
     constructor() {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+
+        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
+        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
 
         if (block.chainid == 1) {
             FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
@@ -95,16 +99,20 @@ contract TestAssetUtils is Test {
 
     function get_OETH(address receiver, uint256 amount) public returns (uint256) {
 
-        IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
+        if (block.chainid == chainIds.holeksy) {
+            deal(chainAddresses.lsd.OETH_ADDRESS, receiver, amount, true);
+        } else {
+            IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
 
-        // Simulate obtaining OETH by wrapping ETH
-        uint256 ethToDeposit = amount; // Assuming 1 ETH = 1 OETH for simplicity
-        vm.deal(address(this), ethToDeposit);
-        (bool success, ) = address(chainAddresses.lsd.OETH_ZAPPER_ADDRESS).call{value: ethToDeposit}("");
-        require(success, "ETH transfer failed");
+            // Simulate obtaining OETH by wrapping ETH
+            uint256 ethToDeposit = amount; // Assuming 1 ETH = 1 OETH for simplicity
+            vm.deal(address(this), ethToDeposit);
+            (bool success, ) = address(chainAddresses.lsd.OETH_ZAPPER_ADDRESS).call{value: ethToDeposit}("");
+            require(success, "ETH transfer failed");
 
-        require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
-        oeth.transfer(receiver, amount);
+            require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
+            oeth.transfer(receiver, amount);
+        }
 
         return amount;
     }
@@ -151,10 +159,7 @@ contract TestAssetUtils is Test {
     }
 
     function get_rETH(address receiver, uint256 amount) public returns (uint256) {
-        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        address rethWhale = 0xCc9EE9483f662091a1de4795249E24aC0aC2630f;
-        vm.prank(rethWhale);
-        rETH.transfer(receiver, amount);
+        deal(chainAddresses.lsd.RETH_ADDRESS, receiver, amount, true);
 
         return amount;
     }
