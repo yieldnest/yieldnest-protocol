@@ -21,7 +21,7 @@ import {StakingNode} from "src/StakingNode.sol";
 import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
-import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
+import {HoleskyLSDRateProvider} from "../../../src/testnet/HoleksyLSDRateProvider.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
@@ -64,7 +64,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     // Assets
     ynEigen public ynEigenToken;
     AssetRegistry public assetRegistry;
-    LSDRateProvider public rateProvider;
+    HoleskyLSDRateProvider public rateProvider;
     ynEigenDepositAdapter public ynEigenDepositAdapterInstance;
     RedemptionAssetsVault public redemptionAssetsVault;
     WithdrawalQueueManager public withdrawalQueueManager;
@@ -115,7 +115,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         eigenStrategyManager = new EigenStrategyManager();
         tokenStakingNodesManager = new TokenStakingNodesManager();
         assetRegistry = new AssetRegistry();
-        rateProvider = new LSDRateProvider();
+        rateProvider = new HoleskyLSDRateProvider();
         ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
 
         ynEigenProxy = new TransparentUpgradeableProxy(address(ynEigenToken), actors.admin.PROXY_ADMIN_OWNER, "");
@@ -130,7 +130,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         eigenStrategyManager = EigenStrategyManager(payable(eigenStrategyManagerProxy));
         tokenStakingNodesManager = TokenStakingNodesManager(payable(tokenStakingNodesManagerProxy));
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
-        rateProvider = LSDRateProvider(payable(rateProviderProxy));
+        rateProvider = HoleskyLSDRateProvider(payable(rateProviderProxy));
         ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(ynEigenDepositAdapterProxy));
 
         // Re-deploying ynEigen and creating its proxy again
@@ -153,10 +153,10 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         assetRegistryProxy = new TransparentUpgradeableProxy(address(assetRegistry), actors.admin.PROXY_ADMIN_OWNER, "");
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
 
-        // Re-deploying LSDRateProvider and creating its proxy again
-        rateProvider = new LSDRateProvider();
+        // Re-deploying HoleskyLSDRateProvider and creating its proxy again
+        rateProvider = new HoleskyLSDRateProvider();
         rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
-        rateProvider = LSDRateProvider(payable(rateProviderProxy));
+        rateProvider = HoleskyLSDRateProvider(payable(rateProviderProxy));
 
         // Re-deploying ynEigenDepositAdapter and creating its proxy again
         ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
