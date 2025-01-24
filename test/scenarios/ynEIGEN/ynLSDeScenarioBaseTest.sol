@@ -60,7 +60,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         assignContracts();
 
         // Upgrade StakingNode implementation with EL slashing upgrade changes
-        if (block.chainid == 17000) {
+        if (_isHolesky()) {
             address newStakingNodeImplementation = address(new TokenStakingNode());
             vm.startPrank(chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS);
             tokenStakingNodesManager.upgradeTokenStakingNode(newStakingNodeImplementation);
