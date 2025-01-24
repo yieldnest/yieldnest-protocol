@@ -18,7 +18,6 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
-import "forge-std/console.sol";
 
 contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
@@ -517,9 +516,5 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
         vm.stopPrank();
-    }
-
-    function _isHolesky() private view returns (bool) {
-        return block.chainid == 17000;
     }
 }

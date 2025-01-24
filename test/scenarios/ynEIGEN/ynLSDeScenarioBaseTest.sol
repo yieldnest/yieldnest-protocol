@@ -97,4 +97,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
     }
+
+    function _isHolesky() internal view returns (bool) {
+        return block.chainid == 17000;
+    }
 }
