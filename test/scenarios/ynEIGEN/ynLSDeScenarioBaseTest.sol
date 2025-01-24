@@ -62,7 +62,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         // Upgrade StakingNode implementation with EL slashing upgrade changes
         if (block.chainid == 17000) {
             address newStakingNodeImplementation = address(new TokenStakingNode());
-            vm.startPrank(0x62173555C27C67644C5634e114e42A63A59CD7A5);
+            vm.startPrank(chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS);
             tokenStakingNodesManager.upgradeTokenStakingNode(newStakingNodeImplementation);
             vm.stopPrank();
         }
