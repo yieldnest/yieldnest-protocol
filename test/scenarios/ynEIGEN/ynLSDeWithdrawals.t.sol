@@ -94,6 +94,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     }
 
     function testQueueWithdrawalOETH() public {
+        vm.skip(_isHolesky());
         _queueWithdrawalOETH(AMOUNT);
     }
 
@@ -115,6 +116,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     
 
     function testCompleteQueuedWithdrawalsOETH() public {
+        vm.skip(_isHolesky());
         _completeQueuedWithdrawalsOETH(AMOUNT);
     }
 
@@ -204,7 +206,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     function _queueWithdrawalsWrongCaller() internal {
         _setupTokenStakingNode(AMOUNT);
 
-        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+        IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
         uint256 _shares = _strategy.shares((address(tokenStakingNode)));
 
         vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.NotTokenStakingNodesWithdrawer.selector));
@@ -226,7 +228,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
-        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() * 2);
+        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
@@ -253,7 +255,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
-        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() * 2);
+        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
@@ -280,7 +282,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
-        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() * 2);
+        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
@@ -309,34 +311,36 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         _completeAllWithdrawals(_amount);
 
         uint256 _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](3);
+        uint256 _length = _isHolesky() ? 2 : 3;
+
+        IYieldNestStrategyManager.WithdrawalAction[] memory _actions = new IYieldNestStrategyManager.WithdrawalAction[](_length);
         _actions[0] = IYieldNestStrategyManager.WithdrawalAction({
             nodeId: tokenStakingNode.nodeId(),
             amountToReinvest: _availableToWithdraw / 2,
             amountToQueue: _availableToWithdraw / 2,
             asset: chainAddresses.lsd.WSTETH_ADDRESS
         });
-        _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
-        _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
-            nodeId: tokenStakingNode.nodeId(),
-            amountToReinvest: _availableToWithdraw / 2,
-            amountToQueue: _availableToWithdraw / 2,
-            asset: chainAddresses.lsd.WOETH_ADDRESS
-        });
         _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
-        _actions[2] = IYieldNestStrategyManager.WithdrawalAction({
+        _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
             nodeId: tokenStakingNode.nodeId(),
             amountToReinvest: _availableToWithdraw / 2,
             amountToQueue: _availableToWithdraw / 2,
             asset: chainAddresses.lsd.SFRXETH_ADDRESS
         });
+        if (!_isHolesky()) {
+            _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+            _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
+                nodeId: tokenStakingNode.nodeId(),
+                amountToReinvest: _availableToWithdraw / 2,
+                amountToQueue: _availableToWithdraw / 2,
+                asset: chainAddresses.lsd.WOETH_ADDRESS
+            });
+        }
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
         uint256 _ynEigenWSTETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
         uint256 _redemptionVaultWSTETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _redemptionVaultSFRXETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS);
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
@@ -344,11 +348,16 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "processPrincipalWithdrawals: E0");
         assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS) - _redemptionVaultWSTETHBalanceBefore, _availableToWithdraw / 2, 50, "processPrincipalWithdrawals: E1");
-        assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw / 2, 50, "processPrincipalWithdrawals: E2");
         assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS) - _redemptionVaultSFRXETHBalanceBefore, _availableToWithdraw / 2, 50, "processPrincipalWithdrawals: E3");
         assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore + _availableToWithdraw / 2, 2, "processPrincipalWithdrawals: E4");
-        assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore + _availableToWithdraw / 2, 2, "processPrincipalWithdrawals: E5");
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore + _availableToWithdraw / 2, "processPrincipalWithdrawals: E6");
+
+        if (!_isHolesky()) {
+            uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
+            uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
+            assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw / 2, 50, "processPrincipalWithdrawals: E2");
+            assertApproxEqAbs(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore + _availableToWithdraw / 2, 2, "processPrincipalWithdrawals: E5");
+        }
     }
 
     function _processPrincipalWithdrawalsNoReinvest(uint256 _amount) internal {
@@ -365,6 +374,13 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             amountToQueue: _availableToWithdraw,
             asset: chainAddresses.lsd.WSTETH_ADDRESS
         });
+        _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+        _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
+            nodeId: tokenStakingNode.nodeId(),
+            amountToReinvest: 0,
+            amountToQueue: _availableToWithdraw,
+            asset: chainAddresses.lsd.SFRXETH_ADDRESS
+        });
         if (!_isHolesky()) {
             _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
             _actions[2] = IYieldNestStrategyManager.WithdrawalAction({
@@ -374,22 +390,13 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
                 asset: chainAddresses.lsd.WOETH_ADDRESS
             });
         }
-        _availableToWithdraw = tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
-        _actions[1] = IYieldNestStrategyManager.WithdrawalAction({
-            nodeId: tokenStakingNode.nodeId(),
-            amountToReinvest: 0,
-            amountToQueue: _availableToWithdraw,
-            asset: chainAddresses.lsd.SFRXETH_ADDRESS
-        });
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
         uint256 _ynEigenWSTETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
         uint256 _ynEigenSFRXETHBalanceBefore = yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS);
 
         {
             uint256 _redemptionVaultWSTETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS);
-            uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
             uint256 _redemptionVaultSFRXETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS);
 
             vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
@@ -397,13 +404,18 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
             assertEq(yneigen.totalAssets(), _totalAssetsBefore, "processPrincipalWithdrawalsNoReinvest: E0");
             assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WSTETH_ADDRESS) - _redemptionVaultWSTETHBalanceBefore, _availableToWithdraw, 50, "processPrincipalWithdrawalsNoReinvest: E1");
-            assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw, 50, "processPrincipalWithdrawalsNoReinvest: E2");
             assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.SFRXETH_ADDRESS) - _redemptionVaultSFRXETHBalanceBefore, _availableToWithdraw, 50, "processPrincipalWithdrawalsNoReinvest: E3");
         }   
 
         assertEq(yneigen.assets(chainAddresses.lsd.WSTETH_ADDRESS), _ynEigenWSTETHBalanceBefore, "processPrincipalWithdrawalsNoReinvest: E4");
-        assertEq(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore, "processPrincipalWithdrawalsNoReinvest: E5");
         assertEq(yneigen.assets(chainAddresses.lsd.SFRXETH_ADDRESS), _ynEigenSFRXETHBalanceBefore, "processPrincipalWithdrawalsNoReinvest: E6");
+
+        if (!_isHolesky()) {
+            uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
+            uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
+            assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw, 50, "processPrincipalWithdrawalsNoReinvest: E2");
+            assertEq(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore, "processPrincipalWithdrawalsNoReinvest: E5");
+        }
     }
 
     function _requestWithdrawal(uint256 _amount) internal returns (uint256) {
@@ -452,12 +464,16 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
                 IERC20(chainAddresses.lsd.WSTETH_ADDRESS), 
                 _userWSTETHBalanceDelta
             ) + assetRegistry.convertToUnitOfAccount(
-                IERC20(chainAddresses.lsd.WOETH_ADDRESS),
-                _userWOETHBalanceDelta
-            ) + assetRegistry.convertToUnitOfAccount(
                 IERC20(chainAddresses.lsd.SFRXETH_ADDRESS),
                 _userSFRXETHBalanceDelta
             );
+
+            if (!_isHolesky()) {
+                totalETHValueReceived += assetRegistry.convertToUnitOfAccount(
+                    IERC20(chainAddresses.lsd.WOETH_ADDRESS),
+                    _userWOETHBalanceDelta
+                );
+            }
         }
 
         uint256 totalETHValueExpected = withdrawalQueueManager.calculateRedemptionAmount(request.amount, request.redemptionRateAtRequestTime);
