@@ -497,7 +497,36 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
     }
 
-    function testTokenStakingNodeUndelegateWithStake() public {
+    function testDelegateUndelegateAndDelegateAgain() public {
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+
+        // Delegate to operator1
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(
+            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+
+        address delegatedOperator1 = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
+
+        // Undelegate
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.undelegate();
+
+        address undelegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(undelegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+
+        // Delegate to operator2
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(
+            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+
+        address delegatedOperator2 = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
+    }
+
+    function testDelegateUndelegateWithExistingStake() public {
         uint256 wstethAmount = 100 ether;
         uint256 sfrxethAmount = 100 ether;
 
@@ -538,7 +567,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](3);
+        uint256[] memory initialShares = new uint256[](2);
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
         for (uint256 i = 0; i < strategies.length; i++) {
             initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
@@ -546,17 +575,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         // Get initial queued shares
-        uint256[] memory initialQueuedShares = new uint256[](3);
+        uint256[] memory initialQueuedShares = new uint256[](2);
         for (uint256 i = 0; i < strategies.length; i++) {
             initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
-        }
-
-        // Create array of queued withdrawals based on strategies
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](strategies.length);
-
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedWithdrawals[i] =
-                QueuedWithdrawalInfo({withdrawnAmount: initialShares[i], strategy: strategies[i], operator: operator1});
         }
 
         // Undelegate
@@ -583,6 +604,160 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify withdrawal roots were created
         assertGt(withdrawalRoots.length, 0, "Should have withdrawal roots");
+    }
+
+    function testDelegateUndelegateAndDelegateAgainWithExistingStake() public {
+        uint256 wstethAmount = 100 ether;
+        uint256 sfrxethAmount = 100 ether;
+
+        // 1. Obtain wstETH and sfrxETH and deposit assets to ynEigen by User
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
+        testAssetUtils.depositAsset(ynEigenToken, address(sfrxETH), sfrxethAmount, address(this));
+
+        // 2. Deposit assets to Eigenlayer by Token Staking Node
+        IERC20[] memory assets = new IERC20[](2);
+        assets[0] = wstETH;
+        assets[1] = sfrxETH;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = wstethAmount;
+        amounts[1] = sfrxethAmount;
+        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
+        uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
+        assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
+
+        // Build array of strategies based on assets
+        IStrategy[] memory strategies = new IStrategy[](2);
+        for (uint256 i = 0; i < assets.length; i++) {
+            strategies[i] = eigenStrategyManager.strategies(assets[i]);
+        }
+
+        // Verify delegation
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
+
+        // Get initial operator shares for each strategy
+        uint256[] memory initialShares = new uint256[](2);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            initialShares[i] = eigenLayer.delegationManager.operatorShares(operator1, strategies[i]);
+            assertGt(initialShares[i], 0, "Operator should have shares");
+        }
+
+        // Undelegate
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.undelegate();
+
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operator2, signature, approverSalt);
+
+        // Verify delegation
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operator2, "TokenStakingNode not delegated correctly");
+
+        // Get initial operator shares for each strategy
+        uint256[] memory finalShares = new uint256[](2);
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        for (uint256 i = 0; i < strategies.length; i++) {
+            finalShares[i] = delegationManager.operatorShares(operator2, strategies[i])
+                + tokenStakingNodeInstance.queuedShares(strategies[i]);
+            assertEq(finalShares[i], initialShares[i], "Operator should have same shares");
+        }
+    }
+
+    function testDelegateUndelegateAndDelegateAgainWithoutExistingStake() public {
+        uint256 wstethAmount = 100 ether;
+        uint256 sfrxethAmount = 100 ether;
+
+        // 1. Obtain wstETH and sfrxETH and deposit assets to ynEigen by User
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
+        testAssetUtils.depositAsset(ynEigenToken, address(sfrxETH), sfrxethAmount, address(this));
+
+        // 2. Deposit assets to Eigenlayer by Token Staking Node
+        IERC20[] memory assets = new IERC20[](2);
+        assets[0] = wstETH;
+        assets[1] = sfrxETH;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = wstethAmount;
+        amounts[1] = sfrxethAmount;
+        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
+        uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
+        assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
+
+        // Build array of strategies based on assets
+        IStrategy[] memory strategies = new IStrategy[](2);
+        for (uint256 i = 0; i < assets.length; i++) {
+            strategies[i] = eigenStrategyManager.strategies(assets[i]);
+        }
+
+        // Verify delegation
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
+
+        // Get initial operator shares for each strategy
+        uint256[] memory initialShares = new uint256[](2);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            initialShares[i] = eigenLayer.delegationManager.operatorShares(operator1, strategies[i]);
+            assertGt(initialShares[i], 0, "Operator should have shares");
+        }
+
+        // Get initial queued shares
+        uint256[] memory initialQueuedShares = new uint256[](2);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+        }
+
+        // Undelegate
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.undelegate();
+
+        // Create array of queued withdrawals based on strategies
+        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](strategies.length);
+
+        for (uint256 i = 0; i < strategies.length; i++) {
+            queuedWithdrawals[i] =
+                QueuedWithdrawalInfo({withdrawnAmount: initialShares[i], strategy: strategies[i], operator: operator1});
+        }
+
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+
+        assertEq(tokenStakingNodeInstance.delegatedTo(), address(0), "TokenStakingNode delegatedTo is cleared");
+        assertEq(
+            delegationManager.delegatedTo(address(tokenStakingNodeInstance)),
+            address(0),
+            "Delegation not cleared in DelegationManager"
+        );
+
+        assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
+
+        // Verify queued shares increased by the correct amount
+        for (uint256 i = 0; i < strategies.length; i++) {
+            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            assertEq(
+                finalQueuedShares - initialQueuedShares[i],
+                initialShares[i],
+                "Queued shares should increase by operator shares amount"
+            );
+        }
 
         {
             IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
@@ -603,6 +778,11 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 );
                 vm.stopPrank();
             }
+
+            vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+            tokenStakingNodeInstance.delegate(operator2, signature, approverSalt);
+
+            assertEq(tokenStakingNodeInstance.delegatedTo(), operator2, "TokenStakingNode not delegated correctly");
 
             {
                 // Verify queued shares decreased by the correct amount
@@ -627,6 +807,19 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 }
             }
         }
+
+        // vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        // tokenStakingNodeInstance.delegate(operator2, signature, approverSalt);
+
+        // // Verify delegation
+        // assertEq(tokenStakingNodeInstance.delegatedTo(), operator2, "TokenStakingNode not delegated correctly");
+
+        // // Get initial operator shares for each strategy
+        // uint256[] memory finalShares = new uint256[](2);
+        // for (uint256 i = 0; i < strategies.length; i++) {
+        //     finalShares[i] = eigenLayer.delegationManager.operatorShares(operator2, strategies[i]);
+        //     assertEq(finalShares[i], initialShares[i], "Operator should have same shares");
+        // }
     }
 
     function testOperatorUndelegateTokenStakingNode() public {
@@ -745,7 +938,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         // Get initial queued shares
-        uint256[] memory initialQueuedShares = new uint256[](3);
+        uint256[] memory initialQueuedShares = new uint256[](2);
         for (uint256 i = 0; i < strategies.length; i++) {
             initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
         }
@@ -961,6 +1154,161 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                         "Shares are not restaked correctly after undelegation"
                     );
                 }
+            }
+        }
+    }
+
+    function testOperatorUndelegateSynchronizeAndCompleteWithdrawalsAndDelegateAgain() public {
+        uint256 wstethAmount = 100 ether;
+        uint256 sfrxethAmount = 100 ether;
+
+        // 1. Obtain wstETH and sfrxETH and deposit assets to ynEigen by User
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), wstethAmount, address(this));
+        testAssetUtils.depositAsset(ynEigenToken, address(sfrxETH), sfrxethAmount, address(this));
+
+        // 2. Deposit assets to Eigenlayer by Token Staking Node
+        IERC20[] memory assets = new IERC20[](2);
+        assets[0] = wstETH;
+        assets[1] = sfrxETH;
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = wstethAmount;
+        amounts[1] = sfrxethAmount;
+        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
+        uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
+        assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
+
+        // Build array of strategies based on assets
+        IStrategy[] memory strategies = new IStrategy[](2);
+        for (uint256 i = 0; i < assets.length; i++) {
+            strategies[i] = eigenStrategyManager.strategies(assets[i]);
+        }
+
+        // Verify delegation
+        assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
+
+        // Get initial operator shares for each strategy
+        uint256[] memory initialShares = new uint256[](2);
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        for (uint256 i = 0; i < strategies.length; i++) {
+            initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
+            assertGt(initialShares[i], 0, "Operator should have shares");
+        }
+
+        // Get initial queued shares
+        uint256[] memory initialQueuedShares = new uint256[](3);
+        for (uint256 i = 0; i < strategies.length; i++) {
+            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+        }
+
+        // Create array of queued withdrawals based on strategies
+        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](strategies.length);
+
+        for (uint256 i = 0; i < strategies.length; i++) {
+            queuedWithdrawals[i] =
+                QueuedWithdrawalInfo({withdrawnAmount: initialShares[i], strategy: strategies[i], operator: operator1});
+        }
+
+        // Undelegate by operator
+        vm.prank(operator1);
+        bytes32[] memory withdrawalRoots = eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
+
+        assertEq(tokenStakingNodeInstance.delegatedTo(), address(operator1), "TokenStakingNode delegatedTo not cleared");
+        assertEq(
+            delegationManager.delegatedTo(address(tokenStakingNodeInstance)),
+            address(0),
+            "Delegation not cleared in DelegationManager"
+        );
+
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+
+        assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
+
+        // Verify queued shares increased by the correct amount
+        for (uint256 i = 0; i < strategies.length; i++) {
+            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            assertEq(
+                finalQueuedShares - initialQueuedShares[i],
+                initialShares[i],
+                "Queued shares should increase by operator shares amount"
+            );
+        }
+
+        {
+            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+
+            {
+                // advance time to allow completion
+                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+            }
+
+            // complete queued withdrawals
+            {
+                uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
+                // all is zeroed out by default
+                _middlewareTimesIndexes[0] = 0;
+                vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+                tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
+                    _withdrawals, _middlewareTimesIndexes, strategies
+                );
+                vm.stopPrank();
+            }
+
+            {
+                // Verify queued shares decreased by the correct amount
+                for (uint256 i = 0; i < strategies.length; i++) {
+                    uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+                    assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0");
+                }
+            }
+
+            {
+                uint256 stakerStrategyListLength =
+                    strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
+                assertEq(
+                    stakerStrategyListLength, initialStrategyListLength, "Staker strategy list length should be 0."
+                );
+                for (uint256 i = 0; i < strategies.length; i++) {
+                    assertEq(
+                        strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                        initialShares[i],
+                        "Shares are not restaked correctly after undelegation"
+                    );
+                }
+            }
+        }
+
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        tokenStakingNodeInstance.delegate(operator2, signature, approverSalt);
+        address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        assertEq(
+            delegatedAddress,
+            operator2,
+            "Delegation should be set to operator2 after undelegation and delegation again."
+        );
+
+        {
+            uint256 stakerStrategyListLength =
+                strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
+            assertEq(stakerStrategyListLength, initialStrategyListLength, "Staker strategy list length should be 0.");
+            for (uint256 i = 0; i < strategies.length; i++) {
+                assertEq(
+                    strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                    initialShares[i],
+                    "Shares are not restaked correctly after undelegation"
+                );
             }
         }
     }
