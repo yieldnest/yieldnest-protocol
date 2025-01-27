@@ -86,7 +86,7 @@ contract ScenarioBaseTest is Test, Utils {
         assignContracts();
 
         // Upgrade StakingNode implementation with EL slashing upgrade changes
-        if (block.chainid == contractAddresses.getChainIds().holeksy) {
+        if (_isHolesky()) {
             address newStakingNodeImplementation = address(new StakingNode());
             vm.startPrank(actors.admin.STAKING_ADMIN);
             stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImplementation);
@@ -98,10 +98,7 @@ contract ScenarioBaseTest is Test, Utils {
 
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(chainId);
-        
-        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
-        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
-
+        chainIds = contractAddresses.getChainIds();
 
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
