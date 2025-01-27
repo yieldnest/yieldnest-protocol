@@ -298,7 +298,9 @@ contract IntegrationBaseTest is Test, Utils {
     function setupInitialization() internal {
 
         // Initialize V3 of StakingNodesManager with new implementation
-        stakingNodesManager.initializeV3(address(stakingNodeImplementation), rewardsCoordinator);
+        stakingNodesManager.initializeV3(rewardsCoordinator);
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
     }
 
     //--------------------------------------------------------------------------------------
