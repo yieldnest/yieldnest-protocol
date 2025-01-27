@@ -208,7 +208,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             _strategies[0] = _stethStrategy;
             _strategies[1] = _oethStrategy;
             _strategies[2] = _sfrxethStrategy;
-            vm.roll(block.number + 0); // + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete queued withdrawals -- steth
