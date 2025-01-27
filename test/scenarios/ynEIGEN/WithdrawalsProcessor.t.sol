@@ -124,7 +124,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             _strategies[0] = _stethStrategy;
             _strategies[1] = _oethStrategy;
             _strategies[2] = _sfrxethStrategy;
-            vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete withdrawals until `shouldCompleteQueuedWithdrawals() == false`

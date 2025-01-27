@@ -306,7 +306,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = wstETHStrategy;
-            vm.roll(block.number + 0); // eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // Capture state before completing withdrawal
