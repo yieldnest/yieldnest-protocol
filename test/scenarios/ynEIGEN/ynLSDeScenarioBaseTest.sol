@@ -85,10 +85,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(chainId);
+        chainIds = contractAddresses.getChainIds();
         
-        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
-        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
-
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
 
@@ -112,6 +110,4 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
     }
-
-   
 }

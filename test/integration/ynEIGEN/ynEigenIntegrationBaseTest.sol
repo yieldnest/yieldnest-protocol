@@ -104,8 +104,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         contractAddresses = new ContractAddresses();
         actorAddresses = new ActorAddresses();
 
-        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
-        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
+        chainIds = contractAddresses.getChainIds();
 
         // Setup Protocol
         setupUtils();
@@ -130,11 +129,12 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodesManager = new TokenStakingNodesManager();
         assetRegistry = new AssetRegistry();
         
-        if (block.chainid == chainIds.mainnet) {
-            rateProvider = new LSDRateProvider();
-        } else if (_isHolesky()) {
+        if (_isHolesky()) {
             rateProvider = LSDRateProvider(address(new HoleskyLSDRateProvider()));
+        } else {
+            rateProvider = new LSDRateProvider();
         }
+        
         ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
 
         ynEigenProxy = new TransparentUpgradeableProxy(address(ynEigenToken), actors.admin.PROXY_ADMIN_OWNER, "");
@@ -175,10 +175,10 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
 
         // Re-deploying LSDRateProvider and creating its proxy again
-        if (block.chainid == chainIds.mainnet) {
-            rateProvider = new LSDRateProvider();
-        } else if (_isHolesky()) {
+        if (_isHolesky()) {
             rateProvider = LSDRateProvider(address(new HoleskyLSDRateProvider()));
+        } else {
+            rateProvider = new LSDRateProvider();
         }
         rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
         rateProvider = LSDRateProvider(payable(rateProviderProxy));

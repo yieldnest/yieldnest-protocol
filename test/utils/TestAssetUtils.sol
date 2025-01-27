@@ -29,15 +29,13 @@ contract TestAssetUtils is Test {
     constructor() {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        chainIds = contractAddresses.getChainIds();
 
-        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
-        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
-
-        if (block.chainid == 1) {
-            FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
-        } else if (block.chainid == 17000) {
+        if (_isHolesky()) {
             // UNAVAILABLE
             FRX_ETH_WETH_DUAL_ORACLE = address(0x0);
+        } else {
+            FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
         }
     }
 
@@ -99,7 +97,7 @@ contract TestAssetUtils is Test {
 
     function get_OETH(address receiver, uint256 amount) public returns (uint256) {
 
-        if (block.chainid == chainIds.holeksy) {
+        if (_isHolesky()) {
             deal(chainAddresses.lsd.OETH_ADDRESS, receiver, amount, true);
         } else {
             IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
@@ -204,5 +202,9 @@ contract TestAssetUtils is Test {
         asset.approve(address(ynEigenToken), amount);
         vm.prank(user);
         ynEigenToken.deposit(asset, amount, user);
+    }
+    
+    function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
     }
 }
