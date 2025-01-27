@@ -44,6 +44,12 @@ interface ITokenStakingNode {
         bool updateTokenStakingNodesBalances
     ) external;
 
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes,
+        bool updateTokenStakingNodesBalances
+    ) external;
+
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals,
         uint256[] calldata middlewareTimesIndexes,
