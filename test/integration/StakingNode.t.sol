@@ -292,7 +292,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         IEigenPodSimplified node = IEigenPodSimplified(address(stakingNodesManager.nodes(nodeId)));
-        // vm.expectRevert("EigenPod._verifyWithdrawalCredentials: validator must be inactive to prove withdrawal credentials");
         vm.expectRevert(IEigenPodErrors.CredentialsAlreadyVerified.selector);
         node.verifyWithdrawalCredentials({
             beaconTimestamp: _proofs.beaconTimestamp,
@@ -333,7 +332,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             // make sure startCheckpoint cant be called again, which means that the checkpoint has started
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
-            // vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
             vm.expectRevert(IEigenPodErrors.CheckpointAlreadyActive.selector);
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
             _node.startCheckpoint(true);
@@ -429,7 +427,6 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             // make sure startCheckpoint cant be called again, which means that the checkpoint has started
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
-            // vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
             vm.expectRevert(IEigenPodErrors.CheckpointAlreadyActive.selector);
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
             _node.startCheckpoint(true);
