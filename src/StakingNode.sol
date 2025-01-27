@@ -459,7 +459,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     function synchronize(uint256 queuedShares, uint32 undelegateBlockNumber) public onlyDelegator {
-        if (isSynchronized()) revert AlreadySynchronized();
+        if (isSynchronized()) { 
+            revert AlreadySynchronized();
+        }
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 

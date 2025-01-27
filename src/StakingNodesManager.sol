@@ -246,12 +246,16 @@ contract StakingNodesManager is
     }
 
     function initializeV3(
-        address newStakingNodeImplementation,
         IRewardsCoordinator _rewardsCoordinator
     ) external reinitializer(3) {
         rewardsCoordinator = _rewardsCoordinator;
-        _upgradeStakingNodeImplementation(newStakingNodeImplementation);
-        updateTotalETHStaked();
+        uint256 updatedTotalETHStaked = 0;
+        IStakingNode[] memory _nodes = getAllNodes();
+        for (uint256 i = 0; i < _nodes.length; i++) {
+            updatedTotalETHStaked += _nodes[i].getETHBalance();
+        }
+        emit TotalETHStakedUpdated(updatedTotalETHStaked);
+        totalETHStaked = updatedTotalETHStaked;
     }
 
     receive() external payable {

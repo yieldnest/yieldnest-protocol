@@ -52,7 +52,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotSynchronized();
     error StrategyNotFound(address strategy);
     error AlreadyDelegated();
-
+    error DuplicateStrategy();
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -155,48 +155,84 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         emit QueuedWithdrawals(_strategy, _shares, _fullWithdrawalRoots);
     }
+
+    /**
+     * @notice Completes queued withdrawals with receiveAsTokens set to true
+     * @param withdrawals Array of withdrawals to complete
+     * @param middlewareTimesIndexes Array of middleware times indexes
+     * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
+     */
+    function completeQueuedWithdrawals(
+        IDelegationManager.Withdrawal[] memory withdrawals,
+        uint256[] memory middlewareTimesIndexes,
+        bool updateTokenStakingNodesBalances
+    ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
+
+        if (withdrawals.length != middlewareTimesIndexes.length) {
+            revert ArrayLengthMismatch();
+        }
+
+        IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
+        uint256[] memory _balancesBefore = new uint256[](withdrawals.length);
+        IERC20[][] memory _tokens = new IERC20[][](withdrawals.length);
+        IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
+        bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
+        IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
+
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            IStrategy _strategy = withdrawals[i].strategies[0];
+            _strategies[i] = _strategy;
+            _tokens[i] = new IERC20[](1);
+            _tokens[i][0] = _strategy.underlyingToken();
+            IERC20 _token = _tokens[i][0];
+            _receiveAsTokens[i] = true;
+            _balancesBefore[i] = _token.balanceOf(address(this));
+        }
+
+        for (uint256 i = 0; i < _strategies.length; i++) {
+            for (uint256 j = i + 1; j < _strategies.length; j++) {
+                if (address(_strategies[i]) == address(_strategies[j])) {
+                    revert DuplicateStrategy();
+                }
+            }
+        }
+
+        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens); 
+
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            IERC20 _token = _tokens[i][0];
+            uint256 _actualAmountOut = _token.balanceOf(address(this)) - _balancesBefore[i];
+            IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
+            (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
+            uint256 _shares = withdrawals[i].shares[0];
+            queuedShares[_strategies[i]] -= _shares;
+            withdrawn[_token] += _actualAmountOut;
+
+            if (updateTokenStakingNodesBalances) {
+                IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager())
+                    .updateTokenStakingNodesBalances(_token);
+            }
+        }
+
+        emit CompletedManyQueuedWithdrawals(withdrawals);
+    }
+
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to true
      * @param withdrawal The withdrawal to complete
      * @param middlewareTimesIndex The middleware times index
      * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
      */
-
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal calldata withdrawal,
         uint256 middlewareTimesIndex,
         bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
-        IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
-
-        IStrategy _strategy = withdrawal.strategies[0];
-        IERC20[] memory _tokens = new IERC20[](1);
-        _tokens[0] = _strategy.underlyingToken();
-        IERC20 _token = _tokens[0];
-        uint256 _balanceBefore = _token.balanceOf(address(this));
-
-        _delegationManager.completeQueuedWithdrawal(
-            withdrawal,
-            _tokens,
-            middlewareTimesIndex,
-            true // receiveAsTokens
-        );
-
-        uint256 _actualAmountOut = _token.balanceOf(address(this)) - _balanceBefore;
-        IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
-        IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
-        (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
-        uint256 _shares = withdrawal.shares[0];
-        queuedShares[_strategy] -= _shares;
-        withdrawn[_token] += _actualAmountOut;
-
-        if (updateTokenStakingNodesBalances) {
-            // Actual balance changes only if slashing occured. choose to update here
-            // only if the off-chain considers it necessary to save gas
-            IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager())
-                .updateTokenStakingNodesBalances(_token);
-        }
-        emit CompletedQueuedWithdrawals(_shares, _actualAmountOut, address(_strategy));
+        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
+        _withdrawals[0] = withdrawal;
+        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
+        _middlewareTimesIndexes[0] = middlewareTimesIndex;
+        completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes, updateTokenStakingNodesBalances);
     }
 
     /**
