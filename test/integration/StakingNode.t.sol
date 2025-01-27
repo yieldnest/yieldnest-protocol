@@ -550,6 +550,9 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             operator2,
             "Delegation should be set to operator2 after undelegation and delegation again."
         );
+
+        // Verify total assets stayed the same
+        assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after re-delegation");
     }
 
     function testOperatorUndelegateSynchronizeDelegateAndCompleteWithdrawals() public {
