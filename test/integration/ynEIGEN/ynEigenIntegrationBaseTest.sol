@@ -88,9 +88,13 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     IERC20[] public assets;
 
     modifier skipOnHolesky() {
-        vm.skip(block.chainid == chainIds.holeksy, "Impossible to test on Holesky");
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
 
         _;
+    }
+    
+     function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
     }
 
     function setUp() public virtual {
@@ -128,7 +132,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         
         if (block.chainid == chainIds.mainnet) {
             rateProvider = new LSDRateProvider();
-        } else if (block.chainid == chainIds.holeksy) {
+        } else if (_isHolesky()) {
             rateProvider = LSDRateProvider(address(new HoleskyLSDRateProvider()));
         }
         ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
