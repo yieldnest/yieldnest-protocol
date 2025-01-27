@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {IEigenPod, IEigenPodErrors} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 
 import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
@@ -321,7 +321,7 @@ contract M3WithdrawalsTest is Base {
 
     function _testStartCheckpoint() internal {
         IStakingNode _node = stakingNodesManager.nodes(nodeId);
-        vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+        vm.expectRevert(IEigenPodErrors.CheckpointAlreadyActive.selector);
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         _node.startCheckpoint(true);
     }
