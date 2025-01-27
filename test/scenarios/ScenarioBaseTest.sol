@@ -41,6 +41,8 @@ contract ScenarioBaseTest is Test, Utils {
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
+    ContractAddresses.ChainIds chainIds;
+
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
 
@@ -69,6 +71,16 @@ contract ScenarioBaseTest is Test, Utils {
 
     // Ethereum
     IDepositContract public depositContractEth2;
+    
+    modifier skipOnHolesky() {
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
+
+        _;
+    }
+    
+    function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
+    }
 
     function setUp() public virtual {
         assignContracts();
@@ -86,6 +98,10 @@ contract ScenarioBaseTest is Test, Utils {
 
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(chainId);
+        
+        (uint256 mainnet, uint256 holeksy) = contractAddresses.chainIds();
+        chainIds = ContractAddresses.ChainIds(mainnet, holeksy);
+
 
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
