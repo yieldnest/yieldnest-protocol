@@ -175,7 +175,11 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
 
         // Re-deploying LSDRateProvider and creating its proxy again
-        rateProvider = new LSDRateProvider();
+        if (block.chainid == chainIds.mainnet) {
+            rateProvider = new LSDRateProvider();
+        } else if (_isHolesky()) {
+            rateProvider = LSDRateProvider(address(new HoleskyLSDRateProvider()));
+        }
         rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
         rateProvider = LSDRateProvider(payable(rateProviderProxy));
 
