@@ -366,8 +366,18 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
         // stake assets to node
         {
+            
+            vm.startPrank(actors.admin.EIGEN_STRATEGY_ADMIN);
+            eigenStrategyManager.setStrategy(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS));
+            eigenStrategyManager.setStrategy(IERC20(chainAddresses.lsd.WOETH_ADDRESS), IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS));
+            eigenStrategyManager.setStrategy(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS));
+            vm.stopPrank();
+
+    
             vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+
             eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
+
             vm.stopPrank();
         }
 
