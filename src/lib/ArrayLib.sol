@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 library ArrayLib {
     /**
      * @notice Deduplicates an array of addresses by removing duplicates while preserving order
+     * @dev The time complexity of this function is O(n^2) and it's not suitable for large arrays
      * @param arr The input array of addresses to deduplicate
      * @return result The deduplicated array of addresses
      */

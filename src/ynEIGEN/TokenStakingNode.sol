@@ -53,7 +53,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotSynchronized();
     error StrategyNotFound(address strategy);
     error AlreadyDelegated();
-    error InvalidWithdrawal();
+    error InvalidWithdrawal(uint256 index);
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -182,7 +182,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
             if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
-                revert InvalidWithdrawal();
+                revert InvalidWithdrawal(i);
             }
             IStrategy _strategy = withdrawals[i].strategies[0];
             queuedShares[_strategy] -= withdrawals[i].shares[0];
@@ -266,7 +266,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
             if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
-                revert InvalidWithdrawal();
+                revert InvalidWithdrawal(i);
             }
             queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].shares[0];
             _tokens[i] = new IERC20[](1);
