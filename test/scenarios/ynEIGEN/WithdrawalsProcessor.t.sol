@@ -35,7 +35,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
         // deal assets to user
         {
             deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether});
-            deal({token: chainAddresses.lsd.WOETH_ADDRESS, to: user, give: 1000 ether});
+            deal({token: chainAddresses.lsd.RETH_ADDRESS, to: user, give: 1000 ether});
             deal({token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1000 ether});
         }
 
@@ -53,7 +53,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                 chainAddresses.lsd.STETH_ADDRESS,
                 chainAddresses.lsd.WSTETH_ADDRESS,
                 chainAddresses.lsd.OETH_ADDRESS,
-                chainAddresses.lsd.WOETH_ADDRESS
+                chainAddresses.lsd.RETH_ADDRESS
             );
 
             withdrawalsProcessor = WithdrawalsProcessor(
