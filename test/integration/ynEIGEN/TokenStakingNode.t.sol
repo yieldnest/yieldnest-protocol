@@ -774,7 +774,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes, strategies
+                    _withdrawals, _middlewareTimesIndexes
                 );
                 vm.stopPrank();
             }
@@ -877,7 +877,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.completeQueuedWithdrawalsAsShares(
-            new IDelegationManager.Withdrawal[](0), new uint256[](0), new IStrategy[](0)
+            new IDelegationManager.Withdrawal[](0), new uint256[](0)
         );
 
         vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
@@ -992,7 +992,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes, strategies
+                    _withdrawals, _middlewareTimesIndexes
                 );
                 vm.stopPrank();
             }
@@ -1128,7 +1128,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes, strategies
+                    _withdrawals, _middlewareTimesIndexes
                 );
                 vm.stopPrank();
             }
@@ -1261,7 +1261,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes, strategies
+                    _withdrawals, _middlewareTimesIndexes
                 );
                 vm.stopPrank();
             }
