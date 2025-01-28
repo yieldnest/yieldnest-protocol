@@ -35,16 +35,16 @@ contract ynLSDeDepositAdapterTest is ynLSDeScenarioBaseTest {
         assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositSTETH");
     }
 
-    function testDepositRETH(uint256 _amount) public {
+    function testDepositOETH(uint256 _amount) public skipOnHolesky {
         vm.assume(_amount > 10_000 && _amount <= 10 ether);
 
-        testAssetUtils.get_rETH(user, _amount + 10);
+        testAssetUtils.get_OETH(user, _amount + 10);
 
         vm.startPrank(user);
-        IERC20(chainAddresses.lsd.RETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
-        uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.RETH_ADDRESS), _amount, user);
+        IERC20(chainAddresses.lsd.OETH_ADDRESS).approve(address(ynEigenDepositAdapter_), _amount);
+        uint256 _ynOut = ynEigenDepositAdapter_.deposit(IERC20(chainAddresses.lsd.OETH_ADDRESS), _amount, user);
         vm.stopPrank();
 
-        assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositRETH");
+        assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositOETH");
     }
 }
