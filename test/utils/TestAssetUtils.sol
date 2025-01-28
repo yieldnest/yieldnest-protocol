@@ -7,6 +7,8 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
+import { IfrxETH } from "src/external/frax/IfrxETH.sol";
+import { ImETH } from "src/external/mantle/ImETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
 import { ImETHStaking } from "src/external/mantle/ImETHStaking.sol";
@@ -16,6 +18,7 @@ import "forge-std/console.sol";
 interface IRocketPoolDepositPool {
     function deposit() external payable;
 }
+
 
 contract TestAssetUtils is Test {
 
@@ -166,10 +169,11 @@ contract TestAssetUtils is Test {
 
         IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
         IERC4626 sfrxETHVault = IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS);
+        IfrxETH frxETH = IfrxETH(sfrxETHVault.asset());
 
         uint256 rate = sfrxETHVault.totalAssets() * 1e18 / sfrxETHVault.totalSupply();
 
-        IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138);
+        IfrxMinter frxMinter = IfrxMinter(frxETH.minters_array(0));
         uint256 ethToDeposit = amount * rate / 1e18 + 1 ether;
         vm.deal(address(this), ethToDeposit);
         frxMinter.submitAndDeposit{value: ethToDeposit}(address(this));
@@ -182,7 +186,7 @@ contract TestAssetUtils is Test {
     }
 
     function get_mETH(address receiver, uint256 amount) public returns (uint256) {
-        ImETHStaking mETHStaking = ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f);
+        ImETHStaking mETHStaking = ImETHStaking(ImETH(chainAddresses.lsd.METH_ADDRESS).stakingContract());
         IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
 
         uint256 ethRequired = mETHStaking.mETHToETH(amount) + 1 ether;
