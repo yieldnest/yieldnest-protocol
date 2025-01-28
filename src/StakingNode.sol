@@ -76,6 +76,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error NotSynchronized();
     error AlreadySynchronized();
     error WithdrawalMismatch();
+    error InvalidWithdrawal();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  CONSTANTS  ---------------------------------------
@@ -371,6 +372,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
         IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
+            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
+                revert InvalidWithdrawal();
+            }
             // Set receiveAsTokens to true to receive ETH when completeQueuedWithdrawals runs.
             ///IMPORTANT: beaconChainETHStrategy shares are non-transferrable, so if `receiveAsTokens = false`
             // and `withdrawal.withdrawer != withdrawal.staker`, any beaconChainETHStrategy shares
@@ -428,6 +432,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         // Calculate total shares being withdrawn
         for (uint256 i = 0; i < withdrawals.length; i++) {
+            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
+                revert InvalidWithdrawal();
+            }
             tokens[i] = new IERC20[](1);
             receiveAsTokens[i] = false;
             totalWithdrawalAmount += withdrawals[i].shares[0];

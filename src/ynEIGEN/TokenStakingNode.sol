@@ -52,7 +52,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotSynchronized();
     error StrategyNotFound(address strategy);
     error AlreadyDelegated();
-    error DuplicateStrategy();
+    error InvalidWithdrawal();
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -180,6 +180,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
+            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
+                revert InvalidWithdrawal();
+            }
             IStrategy _strategy = withdrawals[i].strategies[0];
             _strategies[i] = _strategy;
             _tokens[i] = new IERC20[](1);
@@ -187,14 +190,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             IERC20 _token = _tokens[i][0];
             _receiveAsTokens[i] = true;
             _balancesBefore[i] = _token.balanceOf(address(this));
-        }
-
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            for (uint256 j = i + 1; j < _strategies.length; j++) {
-                if (address(_strategies[i]) == address(_strategies[j])) {
-                    revert DuplicateStrategy();
-                }
-            }
         }
 
         _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens); 
@@ -265,6 +260,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
+            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != strategies[i]) {
+                revert InvalidWithdrawal();
+            }
             queuedShares[strategies[i]] -= withdrawals[i].shares[0];
             _tokens[i] = new IERC20[](1);
             _tokens[i][0] = strategies[i].underlyingToken();
