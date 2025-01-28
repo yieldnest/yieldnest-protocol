@@ -131,9 +131,12 @@ contract Base is Test, Utils {
         address newStakingNodeImpl = address(new StakingNode());
 
         // Upgrade StakingNodesManager
-        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, newStakingNodeImpl, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
+
+        uint256 totalAssetsBefore = yneth.totalAssets();
+
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
@@ -142,10 +145,13 @@ contract Base is Test, Utils {
             initializeV3Data
         );
 
+        assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");
 
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.upgradeStakingNodeImplementation( newStakingNodeImpl);
+        stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
+
+        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
