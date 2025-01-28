@@ -123,6 +123,8 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
             amount < 10000 ether && amount >= 2 wei
         );
 
+        testAssetUtils.assumeEnoughStakeLimit(amount);
+
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         depositAssetAndVerify(wstETH, amount);
     }
@@ -200,8 +202,10 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         address receiver,
         address referrer
     ) public {
-
         vm.assume(amount >= 2 wei && amount < 10000 ether);
+
+        testAssetUtils.assumeEnoughStakeLimit(amount);
+
         vm.assume(receiver != address(0) && referrer != address(0) && receiver != referrer);
 
         address prankedUser = address(0x1234543210);
