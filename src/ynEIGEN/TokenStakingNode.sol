@@ -7,6 +7,7 @@ import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ArrayLib} from "src/lib/ArrayLib.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
@@ -173,36 +174,42 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
-        uint256[] memory _balancesBefore = new uint256[](withdrawals.length);
         IERC20[][] memory _tokens = new IERC20[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
+        address[] memory _dupTokens = new address[](withdrawals.length);
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
             if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
                 revert InvalidWithdrawal();
             }
             IStrategy _strategy = withdrawals[i].strategies[0];
+            queuedShares[_strategy] -= withdrawals[i].shares[0];
+
             _strategies[i] = _strategy;
             _tokens[i] = new IERC20[](1);
             _tokens[i][0] = _strategy.underlyingToken();
             IERC20 _token = _tokens[i][0];
             _receiveAsTokens[i] = true;
-            _balancesBefore[i] = _token.balanceOf(address(this));
+            _dupTokens[i] = address(_token);
+        }
+
+        address[] memory _dedupTokens = ArrayLib.deduplicate(_dupTokens);
+        uint256[] memory _balancesBefore = new uint256[](_dedupTokens.length);
+
+        for (uint256 i = 0; i < _dedupTokens.length; i++) {
+            _balancesBefore[i] = IERC20(_dedupTokens[i]).balanceOf(address(this));
         }
 
         _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens); 
 
-        for (uint256 i = 0; i < withdrawals.length; i++) {
-            IERC20 _token = _tokens[i][0];
+        for (uint256 i = 0; i < _dedupTokens.length; i++) {
+            IERC20 _token = IERC20(_dedupTokens[i]);
             uint256 _actualAmountOut = _token.balanceOf(address(this)) - _balancesBefore[i];
             IERC20(_token).forceApprove(address(_wrapper), _actualAmountOut); // NOTE: approving also token that will not be transferred
             (_actualAmountOut, _token) = _wrapper.wrap(_actualAmountOut, _token);
-            uint256 _shares = withdrawals[i].shares[0];
-            queuedShares[_strategies[i]] -= _shares;
             withdrawn[_token] += _actualAmountOut;
-
             if (updateTokenStakingNodesBalances) {
                 IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager())
                     .updateTokenStakingNodesBalances(_token);
@@ -244,14 +251,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Completes queued withdrawals with receiveAsTokens set to false
      * @param withdrawals Array of withdrawals to complete
      * @param middlewareTimesIndexes Array of middleware times indexes
-     * @param strategies Array of strategies to withdraw from
      */
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes,
-        IStrategy[] calldata strategies
+        uint256[] calldata middlewareTimesIndexes
     ) external onlyDelegator onlyWhenSynchronized {
-        if (withdrawals.length != middlewareTimesIndexes.length || withdrawals.length != strategies.length) {
+        if (withdrawals.length != middlewareTimesIndexes.length) {
             revert ArrayLengthMismatch();
         }
 
@@ -260,12 +265,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != strategies[i]) {
+            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
                 revert InvalidWithdrawal();
             }
-            queuedShares[strategies[i]] -= withdrawals[i].shares[0];
+            queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].shares[0];
             _tokens[i] = new IERC20[](1);
-            _tokens[i][0] = strategies[i].underlyingToken();
+            _tokens[i][0] = withdrawals[i].strategies[0].underlyingToken();
             _receiveAsTokens[i] = false;
         }
 

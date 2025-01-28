@@ -108,7 +108,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNode.completeQueuedWithdrawalsAsShares(withdrawals, middlewareTimesIndexes, strategies);
+        stakingNode.completeQueuedWithdrawalsAsShares(withdrawals, middlewareTimesIndexes);
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(
