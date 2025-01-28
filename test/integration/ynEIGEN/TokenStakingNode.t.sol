@@ -14,7 +14,7 @@ import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-
+import {ContractAddresses} from "script/ContractAddresses.sol";
 
 
 import "forge-std/console.sol";
@@ -46,8 +46,16 @@ struct StateSnapshot {
 
 contract NodeStateSnapshot {
     StateSnapshot public snapshot;
-
-    constructor() {}
+    ContractAddresses public contractAddresses;
+    ContractAddresses.ChainAddresses public chainAddresses;
+    
+    bool public isHolesky;
+    constructor() {
+        contractAddresses = new ContractAddresses();
+        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        (, uint256 holeskyId) = contractAddresses.chainIds();
+        isHolesky = block.chainid == holeskyId;
+    }
 
     function takeSnapshot(address testAddress, uint256 nodeId) external {
 
@@ -60,6 +68,13 @@ contract NodeStateSnapshot {
         IERC20[] memory assets = state.assetRegistry().getAssets();
 
         for (uint256 i = 0; i < assets.length; i++) {
+            if (isHolesky && (
+                address(assets[i]) == chainAddresses.lsd.OETH_ADDRESS ||
+                address(assets[i]) == chainAddresses.lsd.WOETH_ADDRESS ||
+                address(assets[i]) == chainAddresses.lsd.SWELL_ADDRESS
+            ) ) {
+                continue;
+            }
             IERC20 asset = assets[i];
             IStrategy strategy = state.eigenStrategyManager().strategies(asset);
 
@@ -138,6 +153,8 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         vm.assume(
             wstethAmount < 10000 ether && wstethAmount >= 2 wei
         );
+        
+        testAssetUtils.assumeEnoughStakeLimit(wstethAmount);
 
 		// 1. Obtain wstETH and Deposit assets to ynEigen by User
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
@@ -190,7 +207,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 		uint256[] memory amounts = new uint256[](1);
 		amounts[0] = balance;
 		vm.prank(actors.ops.STRATEGY_CONTROLLER);
-		vm.expectRevert("Pausable: index is paused");
+		vm.expectRevert(IPausable.CurrentlyPaused.selector);
 		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
 	}
 
