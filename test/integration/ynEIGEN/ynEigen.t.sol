@@ -9,7 +9,6 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
-import {IstETH} from "src/external/lido/IstETH.sol";
 
 contract ynEigenTest is ynEigenIntegrationBaseTest {
 
@@ -83,12 +82,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
             amount < 10000 ether && amount >= 2 wei
         );
         
-        {
-        // we need this to prevent revert: SAKE_LIMIT
-            uint256 stakeLimit = IstETH(chainAddresses.lsd.STETH_ADDRESS).getCurrentStakeLimit();
-            uint256 stETHToMint = amount * IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).stEthPerToken() / 1e18 + 1 ether;
-            vm.assume(stETHToMint <= stakeLimit);
-        }
+        testAssetUtils.assumeEnoughStakeLimit(amount);
 
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         depositAssetAndVerify(wstETH, amount);
@@ -138,12 +132,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
             asset3Amount < 10000 ether && asset3Amount >= 2 wei
         );
 
-        {
-            // we need this to prevent revert: SAKE_LIMIT
-            uint256 stakeLimit = IstETH(chainAddresses.lsd.STETH_ADDRESS).getCurrentStakeLimit();
-            uint256 stETHToMint = asset0Amount * IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).stEthPerToken() / 1e18 + 1 ether;
-            vm.assume(stETHToMint <= stakeLimit);
-        }
+        testAssetUtils.assumeEnoughStakeLimit(asset0Amount);
 
         IERC20[] memory _assets = new IERC20[](4);
         _assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);

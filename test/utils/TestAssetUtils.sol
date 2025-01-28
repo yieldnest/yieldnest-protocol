@@ -12,6 +12,7 @@ import { ImETH } from "src/external/mantle/ImETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
 import { ImETHStaking } from "src/external/mantle/ImETHStaking.sol";
+import {IstETH} from "src/external/lido/IstETH.sol";
 
 import "forge-std/console.sol";
 
@@ -96,6 +97,13 @@ contract TestAssetUtils is Test {
         wsteth.transfer(receiver, amount);
 
         return amount;
+    }
+
+    // this can be used for preventing revert: STAKE_LIMIT
+    function assumeEnoughStakeLimit(uint256 amount) public {
+        uint256 stakeLimit = IstETH(chainAddresses.lsd.STETH_ADDRESS).getCurrentStakeLimit();
+        uint256 stETHToMint = amount * IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).stEthPerToken() / 1e18 + 1 ether;
+        vm.assume(stETHToMint <= stakeLimit);
     }
 
     function get_OETH(address receiver, uint256 amount) public returns (uint256) {
