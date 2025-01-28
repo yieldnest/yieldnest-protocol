@@ -51,9 +51,10 @@ contract NodeStateSnapshot {
     
     bool public isHolesky;
     constructor() {
-        isHolesky = block.chainid == 17000;
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        (, uint256 holeskyId) = contractAddresses.chainIds();
+        isHolesky = block.chainid == holeskyId;
     }
 
     function takeSnapshot(address testAddress, uint256 nodeId) external {
