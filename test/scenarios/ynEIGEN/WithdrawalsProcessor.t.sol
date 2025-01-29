@@ -88,9 +88,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
         }
     }
 
-    function testSatisfyAllWithdrawals(
-        /* uint256 _amount */
-    ) public {
+    function testSatisfyAllWithdrawals() public {
         if (_isOngoingWithdrawals()) return;
 
         uint256 _amount = 10 ether;
@@ -119,11 +117,6 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
         // skip withdrawal delay
         {
             assertFalse(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "testSatisfyAllWithdrawals: E3");
-
-            IStrategy[] memory _strategies = new IStrategy[](3);
-            _strategies[0] = _stethStrategy;
-            _strategies[1] = _oethStrategy;
-            _strategies[2] = _sfrxethStrategy;
             vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
@@ -164,7 +157,8 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
         {
             ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
             uint256 _stethStrategyShares = _stethStrategy.shares(address(_nodes[0]));
-            uint256 _oethStrategyShares = _oethStrategy.shares(address(_nodes[0]));
+            uint256 _oethStrategyShares;
+            if (!_isHolesky()) _oethStrategyShares = _oethStrategy.shares(address(_nodes[0]));
             uint256 _sfrxethStrategyShares = _sfrxethStrategy.shares(address(_nodes[0]));
             for (uint256 i = 0; i < _nodes.length; i++) {
                 assertApproxEqAbs(
@@ -173,9 +167,11 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                     100,
                     "testSatisfyAllWithdrawals: E12"
                 );
-                assertApproxEqAbs(
-                    _oethStrategy.shares(address(_nodes[i])), _oethStrategyShares, 100, "testSatisfyAllWithdrawals: E13"
-                );
+                if (!_isHolesky()) {
+                    assertApproxEqAbs(
+                        _oethStrategy.shares(address(_nodes[i])), _oethStrategyShares, 100, "testSatisfyAllWithdrawals: E13"
+                    );
+                }
                 assertApproxEqAbs(
                     _sfrxethStrategy.shares(address(_nodes[i])),
                     _sfrxethStrategyShares,
@@ -198,17 +194,17 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
 
         // user deposit
 
-        uint256 _len = 3;
+        uint256 _len = _isHolesky() ? 2 : 3;
         uint256[] memory _amounts = new uint256[](_len);
         IERC20[] memory _assetsToDeposit = new IERC20[](_len);
         {
             _assetsToDeposit[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-            _assetsToDeposit[1] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
-            _assetsToDeposit[2] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+            _assetsToDeposit[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+            if (!_isHolesky()) _assetsToDeposit[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
 
             _amounts[0] = _amount;
             _amounts[1] = _amount;
-            _amounts[2] = _amount;
+            if (!_isHolesky()) _amounts[2] = _amount;
 
             vm.startPrank(user);
             for (uint256 i = 0; i < _len; i++) {
@@ -224,7 +220,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
 
             _amounts[0] = _amount / _nodes.length;
             _amounts[1] = _amount / _nodes.length;
-            _amounts[2] = _amount / _nodes.length;
+            if (!_isHolesky()) _amounts[2] = _amount / _nodes.length;
 
             for (uint256 i = 0; i < _nodes.length; i++) {
                 vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
@@ -248,6 +244,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
         for (uint256 i = 0; i < _assets.length; ++i) {
             for (uint256 j = 0; j < _nodes.length; ++j) {
+                if (_isHolesky() && _assets[i] == IERC20(chainAddresses.lsd.WOETH_ADDRESS)) continue;
                 if (_nodes[j].queuedShares(eigenStrategyManager.strategies(_assets[i])) > 0) return true;
             }
         }
