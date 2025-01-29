@@ -114,6 +114,14 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         setupYnEigen();
         setupYieldNestAssets();
         setupYnEigenDepositAdapter();
+        
+        // Upgrade StakingNode implementation with EL slashing upgrade changes
+        if (_isHolesky()) {
+            address newStakingNodeImplementation = address(new TokenStakingNode());
+            vm.startPrank(actors.admin.STAKING_ADMIN);
+            tokenStakingNodesManager.upgradeTokenStakingNode(newStakingNodeImplementation);
+            vm.stopPrank();
+        }
     }
 
     function setupYnEigenProxies() public {
@@ -242,8 +250,9 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     }
 
     function setupYieldNestAssets() public {
-        IERC20[] memory lsdAssets = new IERC20[](5);
-        IStrategy[] memory strategies = new IStrategy[](5);
+        uint256 _length = _isHolesky() ? 4 : 5;
+        IERC20[] memory lsdAssets = new IERC20[](_length);
+        IStrategy[] memory strategies = new IStrategy[](_length);
 
         // stETH
         // We accept deposits in wstETH, and deploy to the stETH strategy
@@ -254,20 +263,22 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         lsdAssets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         strategies[1] = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
 
-        // oETH
-        // We accept deposits in woETH, and deploy to the oETH strategy
-        lsdAssets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
-        strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
-
         // sfrxETH
         // We accept deposits in wsfrxETH, and deploy to the sfrxETH strategy
-        lsdAssets[3] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
-        strategies[3] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+        lsdAssets[2] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        strategies[2] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
 
         // mETH
         // We accept deposits in wmETH, and deploy to the mETH strategy
-        lsdAssets[4] = IERC20(chainAddresses.lsd.METH_ADDRESS);
-        strategies[4] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
+        lsdAssets[3] = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        strategies[3] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
+
+        if (!_isHolesky()) {
+            // oETH
+            // We accept deposits in woETH, and deploy to the oETH strategy
+            lsdAssets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+            strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+        }
 
         for (uint i = 0; i < lsdAssets.length; i++) {
             assets.push(lsdAssets[i]);

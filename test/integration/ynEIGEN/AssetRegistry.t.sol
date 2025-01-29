@@ -51,9 +51,11 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         }
 
         {
-            // Deposit woETH using utility function
-            address prankedUserWoETH = address(uint160(uint256(keccak256(abi.encodePacked("woETHUser")))));
-            depositAsset(chainAddresses.lsd.WOETH_ADDRESS, woethAmount, prankedUserWoETH);
+            if (!_isHolesky()) {
+                // Deposit woETH using utility function
+                address prankedUserWoETH = address(uint160(uint256(keccak256(abi.encodePacked("woETHUser")))));
+                depositAsset(chainAddresses.lsd.WOETH_ADDRESS, woethAmount, prankedUserWoETH);
+            }
         }
 
         {
@@ -63,11 +65,15 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         }
 
         uint256 wstethRate = IstETH(chainAddresses.lsd.STETH_ADDRESS).getPooledEthByShares(1e18);
-        uint256 woethRate = IERC4626(chainAddresses.lsd.WOETH_ADDRESS).previewRedeem(1e18);
         uint256 rethRate = IrETH(chainAddresses.lsd.RETH_ADDRESS).getExchangeRate();
 
         // Calculate expected total assets
-        uint256 expectedTotalAssets = (wstethAmount * wstethRate / 1e18) + (woethAmount * woethRate / 1e18) + (rethAmount * rethRate / 1e18);
+        uint256 expectedTotalAssets = (wstethAmount * wstethRate / 1e18) + (rethAmount * rethRate / 1e18);
+
+        if (!_isHolesky()) {
+            uint256 woethRate = IERC4626(chainAddresses.lsd.WOETH_ADDRESS).previewRedeem(1e18);
+            expectedTotalAssets += (woethAmount * woethRate / 1e18);
+        }
 
         // Fetch total assets from the registry
         uint256 totalAssets = assetRegistry.totalAssets();

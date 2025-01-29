@@ -288,7 +288,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
     }
 
-    function testPreviewDepositwoETH(uint256 amount) public {
+    function testPreviewDepositwoETH(uint256 amount) public skipOnHolesky{
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
         );
@@ -343,7 +343,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemWSTETH: E0");
     }
 
-    function testPreviewRedeemWOETH(uint256 amount) public {
+    function testPreviewRedeemWOETH(uint256 amount) public skipOnHolesky {
         vm.assume(
             amount < 10000 ether && amount >= 10 wei
         );

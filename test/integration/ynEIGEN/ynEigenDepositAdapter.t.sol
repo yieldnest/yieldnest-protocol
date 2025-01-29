@@ -68,7 +68,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
     function testDepositOETHSuccessWithOneDeposit(
        uint256 depositAmount
-    ) public {
+    ) public skipOnHolesky {
 
         vm.assume(
             depositAmount < 10000 ether && depositAmount >= 2 wei
