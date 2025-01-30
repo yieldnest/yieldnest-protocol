@@ -181,7 +181,7 @@ contract M3WithdrawalsTest is Base {
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-            vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             beaconChain.exitValidator(validatorIndex);
             beaconChain.advanceEpoch_NoRewards();
         }

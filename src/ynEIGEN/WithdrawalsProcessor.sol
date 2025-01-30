@@ -150,7 +150,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(_queuedWithdrawal.strategy);
-            uint256 _withdrawalDelay = delegationManager.getWithdrawalDelay(_strategies);
+            uint256 _withdrawalDelay = delegationManager.minWithdrawalDelayBlocks();
             if (block.number >= _queuedWithdrawal.startBlock + _withdrawalDelay) {
                 return true;
             }
