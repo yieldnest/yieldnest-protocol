@@ -27,8 +27,6 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     error AmountExceedsSurplus(uint256 requestedAmount, uint256 availableSurplus);
     error SecondsToFinalizationExceedsLimit(uint256 value);
 
-    bool public isHolesky;
-
     address public constant user = address(0x12345678);
     address public constant receiver = address(0x987654321);
 
@@ -48,9 +46,8 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     function setUp() public override {
         super.setUp();
 
-        isHolesky = block.chainid == 17000;
 
-        if(isHolesky) {
+        if(_isHolesky()) {
             stakingNode = StakingNode(payable(address(stakingNodesManager.nodes(nodeId))));
 
             vm.deal(user, 10_000 ether);
@@ -63,9 +60,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     // Withdrawal flow tests
     // ------------------------------------------
 
-    function testVerifyWithdrawalCredentials() public {
-        if (!isHolesky) return;
-
+    function testVerifyWithdrawalCredentials() public skipOnHolesky() {
         ValidatorProofs memory _validatorProofs = getWithdrawalCredentialParams();
 
         uint256 _unverifiedStakedETH = stakingNode.unverifiedStakedETH();
@@ -82,9 +77,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(stakingNode.unverifiedStakedETH(), _unverifiedStakedETH, "testVerifyWithdrawalCredentials: E0"); // validator already verified withdrawal credentials
     }
 
-    function testVerifyWithdrawalCredentialsWrongCaller() public {
-        if (!isHolesky) return;
-
+    function testVerifyWithdrawalCredentialsWrongCaller() public skipOnHolesky() {
         ValidatorProofs memory _validatorProofs = getWithdrawalCredentialParams();
 
         vm.expectRevert(bytes4(keccak256("NotStakingNodesOperator()")));
@@ -97,8 +90,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         );
     }
 
-    function testQueueWithdrawal() public {
-        if (!isHolesky) return;
+    function testQueueWithdrawal() public skipOnHolesky() {
 
         testVerifyWithdrawalCredentials();
 
@@ -118,15 +110,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(stakingNode.withdrawnETH(), _withdrawnETHBefore + withdrawalAmount, "testQueueWithdrawal: E3");
     }
 
-    function testQueueWithdrawalWrongCaller() public {
-        if (!isHolesky) return;
+    function testQueueWithdrawalWrongCaller() public skipOnHolesky() {
 
         vm.expectRevert(bytes4(keccak256("NotStakingNodesWithdrawer()")));
         stakingNode.queueWithdrawals(withdrawalAmount);
     }
 
-    function testRequestWithdrawal(uint256 _amount) public {
-        if (!isHolesky) return;
+    function testRequestWithdrawal(uint256 _amount) public skipOnHolesky() {
 
         vm.assume(_amount > 0 && _amount < 10_000 ether);
 
@@ -176,8 +166,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testProcessPrincipalWithdrawalsForNode() public {
-        if (!isHolesky) return;
+    function testProcessPrincipalWithdrawalsForNode() public skipOnHolesky() {
 
         testRequestWithdrawal(withdrawalAmount);
         uint256 _withdrawnETHBefore = stakingNode.withdrawnETH();
@@ -204,8 +193,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(), _availableRedemptionAssetsBefore + withdrawalAmount, "testProcessPrincipalWithdrawalsForNode: E4");
     }
 
-    function testProcessPrincipalWithdrawalsForNodeWrongCaller() public {
-        if (!isHolesky) return;
+    function testProcessPrincipalWithdrawalsForNodeWrongCaller() public skipOnHolesky() {
 
         IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
         _actions[0] = IStakingNodesManager.WithdrawalAction({
@@ -219,8 +207,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         stakingNodesManager.processPrincipalWithdrawals(_actions);
     }
 
-    function testClaimWithdrawalInsufficientBalance() public {
-        if (!isHolesky) return;
+    function testClaimWithdrawalInsufficientBalance() public skipOnHolesky() {
 
         testRequestWithdrawal(withdrawalAmount);
 
@@ -233,8 +220,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         // ynETHWithdrawalQueueManager.claimWithdrawal(tokenId, receiver);
     }
 
-    function testClaimWithdrawalOnHolesky() public {
-        if (!isHolesky) return;
+    function testClaimWithdrawalOnHolesky() public skipOnHolesky() {
 
         testProcessPrincipalWithdrawalsForNode();
 
@@ -269,8 +255,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(address(ynETHWithdrawalQueueManager.feeReceiver()).balance - _feeReceiverBalanceBefore, _feeAmount, "testClaimwithdrawal: E4");
     }
 
-    function testClaimWithdrawalWrongCaller() public {
-        if (!isHolesky) return;
+    function testClaimWithdrawalWrongCaller() public skipOnHolesky() {
 
         vm.expectRevert(abi.encodeWithSelector(CallerNotOwnerNorApproved.selector, tokenId, address(this)));
         IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
@@ -282,8 +267,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         ynETHWithdrawalQueueManager.claimWithdrawals(claims);
     }
 
-    function testClaimWithdrawalNotFinalized() public {
-        if (!isHolesky) return;
+    function testClaimWithdrawalNotFinalized() public skipOnHolesky() {
 
         testProcessPrincipalWithdrawalsForNode();
 
@@ -302,8 +286,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     // Unit tests - WithdrawalQueueManager
     // ------------------------------------------
 
-    function testInitializationManager() public {
-        if (!isHolesky) return;
+    function testInitializationManager() public skipOnHolesky() {
 
         TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
             address(new WithdrawalQueueManager()),
@@ -345,8 +328,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(_manager.hasRole(_manager.WITHDRAWAL_QUEUE_ADMIN_ROLE(), _withdrawalQueueAdmin), true, "testInitialization: E7");
     }
 
-    function testInitializationManagerInvalid() public {
-        if (!isHolesky) return;
+    function testInitializationManagerInvalid() public skipOnHolesky() {
 
         string memory _name = "ynETH Withdrawal Manager";
         string memory _symbol = "ynETHWM";
@@ -374,8 +356,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         ynETHWithdrawalQueueManager.initialize(_init);
     }
 
-    function testSetWithdrawalFee(uint256 _feePercentage) public {
-        if (!isHolesky) return;
+    function testSetWithdrawalFee(uint256 _feePercentage) public skipOnHolesky() {
 
         if (_feePercentage <= ynETHWithdrawalQueueManager.FEE_PRECISION()) {
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
@@ -384,15 +365,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testSetWithdrawalFeeWrongCaller(uint256 _feePercentage) public {
-        if (!isHolesky) return;
+    function testSetWithdrawalFeeWrongCaller(uint256 _feePercentage) public skipOnHolesky() {
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
         ynETHWithdrawalQueueManager.setWithdrawalFee(_feePercentage);
     }
 
-    function testSetWithdrawalFeeWrongPercentage(uint256 _feePercentage) public {
-        if (!isHolesky) return;
+    function testSetWithdrawalFeeWrongPercentage(uint256 _feePercentage) public skipOnHolesky() {
 
         if (_feePercentage > ynETHWithdrawalQueueManager.FEE_PRECISION()) {
             vm.expectRevert(bytes4(keccak256("FeePercentageExceedsLimit()")));
@@ -401,8 +380,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testFeeReceiver(address _feeReceiver) public {
-        if (!isHolesky) return;
+    function testFeeReceiver(address _feeReceiver) public skipOnHolesky() {
 
         if (_feeReceiver != address(0)) {
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
@@ -411,15 +389,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testFeeReceiverWrongCaller(address _feeReceiver) public {
-        if (!isHolesky) return;
+    function testFeeReceiverWrongCaller(address _feeReceiver) public skipOnHolesky() {
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHWithdrawalQueueManager.WITHDRAWAL_QUEUE_ADMIN_ROLE()));
         ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
     }
 
-    function testFeeReceiverZeroAddress() public {
-        if (!isHolesky) return;
+    function testFeeReceiverZeroAddress() public skipOnHolesky() {
 
         address _feeReceiver = address(0);
         vm.expectRevert(bytes4(keccak256("ZeroAddress()")));
@@ -427,8 +403,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         ynETHWithdrawalQueueManager.setFeeReceiver(_feeReceiver);
     }
 
-    function testSurplusRedemptionAssets() public {
-        if (!isHolesky) return;
+    function testSurplusRedemptionAssets() public skipOnHolesky() {
 
         uint256 _balanceOfVaultBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
         assertEq(ynETHWithdrawalQueueManager.surplusRedemptionAssets(), _balanceOfVaultBefore - ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount(), "testSurplusRedemptionAssets: E0");
@@ -437,8 +412,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(ynETHWithdrawalQueueManager.surplusRedemptionAssets(), _balanceOfVaultBefore - ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount() + 1 ether, "testSurplusRedemptionAssets: E1");
     }
 
-    function testDeficitRedemptionAssets() public {
-        if (!isHolesky) return;
+    function testDeficitRedemptionAssets() public skipOnHolesky() {
 
         uint256 _deficitBefore = ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount();
         uint256 _vaultBalanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
@@ -453,8 +427,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertApproxEqAbs(ynETHWithdrawalQueueManager.deficitRedemptionAssets(), _deficitBefore + 1 ether - _vaultBalanceBefore, 1e5, "testDeficitRedemptionAssets: E3");
     }
 
-    function testWithdrawSurplusRedemptionAssets(uint256 _amount) public {
-        if (!isHolesky) return;
+    function testWithdrawSurplusRedemptionAssets(uint256 _amount) public skipOnHolesky() {
 
         vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
         uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
@@ -470,8 +443,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus(uint256 _amount) public {
-        if (!isHolesky) return;
+    function testWithdrawSurplusRedemptionAssetsAmountExceedsSurplus(uint256 _amount) public skipOnHolesky() {
 
         vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
         uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
@@ -482,8 +454,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testWithdrawSurplusRedemptionAssetsWrongCaller(uint256 _amount) public {
-        if (!isHolesky) return;
+    function testWithdrawSurplusRedemptionAssetsWrongCaller(uint256 _amount) public skipOnHolesky() {
 
         vm.deal(address(ynETHRedemptionAssetsVaultInstance), 10 ether);
         uint256 _surplusBefore = ynETHWithdrawalQueueManager.surplusRedemptionAssets();
@@ -493,8 +464,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testSupportsInterface(bytes4 _interfaceId) public {
-        if (!isHolesky) return;
+    function testSupportsInterface(bytes4 _interfaceId) public skipOnHolesky() {
 
         bool _expected = _interfaceId == type(IERC721).interfaceId;
         assertEq(ynETHWithdrawalQueueManager.supportsInterface(_interfaceId), _expected, "testSupportsInterface: E0");
@@ -504,8 +474,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
     // Unit tests - ynETHRedemptionAssetsVault
     // ------------------------------------------
 
-    function testInitializationVault() public {
-        if (!isHolesky) return;
+    function testInitializationVault() public skipOnHolesky() {
 
         TransparentUpgradeableProxy _proxy = new TransparentUpgradeableProxy(
             address(new ynETHRedemptionAssetsVault()),
@@ -532,8 +501,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(ynETHRedemptionAssetsVaultInstance.paused(), false, "testInitializationVault: E5");
     }
 
-    function testInitializationVaultInvalid() public {
-        if (!isHolesky) return;
+    function testInitializationVaultInvalid() public skipOnHolesky() {
 
         address _admin = actors.admin.PROXY_ADMIN_OWNER;
         address _redeemer = address(ynETHWithdrawalQueueManager);
@@ -548,15 +516,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         ynETHRedemptionAssetsVaultInstance.initialize(_init);
     }
 
-    function testRedemptionRate() public {
-        if (!isHolesky) return;
+    function testRedemptionRate() public skipOnHolesky() {
 
         uint256 _expected = yneth.previewRedeem(1 ether);
         assertEq(ynETHRedemptionAssetsVaultInstance.redemptionRate(), _expected, "testRedemptionRate: E0");
     }
 
-    function testAvailableRedemptionAssets(uint256 _dealAmount) public {
-        if (!isHolesky) return;
+    function testAvailableRedemptionAssets(uint256 _dealAmount) public skipOnHolesky() {
 
         uint256 _expected = address(ynETHRedemptionAssetsVaultInstance).balance;
         assertEq(ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(), _expected, "testAvailableRedemptionAssets: E0");
@@ -565,8 +531,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(), _expected + _dealAmount, "testAvailableRedemptionAssets: E1");
     }
 
-    function testTransferRedemptionAssets(address _to, uint256 _amount, uint256 _dealAmount) public {
-        if (!isHolesky) return;
+    function testTransferRedemptionAssets(address _to, uint256 _amount, uint256 _dealAmount) public skipOnHolesky() {
 
         vm.deal(address(ynETHRedemptionAssetsVaultInstance), _dealAmount);
         uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
@@ -580,8 +545,7 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testTransferRedemptionAssetsInsufficientAssetBalance(address _to, uint256 _amount, uint256 _dealAmount) public {
-        if (!isHolesky) return;
+    function testTransferRedemptionAssetsInsufficientAssetBalance(address _to, uint256 _amount, uint256 _dealAmount) public skipOnHolesky() {
 
         vm.deal(address(ynETHRedemptionAssetsVaultInstance), _dealAmount);
         uint256 _balanceBefore = address(ynETHRedemptionAssetsVaultInstance).balance;
@@ -592,15 +556,13 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         }
     }
 
-    function testTransferRedemptionAssetsWrongCaller(address _to, uint256 _amount) public {
-        if (!isHolesky) return;
+    function testTransferRedemptionAssetsWrongCaller(address _to, uint256 _amount) public skipOnHolesky() {
 
         vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.NotRedeemer.selector, address(this)));
         ynETHRedemptionAssetsVaultInstance.transferRedemptionAssets(_to, _amount, "");
     }
 
-    function testWithdrawRedemptionAssets(uint256 _amount) public {
-        if (!isHolesky) return;
+    function testWithdrawRedemptionAssets(uint256 _amount) public skipOnHolesky() {
 
         vm.assume(_amount < 100_000 ether);
 
@@ -615,16 +577,14 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         assertEq(address(yneth).balance - _ynETHBalanceBefore, _amount, "testWithdrawRedemptionAssets: E1");
     }
 
-    function testWithdrawRedemptionAssetsWrongCaller() public {
-        if (!isHolesky) return;
+    function testWithdrawRedemptionAssetsWrongCaller() public skipOnHolesky() {
 
         uint256 _amount = 1 ether;
         vm.expectRevert(abi.encodeWithSelector(ynETHRedemptionAssetsVault.NotRedeemer.selector, address(this)));
         ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(_amount);
     }
 
-    function testPause() public {
-        if (!isHolesky) return;
+    function testPause() public skipOnHolesky() {
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ynETHRedemptionAssetsVaultInstance.pause();
@@ -639,23 +599,20 @@ contract ynETHWithdrawalsOnHolesky is StakingNodeTestBase {
         ynETHRedemptionAssetsVaultInstance.withdrawRedemptionAssets(1 ether);
     }
 
-    function testPauseWrongCaller() public {
-        if (!isHolesky) return;
+    function testPauseWrongCaller() public skipOnHolesky() {
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.PAUSER_ROLE()));
         ynETHRedemptionAssetsVaultInstance.pause();
     }
 
-    function testUnpause() public {
-        if (!isHolesky) return;
+    function testUnpause() public skipOnHolesky() {
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ynETHRedemptionAssetsVaultInstance.unpause();
         assertEq(ynETHRedemptionAssetsVaultInstance.paused(), false, "testUnpause: E0");
     }
 
-    function testUnpauseWrongCaller() public {
-        if (!isHolesky) return;
+    function testUnpauseWrongCaller() public skipOnHolesky() {
 
         vm.expectRevert(abi.encodeWithSelector(AccessControlUnauthorizedAccount.selector, address(this), ynETHRedemptionAssetsVaultInstance.UNPAUSER_ROLE()));
         ynETHRedemptionAssetsVaultInstance.unpause();

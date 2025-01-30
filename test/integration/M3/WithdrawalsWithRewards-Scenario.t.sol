@@ -183,7 +183,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1); 
         }
 
         // complete queued withdrawals
@@ -210,7 +210,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + 0); // delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
 

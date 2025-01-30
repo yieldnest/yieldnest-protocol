@@ -22,6 +22,7 @@ import {Utils} from "script/Utils.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {LSDRateProvider} from "src/ynEIGEN/LSDRateProvider.sol";
+import {HoleskyLSDRateProvider} from "src/testnet/HoleksyLSDRateProvider.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
@@ -54,6 +55,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
+    ContractAddresses.ChainIds chainIds;
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
 
@@ -85,6 +87,15 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     // LSD
     IERC20[] public assets;
 
+    modifier skipOnHolesky() {
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
+
+        _;
+    }
+    
+     function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
+    }
 
     function setUp() public virtual {
 
@@ -92,6 +103,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         // Setup Addresses
         contractAddresses = new ContractAddresses();
         actorAddresses = new ActorAddresses();
+
+        chainIds = contractAddresses.getChainIds();
 
         // Setup Protocol
         setupUtils();
@@ -101,6 +114,14 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         setupYnEigen();
         setupYieldNestAssets();
         setupYnEigenDepositAdapter();
+        
+        // Upgrade StakingNode implementation with EL slashing upgrade changes
+        if (_isHolesky()) {
+            address newStakingNodeImplementation = address(new TokenStakingNode());
+            vm.startPrank(actors.admin.STAKING_ADMIN);
+            tokenStakingNodesManager.upgradeTokenStakingNode(newStakingNodeImplementation);
+            vm.stopPrank();
+        }
     }
 
     function setupYnEigenProxies() public {
@@ -115,7 +136,13 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         eigenStrategyManager = new EigenStrategyManager();
         tokenStakingNodesManager = new TokenStakingNodesManager();
         assetRegistry = new AssetRegistry();
-        rateProvider = new LSDRateProvider();
+        
+        if (_isHolesky()) {
+            rateProvider = LSDRateProvider(address(new HoleskyLSDRateProvider()));
+        } else {
+            rateProvider = new LSDRateProvider();
+        }
+        
         ynEigenDepositAdapterInstance = new ynEigenDepositAdapter();
 
         ynEigenProxy = new TransparentUpgradeableProxy(address(ynEigenToken), actors.admin.PROXY_ADMIN_OWNER, "");
@@ -130,7 +157,9 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         eigenStrategyManager = EigenStrategyManager(payable(eigenStrategyManagerProxy));
         tokenStakingNodesManager = TokenStakingNodesManager(payable(tokenStakingNodesManagerProxy));
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
+        
         rateProvider = LSDRateProvider(payable(rateProviderProxy));
+        
         ynEigenDepositAdapterInstance = ynEigenDepositAdapter(payable(ynEigenDepositAdapterProxy));
 
         // Re-deploying ynEigen and creating its proxy again
@@ -154,7 +183,11 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         assetRegistry = AssetRegistry(payable(assetRegistryProxy));
 
         // Re-deploying LSDRateProvider and creating its proxy again
-        rateProvider = new LSDRateProvider();
+        if (_isHolesky()) {
+            rateProvider = LSDRateProvider(address(new HoleskyLSDRateProvider()));
+        } else {
+            rateProvider = new LSDRateProvider();
+        }
         rateProviderProxy = new TransparentUpgradeableProxy(address(rateProvider), actors.admin.PROXY_ADMIN_OWNER, "");
         rateProvider = LSDRateProvider(payable(rateProviderProxy));
 
@@ -217,8 +250,9 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
     }
 
     function setupYieldNestAssets() public {
-        IERC20[] memory lsdAssets = new IERC20[](5);
-        IStrategy[] memory strategies = new IStrategy[](5);
+        uint256 _length = _isHolesky() ? 4 : 5;
+        IERC20[] memory lsdAssets = new IERC20[](_length);
+        IStrategy[] memory strategies = new IStrategy[](_length);
 
         // stETH
         // We accept deposits in wstETH, and deploy to the stETH strategy
@@ -229,20 +263,22 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         lsdAssets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         strategies[1] = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
 
-        // oETH
-        // We accept deposits in woETH, and deploy to the oETH strategy
-        lsdAssets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
-        strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
-
         // sfrxETH
         // We accept deposits in wsfrxETH, and deploy to the sfrxETH strategy
-        lsdAssets[3] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
-        strategies[3] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+        lsdAssets[2] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        strategies[2] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
 
         // mETH
         // We accept deposits in wmETH, and deploy to the mETH strategy
-        lsdAssets[4] = IERC20(chainAddresses.lsd.METH_ADDRESS);
-        strategies[4] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
+        lsdAssets[3] = IERC20(chainAddresses.lsd.METH_ADDRESS);
+        strategies[3] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
+
+        if (!_isHolesky()) {
+            // oETH
+            // We accept deposits in woETH, and deploy to the oETH strategy
+            lsdAssets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+            strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+        }
 
         for (uint i = 0; i < lsdAssets.length; i++) {
             assets.push(lsdAssets[i]);

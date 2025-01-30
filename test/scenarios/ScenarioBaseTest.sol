@@ -41,6 +41,8 @@ contract ScenarioBaseTest is Test, Utils {
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
+    ContractAddresses.ChainIds chainIds;
+
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
 
@@ -69,15 +71,34 @@ contract ScenarioBaseTest is Test, Utils {
 
     // Ethereum
     IDepositContract public depositContractEth2;
+    
+    modifier skipOnHolesky() {
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
+
+        _;
+    }
+    
+    function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
+    }
 
     function setUp() public virtual {
         assignContracts();
+
+        // Upgrade StakingNode implementation with EL slashing upgrade changes
+        if (_isHolesky()) {
+            address newStakingNodeImplementation = address(new StakingNode());
+            vm.startPrank(actors.admin.STAKING_ADMIN);
+            stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImplementation);
+            vm.stopPrank();
+        }
     }
     function assignContracts() internal {
         uint256 chainId = block.chainid;
 
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(chainId);
+        chainIds = contractAddresses.getChainIds();
 
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
