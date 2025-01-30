@@ -81,6 +81,8 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
         );
+        
+        testAssetUtils.assumeEnoughStakeLimit(amount);
 
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         depositAssetAndVerify(wstETH, amount);
@@ -118,27 +120,33 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
     }
 
     function testMultipleDepositsFuzz(
-        uint8 asset0Index,
-        uint8 asset1Index,
         uint256 asset0Amount,
-        uint256 asset1Amount
+        uint256 asset1Amount,
+        uint256 asset2Amount,
+        uint256 asset3Amount
         ) public {
-
-        vm.assume(asset0Index < 4 && asset1Index < 4);
         vm.assume(
             asset0Amount < 10000 ether && asset0Amount >= 2 wei &&
-            asset1Amount < 10000 ether && asset1Amount >= 2 wei
+            asset1Amount < 10000 ether && asset1Amount >= 2 wei &&
+            asset2Amount < 10000 ether && asset2Amount >= 2 wei &&
+            asset3Amount < 10000 ether && asset3Amount >= 2 wei
         );
 
-        IERC20[] memory assets = new IERC20[](4);
-        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
-        assets[2] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        assets[3] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+        testAssetUtils.assumeEnoughStakeLimit(asset0Amount);
 
-        depositAssetAndVerify(assets[asset0Index], asset0Amount);
-        depositAssetAndVerify(assets[asset1Index], asset1Amount);
+        IERC20[] memory _assets = new IERC20[](4);
+        _assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        _assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        _assets[2] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        _assets[3] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
 
+        depositAssetAndVerify(_assets[0], asset0Amount);
+        depositAssetAndVerify(_assets[1], asset1Amount);
+        depositAssetAndVerify(_assets[2], asset2Amount);
+
+        if (!_isHolesky()) {
+            depositAssetAndVerify(_assets[3], asset3Amount);
+        }
     }
 
     function testDepositwstETHSuccessWithMultipleDeposits() public {
@@ -280,7 +288,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
     }
 
-    function testPreviewDepositwoETH(uint256 amount) public {
+    function testPreviewDepositwoETH(uint256 amount) public skipOnHolesky{
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
         );
@@ -335,7 +343,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemWSTETH: E0");
     }
 
-    function testPreviewRedeemWOETH(uint256 amount) public {
+    function testPreviewRedeemWOETH(uint256 amount) public skipOnHolesky {
         vm.assume(
             amount < 10000 ether && amount >= 10 wei
         );

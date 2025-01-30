@@ -7,9 +7,12 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import { IfrxMinter } from "src/external/frax/IfrxMinter.sol";
+import { IfrxETH } from "src/external/frax/IfrxETH.sol";
+import { ImETH } from "src/external/mantle/ImETH.sol";
 import {IrETH} from "src/external/rocketpool/IrETH.sol";
 import { IynEigen } from "src/interfaces/IynEigen.sol";
 import { ImETHStaking } from "src/external/mantle/ImETHStaking.sol";
+import {IstETH} from "src/external/lido/IstETH.sol";
 
 import "forge-std/console.sol";
 
@@ -17,10 +20,12 @@ interface IRocketPoolDepositPool {
     function deposit() external payable;
 }
 
+
 contract TestAssetUtils is Test {
 
     ContractAddresses.ChainAddresses chainAddresses;
     ContractAddresses contractAddresses;
+    ContractAddresses.ChainIds chainIds;
 
     address public FRX_ETH_WETH_DUAL_ORACLE;
 
@@ -28,12 +33,13 @@ contract TestAssetUtils is Test {
     constructor() {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        chainIds = contractAddresses.getChainIds();
 
-        if (block.chainid == 1) {
-            FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
-        } else if (block.chainid == 17000) {
+        if (_isHolesky()) {
             // UNAVAILABLE
             FRX_ETH_WETH_DUAL_ORACLE = address(0x0);
+        } else {
+            FRX_ETH_WETH_DUAL_ORACLE = 0x350a9841956D8B0212EAdF5E14a449CA85FAE1C0;
         }
     }
 
@@ -93,18 +99,29 @@ contract TestAssetUtils is Test {
         return amount;
     }
 
+    // this can be used for preventing revert: STAKE_LIMIT
+    function assumeEnoughStakeLimit(uint256 amount) public {
+        uint256 stakeLimit = IstETH(chainAddresses.lsd.STETH_ADDRESS).getCurrentStakeLimit();
+        uint256 stETHToMint = amount * IwstETH(chainAddresses.lsd.WSTETH_ADDRESS).stEthPerToken() / 1e18 + 1 ether;
+        vm.assume(stETHToMint <= stakeLimit);
+    }
+
     function get_OETH(address receiver, uint256 amount) public returns (uint256) {
 
-        IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
+        if (_isHolesky()) {
+            deal(chainAddresses.lsd.OETH_ADDRESS, receiver, amount, true);
+        } else {
+            IERC20 oeth = IERC20(chainAddresses.lsd.OETH_ADDRESS);
 
-        // Simulate obtaining OETH by wrapping ETH
-        uint256 ethToDeposit = amount; // Assuming 1 ETH = 1 OETH for simplicity
-        vm.deal(address(this), ethToDeposit);
-        (bool success, ) = address(chainAddresses.lsd.OETH_ZAPPER_ADDRESS).call{value: ethToDeposit}("");
-        require(success, "ETH transfer failed");
+            // Simulate obtaining OETH by wrapping ETH
+            uint256 ethToDeposit = amount; // Assuming 1 ETH = 1 OETH for simplicity
+            vm.deal(address(this), ethToDeposit);
+            (bool success, ) = address(chainAddresses.lsd.OETH_ZAPPER_ADDRESS).call{value: ethToDeposit}("");
+            require(success, "ETH transfer failed");
 
-        require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
-        oeth.transfer(receiver, amount);
+            require(oeth.balanceOf(address(this)) >= amount, "Insufficient OETH balance after deposit");
+            oeth.transfer(receiver, amount);
+        }
 
         return amount;
     }
@@ -151,10 +168,7 @@ contract TestAssetUtils is Test {
     }
 
     function get_rETH(address receiver, uint256 amount) public returns (uint256) {
-        IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        address rethWhale = 0xCc9EE9483f662091a1de4795249E24aC0aC2630f;
-        vm.prank(rethWhale);
-        rETH.transfer(receiver, amount);
+        deal(chainAddresses.lsd.RETH_ADDRESS, receiver, amount, true);
 
         return amount;
     }
@@ -163,10 +177,11 @@ contract TestAssetUtils is Test {
 
         IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
         IERC4626 sfrxETHVault = IERC4626(chainAddresses.lsd.SFRXETH_ADDRESS);
+        IfrxETH frxETH = IfrxETH(sfrxETHVault.asset());
 
         uint256 rate = sfrxETHVault.totalAssets() * 1e18 / sfrxETHVault.totalSupply();
 
-        IfrxMinter frxMinter = IfrxMinter(0xbAFA44EFE7901E04E39Dad13167D089C559c1138);
+        IfrxMinter frxMinter = IfrxMinter(frxETH.minters_array(0));
         uint256 ethToDeposit = amount * rate / 1e18 + 1 ether;
         vm.deal(address(this), ethToDeposit);
         frxMinter.submitAndDeposit{value: ethToDeposit}(address(this));
@@ -179,7 +194,7 @@ contract TestAssetUtils is Test {
     }
 
     function get_mETH(address receiver, uint256 amount) public returns (uint256) {
-        ImETHStaking mETHStaking = ImETHStaking(0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f);
+        ImETHStaking mETHStaking = ImETHStaking(ImETH(chainAddresses.lsd.METH_ADDRESS).stakingContract());
         IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
 
         uint256 ethRequired = mETHStaking.mETHToETH(amount) + 1 ether;
@@ -199,5 +214,9 @@ contract TestAssetUtils is Test {
         asset.approve(address(ynEigenToken), amount);
         vm.prank(user);
         ynEigenToken.deposit(asset, amount, user);
+    }
+    
+    function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
     }
 }

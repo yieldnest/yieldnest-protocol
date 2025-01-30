@@ -18,8 +18,7 @@ import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
-
-import "forge-std/console2.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
 
 interface ITestState {
 
@@ -53,8 +52,16 @@ struct StateSnapshot {
 contract NodeStateSnapshot {
 
     StateSnapshot public snapshot;
-
-    constructor() {}
+    ContractAddresses public contractAddresses;
+    ContractAddresses.ChainAddresses public chainAddresses;
+    
+    bool public isHolesky;
+    constructor() {
+        contractAddresses = new ContractAddresses();
+        chainAddresses = contractAddresses.getChainAddresses(block.chainid);
+        (, uint256 holeskyId) = contractAddresses.chainIds();
+        isHolesky = block.chainid == holeskyId;
+    }
 
     function takeSnapshot(address testAddress, uint256 nodeId) external {
         ITestState state = ITestState(testAddress);
@@ -66,6 +73,13 @@ contract NodeStateSnapshot {
         IERC20[] memory assets = state.assetRegistry().getAssets();
 
         for (uint256 i = 0; i < assets.length; i++) {
+            if (isHolesky && (
+                address(assets[i]) == chainAddresses.lsd.OETH_ADDRESS ||
+                address(assets[i]) == chainAddresses.lsd.WOETH_ADDRESS ||
+                address(assets[i]) == chainAddresses.lsd.SWELL_ADDRESS
+            ) ) {
+                continue;
+            }
             IERC20 asset = assets[i];
             IStrategy strategy = state.eigenStrategyManager().strategies(asset);
 
@@ -151,6 +165,8 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         uint256 wstethAmount
     ) public {
         vm.assume(wstethAmount < 10_000 ether && wstethAmount >= 2 wei);
+        
+        testAssetUtils.assumeEnoughStakeLimit(wstethAmount);
 
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
@@ -202,14 +218,15 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         IStrategyManager strategyManager = eigenStrategyManager.strategyManager();
         vm.prank(chainAddresses.eigenlayer.STRATEGY_MANAGER_PAUSER_ADDRESS);
         IPausable(address(strategyManager)).pause(1);
-        IERC20[] memory assets = new IERC20[](1);
-        assets[0] = wstETH;
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = balance;
-        vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        vm.expectRevert("Pausable: index is paused");
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-    }
+		IERC20[] memory assets = new IERC20[](1);
+		assets[0] = wstETH;
+		uint256[] memory amounts = new uint256[](1);
+		amounts[0] = balance;
+		vm.prank(actors.ops.STRATEGY_CONTROLLER);
+		vm.expectRevert(IPausable.CurrentlyPaused.selector);
+		eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+	}
+
 
     function testTokenQueueWithdrawals() public {
         uint256 wstethAmount = 100 ether;
