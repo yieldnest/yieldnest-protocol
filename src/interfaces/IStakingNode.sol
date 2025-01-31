@@ -47,8 +47,8 @@ interface IStakingNode {
 
     function implementation() external view returns (address);
 
-    function allocateStakedETH(uint256 amount) external payable;   
-    function deallocateStakedETH(uint256 amount) external payable;
+    function allocateStakedETH(uint256 amount) external;   
+    function deallocateStakedETH(uint256 amount) external;
     function getETHBalance() external view returns (uint256);
     function unverifiedStakedETH() external view returns (uint256);
     function nodeId() external view returns (uint256);
