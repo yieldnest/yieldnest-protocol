@@ -516,7 +516,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function allocateStakedETH(
         uint256 amount
-    ) external payable onlyStakingNodesManager {
+    ) external onlyStakingNodesManager {
         emit AllocatedStakedETH(unverifiedStakedETH, amount);
 
         unverifiedStakedETH += amount;
@@ -531,10 +531,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function deallocateStakedETH(
         uint256 amount
-    ) external payable onlyStakingNodesManager {
-        if (amount > withdrawnETH) revert InsufficientWithdrawnETH(amount, withdrawnETH);
+    ) external onlyStakingNodesManager {
+        uint256 _withdrawnETH = withdrawnETH;
+        if (amount > _withdrawnETH) revert InsufficientWithdrawnETH(amount, _withdrawnETH);
 
-        emit DeallocatedStakedETH(amount, withdrawnETH);
+        emit DeallocatedStakedETH(amount, _withdrawnETH);
 
         withdrawnETH -= amount;
 

@@ -248,6 +248,7 @@ contract StakingNodesManager is
     function initializeV3(
         IRewardsCoordinator _rewardsCoordinator
     ) external reinitializer(3) {
+        if (address(_rewardsCoordinator) == address(0)) revert ZeroAddress();
         rewardsCoordinator = _rewardsCoordinator;
         uint256 updatedTotalETHStaked = 0;
         IStakingNode[] memory _nodes = getAllNodes();

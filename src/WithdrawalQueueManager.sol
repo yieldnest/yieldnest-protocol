@@ -296,7 +296,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         );
 
         uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
-
+        // TODO: check if this is correct
+        //// decrements pendingRequestedRedemptionAmount by the amount that is to be sent to the user
+        //// this should be decremented by the amount with which it was incremented when withdrawal was created
         pendingRequestedRedemptionAmount -= unitOfAccountAmount;
 
         _burn(tokenId);
