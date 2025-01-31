@@ -179,7 +179,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         }
     }
 
-    /// @notice Gets the arguments for `queueWithdrawals`
+ /// @notice Gets the arguments for `queueWithdrawals`
     /// @param _asset The asset to withdraw - the asset with the highest balance
     /// @param _nodes The list of nodes to withdraw from
     /// @param _shares The share amounts to withdraw from each node to achieve balanced distribution
@@ -286,45 +286,34 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
                 address _node = address(_nodes[j]);
-                //// increments queueId
                 _queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
                     _node,
                     address(_strategy),
                     delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
                     _toWithdraw,
-                    withdrawalQueueManager._tokenIdCounter(), //// tokenId to finalize // bug what if someone withdrawn before this transaction is sent and it's id is finalized
+                    withdrawalQueueManager._tokenIdCounter(),
                     uint32(block.number), // startBlock
                     false // completed
                 );
-                //// calls queue withdrawals on node
                 ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
             }
-            //// if there is no pending amount
+
             if (_pendingWithdrawalRequestsInShares == 0) {
-                //// updates the batch of last queuedId to latest queuedId
                 batch[_ids.queued] = _queuedId;
-                //// sets last id to be queued to queuedId
                 _ids.queued = _queuedId;
-                //// increments totalQueuedWithdrawals by total anount queue
                 totalQueuedWithdrawals += _toBeQueued;
-                //// returns true because all pending withdrawals are queued
                 return true;
             }
         }
 
-        //// calculates the pending withdrawals amount denominated in eth
         _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _asset, _strategy);
 
-        //// if pending withdrawals is less than amount to be queued, that means some amount is queued
         if (_pendingWithdrawalRequests < _toBeQueued) {
-            //// updates the batch of last queuedId to latest queuedId
             batch[_ids.queued] = _queuedId;
-            //// sets last id to be queued to queuedId
             _ids.queued = _queuedId;
-            //// increments totalQueuedWithdrawals by total amount queued
             totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
         }
-        //// returns false because all pending withdrawals are not queued
+
         return false;
     }
 
@@ -351,7 +340,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             IDelegationManager.Withdrawal memory _withdrawal = IDelegationManager.Withdrawal({
                 staker: address(queuedWithdrawal_.node),
-                delegatedTo: address(0), // TODO: get delegatedTo
+                delegatedTo: delegationManager.delegatedTo(address(queuedWithdrawal_.node)), // TODO: get delegatedTo
                 withdrawer: address(queuedWithdrawal_.node),
                 nonce: queuedWithdrawal_.nonce,
                 startBlock: queuedWithdrawal_.startBlock,
