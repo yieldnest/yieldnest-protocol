@@ -24,9 +24,10 @@ import {IWithdrawalsProcessor} from "../interfaces/IWithdrawalsProcessor.sol";
 
 contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessControlUpgradeable {
 
-    uint256 public totalQueuedWithdrawals;
+    uint256 public totalQueuedWithdrawals; // denominated in unit account
 
-    uint256 public minPendingWithdrawalRequestAmount;
+    // minimum amount of pending withdrawal requests to be queued
+    uint256 public minPendingWithdrawalRequestAmount; // denominated in unit account
 
     IDs private _ids;
 
@@ -123,12 +124,18 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     }
 
     /// @notice Checks if withdrawals should be queued
+    /// @dev returns true if there is not enough redemption assets to cover the pending withdrawals considering the minPendingWithdrawalRequestAmount
     /// @return True if withdrawals should be queued, false otherwise
     function shouldQueueWithdrawals() external view returns (bool) {
-        uint256 _pendingUnqueuedRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
-        uint256 _availableRedemptionAssets = redemptionAssetsVault.availableRedemptionAssets();
-        if (_availableRedemptionAssets >= _pendingUnqueuedRequests) return false;
-        return _pendingUnqueuedRequests - _availableRedemptionAssets > minPendingWithdrawalRequestAmount;
+        uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + totalQueuedWithdrawals;
+
+        if (pendingAmount <= availableAmount) {
+            return false;
+        }
+        uint256 deficitAmount = pendingAmount - availableAmount;
+
+        return deficitAmount >= minPendingWithdrawalRequestAmount;
     }
 
     /// @notice Checks if queued withdrawals should be completed
@@ -144,10 +151,12 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(_queuedWithdrawal.strategy);
             uint256 _withdrawalDelay = delegationManager.getWithdrawalDelay(_strategies);
-            if (block.number < _queuedWithdrawal.startBlock + _withdrawalDelay) return false;
+            if (block.number >= _queuedWithdrawal.startBlock + _withdrawalDelay) {
+                return true;
+            }
         }
 
-        return true;
+        return false;
     }
 
     /// @notice Checks if principal withdrawals should be processed
@@ -157,13 +166,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     }
 
     /// @notice Gets the total pending withdrawal requests
-    /// @return _pendingWithdrawalRequests The total pending withdrawal requests
-    function getPendingWithdrawalRequests() public view returns (uint256 _pendingWithdrawalRequests) {
-        uint256 _pendingUnqueudRequests = withdrawalQueueManager.pendingRequestedRedemptionAmount() - totalQueuedWithdrawals;
-        uint256 _availableRedemptionAssets = redemptionAssetsVault.availableRedemptionAssets();
-        if (_availableRedemptionAssets >= _pendingUnqueudRequests) revert CurrentRedemptionAssetsSufficient();
-        _pendingWithdrawalRequests = _pendingUnqueudRequests - _availableRedemptionAssets;
-        if (_pendingWithdrawalRequests <= minPendingWithdrawalRequestAmount) revert PendingWithdrawalRequestsTooLow();
+    /// @return deficitAmount The total pending withdrawal requests
+    function getPendingWithdrawalRequests() public view returns (uint256 deficitAmount) {
+        uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + totalQueuedWithdrawals;
+        if (pendingAmount <= availableAmount) {
+            revert CurrentAvailableAmountIsSufficient();
+        }
+         deficitAmount = pendingAmount - availableAmount;
+        if (deficitAmount < minPendingWithdrawalRequestAmount) {
+            revert PendingWithdrawalRequestsTooLow();
+        }
     }
 
     /// @notice Gets the arguments for `queueWithdrawals`
@@ -230,13 +243,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
 
             // second pass: withdraw evenly from all nodes if there is still more to withdraw
-            if (_pendingWithdrawalRequestsInShares > minPendingWithdrawalRequestAmount) {
-                // NOTE: here we compare shares to unit... nbd?
-                uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength;
+                uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
                 for (uint256 i = 0; i < _nodesLength; ++i) {
                     _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
                 }
-            }
         }
     }
 
@@ -334,6 +344,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
         _ids.completed = _completedId;
     }
+
 
     /// @notice Processes principal withdrawals
     /// @dev Must be called immediately after `completeQueuedWithdrawals` so that the shares value does't change
