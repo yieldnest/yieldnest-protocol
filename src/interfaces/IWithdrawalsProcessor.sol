@@ -15,6 +15,7 @@ interface IWithdrawalsProcessor {
         uint256 tokenIdToFinalize;
         uint32 startBlock;
         bool completed;
+        address delegatedTo;
     }
 
     struct IDs {

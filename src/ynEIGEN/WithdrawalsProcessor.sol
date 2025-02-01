@@ -179,7 +179,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         }
     }
 
- /// @notice Gets the arguments for `queueWithdrawals`
+    /// @notice Gets the arguments for `queueWithdrawals`
     /// @param _asset The asset to withdraw - the asset with the highest balance
     /// @param _nodes The list of nodes to withdraw from
     /// @param _shares The share amounts to withdraw from each node to achieve balanced distribution
@@ -286,6 +286,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
                 address _node = address(_nodes[j]);
+                address _delegatedTo = delegationManager.delegatedTo(_node);
                 _queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
                     _node,
                     address(_strategy),
@@ -293,7 +294,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                     _toWithdraw,
                     withdrawalQueueManager._tokenIdCounter(),
                     uint32(block.number), // startBlock
-                    false // completed
+                    false, // completed,
+                    _delegatedTo // operator
                 );
                 ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
             }
@@ -340,7 +342,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             IDelegationManager.Withdrawal memory _withdrawal = IDelegationManager.Withdrawal({
                 staker: address(queuedWithdrawal_.node),
-                delegatedTo: delegationManager.delegatedTo(address(queuedWithdrawal_.node)), // TODO: get delegatedTo
+                delegatedTo: queuedWithdrawal_.delegatedTo,
                 withdrawer: address(queuedWithdrawal_.node),
                 nonce: queuedWithdrawal_.nonce,
                 startBlock: queuedWithdrawal_.startBlock,
@@ -352,15 +354,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 0,
                 true // updateTokenStakingNodesBalances
             );
-
-            // ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
-            //     queuedWithdrawal_.nonce,
-            //     queuedWithdrawal_.startBlock,
-            //     queuedWithdrawal_.shares,
-            //     IStrategy(queuedWithdrawal_.strategy),
-            //     _middlewareTimesIndexes,
-            //     true // updateTokenStakingNodesBalances
-            // );
         }
 
         _ids.completed = _completedId;
