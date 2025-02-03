@@ -214,7 +214,6 @@ contract ContractAddresses {
         return chainIds;
     }
 
-
     function isSupportedChainId(uint256 chainId) external view returns (bool) {
         return chainId == chainIds.mainnet || chainId == chainIds.holeksy;
     }
