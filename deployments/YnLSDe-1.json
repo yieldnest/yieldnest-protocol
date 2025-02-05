@@ -13,7 +13,7 @@
   "YnSecurityCouncil": "0xfcad670592a3b24869C0b51a6c6FDED4F95D6975",
   "implementation-ynLSDe": "0x989C5E2509C501deB6195b9f525d9092514041b4",
   "implementation-assetRegistry": "0x94db8f0d5bBCCEBF6d8288d06eb53bB80cA125bd",
-  "implementation-eigenStrategyManager": "0x1776deA5799fc7ad10b6039f6E1927fEfd731E85",
+  "implementation-eigenStrategyManager": "0x9904c5D441947dB77cee7F401Ed76C9fb3754f2C",
   "implementation-rateProvider": "0xAEDC83F607126b4D2437F79285e2C635685BBA01",
   "implementation-tokenStakingNodesManager": "0x29AC770AbfA12B0AB726c5E6EB38124061747b6B",
   "implementation-ynEigenDepositAdapter": "0x8Ef7a066bf2Cf76baD826C1De8D314badF057b52",

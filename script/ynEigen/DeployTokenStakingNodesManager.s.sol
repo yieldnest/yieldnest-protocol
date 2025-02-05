@@ -24,12 +24,6 @@ contract DeployTokenStakingNodesManager is BaseYnEigenScript {
 
         console.log("TokenStakingNodesManager Implementation:", address(tokenStakingNodesManagerImplementation));
 
-        // Deployment memory deployment = loadDeployment();
-
-        // deployment.tokenStakingNodesManager = tokenStakingNodesManagerImplementation;
-
-        // saveDeployment(deployment);
-
         vm.stopBroadcast();
     }
 

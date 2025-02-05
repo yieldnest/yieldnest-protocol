@@ -24,12 +24,6 @@ contract DeployStakingNodesManager is BaseYnETHScript {
 
         console.log("StakingNodesManager Implementation:", address(stakingNodesManagerImplementation));
 
-        Deployment memory deployment = loadDeployment();
-
-        deployment.stakingNodesManager = stakingNodesManagerImplementation;
-
-        saveDeployment(deployment);
-
         vm.stopBroadcast();
     }
 
