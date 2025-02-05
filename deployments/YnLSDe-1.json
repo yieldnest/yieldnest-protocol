@@ -15,7 +15,7 @@
   "implementation-assetRegistry": "0x94db8f0d5bBCCEBF6d8288d06eb53bB80cA125bd",
   "implementation-eigenStrategyManager": "0x1776deA5799fc7ad10b6039f6E1927fEfd731E85",
   "implementation-rateProvider": "0xAEDC83F607126b4D2437F79285e2C635685BBA01",
-  "implementation-tokenStakingNodesManager": "0x81f34d0DB58A7934549D9B2B1E76542ED9801B1f",
+  "implementation-tokenStakingNodesManager": "0x29AC770AbfA12B0AB726c5E6EB38124061747b6B",
   "implementation-ynEigenDepositAdapter": "0x8Ef7a066bf2Cf76baD826C1De8D314badF057b52",
   "implementation-ynEigenViewer": "0x95046553147036dA98Aecc02B2526FCBc36F4306",
   "implementation-redemptionAssetsVault": "0x9892A40FE6e17d4C88a92b2e37c12981bAA6F14A",
@@ -44,6 +44,6 @@
   "proxyAdmin-withdrawalQueueManager": "0xe612764D1986693f46e99605d274Bbe28c3F03a7",
   "proxyAdmin-wrapper": "0x151057A14a4c84403e77C1fbc4f22a8156f63A4B",
   "proxyAdmin-withdrawalsProcessor": "0xD40b5b191c72f0Ed424Bdc2962f798c367DDB2c5",
-  "tokenStakingNodeImplementation": "0xc602682b9ebc9719181b7a2b2479291cba26f801",
+  "tokenStakingNodeImplementation": "0x28fD4C04620D95c4BeC9397E2D303937779C41FD",
   "upgradeTimelock": "0xbB73f8a5B0074b27c6df026c77fA08B0111D017A"
 }
