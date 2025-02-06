@@ -13,6 +13,7 @@ import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IRewardsDistributor} from "src/interfaces/IRewardsDistributor.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {IReferralDepositAdapter} from "src/interfaces/IReferralDepositAdapter.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
@@ -73,6 +74,7 @@ contract IntegrationBaseTest is Test, Utils {
     IDelegationManager public delegationManager;
     // IDelayedWithdrawalRouter public delayedWithdrawalRouter;
     IStrategyManager public strategyManager;
+    IRewardsCoordinator public rewardsCoordinator;
 
     // Ethereum
     IDepositContract public depositContractEth2;
@@ -99,6 +101,7 @@ contract IntegrationBaseTest is Test, Utils {
         setupYnETH();
         setupUtils();
         setupWithdrawalQueueManager();
+        setupInitialization();
     }
 
     function setupYnETHPoxies() public {
@@ -172,8 +175,8 @@ contract IntegrationBaseTest is Test, Utils {
         strategyManager = IStrategyManager(vm.addr(7));
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        // delayedWithdrawalRouter = IDelayedWithdrawalRouter(chainAddresses.eigenlayer.DELAYED_WITHDRAWAL_ROUTER_ADDRESS); // Assuming DEPOSIT_2_ADDRESS is used for DelayedWithdrawalRouter
         strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        rewardsCoordinator = IRewardsCoordinator(chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
     }
 
     function setupYnETH() public {
@@ -290,6 +293,14 @@ contract IntegrationBaseTest is Test, Utils {
                 stakingNodesWithdrawer: actors.ops.STAKING_NODES_WITHDRAWER
             })
         );
+    }
+
+    function setupInitialization() internal {
+
+        // Initialize V3 of StakingNodesManager with new implementation
+        stakingNodesManager.initializeV3(rewardsCoordinator);
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(address(stakingNodeImplementation));
     }
 
     //--------------------------------------------------------------------------------------

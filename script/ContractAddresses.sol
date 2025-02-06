@@ -34,7 +34,7 @@ contract ContractAddresses {
         address DELEGATION_PAUSER_ADDRESS;
         address STRATEGY_MANAGER_ADDRESS;
         address STRATEGY_MANAGER_PAUSER_ADDRESS;
-        address DELAYED_WITHDRAWAL_ROUTER_ADDRESS;
+        address REWARDS_COORDINATOR_ADDRESS;
     }
 
     struct LSDAddresses {
@@ -97,7 +97,7 @@ contract ContractAddresses {
                 DELEGATION_PAUSER_ADDRESS: 0x369e6F597e22EaB55fFb173C6d9cD234BD699111, // TODO: remove this if unused
                 STRATEGY_MANAGER_ADDRESS: 0x858646372CC42E1A627fcE94aa7A7033e7CF075A,
                 STRATEGY_MANAGER_PAUSER_ADDRESS: 0xBE1685C81aA44FF9FB319dD389addd9374383e90,
-                DELAYED_WITHDRAWAL_ROUTER_ADDRESS: 0x7Fe7E9CC0F274d2435AD5d56D5fa73E47F6A23D8
+                REWARDS_COORDINATOR_ADDRESS: 0x7750d328b314EfFa365A0402CcfD489B80B0adda
             }),
             lsd: LSDAddresses({
                 SFRXETH_ADDRESS: 0xac3E018457B222d93114458476f3E3416Abbe38F,
@@ -158,7 +158,7 @@ contract ContractAddresses {
                 DELEGATION_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348, // Placeholder address, replaced with address(1) for holesky
                 STRATEGY_MANAGER_ADDRESS: 0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6, // Placeholder address, replaced with address(1) for holesky
                 STRATEGY_MANAGER_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348,
-                DELAYED_WITHDRAWAL_ROUTER_ADDRESS: 0x642c646053eaf2254f088e9019ACD73d9AE0FA32 // Placeholder address, replaced with address(1) for holesky
+                REWARDS_COORDINATOR_ADDRESS: 0xAcc1fb458a1317E886dB376Fc8141540537E68fE
             }),
             lsd: LSDAddresses({
                 SFRXETH_ADDRESS: 0xa63f56985F9C7F3bc9fFc5685535649e0C1a55f3,

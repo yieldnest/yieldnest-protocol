@@ -4,11 +4,16 @@ pragma solidity ^0.8.24;
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
-import {IStakingNode} from "../../../src/interfaces/IStakingNode.sol";
-import {IStakingNodesManager} from "../../../src/interfaces/IStakingNodesManager.sol";
-import {IWithdrawalQueueManager} from "../../../src/interfaces/IWithdrawalQueueManager.sol";
+import {IStakingNode} from "src/interfaces/IStakingNode.sol";
+import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
+import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
+import {Utils} from "script/Utils.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
+import {ActorAddresses} from "script/Actors.sol";
 
-import "./Base.t.sol";
+import {WithdrawalsScenarioTestBase} from "./WithdrawalsScenarioTestBase.sol";
+
 
 interface IPod {
     function verifyWithdrawalCredentials(uint64 beaconTimestamp, BeaconChainProofs.StateRootProof calldata stateRootProof, uint40[] calldata validatorIndices, bytes[] calldata validatorFieldsProofs, bytes32[][] calldata validatorFields) external;
@@ -20,7 +25,7 @@ interface IStakingNodeVars {
     function withdrawnETH() external view returns (uint256);
 }
 
-contract M3WithdrawalsWithRewardsTest is Base {
+contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
 
     address public user;
 
@@ -53,10 +58,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
             vm.deal(user, amount);
             vm.prank(user);
             yneth.depositETH{value: amount}(user);
-
-            // Log ynETH balance for user
-            uint256 userYnETHBalance = yneth.balanceOf(user);
-            console.log("User ynETH balance after deposit:", userYnETHBalance);
         }
 
         // Process rewards
@@ -143,88 +144,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
         }
     }
 
-
-    struct QueuedWithdrawalInfo {
-        uint256 nodeId;
-        uint256 withdrawnAmount;
-    }
-
-    function getDelegationManagerWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private view returns (IDelegationManager.Withdrawal[] memory) {
-        // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
-        {
-            for (uint256 i = 0; i < queuedWithdrawals.length; i++) {
-                uint256[] memory _shares = new uint256[](1);
-                _shares[0] = queuedWithdrawals[i].withdrawnAmount;
-                IStrategy[] memory _strategies = new IStrategy[](1);
-                _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-                address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
-                _withdrawals[i] = IDelegationManager.Withdrawal({
-                    staker: _stakingNode,
-                    delegatedTo: delegationManager.delegatedTo(_stakingNode),
-                    withdrawer: _stakingNode,
-                    nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
-                    startBlock: uint32(block.number),
-                    strategies: _strategies,
-                    shares: _shares
-                });   
-            }
-        }
-        
-        return _withdrawals;
-    }
-
-    function completeQueuedWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals) private {
-        // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
-
-        {
-            IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-
-            // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
-        }
-
-        // complete queued withdrawals
-        {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-            // all is zeroed out by defailt
-            _middlewareTimesIndexes[0] = 0;
-            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
-            vm.stopPrank();
-        }
-    }
-
-    function completeAndProcessWithdrawals(
-        IStakingNodesManager.WithdrawalAction memory withdrawalAction,
-        QueuedWithdrawalInfo[] memory queuedWithdrawals
-    ) public {
-
-
-        IDelegationManager.Withdrawal[] memory _withdrawals = getDelegationManagerWithdrawals(queuedWithdrawals);
-
-        {
-            IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-
-            // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
-        }
-
-
-        {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-            withdrawalsProcessor.completeAndProcessWithdrawalsForNode(
-                withdrawalAction,
-                _withdrawals,
-                _middlewareTimesIndexes
-            );
-        }
-    }
-
     function test_userWithdrawalWithRewards_Scenario_1() public {
 
         // deposit 100 ETH into ynETH
@@ -256,6 +175,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
         // Rewards accumulated are accounted after verifying the checkpoint
         state.totalAssetsBefore += accumulatedRewards;
         state.stakingNodeBalancesBefore[nodeId] += accumulatedRewards;
+
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
         uint256 withdrawnAmount = 32 ether * validatorIndices.length + accumulatedRewards;
@@ -274,7 +194,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId: nodeId,
             withdrawnAmount: withdrawnAmount
         });
-        completeQueuedWithdrawals(withdrawalInfos);
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
@@ -505,7 +425,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId: nodeId,
             withdrawnAmount: withdrawnAmount
         });
-        completeQueuedWithdrawals(withdrawalInfos);
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
@@ -624,7 +544,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId: nodeId,
             withdrawnAmount: withdrawnAmount
         });
-        completeQueuedWithdrawals(withdrawalInfos);
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
         
@@ -672,7 +592,6 @@ contract M3WithdrawalsWithRewardsTest is Base {
         // Print withdrawableRestakedExecutionLayerGwei for each EigenPod
         IEigenPod pod = stakingNodesManager.nodes(nodeId).eigenPod();
         uint64 withdrawableGwei = pod.withdrawableRestakedExecutionLayerGwei();
-        console.log("Withdrawable GWEI for EigenPod:", withdrawableGwei);
 
         uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
         state.totalAssetsBefore = state.totalAssetsBefore + accumulatedRewards - totalSlashAmount;
@@ -684,7 +603,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId: nodeId,
             withdrawnAmount: withdrawnAmount
         });
-        completeQueuedWithdrawals(withdrawalInfos);
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
     }
@@ -721,7 +640,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId: nodeId,
             withdrawnAmount: withdrawnAmount
         });
-        completeQueuedWithdrawals(withdrawalInfos);
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
@@ -788,7 +707,7 @@ contract M3WithdrawalsWithRewardsTest is Base {
             nodeId: nodeId,
             withdrawnAmount: withdrawnAmount
         });
-        completeQueuedWithdrawals(withdrawalInfos);
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
     }

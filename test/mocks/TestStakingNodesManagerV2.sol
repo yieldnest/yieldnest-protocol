@@ -11,7 +11,7 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
         uint256 newV2Value;
     }
 
-    function initializeV3(ReInit memory reInit) public reinitializer(3) {
+    function initializeV4(ReInit memory reInit) public reinitializer(4) {
         newV2Value = reInit.newV2Value;
     }
 
@@ -29,9 +29,15 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
             node.initializeV2(0);
         }
 
-         if (initializedVersion == 2) {
+
+        if (initializedVersion == 2) {
+            node.initializeV3();
+        }
+
+
+         if (initializedVersion == 3) {
             TestStakingNodeV2(payable(address(node)))
-                .initializeV2(TestStakingNodeV2.ReInit({valueToBeInitialized: 23}));
+                .initializeV4(TestStakingNodeV2.ReInit({valueToBeInitialized: 23}));
          }
     }
 

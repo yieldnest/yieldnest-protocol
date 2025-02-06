@@ -43,12 +43,12 @@ interface IStakingNode {
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
         bytes32 approverSalt
     ) external;
-    function undelegate() external;
+    function undelegate() external returns (bytes32[] memory withdrawalRoots);
 
     function implementation() external view returns (address);
 
-    function allocateStakedETH(uint256 amount) external payable;   
-    function deallocateStakedETH(uint256 amount) external payable;
+    function allocateStakedETH(uint256 amount) external;   
+    function deallocateStakedETH(uint256 amount) external;
     function getETHBalance() external view returns (uint256);
     function unverifiedStakedETH() external view returns (uint256);
     function nodeId() external view returns (uint256);
@@ -81,11 +81,26 @@ interface IStakingNode {
         uint256[] memory middlewareTimesIndexes
      ) external;
 
+    function completeQueuedWithdrawalsAsShares(
+        IDelegationManager.Withdrawal[] calldata withdrawals,
+        uint256[] calldata middlewareTimesIndexes
+    ) external;
+
     function getInitializedVersion() external view returns (uint64);
 
     function getUnverifiedStakedETH() external view returns (uint256);
     function getQueuedSharesAmount() external view returns (uint256);
     function getWithdrawnETH() external view returns (uint256);
     function startCheckpoint(bool revertIfNoBalance) external;
+
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
+    function initializeV3() external;
+
+    function isSynchronized() external view returns (bool);
+
+    function synchronize(uint256 queuedShares, uint32 lastQueuedWithdrawalBlockNumber) external; 
+
+    function delegatedTo() external view returns (address);
+
+    function setClaimer(address claimer) external;
 }

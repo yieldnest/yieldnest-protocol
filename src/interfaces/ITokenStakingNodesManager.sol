@@ -5,6 +5,7 @@ import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beac
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 
 interface ITokenStakingNodesManager {
 
@@ -17,6 +18,7 @@ interface ITokenStakingNodesManager {
 
     function delegationManager() external view returns (IDelegationManager);
     function strategyManager() external view returns (IStrategyManager);
+    function rewardsCoordinator() external view returns (IRewardsCoordinator);
     function upgradeableBeacon() external view returns (UpgradeableBeacon);
 
     function getAllNodes() external view returns (ITokenStakingNode[] memory);
