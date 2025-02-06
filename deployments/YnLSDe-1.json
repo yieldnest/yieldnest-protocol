@@ -21,7 +21,7 @@
   "implementation-redemptionAssetsVault": "0x9892A40FE6e17d4C88a92b2e37c12981bAA6F14A",
   "implementation-withdrawalQueueManager": "0xaac93A4ddE34CE9ad9dD8556B9faDd83380a5D64",
   "implementation-wrapper": "0x7C31a924B01a20642aF2460d7Fe24A2FEf89074d",
-  "implementation-withdrawalsProcessor": "0x23b77f32a40e772317fa2dfd936d08546477c63c",
+  "implementation-withdrawalsProcessor": "0x487D9A14941E34723bde973CaBAe3894BEd7930D",
   "proxy-ynLSDe": "0x35Ec69A77B79c255e5d47D5A3BdbEFEfE342630c",
   "proxy-assetRegistry": "0x323C933df2523D5b0C756210446eeE0fB84270fd",
   "proxy-eigenStrategyManager": "0x92D904019A92B0Cafce3492Abb95577C285A68fC",
