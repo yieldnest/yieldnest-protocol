@@ -22,6 +22,7 @@ import {ynEigenViewer} from "src/ynEIGEN/ynEigenViewer.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 
@@ -189,6 +190,7 @@ contract YnEigenDeployer is BaseYnEigenScript {
                 redemptionAssetsVault: proxies.redemptionAssetsVault,
                 withdrawalQueueManager: proxies.withdrawalQueueManager,
                 wrapper: proxies.lsdWrapper,
+                withdrawalsProcessor: WithdrawalsProcessor(payable(address(0))),
                 proxies: DeploymentProxies({
                     ynEigen: proxyAddressesEmpty,
                     assetRegistry: proxyAddressesEmpty,
@@ -199,7 +201,8 @@ contract YnEigenDeployer is BaseYnEigenScript {
                     ynEigenViewer: proxyAddressesEmpty,
                     redemptionAssetsVault: proxyAddressesEmpty,
                     withdrawalQueueManager: proxyAddressesEmpty,
-                    wrapper: proxyAddressesEmpty
+                    wrapper: proxyAddressesEmpty,
+                    withdrawalsProcessor: proxyAddressesEmpty
                 })
             });
 

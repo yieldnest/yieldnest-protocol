@@ -28,8 +28,11 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
 
     function run() public {
         uint256 _pk = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        bool _fullDeployment = vm.envBool("FULL_DEPLOYMENT");
 
-        require(!_isOngoingWithdrawals(), "!isOngoingWithdrawals");
+        if (_fullDeployment) {
+            require(!_isOngoingWithdrawals(), "!isOngoingWithdrawals");
+        }
 
         vm.startBroadcast(_pk);
 
@@ -57,15 +60,17 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
                 chainAddresses.lsd.WOETH_ADDRESS
             );
 
-            withdrawalsProcessor = WithdrawalsProcessor(
-                address(
-                    new TransparentUpgradeableProxy(
-                        address(withdrawalsProcessor), chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS, ""
+            if (_fullDeployment) {
+                withdrawalsProcessor = WithdrawalsProcessor(
+                    address(
+                        new TransparentUpgradeableProxy(
+                            address(withdrawalsProcessor), chainAddresses.ynEigen.TIMELOCK_CONTROLLER_ADDRESS, ""
+                        )
                     )
-                )
-            );
+                );
 
-            WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+                WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+            }
         }
 
         // grant roles to withdrawalsProcessor
