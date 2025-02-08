@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
 import { IEigenPodManager } from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {Utils} from "script/Utils.sol";
@@ -604,6 +606,12 @@ contract Verify is BaseYnETHScript {
         );
 
         require(
+            address(deployment.stakingNodesManager.rewardsCoordinator()) == chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS,
+            "StakingNodesManager: rewardsCoordinator dependency mismatch"
+        );
+        console.log("\u2705 StakingNodesManager: rewardsCoordinator dependency verified");
+
+        require(
             address(deployment.stakingNodesManager.upgradeableBeacon().implementation()) == address(deployment.stakingNodeImplementation),
             "StakingNodesManager: upgradeableBeacon implementation mismatch"
         );
@@ -648,25 +656,29 @@ contract Verify is BaseYnETHScript {
         require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
         console.log("\u2705 totalSupply is less than totalAssets");
 
-        // Print totalSupply and totalAssets
+        console.log("");
+        console.log("=== Token Supply and Assets ===");
         console.log(string.concat("Total Supply: ", vm.toString(totalSupply), " ynETH (", vm.toString(totalSupply / 1e18), " units)"));
         console.log(string.concat("Total Assets: ", vm.toString(totalAssets), " wei (", vm.toString(totalAssets / 1e18), " ETH)"));
+        console.log("");
 
-
+        console.log("=== Preview Redeem ===");
         uint256 previewRedeemResult = deployment.ynETH.previewRedeem(1 ether);
         console.log(string.concat("previewRedeem of 1 ynETH: ", vm.toString(previewRedeemResult), " wei (", vm.toString(previewRedeemResult / 1e18), " ETH)"));
+        console.log("");
 
         // Check that ETH balance of ynETH + redemption assets vault + staking nodes equals totalAssets
         uint256 ynETHBalance = address(deployment.ynETH).balance;
         uint256 redemptionVaultBalance = address(deployment.ynETHRedemptionAssetsVaultInstance).balance;
         
+        console.log("=== Staking Node Balances ===");
         uint256 stakingNodesBalance = 0;
         IStakingNode[] memory stakingNodes = deployment.stakingNodesManager.getAllNodes();
         for (uint256 i = 0; i < stakingNodes.length; i++) {
             stakingNodesBalance += stakingNodes[i].getETHBalance();     
             console.log(string.concat("Balance for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].getETHBalance()), " wei (", vm.toString(stakingNodes[i].getETHBalance() / 1e18), " ETH)"));
-
         }
+        console.log("");
 
         uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;
         require(totalCalculatedBalance == totalAssets, "Sum of balances should equal totalAssets");
@@ -695,5 +707,55 @@ contract Verify is BaseYnETHScript {
         uint256 ynETHRate = deployment.ynViewer.getRate();
         require(ynETHRate > 1 ether, "ynETH rate should be greater than 1 ether");
         console.log(string.concat("\u2705 ynETH rate is greater than 1 ether: ", vm.toString(ynETHRate), " wei (", vm.toString(ynETHRate / 1e18), " ETH)"));
+
+        // Check totalETHStaked equals totalAssets
+        uint256 totalETHStaked = deployment.stakingNodesManager.totalETHStaked();
+        uint256 expectedTotalETHStaked = totalAssets - address(deployment.ynETH).balance - address(deployment.ynETHRedemptionAssetsVaultInstance).balance;
+        require(
+            totalETHStaked == expectedTotalETHStaked,
+            string.concat(
+                "totalETHStaked does not match expected value. Expected: ",
+                vm.toString(expectedTotalETHStaked),
+                ", Actual: ",
+                vm.toString(totalETHStaked)
+            )
+        );
+        console.log(string.concat("\u2705 totalETHStaked equals expected value: ", vm.toString(totalETHStaked), " wei (", vm.toString(totalETHStaked / 1e18), " ETH)"));
+
+        // Verify totalETHStaked matches sum of staking node balances
+        uint256 sumOfNodeBalances = 0;
+        for (uint256 i = 0; i < stakingNodes.length; i++) {
+            sumOfNodeBalances += stakingNodes[i].getETHBalance();
+        }
+        require(
+            totalETHStaked == sumOfNodeBalances,
+            string.concat(
+                "totalETHStaked does not match sum of node balances. Expected: ",
+                vm.toString(sumOfNodeBalances),
+                ", Actual: ",
+                vm.toString(totalETHStaked)
+            )
+        );
+        console.log(string.concat("\u2705 totalETHStaked equals sum of node balances: ", vm.toString(totalETHStaked), " wei (", vm.toString(totalETHStaked / 1e18), " ETH)"));
+
+        // Verify each staking node has delegated to the correct address according to EigenLayer's DelegationManager
+        IDelegationManager delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+        for (uint256 i = 0; i < stakingNodes.length; i++) {
+            address podOwner = address(stakingNodes[i]);
+            address storedDelegatedTo = stakingNodes[i].delegatedTo();
+            address delegatedTo = delegationManager.delegatedTo(podOwner);
+            require(
+                delegatedTo == storedDelegatedTo,
+                string.concat(
+                    "StakingNode ",
+                    vm.toString(i),
+                    " delegated to incorrect address. Expected: ",
+                    vm.toString(storedDelegatedTo),
+                    ", Actual: ",
+                    vm.toString(delegatedTo)
+                )
+            );
+            console.log(string.concat("\u2705 StakingNode ", vm.toString(i), " delegated to: ", vm.toString(delegatedTo)));
+        }
     }
 }
