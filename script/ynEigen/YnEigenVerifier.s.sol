@@ -22,8 +22,59 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
     using Strings for uint256;
 
+    function tempUpgradeAdvancer() internal {
+
+        // ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+        // WARNING: THIS FUNCTION IS TEMPORARY AND SHOULD BE DELETED
+        // It is only used to advance time for testing upgrades
+        // ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
+        // Advance time by 3.2 days (in seconds)
+        vm.warp(block.timestamp + 3.2 days);
+
+        // Execute the most recently queued upgrade
+        address[] memory targets = new address[](3);
+        targets[0] = 0x69C34FB00Ebc0d7ac09Ab7968D2Eb9a07C2eB301;
+        targets[1] = 0x850d012115fb4D90711F53e86B2945019Bf7F36C;
+        targets[2] = 0x6B566CB6cDdf7d140C59F84594756a151030a0C3;
+
+        uint256[] memory values = new uint256[](3);
+        values[0] = 0;
+        values[1] = 0;
+        values[2] = 0;
+
+        bytes[] memory payloads = new bytes[](3);
+        payloads[0] = hex"9623609d00000000000000000000000092d904019a92b0cafce3492abb95577c285a68fc0000000000000000000000009904c5d441947db77cee7f401ed76c9fb3754f2c00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000";
+        payloads[1] = hex"9623609d0000000000000000000000006b566cb6cddf7d140c59f84594756a151030a0c300000000000000000000000029ac770abfa12b0ab726c5e6eb38124061747b6b0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000002429b6eca90000000000000000000000007750d328b314effa365a0402ccfd489b80b0adda00000000000000000000000000000000000000000000000000000000";
+        payloads[2] = hex"a39cebe900000000000000000000000028fd4c04620d95c4bec9397e2d303937779c41fd";
+
+        bytes32 predecessor = bytes32(0);
+        bytes32 salt = bytes32(0);
+
+        console.log("Executing upgrade batch...");
+
+        // Impersonate YNSecurityCouncil to execute the upgrade
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        deployment.upgradeTimelock.executeBatch(
+            targets,
+            values, 
+            payloads,
+            predecessor,
+            salt
+        );
+
+        vm.stopPrank();
+
+        console.log("Upgrade batch executed successfully");
+        console.log("- Upgraded eigenStrategyManager implementation");
+        console.log("- Upgraded tokenStakingNodesManager implementation");
+        console.log("- Set tokenStakingNode implementation");
+    }
+
     function _verify() internal {
         deployment = loadDeployment();
+
+        tempUpgradeAdvancer();
 
         verifyUpgradeTimelockRoles();
         verifyProxies();
