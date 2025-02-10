@@ -85,14 +85,6 @@ contract Base is Test, Utils {
             stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
             vm.stopPrank();
         }
-
-        // Upgrade StakingNode implementation with EL slashing upgrade changes
-        if (block.chainid == contractAddresses.getChainIds().holeksy) {
-            address newStakingNodeImplementation = address(new StakingNode());
-            vm.startPrank(actors.admin.STAKING_ADMIN);
-            stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImplementation);
-            vm.stopPrank();
-        }
     }
 
     function assignContracts() internal {
