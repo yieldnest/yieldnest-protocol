@@ -289,7 +289,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         address operator = delegationManager.delegatedTo(address(this));
 
         // Get current shares before undelegating
-        int256 shares = stakingNodesManager.eigenPodManager().podOwnerShares(address(this));
+        int256 shares = stakingNodesManager.eigenPodManager().podOwnerDepositShares(address(this));
         withdrawalRoots = delegationManager.undelegate(address(this));
 
         if (shares > 0) {
@@ -374,7 +374,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
         IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
                 revert InvalidWithdrawal();
             }
             // Set receiveAsTokens to true to receive ETH when completeQueuedWithdrawals runs.
@@ -429,23 +429,28 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 totalWithdrawalAmount = 0;
 
         // Create empty tokens array since we're not receiving as tokens
-        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
 
         // Calculate total shares being withdrawn
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
                 revert InvalidWithdrawal();
             }
-            tokens[i] = new IERC20[](1);
+            tokens[i] = new IERC20V4[](1);
             receiveAsTokens[i] = false;
-            totalWithdrawalAmount += withdrawals[i].shares[0];
+            totalWithdrawalAmount += withdrawals[i].scaledShares[0];
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         // Complete withdrawals with receiveAsTokens = false
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals, 
+            tokens, 
+            // middlewareTimesIndexes, 
+            receiveAsTokens
+        );
 
         // Decrease queued shares amount
         queuedSharesAmount -= totalWithdrawalAmount;
@@ -483,14 +488,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         // We can assume that the Withdrawal queued by the undelegate() call made by the operator
         // is the LAST queued withdrawal since to call queueWithdrawals you require isSynchronized() == true.
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
             staker: thisNode,
             delegatedTo: delegatedTo,
             withdrawer: thisNode,
             nonce: delegationManager.cumulativeWithdrawalsQueued(thisNode) - 1, // must be the last withdrawal
             startBlock: undelegateBlockNumber,
             strategies: strategies,
-            shares: shares
+            scaledShares: shares
         });
 
         // IMPORTANT: withdrawalRoot is not spoofable because nonce is a strictly increasing value that

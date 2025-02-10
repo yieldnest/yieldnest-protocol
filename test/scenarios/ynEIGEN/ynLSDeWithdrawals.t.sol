@@ -8,6 +8,7 @@ import {
     ITransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import {IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
@@ -233,14 +234,14 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
             staker: address(tokenStakingNode),
             delegatedTo: delegationManager.delegatedTo(address(tokenStakingNode)),
             withdrawer: address(tokenStakingNode),
             nonce: _nonce,
             startBlock: _startBlock,
             strategies: _strategies,
-            shares: _shares
+            scaledShares: _shares
         });
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
@@ -272,14 +273,14 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
             staker: address(tokenStakingNode),
             delegatedTo: delegationManager.delegatedTo(address(tokenStakingNode)),
             withdrawer: address(tokenStakingNode),
             nonce: _nonce,
             startBlock: _startBlock,
             strategies: _strategies,
-            shares: _shares
+            scaledShares: _shares
         });
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
@@ -311,14 +312,14 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         uint256 _totalAssetsBefore = yneigen.totalAssets();
 
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
             staker: address(tokenStakingNode),
             delegatedTo: delegationManager.delegatedTo(address(tokenStakingNode)),
             withdrawer: address(tokenStakingNode),
             nonce: _nonce,
             startBlock: _startBlock,
             strategies: _strategies,
-            shares: _shares
+            scaledShares: _shares
         });
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(withdrawal, 0, true);

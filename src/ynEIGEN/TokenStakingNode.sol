@@ -175,23 +175,23 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
-        IERC20[][] memory _tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         address[] memory _dupTokens = new address[](withdrawals.length);
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
             IStrategy _strategy = withdrawals[i].strategies[0];
-            queuedShares[_strategy] -= withdrawals[i].shares[0];
+            queuedShares[_strategy] -= withdrawals[i].scaledShares[0];
 
             _strategies[i] = _strategy;
-            _tokens[i] = new IERC20[](1);
+            _tokens[i] = new IERC20V4[](1);
             _tokens[i][0] = _strategy.underlyingToken();
-            IERC20 _token = _tokens[i][0];
+            IERC20V4 _token = _tokens[i][0];
             _receiveAsTokens[i] = true;
             _dupTokens[i] = address(_token);
         }
@@ -203,7 +203,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _balancesBefore[i] = IERC20(_dedupTokens[i]).balanceOf(address(this));
         }
 
-        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens); 
+        _delegationManager.completeQueuedWithdrawals(
+            withdrawals, 
+            _tokens, 
+            // middlewareTimesIndexes, 
+            _receiveAsTokens
+        ); 
 
         for (uint256 i = 0; i < _dedupTokens.length; i++) {
             IERC20 _token = IERC20(_dedupTokens[i]);
@@ -262,21 +267,26 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-        IERC20[][] memory _tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
-            queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].shares[0];
-            _tokens[i] = new IERC20[](1);
+            queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].scaledShares[0];
+            _tokens[i] = new IERC20V4[](1);
             _tokens[i][0] = withdrawals[i].strategies[0].underlyingToken();
             _receiveAsTokens[i] = false;
         }
 
         // Complete withdrawals with receiveAsTokens = false
-        delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens);
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals, 
+            _tokens, 
+            // middlewareTimesIndexes, 
+            _receiveAsTokens
+        );
 
         emit CompletedManyQueuedWithdrawals(withdrawals);
     }
@@ -328,13 +338,15 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IDelegationManagerExtended delegationManager =
             IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
 
-        (IStrategy[] memory strategies, uint256[] memory shares) = delegationManager.getDelegatableShares(address(this));
+        (IStrategy[] memory strategies,) = delegationManager.getDepositedShares(address(this));
+
+        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(this), strategies);
 
         withdrawalRoots = delegationManager.undelegate(address(this));
 
         // Update queued shares for each strategy
         for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += shares[i];
+            queuedShares[strategies[i]] += withdrawableShares[i];
         }
 
         delegatedTo = address(0);
@@ -412,14 +424,14 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             singleStrategy[0] = strategies[i];
             singleShare[0] = queuedSharesAmounts[i];
 
-            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+            IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
                 staker: thisNode,
                 delegatedTo: _delegatedTo,
                 withdrawer: thisNode,
                 nonce: withdrawalsNonceFromOperatorUndelegate + i,
                 startBlock: undelegateBlockNumber,
                 strategies: singleStrategy,
-                shares: singleShare
+                scaledShares: singleShare
             });
 
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
