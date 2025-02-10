@@ -2,11 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    TransparentUpgradeableProxy,
-    ITransparentUpgradeableProxy
-} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy,ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
@@ -20,19 +19,29 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
-import {IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
 
 contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
+    ITokenStakingNode internal stakingNode;
 
-    function test_undelegate_Scenario_undelegateByOperator1() public {
+    function setUp() public override {
+        super.setUp();
+
         updateTokenStakingNodesBalancesForAllAssets();
 
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
+
+        stakingNode = tokenStakingNodesManager.nodes(0);
+
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+    }
+
+    function test_undelegate_Scenario_undelegateByOperator1() public {
         // Log total assets before undelegation
         uint256 totalAssetsBefore = yneigen.totalAssets();
-
-        ITokenStakingNode stakingNode = tokenStakingNodesManager.nodes(0);
 
         // Get operator for node 0
         address operator = delegationManager.delegatedTo(address(stakingNode));
@@ -124,25 +133,24 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
     }
 
     function test_undelegate_Scenario_undelegateByDelegator() public {
-        updateTokenStakingNodesBalancesForAllAssets();
         uint256 totalAssetsBefore = yneigen.totalAssets();
 
-        ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.nodes(0);
+        ITokenStakingNode stakingNode = tokenStakingNodesManager.nodes(0);
 
         uint256 undelegateBlockNumber = uint32(block.number);
 
         // Call undelegate from delegator
         vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNode.undelegate();
+        stakingNode.undelegate();
         vm.stopPrank();
 
         // Assert node is no longer delegated after undelegation
         assertEq(
-            delegationManager.delegatedTo(address(tokenStakingNode)),
+            delegationManager.delegatedTo(address(stakingNode)),
             address(0),
             "Node should not be delegated after undelegation"
         );
-        assertTrue(tokenStakingNode.isSynchronized(), "Node should be synchronized after undelegation");
+        assertTrue(stakingNode.isSynchronized(), "Node should be synchronized after undelegation");
         assertApproxEqAbs(
             totalAssetsBefore, yneigen.totalAssets(), 10, "Total assets should not change after undelegation"
         );
@@ -150,7 +158,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         // Call synchronize after verifying synchronized
         vm.expectRevert(TokenStakingNode.AlreadySynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNode.synchronize(new uint256[](0), uint32(block.number), new IStrategy[](0));
+        stakingNode.synchronize(new uint256[](0), uint32(block.number), new IStrategy[](0));
     }
 
 }
