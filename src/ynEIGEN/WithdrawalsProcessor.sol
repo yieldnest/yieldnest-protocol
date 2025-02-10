@@ -7,7 +7,7 @@ import {AccessControlUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 
 import {IwstETH} from "../external/lido/IwstETH.sol";
@@ -340,14 +340,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             uint256[] memory _shares = new uint256[](1);
             _shares[0] = queuedWithdrawal_.shares;
 
-            IDelegationManager.Withdrawal memory _withdrawal = IDelegationManager.Withdrawal({
+            IDelegationManagerTypes.Withdrawal memory _withdrawal = IDelegationManagerTypes.Withdrawal({
                 staker: address(queuedWithdrawal_.node),
                 delegatedTo: queuedWithdrawal_.delegatedTo,
                 withdrawer: address(queuedWithdrawal_.node),
                 nonce: queuedWithdrawal_.nonce,
                 startBlock: queuedWithdrawal_.startBlock,
                 strategies: _strategies,
-                shares: _shares
+                scaledShares: _shares
             });
             ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
                 _withdrawal,

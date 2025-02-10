@@ -6,7 +6,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
@@ -325,7 +325,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = wstETHStrategy;
-        vm.roll(block.number + eigenLayer.delegationManager.getWithdrawalDelay(_strategies));
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
 
         {
             // Capture state before completing withdrawal
@@ -337,14 +337,14 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
 
             // Complete queued withdrawal
             vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+            IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
                 staker: address(tokenStakingNode),
                 delegatedTo: eigenLayer.delegationManager.delegatedTo(address(tokenStakingNode)),
                 withdrawer: address(tokenStakingNode),
                 nonce: 0,
                 startBlock: _startBlock,
                 strategies: _strategies,
-                shares: _shares
+                scaledShares: _shares
             });
             tokenStakingNode.completeQueuedWithdrawals(
                 withdrawal,
@@ -419,14 +419,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         for (uint256 i = 0; i < operators.length; i++) {
             vm.prank(operators[i]);
-            eigenLayer.delegationManager.registerAsOperator(
-                IDelegationManager.OperatorDetails({
-                    __deprecated_earningsReceiver: address(1),
-                    delegationApprover: address(0),
-                    stakerOptOutWindowBlocks: 1
-                }),
-                "ipfs://some-ipfs-hash"
-            );
+            eigenLayer.delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
         }
 
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
@@ -458,14 +451,14 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             _shares[0] = queuedWithdrawals[i].withdrawnAmount;
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = queuedWithdrawals[i].strategy;
-            _withdrawals[i] = IDelegationManager.Withdrawal({
+            _withdrawals[i] = IDelegationManagerTypes.Withdrawal({
                 staker: _stakingNode,
                 delegatedTo: queuedWithdrawals[i].operator,
                 withdrawer: _stakingNode,
                 nonce: indexStartForWithdrawalRoots + i,
                 startBlock: uint32(block.number),
                 strategies: _strategies,
-                shares: _shares
+                scaledShares: _shares
             });
         }
     }
@@ -583,11 +576,12 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Verify delegation
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
-        // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](2);
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+
+        // Get initial operator shares for each strategy
+        uint256[] memory initialShares = delegationManager.getOperatorShares(operator1, strategies);
+
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
@@ -664,9 +658,8 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](2);
+        uint256[] memory initialShares = eigenLayer.delegationManager.getOperatorShares(operator1, strategies);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = eigenLayer.delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
@@ -680,12 +673,13 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Verify delegation
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator2, "TokenStakingNode not delegated correctly");
 
-        // Get initial operator shares for each strategy
-        uint256[] memory finalShares = new uint256[](2);
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+
+        // Get final operator shares for each strategy
+        uint256[] memory finalShares = delegationManager.getOperatorShares(operator2, strategies);
+
         for (uint256 i = 0; i < strategies.length; i++) {
-            finalShares[i] = delegationManager.operatorShares(operator2, strategies[i])
-                + tokenStakingNodeInstance.queuedShares(strategies[i]);
+            finalShares[i] += tokenStakingNodeInstance.queuedShares(strategies[i]);
             assertEq(finalShares[i], initialShares[i], "Operator should have same shares");
         }
     }
@@ -731,9 +725,8 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](2);
+        uint256[] memory initialShares = eigenLayer.delegationManager.getOperatorShares(operator1, strategies);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = eigenLayer.delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
@@ -781,7 +774,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             {
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
@@ -817,7 +810,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 );
                 for (uint256 i = 0; i < strategies.length; i++) {
                     assertEq(
-                        strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                        strategyManager.stakerDepositShares(address(tokenStakingNodeInstance), strategies[i]),
                         initialShares[i],
                         "Shares are not restaked correctly after undelegation"
                     );
@@ -878,14 +871,14 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNodeInstance.completeQueuedWithdrawals(
-            IDelegationManager.Withdrawal({
+            IDelegationManagerTypes.Withdrawal({
                 staker: address(tokenStakingNodeInstance),
                 delegatedTo: address(0),
                 withdrawer: address(tokenStakingNodeInstance),
                 nonce: 0,
                 startBlock: uint32(block.number),
                 strategies: new IStrategy[](0),
-                shares: new uint256[](0)
+                scaledShares: new uint256[](0)
             }),
             0,
             true
@@ -947,10 +940,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](2);
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        uint256[] memory initialShares = delegationManager.getOperatorShares(operator1, strategies);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
@@ -999,7 +991,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             {
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
@@ -1030,7 +1022,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 );
                 for (uint256 i = 0; i < strategies.length; i++) {
                     assertEq(
-                        strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                        strategyManager.stakerDepositShares(address(tokenStakingNodeInstance), strategies[i]),
                         initialShares[i],
                         "Shares are not restaked correctly after undelegation"
                     );
@@ -1080,10 +1072,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](2);
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        uint256[] memory initialShares = delegationManager.getOperatorShares(operator1, strategies);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
@@ -1135,7 +1126,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             {
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
@@ -1166,7 +1157,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 );
                 for (uint256 i = 0; i < strategies.length; i++) {
                     assertEq(
-                        strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                        strategyManager.stakerDepositShares(address(tokenStakingNodeInstance), strategies[i]),
                         initialShares[i],
                         "Shares are not restaked correctly after undelegation"
                     );
@@ -1216,10 +1207,8 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodeInstance.delegatedTo(), operator1, "TokenStakingNode not delegated correctly");
 
         // Get initial operator shares for each strategy
-        uint256[] memory initialShares = new uint256[](2);
-        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
+        uint256[] memory initialShares = eigenLayer.delegationManager.getOperatorShares(operator1, strategies);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialShares[i] = delegationManager.operatorShares(operator1, strategies[i]);
             assertGt(initialShares[i], 0, "Operator should have shares");
         }
 
@@ -1243,7 +1232,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         assertEq(tokenStakingNodeInstance.delegatedTo(), address(operator1), "TokenStakingNode delegatedTo not cleared");
         assertEq(
-            delegationManager.delegatedTo(address(tokenStakingNodeInstance)),
+            eigenLayer.delegationManager.delegatedTo(address(tokenStakingNodeInstance)),
             address(0),
             "Delegation not cleared in DelegationManager"
         );
@@ -1268,7 +1257,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             {
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
@@ -1299,7 +1288,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 );
                 for (uint256 i = 0; i < strategies.length; i++) {
                     assertEq(
-                        strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                        strategyManager.stakerDepositShares(address(tokenStakingNodeInstance), strategies[i]),
                         initialShares[i],
                         "Shares are not restaked correctly after undelegation"
                     );
@@ -1309,7 +1298,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator2, signature, approverSalt);
-        address delegatedAddress = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
+        address delegatedAddress = eigenLayer.delegationManager.delegatedTo(address(tokenStakingNodeInstance));
         assertEq(
             delegatedAddress,
             operator2,
@@ -1322,7 +1311,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             assertEq(stakerStrategyListLength, initialStrategyListLength, "Staker strategy list length should be 0.");
             for (uint256 i = 0; i < strategies.length; i++) {
                 assertEq(
-                    strategyManager.stakerStrategyShares(address(tokenStakingNodeInstance), strategies[i]),
+                    strategyManager.stakerDepositShares(address(tokenStakingNodeInstance), strategies[i]),
                     initialShares[i],
                     "Shares are not restaked correctly after undelegation"
                 );

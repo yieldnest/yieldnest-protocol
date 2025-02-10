@@ -118,14 +118,14 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         address operator
     ) internal {
 
-        IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId, operator);
+        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId, operator);
 
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete queued withdrawals
@@ -142,7 +142,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
     function _getWithdrawals(
         QueuedWithdrawalInfo[] memory queuedWithdrawals,
         uint256 nodeId
-    ) internal returns (IDelegationManager.Withdrawal[] memory) {
+    ) internal returns (IDelegationManagerTypes.Withdrawal[] memory) {
         return _getWithdrawals(
             queuedWithdrawals,
             nodeId,
@@ -154,10 +154,10 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         QueuedWithdrawalInfo[] memory queuedWithdrawals,
         uint256 nodeId,
         address operator
-    ) internal returns (IDelegationManager.Withdrawal[] memory _withdrawals) {
+    ) internal returns (IDelegationManagerTypes.Withdrawal[] memory _withdrawals) {
 
 
-        _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
+        _withdrawals = new IDelegationManagerTypes.Withdrawal[](queuedWithdrawals.length);
 
         for (uint256 i = 0; i < queuedWithdrawals.length; i++) {
             uint256[] memory _shares = new uint256[](1);
@@ -165,14 +165,14 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
             address _stakingNode = address(stakingNodesManager.nodes(nodeId));
-            _withdrawals[i] = IDelegationManager.Withdrawal({
+            _withdrawals[i] = IDelegationManagerTypes.Withdrawal({
                 staker: _stakingNode,
                 delegatedTo: operator,
                 withdrawer: _stakingNode,
                 nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
                 startBlock: uint32(block.number),
                 strategies: _strategies,
-                shares: _shares
+                scaledShares: _shares
             });   
         }
     }

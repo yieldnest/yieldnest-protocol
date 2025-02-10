@@ -127,14 +127,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         for (uint256 i = 0; i < operators.length; i++) {
             vm.prank(operators[i]);
-            delegationManager.registerAsOperator(
-                IDelegationManager.OperatorDetails({
-                    __deprecated_earningsReceiver: address(1),
-                    delegationApprover: address(0),
-                    stakerOptOutWindowBlocks: 1
-                }),
-                "ipfs://some-ipfs-hash"
-            );
+            delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
         }
 
         nodeId = createStakingNodes(1)[0];
@@ -153,14 +146,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
         vm.prank(chainAddresses.eigenlayer.DELEGATION_PAUSER_ADDRESS);
         pauseDelegationManager.unpause(0);
-
-        // register as operator
-        vm.prank(operator);
-        delegationManager.registerAsOperator(
-            address(0), // initDelegationApprover
-            0, // allocationDelay
-            "ipfs://some-ipfs-hash"
-        );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
@@ -319,8 +304,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -375,8 +363,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -427,7 +418,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
                 IStrategy[] memory strategies = new IStrategy[](1);
                 strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
@@ -473,8 +464,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -525,7 +519,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
                 IStrategy[] memory strategies = new IStrategy[](1);
                 strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
@@ -586,8 +580,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -654,7 +651,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             IStrategy[] memory strategies = new IStrategy[](1);
             strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete queued withdrawals
@@ -705,8 +702,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator2, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator2, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -736,7 +736,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             yneth.totalAssets(), initialTotalAssets, "Total assets should not change after delegation to operator2"
         );
 
-        assertEq(eigenPodManager.podOwnerShares(address(stakingNodeInstance)), 0, "Pod owner shares should be 0");
+        assertEq(eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance)), 0, "Pod owner shares should be 0");
 
         _completeQueuedWithdrawalsAsShares(queuedWithdrawals, nodeId, initialOperator);
 
@@ -747,14 +747,17 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             "Total assets should not change after completing queued withdrawals"
         );
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator2, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator2, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
 
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodeInstance)),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance)),
             int256(32 ether * validatorIndices.length),
             "Pod owner shares should be 32 ETH per validator"
         );

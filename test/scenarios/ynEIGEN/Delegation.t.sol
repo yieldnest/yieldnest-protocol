@@ -20,6 +20,7 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
+import {IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
 
@@ -40,8 +41,8 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         uint256 nonceBefore = delegationManager.cumulativeWithdrawalsQueued(address(stakingNode));
 
         // Get strategies and shares before undelegating
-        (IStrategy[] memory strategies, uint256[] memory shares) =
-            IDelegationManagerExtended(address(delegationManager)).getDelegatableShares(address(stakingNode));
+        (IStrategy[] memory strategies,) = delegationManager.getDepositedShares(address(stakingNode));
+        (uint256[] memory shares,) = delegationManager.getWithdrawableShares(address(stakingNode), strategies);
 
         uint256[] memory queuedSharesBefore = new uint256[](strategies.length);
         for (uint256 i = 0; i < strategies.length; i++) {
@@ -93,19 +94,19 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
             uint256[] memory singleShare = new uint256[](1);
             singleShare[0] = shares[i];
             address _Staker = address(stakingNode);
-            withdrawals[i] = IDelegationManager.Withdrawal({
+            withdrawals[i] = IDelegationManagerTypes.Withdrawal({
                 staker: _Staker,
                 delegatedTo: operator,
                 withdrawer: _Staker,
                 nonce: nonceBefore + i,
                 startBlock: blockNumberBefore,
                 strategies: singleStrategy,
-                shares: singleShare
+                scaledShares: singleShare
             });
             middlewareTimesIndexes[i] = 0;
         }
         //  advance time to allow completion
-        vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+        vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNode.completeQueuedWithdrawalsAsShares(withdrawals, middlewareTimesIndexes);
