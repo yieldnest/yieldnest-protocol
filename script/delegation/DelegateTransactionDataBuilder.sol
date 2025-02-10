@@ -25,6 +25,9 @@ contract DelegateTransactionBuilder is BaseScript {
         stakingNodes[3] = 0x77F7d153Bd9e25293a95AEDFE8087F3e24D73c9e;
         stakingNodes[4] = 0xc9170a5C286a6D8C80b07d20E087e20f273A36A1;
 
+        console.log("Chain ID:", block.chainid);
+        console.log("Block number:", block.number);
+
         ContractAddresses contractAddresses = new ContractAddresses();
         ContractAddresses.ChainAddresses memory chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         IStakingNodesManager stakingNodesManager = IStakingNodesManager(chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS);
@@ -37,29 +40,52 @@ contract DelegateTransactionBuilder is BaseScript {
 
         address OPERATOR_A41 = 0xa83e07353A9ED2aF88e7281a2fA7719c01356D8e;
         address OPERATOR_P2P = 0xDbEd88D83176316fc46797B43aDeE927Dc2ff2F5;
+        address OPERATOR_NODEMONSTER = 0xe48c8e071857d1229fc94d73a0f25d1dBB99C04C;
 
-        address[] memory operators = new address[](5);
-        operators[0] = OPERATOR_A41;
-        operators[1] = OPERATOR_A41;
-        operators[2] = OPERATOR_A41;
-        operators[3] = OPERATOR_A41;
-        operators[4] = OPERATOR_P2P;
+        if (false) { // block disabled
+            address[] memory operators = new address[](5);
+            operators[0] = OPERATOR_A41;
+            operators[1] = OPERATOR_A41;
+            operators[2] = OPERATOR_A41;
+            operators[3] = OPERATOR_A41;
+            operators[4] = OPERATOR_P2P;
 
-        for (uint i = 0; i < stakingNodes.length; i++) {
-            address currentOperator = operators[i];
+            for (uint i = 0; i < stakingNodes.length; i++) {
+                address currentOperator = operators[i];
 
-            // Generate tx data for delegating to an operator
-            bytes memory delegateTxData = abi.encodeWithSelector(
-                IStakingNode.delegate.selector,
-                currentOperator,
-                ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}),
-                bytes32(0)
-            );
-            console.log("Node address:", stakingNodes[i]);
-            console.log("Index:", i);
-            console.log("Delegating to operator:", currentOperator);
-            console.log("Delegate transaction data:", vm.toString(abi.encodePacked(delegateTxData)));
+                // Generate tx data for delegating to an operator
+                bytes memory delegateTxData = abi.encodeWithSelector(
+                    IStakingNode.delegate.selector,
+                    currentOperator,
+                    ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}),
+                    bytes32(0)
+                );
+                console.log("Node address:", stakingNodes[i]);
+                console.log("Index:", i);
+                console.log("Delegating to operator:", currentOperator);
+                console.log("Delegate transaction data:", vm.toString(abi.encodePacked(delegateTxData)));
+            }
         }
-    }
 
+        // Generate tx data for undelegating from P2P (operator 4)
+        bytes memory undelegateTxData = abi.encodeWithSelector(
+            IStakingNode.undelegate.selector
+        );
+        console.log("Node address:", stakingNodes[4]);
+        console.log("Index: 4");
+        console.log("Undelegating from operator:", OPERATOR_P2P); 
+        console.log("Undelegate transaction data:", vm.toString(abi.encodePacked(undelegateTxData)));
+
+        // Generate tx data for delegating to NodeMonster
+        bytes memory delegateToNodeMonsterTxData = abi.encodeWithSelector(
+            IStakingNode.delegate.selector,
+            OPERATOR_NODEMONSTER,
+            ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}),
+            bytes32(0)
+        );
+        console.log("Node address:", stakingNodes[4]);
+        console.log("Index: 4");
+        console.log("Delegating to operator:", OPERATOR_NODEMONSTER);
+        console.log("Delegate transaction data:", vm.toString(abi.encodePacked(delegateToNodeMonsterTxData)));
+    }
 }
