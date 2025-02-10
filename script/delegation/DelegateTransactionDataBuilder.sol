@@ -12,6 +12,8 @@ import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
+import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+
 
 contract DelegateTransactionBuilder is BaseScript {
 
@@ -43,6 +45,7 @@ contract DelegateTransactionBuilder is BaseScript {
         address OPERATOR_NODEMONSTER = 0xe48c8e071857d1229fc94d73a0f25d1dBB99C04C;
 
         if (false) { // block disabled
+
             address[] memory operators = new address[](5);
             operators[0] = OPERATOR_A41;
             operators[1] = OPERATOR_A41;
@@ -65,6 +68,50 @@ contract DelegateTransactionBuilder is BaseScript {
                 console.log("Delegating to operator:", currentOperator);
                 console.log("Delegate transaction data:", vm.toString(abi.encodePacked(delegateTxData)));
             }
+        } else {
+
+
+            address[] memory operators = new address[](5);
+            operators[0] = OPERATOR_A41;
+            operators[1] = OPERATOR_A41;
+            operators[2] = OPERATOR_A41;
+            operators[3] = OPERATOR_A41;
+            operators[4] = OPERATOR_P2P;
+            // Verify delegation status for each node against both local state and EigenLayer
+            
+            for (uint i = 0; i < stakingNodes.length; i++) {
+                IStakingNode node = IStakingNode(stakingNodes[i]);
+                address expectedOperator = operators[i];
+                
+                // Check local delegation state
+                require(node.isSynchronized(), "Node not synchronized");
+                require(node.delegatedTo() == expectedOperator, string.concat(
+                    "Node local state mismatch: ",
+                    vm.toString(stakingNodes[i]),
+                    " not delegated to expected operator ",
+                    vm.toString(expectedOperator)
+                ));
+
+                // Check EigenLayer delegation state
+                address eigenLayerOperator = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS).delegatedTo(stakingNodes[i]);
+                require(eigenLayerOperator == expectedOperator, string.concat(
+                    "EigenLayer state mismatch: ",
+                    vm.toString(stakingNodes[i]),
+                    " not delegated to expected operator ",
+                    vm.toString(expectedOperator)
+                ));
+                
+                console.log(
+                    string.concat(
+                        "Successfully verified delegation for node ",
+                        vm.toString(stakingNodes[i]),
+                        " to operator ",
+                        vm.toString(expectedOperator)
+                    )
+                );
+            }
+
+
         }
 
         // Generate tx data for undelegating from P2P (operator 4)
