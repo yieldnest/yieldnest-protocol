@@ -351,7 +351,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function queueWithdrawals(
         uint256 depositSharesAmount
-    ) external onlyStakingNodesWithdrawer returns (bytes32[] memory fullWithdrawalRoots) {
+    ) external onlyStakingNodesWithdrawer returns (bytes32[] memory) {
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
@@ -395,6 +395,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         queuedSharesAmount += withdrawableShares;
         withdrawableSharesForWithdrawalRoot[fullWithdrawalRoots[0]] = withdrawableShares;
         emit QueuedWithdrawals(depositSharesAmount, fullWithdrawalRoots);
+
+        return fullWithdrawalRoots;
     }
 
     /**
