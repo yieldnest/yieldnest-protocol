@@ -35,7 +35,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         tokenStakingNode = tokenStakingNodesManager.nodes(0);
 
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
     }
 
@@ -79,7 +79,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         assertFalse(tokenStakingNode.isSynchronized(), "Node should not be synchronized after undelegation");
 
         //Call synchronize after verifying not synchronized
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.synchronize(shares, blockNumberBefore, strategies);
 
         for (uint256 i = 0; i < strategies.length; i++) {
@@ -117,7 +117,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         //  advance time to allow completion
         vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.completeQueuedWithdrawalsAsShares(withdrawals, middlewareTimesIndexes);
 
         for (uint256 i = 0; i < strategies.length; i++) {
@@ -140,7 +140,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         uint256 undelegateBlockNumber = uint32(block.number);
 
         // Call undelegate from delegator
-        vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.startPrank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.undelegate();
         vm.stopPrank();
 
@@ -157,7 +157,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         // Call synchronize after verifying synchronized
         vm.expectRevert(TokenStakingNode.AlreadySynchronized.selector);
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.synchronize(new uint256[](0), uint32(block.number), new IStrategy[](0));
     }
 
