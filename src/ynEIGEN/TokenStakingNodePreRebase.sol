@@ -10,12 +10,11 @@ import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
-import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
+
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(
@@ -29,8 +28,6 @@ interface ITokenStakingNodeEvents {
     event QueuedWithdrawals(IStrategy strategies, uint256 shares, bytes32[] fullWithdrawalRoots);
     event CompletedQueuedWithdrawals(uint256 shares, uint256 amountOut, address strategy);
     event DeallocatedTokens(uint256 amount, IERC20 token);
-    event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
-    event ClaimerSet(address indexed claimer);
 }
 
 /**
@@ -56,10 +53,6 @@ contract TokenStakingNode is
     error NotTokenStakingNodeDelegator();
     error NotTokenStakingNodesWithdrawer();
     error ArrayLengthMismatch();
-    error AlreadySynchronized();
-    error WithdrawalMismatch(IStrategy singleStrategy, uint256 singleShare);
-    error NotSynchronized();
-    error StrategyNotFound(address strategy);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -70,8 +63,6 @@ contract TokenStakingNode is
 
     mapping(IStrategy => uint256) public queuedShares;
     mapping(IERC20 => uint256) public withdrawn;
-
-    address public delegatedTo;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -93,10 +84,6 @@ contract TokenStakingNode is
         nodeId = init.nodeId;
     }
 
-    function initializeV2() public reinitializer(2) {
-        delegatedTo = IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
-    }
-
     //--------------------------------------------------------------------------------------
     //----------------------------------  EIGENLAYER DEPOSITS  -----------------------------
     //--------------------------------------------------------------------------------------
@@ -111,7 +98,7 @@ contract TokenStakingNode is
         IERC20[] calldata assets,
         uint256[] calldata amounts,
         IStrategy[] calldata strategies
-    ) external nonReentrant onlyYieldNestStrategyManager onlyWhenSynchronized {
+    ) external nonReentrant onlyYieldNestStrategyManager {
 
         uint256 assetsLength = assets.length;
         if (assetsLength != amounts.length || assetsLength != strategies.length) {
@@ -154,7 +141,7 @@ contract TokenStakingNode is
     function queueWithdrawals(
         IStrategy _strategy,
         uint256 _shares
-    ) external onlyTokenStakingNodesWithdrawer onlyWhenSynchronized returns (bytes32[] memory _fullWithdrawalRoots) {
+    ) external onlyTokenStakingNodesWithdrawer returns (bytes32[] memory _fullWithdrawalRoots) {
 
         IStrategy[] memory _strategiesArray = new IStrategy[](1);
         _strategiesArray[0] = _strategy;
@@ -190,7 +177,7 @@ contract TokenStakingNode is
         IStrategy _strategy,
         uint256[] memory _middlewareTimesIndexes,
         bool updateTokenStakingNodesBalances
-    ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
+    ) public onlyTokenStakingNodesWithdrawer {
 
         IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
 
@@ -249,78 +236,6 @@ contract TokenStakingNode is
     }
 
     /**
-     * @notice Struct containing strategy and shares information
-     * @param strategy The strategy contract address
-     * @param shares The number of shares
-     */
-    struct StrategyShares {
-        IStrategy strategy;
-        uint256 shares;
-    }
-
-    /**
-     * @notice Completes queued withdrawals with receiveAsTokens set to false
-     * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes
-     */
-    function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes,
-        IStrategy[] calldata strategies
-    ) external onlyDelegator onlyWhenSynchronized {
-        uint256 totalWithdrawalAmount = 0;
-
-        // Create array of StrategyShares for tracking
-        StrategyShares[] memory strategyShares = new StrategyShares[](strategies.length);
-        for (uint256 i = 0; i < strategies.length; i++) {
-            strategyShares[i] = StrategyShares({
-                strategy: strategies[i],
-                shares: 0
-            });
-        }
-
-        // Create empty tokens array since we're not receiving as tokens
-        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
-        bool[] memory receiveAsTokens = new bool[](withdrawals.length);
-
-        // Calculate total shares being withdrawn
-        for (uint256 i = 0; i < withdrawals.length; i++) {
-            tokens[i] = new IERC20[](withdrawals[i].strategies.length);
-            receiveAsTokens[i] = false;
-
-            for (uint256 j = 0; j < withdrawals[i].shares.length; j++) {
-                totalWithdrawalAmount += withdrawals[i].shares[j];
-                
-                bool found = false;
-                // Find matching strategy in strategyShares array and update shares
-                for (uint256 k = 0; k < strategyShares.length; k++) {
-                    if (withdrawals[i].strategies[j] == strategyShares[k].strategy) {
-                        strategyShares[k].shares += withdrawals[i].shares[j];
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    revert StrategyNotFound(address(withdrawals[i].strategies[j]));
-                }
-            }
-        }
-
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-
-        // Complete withdrawals with receiveAsTokens = false
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
-
-        // Decrease queued shares for each strategy
-        for (uint256 i = 0; i < strategyShares.length; i++) {
-            queuedShares[strategyShares[i].strategy] -= strategyShares[i].shares;
-        }
-
-        emit CompletedManyQueuedWithdrawals(withdrawals);
-    }
-
-    /**
      * @notice Deallocates tokens from the withdrawn balance and approves them for transfer.
      * @param _token The ERC20 token to deallocate.
      * @param _amount The amount of tokens to deallocate.
@@ -344,12 +259,10 @@ contract TokenStakingNode is
         address operator,
         ISignatureUtils.SignatureWithExpiry memory signature,
         bytes32 approverSalt
-    ) public virtual onlyDelegator onlyWhenSynchronized {
+    ) public virtual onlyDelegator {
         IDelegationManager delegationManager = tokenStakingNodesManager
             .delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
-
-        delegatedTo = operator;
 
         emit Delegated(operator, approverSalt);
     }
@@ -357,106 +270,15 @@ contract TokenStakingNode is
     /**
      * @notice Undelegates the staking operation.
      */
-    function undelegate() public override onlyDelegator onlyWhenSynchronized returns (bytes32[] memory withdrawalRoots) {
-        IDelegationManagerExtended delegationManager = IDelegationManagerExtended(
+    function undelegate() public override onlyDelegator {
+        IDelegationManager delegationManager = IDelegationManager(
             address(tokenStakingNodesManager.delegationManager())
         );
-
-        (IStrategy[] memory strategies, uint256[] memory shares) = delegationManager.getDelegatableShares(address(this));
-
-        withdrawalRoots = delegationManager.undelegate(
+        bytes32[] memory withdrawalRoots = delegationManager.undelegate(
             address(this)
         );
 
-        // Update queued shares for each strategy
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += shares[i];
-        }
-
-        delegatedTo = address(0);
-
         emit Undelegated(withdrawalRoots);
-    }
-
-        /**
-     * @notice Sets the claimer for rewards using the rewards coordinator
-     * @dev Only callable by delegator. Sets the claimer address for this staking node's rewards.
-     * @param claimer The address to set as the claimer
-     */
-    function setClaimer(address claimer) external onlyDelegator {
-        IRewardsCoordinator rewardsCoordinator = tokenStakingNodesManager.rewardsCoordinator();
-        rewardsCoordinator.setClaimerFor(claimer);
-        emit ClaimerSet(claimer);
-    }
-
-    //--------------------------------------------------------------------------------------
-    //----------------------------------  SYNCHRONIZATION  ---------------------------------
-    //--------------------------------------------------------------------------------------
-
-    /**
-     * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.
-     * @dev Compares the locally stored delegatedTo address with the actual delegation in DelegationManager.
-     * @return True if the delegation state is synced, false otherwise.
-     */
-    function isSynchronized() public view returns (bool) {
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-        return delegatedTo == delegationManager.delegatedTo(address(this));
-    }
-
-    function synchronize(
-        uint256[] calldata queuedSharesAmounts,
-        uint32 lastQueuedWithdrawalBlockNumber,
-        IStrategy[] calldata strategies
-    ) public onlyDelegator {
-
-        if (isSynchronized()) {
-            revert AlreadySynchronized();
-        }
-
-        if (queuedSharesAmounts.length != strategies.length) {
-            revert ArrayLengthMismatch();
-        }
-
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-
-        address thisNode = address(this);
-        
-        // Get the total number of withdrawals queued for this staking node
-        uint256 totalWithdrawals = delegationManager.cumulativeWithdrawalsQueued(thisNode);
-
-        address _delegatedTo = delegatedTo;
-        
-        // Loop through the last withdrawals in reverse order to verify each strategy withdrawal
-        for (uint256 i = 0; i < strategies.length; i++) {
-            IStrategy[] memory singleStrategy = new IStrategy[](1);
-            uint256[] memory singleShare = new uint256[](1);
-            singleStrategy[0] = strategies[strategies.length - 1 - i];
-            singleShare[0] = queuedSharesAmounts[strategies.length - 1 - i];
-
-            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
-                staker: thisNode,
-                delegatedTo: _delegatedTo,
-                withdrawer: thisNode,
-                nonce: totalWithdrawals - 1 - i, // Check nonces in reverse order
-                startBlock: lastQueuedWithdrawalBlockNumber,
-                strategies: singleStrategy,
-                shares: singleShare
-            });
-
-            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-
-            // Each withdrawal must exist
-            if (!IDelegationManagerExtended(address(delegationManager)).pendingWithdrawals(withdrawalRoot)) {
-                revert WithdrawalMismatch(singleStrategy[0], singleShare[0]);
-            }
-        }
-
-        // queue shares
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += queuedSharesAmounts[i];
-        }
-
-        delegatedTo = delegationManager.delegatedTo(address(this));
     }
 
     //--------------------------------------------------------------------------------------
@@ -530,11 +352,4 @@ contract TokenStakingNode is
         }
         _;
     }
-
-    modifier onlyWhenSynchronized() {
-        if (!isSynchronized()) {
-            revert NotSynchronized();
-        }
-        _;
-    }  
 }
