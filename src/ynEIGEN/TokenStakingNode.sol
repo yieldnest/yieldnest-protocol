@@ -69,6 +69,16 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
     address public delegatedTo;
 
+    /**
+     * @notice Tracks the operator/strategy maxMagnitude.
+     */
+    mapping(bytes32 => uint64) public maxMagnitudeByWithdrawalRoot;
+
+    /**
+     * @notice Tracks the withdrawable shares for each withdrawal.
+     */
+    mapping(bytes32 => uint256) public withdrawableSharesByWithdrawalRoot;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
