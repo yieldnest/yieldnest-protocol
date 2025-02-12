@@ -39,7 +39,6 @@ interface ITokenStakingNodeEvents {
  */
 contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUpgradeable, ITokenStakingNodeEvents {
     using SafeERC20 for IERC20;
-    using SlashingLib for DepositScalingFactor;
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
