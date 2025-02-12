@@ -52,10 +52,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotTokenStakingNodesWithdrawer();
     error ArrayLengthMismatch();
     error AlreadySynchronized();
-    error WithdrawalMismatch(IStrategy singleStrategy, uint256 singleShare);
     error NotSynchronized();
-    error StrategyNotFound(address strategy);
-    error AlreadyDelegated();
     error InvalidWithdrawal(uint256 index);
     error MaxMagnitudeChanged(uint64 before, uint64 current);
     //--------------------------------------------------------------------------------------
