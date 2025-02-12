@@ -163,20 +163,34 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             __deprecated_withdrawer: address(0)
         });
 
-        IDelegationManagerExtended delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
+        IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
 
-        // For accounting purposes, we need to calculate the withdrawable shares based on the deposit shares and the slashing factor of the operator.
-        // The slashing factor for non beacon chain strategies is composed only of the operator's max magnitude.
-        // If the operator is address(0) the max magnitude will be 1e18 (wad).
-        uint64 maxMagnitude = delegationManager.allocationManager().getMaxMagnitude(delegatedTo, _strategy);
-        DepositScalingFactor memory depositScalingFactor = DepositScalingFactor({_scalingFactor: delegationManager.depositScalingFactor(address(this), _strategy)});
-        uint256 withdrawableShares = depositScalingFactor.calcWithdrawable(_depositShares, maxMagnitude);
+        address _operator = delegatedTo;
 
-        queuedShares[_strategy] += withdrawableShares;
+        uint256 _withdrawableShares = 0;
 
-        _fullWithdrawalRoots = delegationManager.queueWithdrawals(_params);
+        if (_operator == address(0)) {
+            _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
 
-        emit QueuedWithdrawals(_strategy, withdrawableShares, _fullWithdrawalRoots);
+            _withdrawableShares = _depositShares;
+        } else {
+            uint256[] memory operatorSharesBefore = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
+
+            _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
+
+            uint256[] memory operatorSharesAfter = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
+
+            _withdrawableShares = operatorSharesAfter[0] - operatorSharesBefore[0];
+        }
+
+        queuedShares[_strategy] += _withdrawableShares;
+
+        bytes32 _withdrawalRoot = _fullWithdrawalRoots[0];
+
+        maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
+        withdrawableSharesByWithdrawalRoot[_withdrawalRoot] = _withdrawableShares;
+
+        emit QueuedWithdrawals(_strategy, _withdrawableShares, _fullWithdrawalRoots);
     }
 
     /**
