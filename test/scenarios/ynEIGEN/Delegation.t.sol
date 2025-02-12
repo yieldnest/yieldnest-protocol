@@ -80,7 +80,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         //Call synchronize after verifying not synchronized
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.synchronize(shares, blockNumberBefore, strategies);
+        tokenStakingNode.synchronize();
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(
@@ -158,7 +158,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         // Call synchronize after verifying synchronized
         vm.expectRevert(TokenStakingNode.AlreadySynchronized.selector);
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.synchronize(new uint256[](0), uint32(block.number), new IStrategy[](0));
+        tokenStakingNode.synchronize();
     }
 
 }
