@@ -331,9 +331,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             QueuedWithdrawal memory queuedWithdrawal_ = _queuedWithdrawals[_completedId];
 
-            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-            _middlewareTimesIndexes[0] = 0;
-
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(queuedWithdrawal_.strategy);
 
@@ -351,7 +348,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             });
             ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
                 _withdrawal,
-                0,
                 true // updateTokenStakingNodesBalances
             );
         }
