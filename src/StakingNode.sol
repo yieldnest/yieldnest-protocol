@@ -122,11 +122,20 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     uint256 public queuedSharesAmount;
 
+    /**
+     * @dev The address of the operator that this staking node is delegated to.
+     */
     address public delegatedTo;
 
+    /**
+     * @dev Maps a withdrawal root to the amount of shares that can be withdrawn.
+     * This is used to track the amount of withdrawable shares that are queued for withdrawal.
+     */
     mapping(bytes32 withdrawalRoot => uint256 withdrawableShares) public withdrawableSharesForWithdrawalRoot;
 
-    /** @dev Allows only a whitelisted address to configure the contract */
+    /** 
+     * @dev Allows only a whitelisted address to configure the contract 
+     */
     modifier onlyOperator() {
         if (!stakingNodesManager.isStakingNodesOperator(msg.sender)) revert NotStakingNodesOperator();
         _;
@@ -324,7 +333,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function syncQueuedShares() external onlyDelegator {
 
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         queuedSharesAmount = 0;
 
         (IDelegationManagerTypes.Withdrawal[] memory withdrawals, uint256[][] memory shares) = delegationManager.getQueuedWithdrawals(address(this));
