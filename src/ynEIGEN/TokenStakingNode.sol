@@ -209,26 +209,31 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             revert ArrayLengthMismatch();
         }
 
-        IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
+        IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         address[] memory _dupTokens = new address[](withdrawals.length);
 
+        IAllocationManager _allocationManager = _delegationManager.allocationManager();
+
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
+            IDelegationManagerTypes.Withdrawal memory _withdrawal = withdrawals[i];
+
+            if (_withdrawal.scaledShares.length != 1 || _withdrawal.strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
-            IStrategy _strategy = withdrawals[i].strategies[0];
-            queuedShares[_strategy] -= withdrawals[i].scaledShares[0];
+
+            IStrategy _strategy = _withdrawal.strategies[0];
 
             _strategies[i] = _strategy;
             _tokens[i] = new IERC20V4[](1);
             _tokens[i][0] = _strategy.underlyingToken();
-            IERC20V4 _token = _tokens[i][0];
             _receiveAsTokens[i] = true;
-            _dupTokens[i] = address(_token);
+            _dupTokens[i] = address(_tokens[i][0]);
+
+            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _allocationManager, _strategy, _withdrawal);
         }
 
         address[] memory _dedupTokens = ArrayLib.deduplicate(_dupTokens);
