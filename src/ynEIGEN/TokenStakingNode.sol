@@ -577,4 +577,43 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
         _;
     }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INTERNAL  ------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @dev Decreases the queuedShares for a given strategy by the withdrawable amount by checking if the 
+     * @param _delegationManager The delegation manager contract.
+     * @param _allocationManager The allocation manager contract.
+     * @param _strategy The strategy to decrease the queued shares for.
+     * @param _withdrawal The withdrawal to decrease the queued shares for.
+     */
+    function _decreaseQueuedSharesOnCompleteWithdrawals(
+        IDelegationManagerExtended _delegationManager,
+        IAllocationManager _allocationManager,
+        IStrategy _strategy,
+        IDelegationManagerTypes.Withdrawal memory _withdrawal
+    ) internal {
+            bytes32 _withdrawalRoot = _delegationManager.calculateWithdrawalRoot(_withdrawal);
+
+            // To detect if the queued shares have not been synchronized after a slashing event, we compare the
+            // maxMagnitude of the withdrawal root at the time of queueing with the current maxMagnitude.
+            uint64 _maxMagnitudeBefore = maxMagnitudeByWithdrawalRoot[_withdrawalRoot];
+            uint64 _maxMagnitudeNow = _allocationManager.getMaxMagnitude(_withdrawal.delegatedTo, _strategy);
+
+            // If they are different, it means that the queued shares have not been synced. 
+            // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+            if (_maxMagnitudeBefore != _maxMagnitudeNow) {
+                revert MaxMagnitudeChanged(_maxMagnitudeBefore, _maxMagnitudeNow);
+            }
+
+            // Decreases the queued shares by the withdrawable amount.
+            // This will net to 0 after all queued withdrawals are completed.
+            queuedShares[_strategy] -= withdrawableSharesByWithdrawalRoot[_withdrawalRoot];
+
+            // Delete the stored sync values to save gas.
+            delete withdrawableSharesByWithdrawalRoot[_withdrawalRoot];
+            delete maxMagnitudeByWithdrawalRoot[_withdrawalRoot];
+    }
 }
