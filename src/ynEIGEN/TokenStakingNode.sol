@@ -501,7 +501,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Synchronizes the queued shares of the token staking node in case of slashing.
      * This function is to be called by a trusted entity whenever a slashing event is detected.
      */
-    function syncQueuedShares() external onlyDelegator {
+    function syncQueuedShares() public onlyDelegator {
         IDelegationManagerExtended delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IAllocationManager allocationManager = delegationManager.allocationManager();
         
