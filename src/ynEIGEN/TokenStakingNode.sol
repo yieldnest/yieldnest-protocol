@@ -495,6 +495,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         delegatedTo = address(0);
+
+        syncQueuedShares();
     }
 
     /**
