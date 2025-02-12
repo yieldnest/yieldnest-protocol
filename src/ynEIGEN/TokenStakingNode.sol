@@ -379,21 +379,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         onlyWhenSynchronized
         returns (bytes32[] memory withdrawalRoots)
     {
-        IDelegationManagerExtended delegationManager =
-            IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
-
-        (IStrategy[] memory strategies,) = delegationManager.getDepositedShares(address(this));
-
-        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(this), strategies);
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
 
         withdrawalRoots = delegationManager.undelegate(address(this));
 
-        // Update queued shares for each strategy
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += withdrawableShares[i];
-        }
-
-        delegatedTo = address(0);
+        // Call to synchronize to update the queued shares and delegatedTo address.
+        synchronize();
 
         emit Undelegated(withdrawalRoots);
     }
