@@ -71,25 +71,17 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         });
     }
 
-    function _completeQueuedWithdrawals(QueuedWithdrawalInfo[] memory queuedWithdrawals, uint256 nodeId) internal {
+    function _completeQueuedWithdrawals(bytes32[] memory withdrawalRoots, uint256 nodeId, bool shouldExpectRevert) internal {
         // create Withdrawal struct
-        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](queuedWithdrawals.length);
+        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](withdrawalRoots.length);
         {
-            for (uint256 i = 0; i < queuedWithdrawals.length; i++) {
-                uint256[] memory _shares = new uint256[](1);
-                _shares[0] = queuedWithdrawals[i].withdrawnAmount;
-                IStrategy[] memory _strategies = new IStrategy[](1);
-                _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-                address _stakingNode = address(stakingNodesManager.nodes(nodeId));
-                _withdrawals[i] = IDelegationManagerTypes.Withdrawal({
-                    staker: _stakingNode,
-                    delegatedTo: delegationManager.delegatedTo(_stakingNode),
-                    withdrawer: _stakingNode,
-                    nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
-                    startBlock: uint32(block.number),
-                    strategies: _strategies,
-                    scaledShares: _shares
-                });   
+            for (uint256 i = 0; i < withdrawalRoots.length; i++) {
+                // uint256[] memory _shares = new uint256[](1);
+                // _shares[0] = queuedWithdrawals[i].withdrawnAmount;
+                // IStrategy[] memory _strategies = new IStrategy[](1);
+                // _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
+                // address _stakingNode = address(stakingNodesManager.nodes(nodeId));
+                _withdrawals[i] = delegationManager.getQueuedWithdrawal(withdrawalRoots[i]);
             }
         }
 
@@ -106,8 +98,12 @@ contract StakingNodeTestBase is IntegrationBaseTest {
             uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
             // all is zeroed out by defailt
             _middlewareTimesIndexes[0] = 0;
+            IStakingNode _node = stakingNodesManager.nodes(nodeId);
             vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            if (shouldExpectRevert) {
+                vm.expectRevert();
+            }
+            _node.completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
             vm.stopPrank();
         }
     }
@@ -181,7 +177,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         // start checkpoint
         {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(false);
             vm.stopPrank();
         }
         // verify checkpoints

@@ -56,6 +56,8 @@ interface IStakingNode {
     /// @notice Returns the beaconChainETHStrategy address used by the StakingNode.
     function beaconChainETHStrategy() external view returns (IStrategy);
 
+    function queuedSharesAmount() external view returns (uint256);
+
     /**
      * @notice Verifies the withdrawal credentials and balance of validators.
      * @param beaconTimestamp An array of oracle block numbers corresponding to each validator.

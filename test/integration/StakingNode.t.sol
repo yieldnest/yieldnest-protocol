@@ -55,10 +55,12 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         // TODO: double check this is the desired state for a pod.
         // we can't delegate on mainnet at this time so one should be able to farm points without delegating
         assertEq(eigenPodInstance.withdrawableRestakedExecutionLayerGwei(), 0, "Restaked Gwei should be 0");
+        // Rewards given to each validator during epoch processing
         assertEq(address(eigenPodManager), address(eigenPodInstance.eigenPodManager()), "EigenPodManager should match");
         assertEq(eigenPodInstance.podOwner(), address(stakingNodeInstance), "Pod owner address does not match");
-
+ 
         address payable eigenPodAddress = payable(address(eigenPodInstance));
+
         // Get initial pod owner shares
         int256 initialpodOwnerDepositShares = eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance));
         // Assert that initial pod owner shares are 0
@@ -1225,6 +1227,97 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         );
     }
 
+    function testQueueWithdrawalsWithSlashedValidator() public {
+        uint256 validatorCount = 2;
+        uint256 totalDepositedAmount;
+
+        {
+            // Setup
+            uint256 depositAmount = 32 ether;
+            totalDepositedAmount = depositAmount * validatorCount;
+            address user = vm.addr(156_737);
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
+        }
+
+        uint256 nodeId = createStakingNodes(1)[0];
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        // Setup: Create multiple validators and verify withdrawal credentials
+        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, validatorCount));
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        for (uint256 i = 0; i < validatorCount; i++) {
+            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+        }
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        uint256 slashedValidatorCount = 1;
+        // Slash some validators
+        uint40[] memory slashedValidators = new uint40[](slashedValidatorCount);
+        for (uint256 i = 0; i < slashedValidatorCount; i++) {
+            slashedValidators[i] = validatorIndices[i];
+        }
+
+        // Capture initial state
+        StateSnapshot memory initialState = takeSnapshot(nodeId);
+            
+        beaconChain.slashValidators(slashedValidators);
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        uint256 beaconChainSlashingFactorBefore = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+
+        // Start and verify checkpoint for all validators
+        startAndVerifyCheckpoint(nodeId, validatorIndices);
+
+        uint256 beaconChainSlashingFactorAfter = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+
+         // Queue withdrawals
+        uint256 withdrawalAmount = 1 ether;
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+        IDelegationManagerTypes.Withdrawal memory withdrawal = delegationManager.getQueuedWithdrawal(withdrawalRoots[0]);
+        uint256 scaledShares = withdrawal.scaledShares[0];
+        uint256 withdrawableShares = scaledShares.mulWad(beaconChainSlashingFactorAfter);
+
+        // Get final state
+        StateSnapshot memory finalState = takeSnapshot(nodeId);
+
+        uint256 slashedAmountInWei = beaconChain.SLASH_AMOUNT_GWEI() * 1e9;
+        // Assert
+        assertLt(beaconChainSlashingFactorAfter, beaconChainSlashingFactorBefore, "Beacon chain slashing factor should decrease due to slashing");
+        assertEq(finalState.totalAssets, initialState.totalAssets, "Total assets should remain unchanged");
+        assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
+        assertEq(
+            finalState.stakingNodeBalance,
+            initialState.stakingNodeBalance - slashedAmountInWei,
+            "Staking node balance should decrease by slashed amount"
+        );
+        assertEq(
+            finalState.queuedShares,
+            initialState.queuedShares + withdrawableShares,
+            "Queued shares should increase by withdrawal amount"
+        );
+        assertEq(finalState.withdrawnETH, initialState.withdrawnETH, "Withdrawn ETH should remain unchanged");
+        assertEq(
+            finalState.unverifiedStakedETH,
+            initialState.unverifiedStakedETH,
+            "Unverified staked ETH should remain unchanged"
+        );
+        assertEq(
+            finalState.podOwnerDepositShares,
+            initialState.podOwnerDepositShares - int256(withdrawalAmount),
+            "Pod owner shares should decrease by withdrawalAmount"
+        );
+
+
+    }
+
     function testQueueWithdrawalsFailsWhenNotAdmin() public {
         uint256[] memory nodeIds = createStakingNodes(1);
         IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
@@ -1285,14 +1378,12 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         // Queue withdrawals for exited validators
         uint256 withdrawalAmount = 32 ether * exitedValidatorCount;
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+        bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
 
         // Capture initial state
         StateSnapshot memory before = takeSnapshot(nodeIds[0]);
 
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
-        queuedWithdrawals[0] = QueuedWithdrawalInfo({withdrawnAmount: withdrawalAmount});
-        _completeQueuedWithdrawals(queuedWithdrawals, nodeIds[0]);
+        _completeQueuedWithdrawals(withdrawalRoots, nodeIds[0], false);
 
         // Capture final state
         StateSnapshot memory afterCompletion = takeSnapshot(nodeIds[0]);
@@ -1308,7 +1399,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         );
     }
 
-    function testCompleteQueuedWithdrawalsWithSlashedValidators() public {
+    function testCompleteQueuedWithdrawalsWithSlashedValidatorsBeforeQueuing() public {
         uint256 validatorCount = 2;
         uint256 totalDepositedAmount;
 
@@ -1368,11 +1459,9 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
 
         // Queue withdrawals for all validators
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+        bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
 
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
-        queuedWithdrawals[0] = QueuedWithdrawalInfo({withdrawnAmount: withdrawalAmount});
-        _completeQueuedWithdrawals(queuedWithdrawals, nodeId);
+        _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
 
         // Capture final state
         StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
@@ -1396,12 +1485,203 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
             before.stakingNodeBalance,
             "Staking node balance should decrease by slashedAmount"
         );
+    }
 
-        // Verify that the total withdrawn amount matches the expected amount
+    function testCompleteQueuedWithdrawalsWithSlashedValidatorsBetweenQueuingAndCompletion() public {
+        uint256 validatorCount = 2;
+        uint256 totalDepositedAmount;
+
+        {
+            // Setup
+            uint256 depositAmount = 32 ether;
+            totalDepositedAmount = depositAmount * validatorCount;
+            address user = vm.addr(156_737);
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
+        }
+
+        uint256 nodeId = createStakingNodes(1)[0];
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        // Setup: Create multiple validators and verify withdrawal credentials
+        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, validatorCount));
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        for (uint256 i = 0; i < validatorCount; i++) {
+            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+        }
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        uint256 slashedValidatorCount = 1;
+        // Slash some validators
+        uint40[] memory slashedValidators = new uint40[](slashedValidatorCount);
+        for (uint256 i = 0; i < slashedValidatorCount; i++) {
+            slashedValidators[i] = validatorIndices[i];
+        }
+            
+
+        // Advance the beacon chain by one epoch without rewards
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Capture initial state
+        StateSnapshot memory before = takeSnapshot(nodeId);
+
+        uint256 exitedValidatorCount = validatorCount - slashedValidatorCount;
+
+        // Calculate expected withdrawal amount (slashed validators lose 1 ETH each)
+        uint256 withdrawalAmount = (32 ether * exitedValidatorCount);
+
+        // Queue withdrawals for all validators
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        {
+            uint256 queuedSharesAmountBeforeSlashing = stakingNodeInstance.queuedSharesAmount();
+            assertEq(queuedSharesAmountBeforeSlashing, withdrawalAmount, "Queued shares should be equal to withdrawal amount");
+
+            beaconChain.slashValidators(slashedValidators);
+
+            // Exit remaining validators
+            for (uint256 i = slashedValidatorCount; i < validatorCount; i++) {
+                beaconChain.exitValidator(validatorIndices[i]);
+            }
+
+            beaconChain.advanceEpoch_NoRewards();
+
+            // Start and verify checkpoint for all validators
+            startAndVerifyCheckpoint(nodeId, validatorIndices);
+
+            _completeQueuedWithdrawals(withdrawalRoots, nodeId, true);
+
+            vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+            stakingNodeInstance.syncQueuedShares();
+
+            uint256 queuedSharesAmountAfterSlashing = stakingNodeInstance.queuedSharesAmount();
+            assertLt(queuedSharesAmountAfterSlashing, queuedSharesAmountBeforeSlashing, "Queued shares should decrease after slashing");
+        }
+
+        {
+            uint256 _beaconChainSlashingFactor = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+            uint256 expectedWithdrawalAmount = withdrawalAmount.mulWad(_beaconChainSlashingFactor);
+            uint256 slashedAmount = totalDepositedAmount - totalDepositedAmount.mulWad(_beaconChainSlashingFactor);
+
+            // Assertions
+             uint256 nodeBalanceBeforeWithdrawal = address(stakingNodeInstance).balance;
+            _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
+            uint256 nodeBalanceAfterWithdrawal = address(stakingNodeInstance).balance;
+
+            // Capture final state
+            StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
+
+            assertEq(nodeBalanceAfterWithdrawal - nodeBalanceBeforeWithdrawal, expectedWithdrawalAmount, "Node's ETH balance should increase by expected withdrawal amount");
+
+            assertEq(
+                afterCompletion.withdrawnETH,
+                before.withdrawnETH + expectedWithdrawalAmount,
+                "Withdrawn ETH should increase by the expected withdrawal amount"
+            );
+            assertEq(
+                afterCompletion.podOwnerDepositShares,
+                before.podOwnerDepositShares - int256(withdrawalAmount),
+                "Pod owner shares should decrease by withdrawalAmount"
+            );
+            assertEq(
+                afterCompletion.stakingNodeBalance + slashedAmount,
+                before.stakingNodeBalance,
+                "Staking node balance should decrease by slashedAmount"
+            );
+        }
+    }
+
+    function testCompleteQueuedWithdrawalsWithSlashedValidatorsAfterCompletion() public {
+        uint256 validatorCount = 2;
+        uint256 totalDepositedAmount;
+
+        {
+            // Setup
+            uint256 depositAmount = 32 ether;
+            totalDepositedAmount = depositAmount * validatorCount;
+            address user = vm.addr(156_737);
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
+        }
+
+        uint256 nodeId = createStakingNodes(1)[0];
+        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        // Setup: Create multiple validators and verify withdrawal credentials
+        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, validatorCount));
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        for (uint256 i = 0; i < validatorCount; i++) {
+            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+        }
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        uint256 slashedValidatorCount = 1;
+        // Slash some validators
+        uint40[] memory slashedValidators = new uint40[](slashedValidatorCount);
+        for (uint256 i = 0; i < slashedValidatorCount; i++) {
+            slashedValidators[i] = validatorIndices[i];
+        }
+
+        // Exit remaining validators
+        uint256 exitedValidatorCount = validatorCount - slashedValidatorCount;
+        for (uint256 i = slashedValidatorCount; i < validatorCount; i++) {
+            beaconChain.exitValidator(validatorIndices[i]);
+        }
+
+        // Advance the beacon chain by one epoch without rewards
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Capture initial state
+        StateSnapshot memory before = takeSnapshot(nodeId);
+
+        // Start and verify checkpoint for all validators
+        startAndVerifyCheckpoint(nodeId, validatorIndices);
+
+        // Calculate expected withdrawal amount (slashed validators lose 1 ETH each)
+        uint256 withdrawalAmount = (32 ether * exitedValidatorCount);
+
+        // Queue withdrawals for all validators
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
+
+        beaconChain.slashValidators(slashedValidators);
+
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Capture final state
+        StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
+        uint256 _beaconChainSlashingFactor = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+        uint256 expectedWithdrawalAmount = withdrawalAmount.mulWad(_beaconChainSlashingFactor);
+        uint256 slashedAmount = totalDepositedAmount - totalDepositedAmount.mulWad(_beaconChainSlashingFactor);
+
+        // Assertions
         assertEq(
-            afterCompletion.withdrawnETH - before.withdrawnETH,
-            expectedWithdrawalAmount,
-            "Total withdrawn amount should match the expected amount"
+            afterCompletion.withdrawnETH,
+            before.withdrawnETH + expectedWithdrawalAmount,
+            "Withdrawn ETH should increase by the expected withdrawal amount"
+        );
+        assertEq(
+            afterCompletion.podOwnerDepositShares,
+            before.podOwnerDepositShares - int256(withdrawalAmount),
+            "Pod owner shares should decrease by withdrawalAmount"
+        );
+        assertEq(
+            afterCompletion.stakingNodeBalance + slashedAmount,
+            before.stakingNodeBalance,
+            "Staking node balance should decrease by slashedAmount"
         );
     }
 
@@ -1456,14 +1736,10 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
             "Pod owner shares should not change"
         );
 
-        // Complete queued withdrawals
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
-        queuedWithdrawals[0] = QueuedWithdrawalInfo({withdrawnAmount: _scaledShares});
-
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.syncQueuedShares();
 
-        _completeQueuedWithdrawals(queuedWithdrawals, nodeId);
+        _completeQueuedWithdrawals(_withdrawalRoots, nodeId, false);
 
         // Capture final state
         StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
@@ -1494,4 +1770,29 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         );
     }
 
+}
+
+contract StakingNodeSyncQueuedShares is StakingNodeTestBase {
+    
+    address user = vm.addr(156_737);
+
+    uint256 nodeId;
+    IStakingNode stakingNodeInstance;
+
+    function setUp() public override {
+        super.setUp();
+
+        nodeId = createStakingNodes(1)[0];
+        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+    }
+
+    function testSyncQueuedSharesFailWhenNotAdmin() public {
+        vm.expectRevert();
+        stakingNodeInstance.syncQueuedShares();
+    }
+
+    function testSyncQueuedSharesSuccessWhenAdmin() public {
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.syncQueuedShares();
+    }
 }
