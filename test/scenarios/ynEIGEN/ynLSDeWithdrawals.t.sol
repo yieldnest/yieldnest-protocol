@@ -223,8 +223,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint32 _startBlock = uint32(block.number);
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
         uint256 _share = tokenStakingNode.queuedShares(_strategy);
-        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-        _middlewareTimesIndexes[0] = 0;
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
@@ -245,7 +243,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         });
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
-        tokenStakingNode.completeQueuedWithdrawals(withdrawal, 0, true);
+        tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "completeQueuedWithdrawalsSTETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), 0, "completeQueuedWithdrawalsSTETH: E1");
@@ -262,8 +260,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint32 _startBlock = uint32(block.number);
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
         uint256 _share = tokenStakingNode.queuedShares(_strategy);
-        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-        _middlewareTimesIndexes[0] = 0;
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
@@ -284,7 +280,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         });
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
-        tokenStakingNode.completeQueuedWithdrawals(withdrawal, 0, true);
+        tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "completeQueuedWithdrawalsSFRXETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), 0, "completeQueuedWithdrawalsSFRXETH: E1");
@@ -301,8 +297,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint32 _startBlock = uint32(block.number);
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
         uint256 _share = tokenStakingNode.queuedShares(_strategy);
-        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-        _middlewareTimesIndexes[0] = 0;
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
@@ -322,7 +316,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
             scaledShares: _shares
         });
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
-        tokenStakingNode.completeQueuedWithdrawals(withdrawal, 0, true);
+        tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "completeQueuedWithdrawalsOETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), 0, "completeQueuedWithdrawalsOETH: E1");
