@@ -427,92 +427,23 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     }
 
     /**
-     * @notice Synchronizes the staking node's delegation state with the DelegationManager.
-     * @dev This function will be called by the trusted entity when the operator calls undelegate() on this staking node because shares accounting will be out of sync
-     * @param queuedSharesAmounts The amount of shares to be queued for each strategy.
-     * @param undelegateBlockNumber The block number of the undelegate() call by the operator
-     * @param strategies The strategies to be queued.
+     * @notice Synchronizes both the delegatedTo address with the DelegationManager and the queued shares.
+     * @dev This function will be called by the trusted entity when the operator calls undelegate() or when a slashing event occurs to prevent accounting issues.
      */
-    function synchronize(
-        uint256[] calldata queuedSharesAmounts,
-        uint32 undelegateBlockNumber,
-        IStrategy[] calldata strategies
-    ) public onlyDelegator {
-        if (isSynchronized()) {
-            revert AlreadySynchronized();
-        }
-
-        if (queuedSharesAmounts.length != strategies.length) {
-            revert ArrayLengthMismatch();
-        }
-
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-
-        address thisNode = address(this);
-
-        if (delegationManager.isDelegated(thisNode)) {
-            revert AlreadyDelegated();
-        }
-
-        // Get the total number of withdrawals queued for this staking node
-        // this is respresented as nonce in Eigenlayer's Withdrawal struct
-        uint256 totalWithdrawals = delegationManager.cumulativeWithdrawalsQueued(thisNode);
-
-        // operator which called undelegate on this staking node
-        address _delegatedTo = delegatedTo;
-
-        // if there are other queued withdrawals apart from the ones due to undelegate call
-        uint256 withdrawalsNonceFromOperatorUndelegate = totalWithdrawals - strategies.length;
-
-        // Loop through the last withdrawals in reverse order to verify each strategy withdrawal
-        for (uint256 i = 0; i < strategies.length; i++) {
-            IStrategy[] memory singleStrategy = new IStrategy[](1);
-            uint256[] memory singleShare = new uint256[](1);
-            singleStrategy[0] = strategies[i];
-            singleShare[0] = queuedSharesAmounts[i];
-
-            IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
-                staker: thisNode,
-                delegatedTo: _delegatedTo,
-                withdrawer: thisNode,
-                nonce: withdrawalsNonceFromOperatorUndelegate + i,
-                startBlock: undelegateBlockNumber,
-                strategies: singleStrategy,
-                scaledShares: singleShare
-            });
-
-            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-
-            // Each withdrawal must exist
-            if (!IDelegationManagerExtended(address(delegationManager)).pendingWithdrawals(withdrawalRoot)) {
-                revert WithdrawalMismatch(singleStrategy[0], singleShare[0]);
-            }
-        }
-
-        // queue shares
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += queuedSharesAmounts[i];
-        }
-
-        delegatedTo = address(0);
-
-        syncQueuedShares();
-    }
-
-    /**
-     * @notice Synchronizes the queued shares of the token staking node in case of slashing.
-     * This function is to be called by a trusted entity whenever a slashing event is detected.
-     */
-    function syncQueuedShares() public onlyDelegator {
+    function synchronize() public onlyDelegator {
         IDelegationManagerExtended delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IAllocationManager allocationManager = delegationManager.allocationManager();
-        
+
+        // Update the delegatedTo address to the current operator.
+        delegatedTo = delegationManager.delegatedTo(address(this));
+
         // Requests the queued withdrawals and the withdrawable shares of each from the delegation manager.
         (IDelegationManager.Withdrawal[] memory withdrawals, uint256[][] memory withdrawableSharesPerWithdrawal) = delegationManager.getQueuedWithdrawals(address(this));
 
         // Reset the queued shares for each strategy back to zero.
         for (uint256 i = 0; i < withdrawals.length; i++) {
             // Withdrawals are queued always with a single strategy so we can ignore other entries in the strategies array.
+            // TODO: Strategies might be repeated in withdrawals so this reset might be repeated unnecessarily in the loop. Find a way to save gas.
             delete queuedShares[withdrawals[i].strategies[0]];
         }
 
@@ -528,6 +459,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             // Store the current withdrawable shares for the withdrawal.
             withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
             // Get the current maxMagnitude for operator/strategy of the withdrawal.
+            // TODO: `getMaxMagnitude` might be called multiple times in the loop for the same operator/strategy pair. Find a way to save gas.
             maxMagnitudeByWithdrawalRoot[withdrawalRoot] = allocationManager.getMaxMagnitude(withdrawal.delegatedTo, strategy);
         }
     }
