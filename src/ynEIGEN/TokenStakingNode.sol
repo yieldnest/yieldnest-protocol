@@ -417,7 +417,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //--------------------------------------------------------------------------------------
 
     /**
-     * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.
+     * @notice Checks if the StakingNode's delegatedTo is synced with the DelegationManager.
      * @dev Compares the locally stored delegatedTo address with the actual delegation in DelegationManager.
      * @return True if the delegation state is synced, false otherwise.
      */
@@ -536,6 +536,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         _;
     }
 
+    /// @notice Modifier to ensure the token staking node's delegatedTo is synchronized with the DelegationManager.
     modifier onlyWhenSynchronized() {
         if (!isSynchronized()) {
             revert NotSynchronized();
