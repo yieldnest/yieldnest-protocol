@@ -165,9 +165,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         });
 
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
-
-        address _operator = delegatedTo;
-
+        address _operator = _delegationManager.delegatedTo(address(this));
         uint256 _withdrawableShares = 0;
 
         if (_operator == address(0)) {
@@ -184,10 +182,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _withdrawableShares = operatorSharesAfter[0] - operatorSharesBefore[0];
         }
 
-        queuedShares[_strategy] += _withdrawableShares;
-
         bytes32 _withdrawalRoot = _fullWithdrawalRoots[0];
 
+        queuedShares[_strategy] += _withdrawableShares;
         maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
         withdrawableSharesByWithdrawalRoot[_withdrawalRoot] = _withdrawableShares;
 
@@ -498,6 +495,39 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         delegatedTo = address(0);
+    }
+
+    /**
+     * @notice Synchronizes the queued shares of the token staking node in case of slashing.
+     * This function is to be called by a trusted entity whenever a slashing event is detected.
+     */
+    function syncQueuedShares() external onlyDelegator {
+        IDelegationManagerExtended delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
+        IAllocationManager allocationManager = delegationManager.allocationManager();
+        
+        // Requests the queued withdrawals and the withdrawable shares of each from the delegation manager.
+        (IDelegationManager.Withdrawal[] memory withdrawals, uint256[][] memory withdrawableSharesPerWithdrawal) = delegationManager.getQueuedWithdrawals(address(this));
+
+        // Reset the queued shares for each strategy back to zero.
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            // Withdrawals are queued always with a single strategy so we can ignore other entries in the strategies array.
+            delete queuedShares[withdrawals[i].strategies[0]];
+        }
+
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            IDelegationManagerTypes.Withdrawal memory withdrawal = withdrawals[i];
+            IStrategy strategy = withdrawal.strategies[0];
+
+            uint256 withdrawableShares = withdrawableSharesPerWithdrawal[i][0];
+            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
+
+            // Update the queued shares for the strategy by adding the withdrawable shares.
+            queuedShares[strategy] += withdrawableShares;
+            // Store the current withdrawable shares for the withdrawal.
+            withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
+            // Get the current maxMagnitude for operator/strategy of the withdrawal.
+            maxMagnitudeByWithdrawalRoot[withdrawalRoot] = allocationManager.getMaxMagnitude(withdrawal.delegatedTo, strategy);
+        }
     }
 
     //--------------------------------------------------------------------------------------
