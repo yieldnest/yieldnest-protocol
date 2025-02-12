@@ -157,6 +157,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         // For accounting purposes, we need to calculate the withdrawable shares based on the deposit shares and the slashing factor of the operator.
         // The slashing factor for non beacon chain strategies is composed only of the operator's max magnitude.
+        // If the operator is address(0) the max magnitude will be 1e18 (wad).
         uint64 maxMagnitude = delegationManager.allocationManager().getMaxMagnitude(delegatedTo, _strategy);
         DepositScalingFactor memory depositScalingFactor = DepositScalingFactor({_scalingFactor: delegationManager.depositScalingFactor(address(this), _strategy)});
         uint256 withdrawableShares = depositScalingFactor.calcWithdrawable(_depositShares, maxMagnitude);
