@@ -67,11 +67,13 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
     /**
      * @notice Tracks the operator/strategy maxMagnitude.
+     * @dev Used to check if the queuedShares have been synced after a slashing event.
      */
     mapping(bytes32 => uint64) public maxMagnitudeByWithdrawalRoot;
 
     /**
      * @notice Tracks the withdrawable shares for each withdrawal.
+     * @dev Used to decrease the queuedShares amount after completing a withdrawal.
      */
     mapping(bytes32 => uint256) public withdrawableSharesByWithdrawalRoot;
 
@@ -160,20 +162,23 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         });
 
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
-        address _operator = _delegationManager.delegatedTo(address(this));
+
+        // `onlyWhenSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
+        address _operator = delegatedTo;
         uint256 _withdrawableShares = 0;
 
         if (_operator == address(0)) {
             _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-
+            
+            // If the staker has not yet delegated to an operator, and given that this contract does not handle beacon chain strategies,
+            // we can assume that the withdrawal shares are equal to the deposit shares.
             _withdrawableShares = _depositShares;
         } else {
             uint256[] memory operatorSharesBefore = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
-
             _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-
             uint256[] memory operatorSharesAfter = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
 
+            // Operator shares are decreased by the amount of withdrawable shares so we can use the difference to update the queued shares.
             _withdrawableShares = operatorSharesAfter[0] - operatorSharesBefore[0];
         }
 
