@@ -972,7 +972,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+        tokenStakingNodeInstance.synchronize();
 
         assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
@@ -1104,7 +1104,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+        tokenStakingNodeInstance.synchronize();
 
         assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
@@ -1238,7 +1238,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+        tokenStakingNodeInstance.synchronize();
 
         assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
