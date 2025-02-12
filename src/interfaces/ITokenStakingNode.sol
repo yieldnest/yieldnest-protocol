@@ -40,19 +40,16 @@ interface ITokenStakingNode {
         returns (bytes32[] memory _fullWithdrawalRoots);
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal calldata withdrawal,
-        uint256 middlewareTimesIndex,
         bool updateTokenStakingNodesBalances
     ) external;
 
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes,
         bool updateTokenStakingNodesBalances
     ) external;
 
     function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external;
 
     function deallocateTokens(IERC20 _token, uint256 _amount) external;

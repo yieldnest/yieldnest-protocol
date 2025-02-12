@@ -96,7 +96,6 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         // Complete queued withdrawals as shares
         IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](strategies.length);
-        uint256[] memory middlewareTimesIndexes = new uint256[](strategies.length);
         for (uint256 i = 0; i < strategies.length; i++) {
             IStrategy[] memory singleStrategy = new IStrategy[](1);
             singleStrategy[0] = strategies[i];
@@ -112,13 +111,12 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
                 strategies: singleStrategy,
                 scaledShares: singleShare
             });
-            middlewareTimesIndexes[i] = 0;
         }
         //  advance time to allow completion
         vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.completeQueuedWithdrawalsAsShares(withdrawals, middlewareTimesIndexes);
+        tokenStakingNode.completeQueuedWithdrawalsAsShares(withdrawals);
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(

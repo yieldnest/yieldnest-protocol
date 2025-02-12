@@ -194,19 +194,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to true
      * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes
      * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
      */
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes,
         bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
-
-        if (withdrawals.length != middlewareTimesIndexes.length) {
-            revert ArrayLengthMismatch();
-        }
-
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
@@ -241,12 +234,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _balancesBefore[i] = IERC20(_dedupTokens[i]).balanceOf(address(this));
         }
 
-        _delegationManager.completeQueuedWithdrawals(
-            withdrawals, 
-            _tokens, 
-            // middlewareTimesIndexes, 
-            _receiveAsTokens
-        ); 
+        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, _receiveAsTokens);
 
         for (uint256 i = 0; i < _dedupTokens.length; i++) {
             IERC20 _token = IERC20(_dedupTokens[i]);
@@ -266,19 +254,15 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to true
      * @param withdrawal The withdrawal to complete
-     * @param middlewareTimesIndex The middleware times index
      * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
      */
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal calldata withdrawal,
-        uint256 middlewareTimesIndex,
         bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
         _withdrawals[0] = withdrawal;
-        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-        _middlewareTimesIndexes[0] = middlewareTimesIndex;
-        completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes, updateTokenStakingNodesBalances);
+        completeQueuedWithdrawals(_withdrawals, updateTokenStakingNodesBalances);
     }
 
     /**
@@ -294,16 +278,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
      * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes
      */
     function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
-        if (withdrawals.length != middlewareTimesIndexes.length) {
-            revert ArrayLengthMismatch();
-        }
-
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
@@ -328,12 +306,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         // Complete withdrawals with receiveAsTokens = false
-        _delegationManager.completeQueuedWithdrawals(
-            withdrawals, 
-            _tokens, 
-            // middlewareTimesIndexes, 
-            _receiveAsTokens
-        );
+        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, _receiveAsTokens);
 
         emit CompletedManyQueuedWithdrawals(withdrawals);
     }
