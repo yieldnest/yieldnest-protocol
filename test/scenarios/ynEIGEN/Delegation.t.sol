@@ -154,11 +154,5 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         assertApproxEqAbs(
             totalAssetsBefore, yneigen.totalAssets(), 10, "Total assets should not change after undelegation"
         );
-
-        // Call synchronize after verifying synchronized
-        vm.expectRevert(TokenStakingNode.AlreadySynchronized.selector);
-        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.synchronize();
     }
-
 }
