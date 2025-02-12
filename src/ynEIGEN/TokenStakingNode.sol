@@ -57,6 +57,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error StrategyNotFound(address strategy);
     error AlreadyDelegated();
     error InvalidWithdrawal(uint256 index);
+    error MaxMagnitudeChanged(uint64 before, uint64 current);
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
