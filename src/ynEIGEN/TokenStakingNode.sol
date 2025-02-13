@@ -394,7 +394,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Synchronizes both the delegatedTo address with the DelegationManager and the queued shares.
      * @dev This function will be called by the trusted entity when the operator calls undelegate() or when a slashing event occurs to prevent accounting issues.
      */
-    function synchronize() public onlyDelegator {
+    function synchronize() public onlyDelegator onlyYieldNestStrategyManager {
         IDelegationManagerExtended delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IAllocationManager allocationManager = delegationManager.allocationManager();
 
