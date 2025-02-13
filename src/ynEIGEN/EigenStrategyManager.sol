@@ -68,7 +68,7 @@ contract EigenStrategyManager is
     error AssetAlreadyExists(address asset);
     error NoStrategyDefinedForAsset(address asset);
     error AssetDoesNotMatchStrategyUnderlyingToken(address asset, address strategyUnderlyingToken);
-    error NodeNotSynchronized(uint256 nodeId);
+    error NodeOperatorNotSynchronized(uint256 nodeId);
     
 
     //--------------------------------------------------------------------------------------
@@ -236,7 +236,7 @@ contract EigenStrategyManager is
             _strategiesBalance += strategy.userUnderlyingView((address(node)));
 
             if (!node.isOperatorSynchronized()) {
-                revert NodeNotSynchronized(i);
+                revert NodeOperatorNotSynchronized(i);
             }
 
             (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
