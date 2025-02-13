@@ -213,10 +213,8 @@ contract M3WithdrawalsTest is Base {
 
         // complete queued withdrawals
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-            _middlewareTimesIndexes[0] = 0;
             vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals);
             vm.stopPrank();
 
             // check that queuedSharesAmount is 0, and withdrawnETH is 32 ETH (AMOUNT), and staking pod balance is 32 ETH (AMOUNT)

@@ -415,13 +415,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *      number of blocks have passed since withdrawal was queued.
      * @param withdrawals The Withdrawals to complete. This withdrawalRoot (keccak hash of the Withdrawal) must match the
      *                    the withdrawal created as part of the queueWithdrawals call.
-     * @param middlewareTimesIndexes The middlewareTimesIndex parameter has to do
-     *       with the Slasher, which currently does nothing. As of M2, this parameter
-     *       has no bearing on anything and can be ignored
      */
     function completeQueuedWithdrawals(
-        IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] memory withdrawals
     ) external onlyStakingNodesWithdrawer onlyWhenSynchronized {
 
         uint256 totalWithdrawableShares = 0;
@@ -481,11 +477,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
      * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes
      */
     function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
         uint256 totalWithdrawalAmount = 0;
 
@@ -509,7 +503,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         delegationManager.completeQueuedWithdrawals(
             withdrawals, 
             tokens, 
-            // middlewareTimesIndexes, 
             receiveAsTokens
         );
 

@@ -95,15 +95,12 @@ contract StakingNodeTestBase is IntegrationBaseTest {
 
         // complete queued withdrawals
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-            // all is zeroed out by defailt
-            _middlewareTimesIndexes[0] = 0;
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
             vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
             if (shouldExpectRevert) {
                 vm.expectRevert();
             }
-            _node.completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            _node.completeQueuedWithdrawals(_withdrawals);
             vm.stopPrank();
         }
     }
@@ -126,11 +123,8 @@ contract StakingNodeTestBase is IntegrationBaseTest {
 
         // complete queued withdrawals
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-            // all is zeroed out by defailt
-            _middlewareTimesIndexes[0] = 0;
             vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(_withdrawals, _middlewareTimesIndexes);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(_withdrawals);
             vm.stopPrank();
         }
     }

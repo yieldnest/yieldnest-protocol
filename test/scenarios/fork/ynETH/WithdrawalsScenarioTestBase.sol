@@ -62,11 +62,8 @@ contract WithdrawalsScenarioTestBase is Base {
 
         // complete queued withdrawals
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-            // all is zeroed out by defailt
-            _middlewareTimesIndexes[0] = 0;
             vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals);
             vm.stopPrank();
         }
     }
@@ -92,11 +89,8 @@ contract WithdrawalsScenarioTestBase is Base {
 
         // complete queued withdrawals
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-            // all is zeroed out by defailt
-            _middlewareTimesIndexes[0] = 0;
             vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(_withdrawals, _middlewareTimesIndexes);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(_withdrawals);
             vm.stopPrank();
         }
     }
@@ -127,12 +121,10 @@ contract WithdrawalsScenarioTestBase is Base {
 
 
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
             vm.prank(actors.ops.WITHDRAWAL_MANAGER);
             withdrawalsProcessor.completeAndProcessWithdrawalsForNode(
                 withdrawalAction,
-                _withdrawals,
-                _middlewareTimesIndexes
+                _withdrawals
             );
         }
     }

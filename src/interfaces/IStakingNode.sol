@@ -8,14 +8,6 @@ import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEige
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
-struct WithdrawalCompletionParams {
-    uint256 middlewareTimesIndex;
-    uint256 amount;
-    uint32 withdrawalStartBlock;
-    address delegatedAddress;
-    uint96 nonce;
-}
-
 interface IStakingEvents {
     /// @notice Emitted when a user stakes ETH and receives ynETH.
     /// @param staker The address of the user staking ETH.
@@ -79,13 +71,11 @@ interface IStakingNode {
     ) external returns (bytes32[] memory fullWithdrawalRoots);
 
     function completeQueuedWithdrawals(
-        IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] memory withdrawals
      ) external;
 
     function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external;
 
     function getInitializedVersion() external view returns (uint64);

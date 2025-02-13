@@ -34,6 +34,7 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {StakingNodeTestBase, IEigenPodSimplified} from "./StakingNodeTestBase.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {SlashingLib} from "lib/eigenlayer-contracts/src/contracts/libraries/SlashingLib.sol";
+import {console} from "forge-std/console.sol";
 
 contract StakingNodeEigenPod is StakingNodeTestBase {
 
@@ -249,11 +250,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.expectRevert();
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.completeQueuedWithdrawals(new IDelegationManager.Withdrawal[](1), new uint256[](1));
+        stakingNodeInstance.completeQueuedWithdrawals(new IDelegationManager.Withdrawal[](1));
 
         vm.expectRevert();
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNodeInstance.completeQueuedWithdrawalsAsShares(new IDelegationManager.Withdrawal[](1), new uint256[](1));
+        stakingNodeInstance.completeQueuedWithdrawalsAsShares(new IDelegationManager.Withdrawal[](1));
     }
 
     function testDelegateUndelegateAndDelegateAgain() public {
@@ -427,11 +428,8 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // complete queued withdrawals
             {
-                uint256[] memory middlewareTimesIndexes = new uint256[](calculatedWithdrawals.length);
-                // all is zeroed out by default
-                middlewareTimesIndexes[0] = 0;
                 vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals, middlewareTimesIndexes);
+                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
             }
 
             finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
@@ -528,11 +526,8 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // complete queued withdrawals
             {
-                uint256[] memory middlewareTimesIndexes = new uint256[](calculatedWithdrawals.length);
-                // all is zeroed out by default
-                middlewareTimesIndexes[0] = 0;
                 vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals, middlewareTimesIndexes);
+                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
             }
 
             finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
@@ -660,11 +655,8 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         // complete queued withdrawals
         {
-            uint256[] memory middlewareTimesIndexes = new uint256[](calculatedWithdrawals.length);
-            // all is zeroed out by default
-            middlewareTimesIndexes[0] = 0;
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals, middlewareTimesIndexes);
+            stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
         }
 
         uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
