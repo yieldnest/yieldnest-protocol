@@ -163,7 +163,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
 
-        // `onlyWhenSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
+        // `onlyWhenOperatorSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
         address _operator = delegatedTo;
         uint256 _withdrawableShares = 0;
 
