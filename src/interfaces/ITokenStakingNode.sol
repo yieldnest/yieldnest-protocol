@@ -64,7 +64,7 @@ interface ITokenStakingNode {
      * @dev Compares the locally stored delegatedTo address with the actual delegation in DelegationManager.
      * @return True if the delegation state is synced, false otherwise.
      */
-    function isSynchronized() external view returns (bool);
+    function isOperatorSynchronized() external view returns (bool);
 
     function delegatedTo() external view returns (address);
 
