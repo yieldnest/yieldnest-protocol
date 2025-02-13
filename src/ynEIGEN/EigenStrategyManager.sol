@@ -216,6 +216,25 @@ contract EigenStrategyManager is
         _updateTokenStakingNodesBalances(asset, strategies[asset]);
     } 
 
+
+    // 1. who
+    function syncBalances() external onlyRole(STRATEGY_CONTROLLER_ROLE) {
+        
+        IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
+            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        }
+        
+        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        uint256 nodesCount = nodes.length;
+
+        for (uint256 i; i < nodesCount; i++ ) {
+            ITokenStakingNode node = nodes[i];
+            // node.synchronize();
+        }
+    }
+
     /// @notice Updates the staked balances for all nodes for a strategies.
     /// @dev Should be called atomically after any node-balance-changing operation.
     /// @dev On a slashing events, users will have an incentive to call this function, to decrease the exchange rate.
@@ -233,7 +252,11 @@ contract EigenStrategyManager is
         for (uint256 i; i < nodesCount; i++ ) {
             ITokenStakingNode node = nodes[i];
 
-            _strategiesBalance += strategy.userUnderlyingView((address(node)));
+            IStrategy[] memory strategyArr = new IStrategy[](1);
+            strategyArr[0] = strategy;
+            
+            (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategyArr);
+            _strategiesBalance += withdrawableShares[0]; // only one strategy was given
 
             if (!node.isOperatorSynchronized()) {
                 revert NodeOperatorNotSynchronized(i);
