@@ -76,7 +76,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         assertEq(totalAssetsBefore, yneigen.totalAssets(), "Total assets should not change after undelegation");
 
         // Assert node is not synchronized after undelegation
-        assertFalse(tokenStakingNode.isSynchronized(), "Node should not be synchronized after undelegation");
+        assertFalse(tokenStakingNode.isOperatorSynchronized(), "Node should not be synchronized after undelegation");
 
         //Call synchronize after verifying not synchronized
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
@@ -148,7 +148,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
             address(0),
             "Node should not be delegated after undelegation"
         );
-        assertTrue(tokenStakingNode.isSynchronized(), "Node should be synchronized after undelegation");
+        assertTrue(tokenStakingNode.isOperatorSynchronized(), "Node should be synchronized after undelegation");
         assertApproxEqAbs(
             totalAssetsBefore, yneigen.totalAssets(), 10, "Total assets should not change after undelegation"
         );

@@ -235,7 +235,7 @@ contract EigenStrategyManager is
 
             _strategiesBalance += strategy.userUnderlyingView((address(node)));
 
-            if (!node.isSynchronized()) {
+            if (!node.isOperatorSynchronized()) {
                 revert NodeNotSynchronized(i);
             }
 
