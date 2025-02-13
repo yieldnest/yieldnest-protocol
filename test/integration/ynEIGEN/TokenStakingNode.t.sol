@@ -856,15 +856,15 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory initialShares = new uint256[](1);
 
         // Since delegatedTo is not synchronized, the functions which require synchronization will revert
-        vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
+        vm.expectRevert(TokenStakingNode.OperatorNotSynchronized.selector);
         vm.prank(address(eigenStrategyManager));
         tokenStakingNodeInstance.depositAssetsToEigenlayer(assets, new uint256[](0), new IStrategy[](0));
 
-        vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
+        vm.expectRevert(TokenStakingNode.OperatorNotSynchronized.selector);
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNodeInstance.queueWithdrawals(strategies[0], initialShares[0]);
 
-        vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
+        vm.expectRevert(TokenStakingNode.OperatorNotSynchronized.selector);
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNodeInstance.completeQueuedWithdrawals(
             IDelegationManagerTypes.Withdrawal({
@@ -879,17 +879,17 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             true
         );
 
-        vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
+        vm.expectRevert(TokenStakingNode.OperatorNotSynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.completeQueuedWithdrawalsAsShares(
             new IDelegationManager.Withdrawal[](0)
         );
 
-        vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
+        vm.expectRevert(TokenStakingNode.OperatorNotSynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
 
-        vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
+        vm.expectRevert(TokenStakingNode.OperatorNotSynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.undelegate();
     }
