@@ -34,6 +34,10 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {StakingNodeTestBase, IEigenPodSimplified} from "./StakingNodeTestBase.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {SlashingLib} from "lib/eigenlayer-contracts/src/contracts/libraries/SlashingLib.sol";
+import {IAllocationManager, IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
+import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
+import {MockAVS} from "test/mocks/MockAVS.sol";
 import {console} from "forge-std/console.sol";
 
 contract StakingNodeEigenPod is StakingNodeTestBase {
@@ -1306,8 +1310,6 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
             initialState.podOwnerDepositShares - int256(withdrawalAmount),
             "Pod owner shares should decrease by withdrawalAmount"
         );
-
-
     }
 
     function testQueueWithdrawalsFailsWhenNotAdmin() public {
@@ -1786,5 +1788,309 @@ contract StakingNodeSyncQueuedShares is StakingNodeTestBase {
     function testSyncQueuedSharesSuccessWhenAdmin() public {
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.syncQueuedShares();
+    }
+}
+
+contract StakingNodeOperatorSlashing is StakingNodeTestBase {
+    using stdStorage for StdStorage;
+    using BytesLib for bytes;
+    using SlashingLib for *;
+
+
+    address user = vm.addr(156_737);
+    uint40[] validatorIndices;
+
+    address avs;
+    address operator1 = address(0x9999);
+    address operator2 = address(0x8888);
+
+    uint256 nodeId;
+    IStakingNode stakingNodeInstance;
+    IAllocationManager allocationManager;
+
+    function setUp() public override {
+        super.setUp();
+
+        avs = address(new MockAVS());
+
+        address[] memory operators = new address[](2);
+        operators[0] = operator1;
+        operators[1] = operator2;
+
+        for (uint256 i = 0; i < operators.length; i++) {
+            vm.prank(operators[i]);
+            delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
+        }
+
+        nodeId = createStakingNodes(1)[0];
+        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(
+            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+
+        allocationManager = IAllocationManager(chainAddresses.eigenlayer.ALLOCATION_MANAGER_ADDRESS);
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
+        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
+        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({
+            operatorSetId: 1,
+            strategies: strategies
+        });
+    
+        vm.prank(avs);
+        allocationManager.createOperatorSets(avs, createSetParams);
+
+        uint32 allocationConfigurationDelay = AllocationManagerStorage(address(allocationManager)).ALLOCATION_CONFIGURATION_DELAY();
+
+        uint32[] memory operatorSetIds = new uint32[](1); 
+        operatorSetIds[0] = uint32(1);
+        IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
+            avs: avs,
+            operatorSetIds: operatorSetIds,
+            data: ""
+        });
+        OperatorSet memory operatorSet = OperatorSet({
+            avs: avs,
+            id: 1
+        });
+        uint64[] memory newMagnitudes = new uint64[](1);
+        newMagnitudes[0] = uint64(1 ether);
+        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+            operatorSet: operatorSet,
+            strategies: strategies,
+            newMagnitudes: newMagnitudes
+        });
+
+        vm.roll(block.number + allocationConfigurationDelay);
+
+        vm.startPrank(operator1);
+        allocationManager.registerForOperatorSets(operator1, registerParams);
+        allocationManager.modifyAllocations(operator1, allocateParams);
+        vm.stopPrank();
+    }
+
+    function testSlashedOperatorBeforeQueuedWithdrawals() public {
+       uint256 validatorCount = 2;
+        uint256 totalDepositedAmount;
+
+        {
+            // Setup
+            uint256 depositAmount = 32 ether;
+            totalDepositedAmount = depositAmount * validatorCount;
+            address user = vm.addr(156_737);
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
+        }
+
+        {
+            // Setup: Create multiple validators and verify withdrawal credentials
+            uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+            beaconChain.advanceEpoch_NoRewards();
+            registerValidators(repeat(nodeId, validatorCount));
+
+            beaconChain.advanceEpoch_NoRewards();
+
+            for (uint256 i = 0; i < validatorCount; i++) {
+                _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+            }
+
+            beaconChain.advanceEpoch_NoRewards();
+        }
+
+        // Capture initial state
+        StateSnapshot memory initialState = takeSnapshot(nodeId);
+        IStrategy beaconChainETHStrategy = stakingNodeInstance.beaconChainETHStrategy();
+        uint256 beaconChainSlashingFactorBefore = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+        uint256 operatorMaxMagnitudeBefore = allocationManager.getMaxMagnitude(operator1, beaconChainETHStrategy);
+
+        // Start and verify checkpoint for all validators
+        startAndVerifyCheckpoint(nodeId, validatorIndices);
+
+        uint256 slashingPercent = 0.3 ether;
+        {
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
+            uint256[] memory wadsToSlash = new uint256[](1);
+            wadsToSlash[0] = slashingPercent; // slash 30% of the operator's stake
+            IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+                operator: operator1,
+                operatorSetId: 1,
+                strategies: strategies,
+                wadsToSlash: wadsToSlash,
+                description: "Slashing operator1"
+            });
+
+            vm.prank(avs);
+            allocationManager.slashOperator(avs, slashingParams);
+
+            stakingNodeInstance.stakingNodesManager().updateTotalETHStaked();
+        }
+
+        {
+            // Get final state
+            StateSnapshot memory finalState = takeSnapshot(nodeId);
+            uint256 beaconChainSlashingFactorAfter = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+            uint256 operatorMaxMagnitudeAfter = allocationManager.getMaxMagnitude(operator1, beaconChainETHStrategy);
+
+            uint256 slashedAmountInWei = totalDepositedAmount.mulWad(slashingPercent);
+            // Assert
+            assertEq(beaconChainSlashingFactorBefore, beaconChainSlashingFactorAfter, "Beacon chain slashing factor should not change");
+            assertLt(operatorMaxMagnitudeAfter, operatorMaxMagnitudeBefore, "Operator max magnitude should decrease due to slashing");
+            assertEq(finalState.totalAssets, initialState.totalAssets - slashedAmountInWei, "Total assets should decrease by slashed amount");
+            assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
+            assertEq(
+                finalState.stakingNodeBalance,
+                initialState.stakingNodeBalance - slashedAmountInWei,
+                "Staking node balance should decrease by slashed amount"
+            );
+            assertEq(
+                finalState.queuedShares,
+                initialState.queuedShares,
+                "Queued shares should remain unchanged"
+            );
+            assertEq(finalState.withdrawnETH, initialState.withdrawnETH, "Withdrawn ETH should remain unchanged");
+            assertEq(
+                finalState.unverifiedStakedETH,
+                initialState.unverifiedStakedETH,
+                "Unverified staked ETH should remain unchanged"
+            );
+            assertEq(
+                finalState.podOwnerDepositShares,
+                initialState.podOwnerDepositShares,
+                "Pod owner shares should remain unchanged"
+            );
+        }
+    }
+
+    function testSlashedOperatorBetweenQueuedAndCompletedWithdrawals() public {
+        uint256 validatorCount = 2;
+        uint256 totalDepositedAmount;
+
+        {
+            // Setup
+            uint256 depositAmount = 32 ether;
+            totalDepositedAmount = depositAmount * validatorCount;
+            address user = vm.addr(156_737);
+            vm.deal(user, 1000 ether);
+            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
+        }
+uint40[] memory validatorIndices;
+        {
+            // Setup: Create multiple validators and verify withdrawal credentials
+             validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+            beaconChain.advanceEpoch_NoRewards();
+            registerValidators(repeat(nodeId, validatorCount));
+
+            beaconChain.advanceEpoch_NoRewards();
+
+            for (uint256 i = 0; i < validatorCount; i++) {
+                _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
+            }
+
+            beaconChain.advanceEpoch_NoRewards();
+        }
+
+        // Capture initial state
+        StateSnapshot memory initialState = takeSnapshot(nodeId);
+        IStrategy beaconChainETHStrategy = stakingNodeInstance.beaconChainETHStrategy();
+        uint256 beaconChainSlashingFactorBefore = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+        uint256 operatorMaxMagnitudeBefore = allocationManager.getMaxMagnitude(operator1, beaconChainETHStrategy);
+
+        uint256 withdrawalAmount = 32 ether;
+        uint256 expectedWithdrawalAmount;
+{
+        // Queue withdrawals for all validators
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
+
+        uint256 queuedSharesAmountBeforeSlashing = stakingNodeInstance.queuedSharesAmount();
+        assertEq(queuedSharesAmountBeforeSlashing, withdrawalAmount, "Queued shares should be equal to withdrawal amount");
+
+        // Exit validator
+        beaconChain.exitValidator(validatorIndices[0]);
+        beaconChain.advanceEpoch_NoRewards();
+
+        // Start and verify checkpoint for all validators
+        startAndVerifyCheckpoint(nodeId, validatorIndices);
+
+        uint256 slashingPercent = 0.3 ether;
+        {
+            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
+            uint256[] memory wadsToSlash = new uint256[](1);
+            wadsToSlash[0] = slashingPercent; // slash 30% of the operator's stake
+            IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+                operator: operator1,
+                operatorSetId: 1,
+                strategies: strategies,
+                wadsToSlash: wadsToSlash,
+                description: "Slashing operator1"
+            });
+
+            vm.prank(avs);
+            allocationManager.slashOperator(avs, slashingParams);
+
+        
+
+            
+                // expect revert when completing withdrawals due to syncQueuedShares not done
+                _completeQueuedWithdrawals(withdrawalRoots, nodeId, true);
+            
+
+                vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+                stakingNodeInstance.syncQueuedShares();
+            }
+            {
+                                uint256 nodeBalanceReceived;
+                uint256 nodeBalanceBeforeWithdrawal = address(stakingNodeInstance).balance;
+                _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
+                uint256 nodeBalanceAfterWithdrawal = address(stakingNodeInstance).balance;
+                nodeBalanceReceived = nodeBalanceAfterWithdrawal - nodeBalanceBeforeWithdrawal;
+                 expectedWithdrawalAmount = withdrawalAmount.mulWad(1 ether - slashingPercent);
+                assertEq(nodeBalanceReceived, expectedWithdrawalAmount, "Node's ETH balance should increase by expected withdrawal amount");
+            }
+    }
+
+                stakingNodeInstance.stakingNodesManager().updateTotalETHStaked();
+
+
+
+        {
+            // Get final state
+            StateSnapshot memory finalState = takeSnapshot(nodeId);
+            uint256 beaconChainSlashingFactorAfter = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
+            uint256 operatorMaxMagnitudeAfter = allocationManager.getMaxMagnitude(operator1, beaconChainETHStrategy);
+            uint256 slashedAmount = totalDepositedAmount - totalDepositedAmount.mulWad(operatorMaxMagnitudeAfter);
+
+            // Assert
+            assertEq(beaconChainSlashingFactorBefore, beaconChainSlashingFactorAfter, "Beacon chain slashing factor should not change");
+            assertLt(operatorMaxMagnitudeAfter, operatorMaxMagnitudeBefore, "Operator max magnitude should decrease due to slashing");
+            assertEq(finalState.totalAssets, initialState.totalAssets - slashedAmount, "Total assets should decrease by slashed amount");
+            assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
+            assertEq(
+                finalState.stakingNodeBalance,
+                initialState.stakingNodeBalance - slashedAmount,
+                "Staking node balance should decrease by slashed amount"
+            );
+            assertEq(
+                finalState.queuedShares,
+                initialState.queuedShares,
+                "Queued shares should remain unchanged"
+            );
+            assertEq(finalState.withdrawnETH, initialState.withdrawnETH + expectedWithdrawalAmount, "Withdrawn ETH should remain unchanged");
+            assertEq(
+                finalState.unverifiedStakedETH,
+                initialState.unverifiedStakedETH,
+                "Unverified staked ETH should remain unchanged"
+            );
+            assertEq(
+                finalState.podOwnerDepositShares,
+                initialState.podOwnerDepositShares - int256(withdrawalAmount),
+                "Pod owner shares should remain unchanged"
+            );
+        }
     }
 }
