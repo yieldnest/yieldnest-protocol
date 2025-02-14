@@ -165,24 +165,30 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         // `onlyWhenOperatorSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
         address _operator = delegatedTo;
-        uint256 _withdrawableShares = 0;
+        uint256 _withdrawableShares;
+        bytes32 _withdrawalRoot;
 
         if (_operator == address(0)) {
             _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-            
-            // If the staker has not yet delegated to an operator, and given that this contract does not handle beacon chain strategies,
-            // we can assume that the withdrawal shares are equal to the deposit shares.
-            _withdrawableShares = _depositShares;
+            _withdrawalRoot = _fullWithdrawalRoots[0];
+            IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = _delegationManager.getQueuedWithdrawal(_withdrawalRoot);
+
+            // If the staker has not yet delegated to an operator, and given that this contract does not handle the beacon chain strategy.
+            // We can assume that the scaledShares can be used as the withdrawable shares because:
+            // - withdrawableShares = scaledShares * maxMagnitude * beaconChainSlashFactor.
+            // - scaledShares = withdrawableShares / (maxMagnitude * beaconChainSlashFactor).
+            // - scaledShares = withdrawableShares / (1 * 1). maxMagnitude is 1 when not delegated and beaconChainSlashFactor is 1 because it is not using the beacon chain strategy.
+            // - scaledShares = withdrawableShares.
+            _withdrawableShares = _queuedWithdrawal.scaledShares[0];
         } else {
             uint256[] memory operatorSharesBefore = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
             _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
+            _withdrawalRoot = _fullWithdrawalRoots[0];
             uint256[] memory operatorSharesAfter = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
 
             // Operator shares are decreased by the amount of withdrawable shares so we can use the difference to update the queued shares.
             _withdrawableShares = operatorSharesAfter[0] - operatorSharesBefore[0];
         }
-
-        bytes32 _withdrawalRoot = _fullWithdrawalRoots[0];
 
         queuedShares[_strategy] += _withdrawableShares;
         maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
