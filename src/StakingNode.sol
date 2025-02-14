@@ -476,12 +476,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
+     * @dev Assume that syncQueuedShares has been called before this function
      * @param withdrawals Array of withdrawals to complete
      */
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
         uint256 totalWithdrawalAmount = 0;
+
+        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         // Create empty tokens array since we're not receiving as tokens
         IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
@@ -494,10 +497,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             }
             tokens[i] = new IERC20V4[](1);
             receiveAsTokens[i] = false;
-            totalWithdrawalAmount += withdrawals[i].scaledShares[0];
+            
+            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
+            totalWithdrawalAmount += withdrawableSharesForWithdrawalRoot[withdrawalRoot];
+            withdrawableSharesForWithdrawalRoot[withdrawalRoot] = 0;
         }
-
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         // Complete withdrawals with receiveAsTokens = false
         delegationManager.completeQueuedWithdrawals(
@@ -530,40 +534,19 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         if (isSynchronized()) { 
             revert AlreadySynchronized();
         }
+        
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+        queuedSharesAmount = 0;
 
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
-
-        IStrategy[] memory strategies = new IStrategy[](1);
-        uint256[] memory shares = new uint256[](1);
-        strategies[0] = beaconChainETHStrategy;
-        shares[0] = queuedShares;
-
-        address thisNode = address(this);
-
-        // We can assume that the Withdrawal queued by the undelegate() call made by the operator
-        // is the LAST queued withdrawal since to call queueWithdrawals you require isSynchronized() == true.
-        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
-            staker: thisNode,
-            delegatedTo: delegatedTo,
-            withdrawer: thisNode,
-            nonce: delegationManager.cumulativeWithdrawalsQueued(thisNode) - 1, // must be the last withdrawal
-            startBlock: undelegateBlockNumber,
-            strategies: strategies,
-            scaledShares: shares
-        });
-
-        // IMPORTANT: withdrawalRoot is not spoofable because nonce is a strictly increasing value that
-        // gets incremented for each new withdrawal.
-        // This function only works with this pre-condition
-        bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-
-        // Withdrawal MUST exist and must be the last
-        if (!IDelegationManagerExtended(address(delegationManager)).pendingWithdrawals(withdrawalRoot)) {
-            revert WithdrawalMismatch();
+        (IDelegationManagerTypes.Withdrawal[] memory withdrawals, uint256[][] memory shares) = delegationManager.getQueuedWithdrawals(address(this));
+        for(uint256 i = 0; i < withdrawals.length; i++) {
+            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
+            uint256 withdrawableShares = shares[i][0];
+            withdrawableSharesForWithdrawalRoot[withdrawalRoot] = withdrawableShares;
+            queuedSharesAmount += withdrawableShares;
         }
 
-        // queue shares
-        queuedSharesAmount += queuedShares;
+        emit QueuedSharesSynced(queuedSharesAmount);
 
         delegatedTo = address(0);
     }
