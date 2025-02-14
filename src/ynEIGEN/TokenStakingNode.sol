@@ -52,7 +52,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error AlreadySynchronized();
     error OperatorNotSynchronized();
     error InvalidWithdrawal(uint256 index);
-    error MaxMagnitudeChanged(uint64 before, uint64 current);
+    error MaxMagnitudeChanged(bytes32 withdrawalRoot, uint64 before, uint64 current);
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -541,7 +541,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             // If they are different, it means that the queued shares have not been synced. 
             // In this case, it reverts to prevent accounting issues with the queuedShares variable.
             if (_maxMagnitudeBefore != _maxMagnitudeNow) {
-                revert MaxMagnitudeChanged(_maxMagnitudeBefore, _maxMagnitudeNow);
+                revert MaxMagnitudeChanged(_withdrawalRoot, _maxMagnitudeBefore, _maxMagnitudeNow);
             }
 
             // Decreases the queued shares by the withdrawable amount.
