@@ -58,6 +58,8 @@ interface ITokenStakingNode {
 
     function queuedShares(IStrategy _strategy) external view returns (uint256);
     function withdrawn(IERC20 _token) external view returns (uint256);
+    function maxMagnitudeByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint64);
+    function withdrawableSharesByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint256);
 
     /**
      * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.
