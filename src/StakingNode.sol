@@ -476,6 +476,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
+     * @dev Call updateTotalETHStaked after this function
      * @param withdrawals Array of withdrawals to complete
      */
     function completeQueuedWithdrawalsAsShares(
@@ -530,23 +531,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         return delegatedTo == delegationManager.delegatedTo(address(this));
     }
 
-    function synchronize(uint256 queuedShares, uint32 undelegateBlockNumber) public onlyDelegator {
+    /**
+     * @notice Synchronizes the StakingNode's delegation state with the DelegationManager.
+     * @dev This function should be called after operator undelegate to this StakingNode.
+     * @dev Call updateTotalETHStaked after this function
+     */
+    function synchronize() public onlyDelegator {
         if (isSynchronized()) { 
             revert AlreadySynchronized();
         }
         
-        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        queuedSharesAmount = 0;
-
-        (IDelegationManagerTypes.Withdrawal[] memory withdrawals, uint256[][] memory shares) = delegationManager.getQueuedWithdrawals(address(this));
-        for(uint256 i = 0; i < withdrawals.length; i++) {
-            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
-            uint256 withdrawableShares = shares[i][0];
-            withdrawableSharesForWithdrawalRoot[withdrawalRoot] = withdrawableShares;
-            queuedSharesAmount += withdrawableShares;
-        }
-
-        emit QueuedSharesSynced(queuedSharesAmount);
+        syncQueuedShares();
 
         delegatedTo = address(0);
     }
