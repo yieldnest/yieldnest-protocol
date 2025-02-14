@@ -331,7 +331,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Syncs the queuedSharesAmount with the actual withdrawable shares queued for withdrawal.
      * @dev This is generally used when slashing is done on this staking node or operator is slashed
      */
-    function syncQueuedShares() external onlyDelegator {
+    function syncQueuedShares() public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         queuedSharesAmount = 0;
@@ -476,12 +476,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
-     * @dev Assume that syncQueuedShares has been called before this function
      * @param withdrawals Array of withdrawals to complete
      */
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
+        syncQueuedShares();
         uint256 totalWithdrawalAmount = 0;
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
