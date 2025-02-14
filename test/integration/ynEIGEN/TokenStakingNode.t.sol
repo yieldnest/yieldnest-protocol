@@ -1583,25 +1583,18 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
 
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
-        uint256 queuedShares = tokenStakingNode.queuedShares(wstETHStrategy);
-        uint64 queueMaxMagnitude = tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot);
-        uint256 queueWithdrawableShares = tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot);
 
-        assertEq(queuedShares, withdrawableShares, "Queued shares should be equal to withdrawable shares");
-        assertEq(queueMaxMagnitude, 1 ether, "Max magnitude should be WAD");
-        assertEq(queueWithdrawableShares, withdrawableShares, "Queued withdrawable shares for withdrawalshould be equal to withdrawable shares");
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 1 ether, "Max magnitude should be WAD");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares, "Queued withdrawable shares for withdrawalshould be equal to withdrawable shares");
 
         _slash(0.5 ether);
 
         tokenStakingNode.synchronize();
 
-        queuedShares = tokenStakingNode.queuedShares(wstETHStrategy);
-        queueMaxMagnitude = tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot);
-        queueWithdrawableShares = tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot);
-
-        assertEq(queuedShares, withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
-        assertEq(queueMaxMagnitude, 0.5 ether, "Max magnitude should be half of the previous withdrawable shares");
-        assertEq(queueWithdrawableShares, withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0.5 ether, "Max magnitude should be half of the previous withdrawable shares");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
     }
 
     function testQueuedSharesStorageVariablesResetOnComplete() public {
@@ -1620,12 +1613,48 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
 
-        uint256 queuedShares = tokenStakingNode.queuedShares(wstETHStrategy);
-        uint64 queueMaxMagnitude = tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot);
-        uint256 queueWithdrawableShares = tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot);
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Queued withdrawable shares should be 0");
+    }
 
-        assertEq(queuedShares, 0, "Queued shares should be 0");
-        assertEq(queueMaxMagnitude, 0, "Max magnitude should be 0");
-        assertEq(queueWithdrawableShares, 0, "Queued withdrawable shares should be 0");
+    function testQueueAndCompleteWhenUndelegated() public {
+        // Create token staking node
+        // TODO: Use TOKEN_STAKING_NODE_CREATOR_ROLE instead of STAKING_NODE_CREATOR
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
+
+        // Deposit assets to ynEigen
+        uint256 stakeAmount = 100 ether;
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+        // Stake assets into the token staking node
+        uint256 nodeId = tokenStakingNode.nodeId();
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = IERC20(address(wstETH));
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = stakeAmount;
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+
+        bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
+
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares, "Withdrawable shares should be equal to withdrawable shares");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 1 ether, "Max magnitude should be WAD");
+
+        _waitForWithdrawalDelay();
+
+        (IDelegationManager.Withdrawal[] memory queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
+
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
+        
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Withdrawable shares should be 0");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
     }
 }
