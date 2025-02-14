@@ -1413,6 +1413,10 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         vm.roll(block.number + 51); // Obtained from DEALLOCATION_DELAY from https://holesky.etherscan.io/address/0x78469728304326CBc65f8f95FA756B0B73164462#readProxyContract#F2.
     }
 
+    function _waitForWithdrawalDelay() private {
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
+    }
+
     function _allocate() private {
         _allocate(1 ether);
     }
@@ -1458,10 +1462,10 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         return (withdrawableShares[0], depositShares[0]);
     }
 
-    function _queueWithdrawals(uint256 depositShares) private {
+    function _queueWithdrawal(uint256 depositShares) private returns (bytes32) {
         // TODO: Use TOKEN_STAKING_NODES_WITHDRAWER instead of STAKING_NODES_WITHDRAWER
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        tokenStakingNode.queueWithdrawals(wstETHStrategy, depositShares);
+        return tokenStakingNode.queueWithdrawals(wstETHStrategy, depositShares)[0];
     }
 
     function _queuedShares() private view returns (uint256) {
@@ -1472,7 +1476,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
         assertEq(withdrawableShares, depositShares);
 
-        _queueWithdrawals(depositShares);
+        _queueWithdrawal(depositShares);
 
         assertEq(_queuedShares(), withdrawableShares, "Queued shares should be equal to withdrawable shares");
 
@@ -1485,7 +1489,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
         assertEq(withdrawableShares, depositShares);
 
-        _queueWithdrawals(depositShares);
+        _queueWithdrawal(depositShares);
 
         _slash();
 
@@ -1498,7 +1502,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
         assertEq(withdrawableShares, depositShares);
 
-        _queueWithdrawals(depositShares);
+        _queueWithdrawal(depositShares);
 
         _slash(0.5 ether);
 
@@ -1515,7 +1519,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
         assertEq(withdrawableShares, depositShares);
 
-        _queueWithdrawals(depositShares);
+        _queueWithdrawal(depositShares);
 
         _slash();
 
@@ -1532,12 +1536,96 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
         assertEq(withdrawableShares, depositShares);
 
-        _queueWithdrawals(depositShares);
+        _queueWithdrawal(depositShares);
 
         _slash(0.5 ether);
 
         tokenStakingNode.synchronize();
 
         assertEq(_queuedShares(), withdrawableShares - withdrawableShares / 4, "After half is slashed and half is allocated, queued shares should be a quarter of the previous withdrawable shares");
+    }
+
+    function testCompleteFailsIfNotSynchronized() public {
+        (,uint256 depositShares) = _getWithdrawableShares();
+
+        bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
+
+        (IDelegationManager.Withdrawal[] memory queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
+
+        _slash();
+
+        _waitForWithdrawalDelay();
+
+        vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.MaxMagnitudeChanged.selector, queuedWithdrawalRoot, 1 ether, 0));
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
+    }
+
+    function testCompleteFailsOnFullSlash() public {
+        (,uint256 depositShares) = _getWithdrawableShares();
+
+        _queueWithdrawal(depositShares);
+
+        (IDelegationManager.Withdrawal[] memory queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
+
+        _slash();
+
+        _waitForWithdrawalDelay();
+
+        tokenStakingNode.synchronize();
+
+        vm.expectRevert("wstETH: can't wrap zero stETH");
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
+    }
+
+    function testQueuedSharesStorageVariablesAreUpdatedOnSynchronize() public {
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+
+        bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
+        uint256 queuedShares = tokenStakingNode.queuedShares(wstETHStrategy);
+        uint64 queueMaxMagnitude = tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot);
+        uint256 queueWithdrawableShares = tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot);
+
+        assertEq(queuedShares, withdrawableShares, "Queued shares should be equal to withdrawable shares");
+        assertEq(queueMaxMagnitude, 1 ether, "Max magnitude should be WAD");
+        assertEq(queueWithdrawableShares, withdrawableShares, "Queued withdrawable shares for withdrawalshould be equal to withdrawable shares");
+
+        _slash(0.5 ether);
+
+        tokenStakingNode.synchronize();
+
+        queuedShares = tokenStakingNode.queuedShares(wstETHStrategy);
+        queueMaxMagnitude = tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot);
+        queueWithdrawableShares = tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot);
+
+        assertEq(queuedShares, withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
+        assertEq(queueMaxMagnitude, 0.5 ether, "Max magnitude should be half of the previous withdrawable shares");
+        assertEq(queueWithdrawableShares, withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
+    }
+
+    function testQueuedSharesStorageVariablesResetOnComplete() public {
+        (,uint256 depositShares) = _getWithdrawableShares();
+
+        bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
+
+        (IDelegationManager.Withdrawal[] memory queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
+
+        _slash(0.5 ether);
+
+        _waitForWithdrawalDelay();
+
+        tokenStakingNode.synchronize();
+
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
+
+        uint256 queuedShares = tokenStakingNode.queuedShares(wstETHStrategy);
+        uint64 queueMaxMagnitude = tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot);
+        uint256 queueWithdrawableShares = tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot);
+
+        assertEq(queuedShares, 0, "Queued shares should be 0");
+        assertEq(queueMaxMagnitude, 0, "Max magnitude should be 0");
+        assertEq(queueWithdrawableShares, 0, "Queued withdrawable shares should be 0");
     }
 }
