@@ -8,6 +8,7 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
@@ -19,6 +20,8 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
+import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSRegistrar.sol";
+import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
 
 interface ITestState {
 
@@ -391,7 +394,6 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             );
         }
     }
-
 }
 
 contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
@@ -1326,4 +1328,216 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(rewardsCoordinator.claimerFor(address(tokenStakingNodeInstance)), claimer, "Claimer not set correctly");
     }
 
+}
+
+contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
+    TestAssetUtils private testAssetUtils;
+    ITokenStakingNode private tokenStakingNode;
+    address private avs;
+    IStrategy private wstETHStrategy;
+
+    constructor() {
+        testAssetUtils = new TestAssetUtils();
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        // Create token staking node
+        // TODO: Use TOKEN_STAKING_NODE_CREATOR_ROLE instead of STAKING_NODE_CREATOR
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
+
+        // Deposit assets to ynEigen
+        uint256 stakeAmount = 100 ether;
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+        // Stake assets into the token staking node
+        uint256 nodeId = tokenStakingNode.nodeId();
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = IERC20(address(wstETH));
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = stakeAmount;
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        // Register operator
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
+        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, approverSalt);
+
+        // Create AVS
+        avs = address(new MockAVSRegistrar());
+
+        wstETHStrategy = eigenStrategyManager.strategies(wstETH);
+
+        // Create operator set
+        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
+        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
+            operatorSetId: 1, 
+            strategies: new IStrategy[](1) 
+        });
+        createSetParams[0].strategies[0] = wstETHStrategy;
+        vm.prank(avs);
+        eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
+
+        // Register for operator set
+        IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
+            avs: avs,
+            operatorSetIds: new uint32[](1),
+            data: new bytes(0)
+        });
+        registerParams.operatorSetIds[0] = 1;
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.allocationManager.registerForOperatorSets(actors.ops.TOKEN_STAKING_NODE_OPERATOR, registerParams);
+
+        _waitForAllocationDelay();
+
+        // Make all delegated shares slashable
+        _allocate();
+    }
+
+    function _waitForAllocationDelay() private {
+        // TODO: Get the value from the AllocationManager contract (Currently not exposed in the interface)
+        vm.roll(block.number + 76); // Obtained from ALLOCATION_CONFIGURATION_DELAY from https://holesky.etherscan.io/address/0x78469728304326CBc65f8f95FA756B0B73164462#readProxyContract#F1.
+    }
+
+    function _waitForDeallocationDelay() private {
+        // TODO: Get the value from the AllocationManager contract (Currently not exposed in the interface)
+        vm.roll(block.number + 51); // Obtained from DEALLOCATION_DELAY from https://holesky.etherscan.io/address/0x78469728304326CBc65f8f95FA756B0B73164462#readProxyContract#F2.
+    }
+
+    function _allocate() private {
+        _allocate(1 ether);
+    }
+
+    function _allocate(uint64 _newMagnitude) private {
+        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+            operatorSet: OperatorSet({
+                avs: avs,
+                id: 1
+            }),
+            strategies: new IStrategy[](1),
+            newMagnitudes: new uint64[](1)
+        });
+        allocateParams[0].strategies[0] = wstETHStrategy;
+        allocateParams[0].newMagnitudes[0] = _newMagnitude;
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
+    }
+
+    function _slash() private {
+        _slash(1 ether);
+    }
+
+    function _slash(uint256 _wadsToSlash) private {
+        IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+            operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+            operatorSetId: 1,
+            strategies: new IStrategy[](1),
+            wadsToSlash: new uint256[](1),
+            description: "test"
+        });
+        slashingParams.strategies[0] = wstETHStrategy;
+        slashingParams.wadsToSlash[0] = _wadsToSlash;
+        vm.prank(avs);
+        eigenLayer.allocationManager.slashOperator(avs, slashingParams);
+    }
+
+    function _getWithdrawableShares() private view returns (uint256, uint256) {
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = wstETHStrategy;
+        (uint256[] memory withdrawableShares, uint256[] memory depositShares) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), strategies);
+        return (withdrawableShares[0], depositShares[0]);
+    }
+
+    function _queueWithdrawals(uint256 depositShares) private {
+        // TODO: Use TOKEN_STAKING_NODES_WITHDRAWER instead of STAKING_NODES_WITHDRAWER
+        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
+        tokenStakingNode.queueWithdrawals(wstETHStrategy, depositShares);
+    }
+
+    function _queuedShares() private view returns (uint256) {
+        return tokenStakingNode.queuedShares(wstETHStrategy);
+    }
+
+    function testQueuedSharesAreNotUpdatedIfSynchronizeIsNotCalled_FullSlashed() public {
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+        assertEq(withdrawableShares, depositShares);
+
+        _queueWithdrawals(depositShares);
+
+        assertEq(_queuedShares(), withdrawableShares, "Queued shares should be equal to withdrawable shares");
+
+        _slash();
+
+        assertEq(_queuedShares(), withdrawableShares, "Queued shares should be the same if it has not been synchronized after a slash");
+    }
+
+    function testQueuedSharesAreUpdatedAfterSynchronize_FullSlashed() public {
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+        assertEq(withdrawableShares, depositShares);
+
+        _queueWithdrawals(depositShares);
+
+        _slash();
+
+        tokenStakingNode.synchronize();
+
+        assertEq(_queuedShares(), 0, "After a complete slash, queued shares should be 0");
+    }
+
+    function testQueuedSharesAreDecreasedByHalf_HalfSlashed() public {
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+        assertEq(withdrawableShares, depositShares);
+
+        _queueWithdrawals(depositShares);
+
+        _slash(0.5 ether);
+
+        tokenStakingNode.synchronize();
+
+        assertEq(_queuedShares(), withdrawableShares / 2, "After half is slashed queued shares should be half of the previous withdrawable shares");
+    }
+
+    function testQueuedSharesAreDecreasedByHalf_FullSlashed_HalfAllocated() public {
+        _allocate(0.5 ether);
+
+        _waitForDeallocationDelay();
+
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+        assertEq(withdrawableShares, depositShares);
+
+        _queueWithdrawals(depositShares);
+
+        _slash();
+
+        tokenStakingNode.synchronize();
+
+        assertEq(_queuedShares(), withdrawableShares / 2, "After half is slashed queued shares should be half of the previous withdrawable shares");
+    }
+
+    function testQueuedSharesAreDecreasedToQuarter_HalfSlashed_HalfAllocated() public {
+        _allocate(0.5 ether);
+
+        _waitForDeallocationDelay();
+
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+        assertEq(withdrawableShares, depositShares);
+
+        _queueWithdrawals(depositShares);
+
+        _slash(0.5 ether);
+
+        tokenStakingNode.synchronize();
+
+        assertEq(_queuedShares(), withdrawableShares - withdrawableShares / 4, "After half is slashed and half is allocated, queued shares should be a quarter of the previous withdrawable shares");
+    }
 }
