@@ -187,7 +187,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             uint256[] memory operatorSharesAfter = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
 
             // Operator shares are decreased by the amount of withdrawable shares so we can use the difference to update the queued shares.
-            _withdrawableShares = operatorSharesAfter[0] - operatorSharesBefore[0];
+            _withdrawableShares = operatorSharesBefore[0] - operatorSharesAfter[0];
         }
 
         queuedShares[_strategy] += _withdrawableShares;
