@@ -418,7 +418,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // Synchronize
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.synchronize(32 ether * validatorIndices.length, undelegateBlockNumber);
+            stakingNodeInstance.synchronize();
 
             // Verify total assets stayed the same
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
@@ -516,7 +516,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // Synchronize
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.synchronize(32 ether * validatorIndices.length, undelegateBlockNumber);
+            stakingNodeInstance.synchronize();
 
             // Verify total assets stayed the same
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
@@ -629,7 +629,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // Synchronize
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.synchronize(32 ether * validatorIndices.length, undelegateBlockNumber);
+            stakingNodeInstance.synchronize();
 
             // Verify total assets stayed the same
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
@@ -1766,31 +1766,6 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
 
 }
 
-contract StakingNodeSyncQueuedShares is StakingNodeTestBase {
-    
-    address user = vm.addr(156_737);
-
-    uint256 nodeId;
-    IStakingNode stakingNodeInstance;
-
-    function setUp() public override {
-        super.setUp();
-
-        nodeId = createStakingNodes(1)[0];
-        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-    }
-
-    function testSyncQueuedSharesFailWhenNotAdmin() public {
-        vm.expectRevert();
-        stakingNodeInstance.syncQueuedShares();
-    }
-
-    function testSyncQueuedSharesSuccessWhenAdmin() public {
-        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNodeInstance.syncQueuedShares();
-    }
-}
-
 contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     using stdStorage for StdStorage;
     using BytesLib for bytes;
@@ -1807,6 +1782,8 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     uint256 nodeId;
     IStakingNode stakingNodeInstance;
     IAllocationManager allocationManager;
+    uint256 validatorCount = 2;
+    uint256 totalDepositedAmount;
 
     function setUp() public override {
         super.setUp();
@@ -1870,35 +1847,28 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         allocationManager.registerForOperatorSets(operator1, registerParams);
         allocationManager.modifyAllocations(operator1, allocateParams);
         vm.stopPrank();
-    }
 
-    function testSlashedOperatorBeforeQueuedWithdrawals() public {
-       uint256 validatorCount = 2;
-        uint256 totalDepositedAmount;
+       
 
-        {
-            // Setup
             uint256 depositAmount = 32 ether;
             totalDepositedAmount = depositAmount * validatorCount;
             address user = vm.addr(156_737);
             vm.deal(user, 1000 ether);
-            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
+            yneth.depositETH{value: totalDepositedAmount}(user);
+
+        // Create and setup validators
+        validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
+        beaconChain.advanceEpoch_NoRewards();
+        registerValidators(repeat(nodeId, validatorCount));
+        beaconChain.advanceEpoch_NoRewards();
+
+        for (uint256 i = 0; i < validatorCount; i++) {
+            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
         }
+        beaconChain.advanceEpoch_NoRewards();
+    }
 
-        {
-            // Setup: Create multiple validators and verify withdrawal credentials
-            uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
-            beaconChain.advanceEpoch_NoRewards();
-            registerValidators(repeat(nodeId, validatorCount));
-
-            beaconChain.advanceEpoch_NoRewards();
-
-            for (uint256 i = 0; i < validatorCount; i++) {
-                _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
-            }
-
-            beaconChain.advanceEpoch_NoRewards();
-        }
+    function testSlashedOperatorBeforeQueuedWithdrawals() public {
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -1966,33 +1936,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     }
 
     function testSlashedOperatorBetweenQueuedAndCompletedWithdrawals() public {
-        uint256 validatorCount = 2;
-        uint256 totalDepositedAmount;
-
-        {
-            // Setup
-            uint256 depositAmount = 32 ether;
-            totalDepositedAmount = depositAmount * validatorCount;
-            address user = vm.addr(156_737);
-            vm.deal(user, 1000 ether);
-            yneth.depositETH{value: totalDepositedAmount}(user); // Deposit for validators
-        }
-
-        uint40[] memory validatorIndices;
-        {
-            // Setup: Create multiple validators and verify withdrawal credentials
-            validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
-            beaconChain.advanceEpoch_NoRewards();
-            registerValidators(repeat(nodeId, validatorCount));
-
-            beaconChain.advanceEpoch_NoRewards();
-
-            for (uint256 i = 0; i < validatorCount; i++) {
-                _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
-            }
-
-            beaconChain.advanceEpoch_NoRewards();
-        }
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -2090,28 +2033,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     }
 
     function testSlashedOperatorAfterCompletedWithdrawals() public {
-        uint256 validatorCount = 2;
-        uint256 totalDepositedAmount;
-
-        // Setup initial state
-        {
-            uint256 depositAmount = 32 ether;
-            totalDepositedAmount = depositAmount * validatorCount;
-            address user = vm.addr(156_737);
-            vm.deal(user, 1000 ether);
-            yneth.depositETH{value: totalDepositedAmount}(user);
-        }
-
-        // Create and setup validators
-        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
-        beaconChain.advanceEpoch_NoRewards();
-        registerValidators(repeat(nodeId, validatorCount));
-        beaconChain.advanceEpoch_NoRewards();
-
-        for (uint256 i = 0; i < validatorCount; i++) {
-            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
-        }
-        beaconChain.advanceEpoch_NoRewards();
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);

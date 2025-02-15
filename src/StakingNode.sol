@@ -543,7 +543,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         
         syncQueuedShares();
 
-        delegatedTo = address(0);
+        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        delegatedTo = delegationManager.delegatedTo(address(this));
     }
 
     //--------------------------------------------------------------------------------------

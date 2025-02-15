@@ -53,7 +53,7 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
 
         // Call synchronize after verifying not synchronized
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNode.synchronize(podSharesBefore, blockNumberBefore);
+        stakingNode.synchronize();
 
         // Assert staking node balance remains unchanged after synchronization
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after synchronization");
@@ -124,7 +124,7 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
         // Call synchronize after verifying synchronized
         vm.expectRevert(StakingNode.AlreadySynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNode.synchronize(podSharesBefore, blockNumberBefore);
+        stakingNode.synchronize();
 
         // Assert staking node balance remains unchanged after synchronization
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after synchronization");
