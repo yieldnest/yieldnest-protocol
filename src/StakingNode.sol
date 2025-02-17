@@ -331,7 +331,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Syncs the queuedSharesAmount with the actual withdrawable shares queued for withdrawal.
      * @dev This is generally used when slashing is done on this staking node or operator is slashed
      */
-    function syncQueuedShares() public {
+    function syncQueuedShares() public onlyDelegator {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         queuedSharesAmount = 0;
@@ -343,7 +343,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             withdrawableSharesForWithdrawalRoot[withdrawalRoot] = withdrawableShares;
             queuedSharesAmount += withdrawableShares;
         }
-
+        
         emit QueuedSharesSynced(queuedSharesAmount);
     }
 
@@ -532,19 +532,16 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     /**
-     * @notice Synchronizes the StakingNode's delegation state with the DelegationManager.
-     * @dev This function should be called after operator undelegate to this StakingNode.
-     * @dev Call updateTotalETHStaked after this function
+     * @notice Synchronizes the StakingNode's delegation state with the DelegationManager and queued shares.
+     * @dev This function should be called after operator undelegate to this StakingNode or there is slashing event.
      */
     function synchronize() public onlyDelegator {
-        if (isSynchronized()) { 
-            revert AlreadySynchronized();
-        }
-        
+
         syncQueuedShares();
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
         delegatedTo = delegationManager.delegatedTo(address(this));
+        stakingNodesManager.updateTotalETHStaked();
     }
 
     //--------------------------------------------------------------------------------------

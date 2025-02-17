@@ -250,13 +250,14 @@ contract StakingNodesManager is
     ) external reinitializer(3) {
         if (address(_rewardsCoordinator) == address(0)) revert ZeroAddress();
         rewardsCoordinator = _rewardsCoordinator;
-        uint256 updatedTotalETHStaked = 0;
-        IStakingNode[] memory _nodes = getAllNodes();
-        for (uint256 i = 0; i < _nodes.length; i++) {
-            updatedTotalETHStaked += _nodes[i].getETHBalance();
-        }
-        emit TotalETHStakedUpdated(updatedTotalETHStaked);
-        totalETHStaked = updatedTotalETHStaked;
+        // TODO: commenting this for now because getETHBalance() is not available in current deployed version of  stakingNode on holesky
+        // uint256 updatedTotalETHStaked = 0;
+        // IStakingNode[] memory _nodes = getAllNodes();
+        // for (uint256 i = 0; i < _nodes.length; i++) {
+        //     updatedTotalETHStaked += _nodes[i].getETHBalance();
+        // }
+        // emit TotalETHStakedUpdated(updatedTotalETHStaked);
+        // totalETHStaked = updatedTotalETHStaked;
     }
 
     receive() external payable {
@@ -665,10 +666,6 @@ contract StakingNodesManager is
         uint256 updatedTotalETHStaked = 0;
         IStakingNode[] memory allNodes = getAllNodes();
         for (uint256 i = 0; i < allNodes.length; i++) {
-            if (!allNodes[i].isSynchronized()) {
-                revert NodeNotSynchronized();
-            } 
-
             updatedTotalETHStaked += allNodes[i].getETHBalance();
         }
 

@@ -26,7 +26,7 @@ import "./ynLSDeScenarioBaseTest.sol";
 
 contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
-    function test_undelegate_Scenario_undelegateByOperator1() public {
+    function test_undelegate_Scenario_undelegateByOperator() public {
         updateTokenStakingNodesBalancesForAllAssets();
 
         // Log total assets before undelegation

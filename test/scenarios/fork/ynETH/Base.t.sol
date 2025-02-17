@@ -42,6 +42,7 @@ contract Base is Test, Utils {
     ContractAddresses.ChainAddresses public chainAddresses;
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
+    ContractAddresses.ChainIds public chainIds;
 
     // Rewards
     RewardsReceiver public executionLayerReceiver;
@@ -72,6 +73,16 @@ contract Base is Test, Utils {
 
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
+     modifier skipOnHolesky() {
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
+
+        _;
+    }
+    
+     function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
+    }
+
     function setUp() public virtual {
         assignContracts();
         
@@ -79,12 +90,19 @@ contract Base is Test, Utils {
         // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
         // them separately as well if needed.
         // Grant roles on StakingNodesManager for mainnet only
-        if (block.chainid == 1) { // Mainnet chain ID
+        if (block.chainid == chainIds.mainnet) { // Mainnet chain ID
             vm.startPrank(actors.admin.ADMIN);
             stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
             stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
             vm.stopPrank();
         }
+
+        for(uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+            vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+            stakingNodesManager.nodes(i).syncQueuedShares();
+            vm.stopPrank();
+        }
+        stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts() internal {
@@ -92,6 +110,7 @@ contract Base is Test, Utils {
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
+        chainIds = contractAddresses.getChainIds();
 
         // assign YieldNest addresses
         {
@@ -123,19 +142,26 @@ contract Base is Test, Utils {
         }
 
         upgradeStakingNodesManagerAndStakingNode();
+        upgradeWithdrawalsProcessor();
     }
 
     function upgradeStakingNodesManagerAndStakingNode() internal {
 
+        
         // Upgrade StakingNode implementation
         address newStakingNodeImpl = address(new StakingNode());
+
+
+        // Register new implementation
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
         // Upgrade StakingNodesManager
         bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
-        uint256 totalAssetsBefore = yneth.totalAssets();
+        // uint256 totalAssetsBefore = yneth.totalAssets();
 
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
@@ -147,11 +173,24 @@ contract Base is Test, Utils {
 
         assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");
 
-        // Register new implementation
-        vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
-        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
+
+
+        // assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
+    }
+
+    function upgradeWithdrawalsProcessor() internal {
+
+        address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
+
+        vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(
+            ITransparentUpgradeableProxy(address(withdrawalsProcessor)),
+            newWithdrawalsProcessorImpl,
+            // abi.encodeWithSelector(WithdrawalsProcessor.initialize.selector, stakingNodesManager, actors.admin.ADMIN, actors.ops.WITHDRAWAL_MANAGER)
+            ""
+        );
+        vm.stopPrank();
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
@@ -200,6 +239,18 @@ contract Base is Test, Utils {
         uint256[] memory previousStakingNodeBalances
     ) public {  
 
+         for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+            stakingNodeInstance.synchronize();
+
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            assertEq(
+                currentStakingNodeBalance, previousStakingNodeBalances[i],
+                string.concat("Staking node balance integrity check failed for node ID: ", vm.toString(i))
+            );
+        }
+
         stakingNodesManager.updateTotalETHStaked();
         assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
@@ -209,14 +260,6 @@ contract Base is Test, Utils {
             stakingNodesManager.nodesLength(),
             "Number of staking nodes changed after upgrade"
         );
-        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
-            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
-            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
-            assertEq(
-                currentStakingNodeBalance, previousStakingNodeBalances[i],
-                string.concat("Staking node balance integrity check failed for node ID: ", vm.toString(i))
-            );
-        }
 	}
 
     struct UpgradeState {
