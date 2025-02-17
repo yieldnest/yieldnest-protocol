@@ -8,6 +8,7 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {IAllocationManagerExtended} from "src/external/eigenlayer/IAllocationManagerExtended.sol";
 import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
@@ -1404,13 +1405,13 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
     }
 
     function _waitForAllocationDelay() private {
-        // TODO: Get the value from the AllocationManager contract (Currently not exposed in the interface)
-        vm.roll(block.number + 76); // Obtained from ALLOCATION_CONFIGURATION_DELAY from https://holesky.etherscan.io/address/0x78469728304326CBc65f8f95FA756B0B73164462#readProxyContract#F1.
+        IAllocationManagerExtended allocationManager = IAllocationManagerExtended(address(eigenLayer.allocationManager));
+        vm.roll(block.number + allocationManager.ALLOCATION_CONFIGURATION_DELAY() + 1);
     }
 
     function _waitForDeallocationDelay() private {
-        // TODO: Get the value from the AllocationManager contract (Currently not exposed in the interface)
-        vm.roll(block.number + 51); // Obtained from DEALLOCATION_DELAY from https://holesky.etherscan.io/address/0x78469728304326CBc65f8f95FA756B0B73164462#readProxyContract#F2.
+        IAllocationManagerExtended allocationManager = IAllocationManagerExtended(address(eigenLayer.allocationManager));
+        vm.roll(block.number + allocationManager.DEALLOCATION_DELAY() + 1);
     }
 
     function _waitForWithdrawalDelay() private {
