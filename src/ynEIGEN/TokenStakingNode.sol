@@ -77,6 +77,20 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      */
     mapping(bytes32 => uint256) public withdrawableSharesByWithdrawalRoot;
 
+    /**
+     * @notice Tracks the pre slashing upgrade queued shares for each strategy.
+     * @dev Used to persist any pre slashing queued shares on sync without losing them.
+     * The values will tend to zero as the legacy withdrawals are completed.
+     */
+    mapping(IStrategy => uint256) public legacyQueuedShares;
+    
+    /**
+     * @notice Tracks if a withdrawal was queued after the slashing upgrade.
+     * @dev using `maxMagnitudeByWithdrawalRoot` or `withdrawableSharesByWithdrawalRoot` might not be enough to detect this
+     * because the operator might be fully slashed and the values provided will be 0, same as the default values.
+     */
+    mapping(bytes32 => bool) public queuedAfterSlashingUpgrade;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
@@ -94,6 +108,19 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function initializeV2() public reinitializer(2) {
         delegatedTo =
             IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
+    }
+
+    /**
+     * @notice Initializes the contract to persist pre slashing queued shares.
+     * @param _strategies The strategies that are going to be persisted.
+     * These can be obtained by:
+     * - Calling src/ynEIGEN/AssetRegistry.sol::getAssets() to obtain the list of assets.
+     * - Calling src/ynEIGEN/EigenStrategyManager.sol::strategies(assets[i]) to obtain the strategy for each asset.
+     */
+    function initializeV3(IStrategy[] calldata _strategies) public reinitializer(3) {
+        for (uint256 i = 0; i < _strategies.length; i++) {
+            legacyQueuedShares[_strategies[i]] = queuedShares[_strategies[i]];
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -193,6 +220,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         queuedShares[_strategy] += _withdrawableShares;
         maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
         withdrawableSharesByWithdrawalRoot[_withdrawalRoot] = _withdrawableShares;
+        queuedAfterSlashingUpgrade[_withdrawalRoot] = true;
 
         emit QueuedWithdrawals(_strategy, _withdrawableShares, _fullWithdrawalRoots);
     }
@@ -413,8 +441,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         // Reset the queued shares for each strategy back to zero.
         for (uint256 i = 0; i < withdrawals.length; i++) {
             // Withdrawals are queued always with a single strategy so we can ignore other entries in the strategies array.
-            // TODO: Strategies might be repeated in withdrawals so this reset might be repeated unnecessarily in the loop. Find a way to save gas.
-            delete queuedShares[withdrawals[i].strategies[0]];
+            // Queued shares are reset to the legacy queued shares value given that `getQueuedWithdrawals` returns only withdrawals post slashing upgrade.
+            queuedShares[withdrawals[i].strategies[0]] = legacyQueuedShares[withdrawals[i].strategies[0]];
         }
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
@@ -429,8 +457,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             // Store the current withdrawable shares for the withdrawal.
             withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
             // Get the current maxMagnitude for operator/strategy of the withdrawal.
-            // TODO: `getMaxMagnitude` might be called multiple times in the loop for the same operator/strategy pair. Find a way to save gas.
             maxMagnitudeByWithdrawalRoot[withdrawalRoot] = allocationManager.getMaxMagnitude(withdrawal.delegatedTo, strategy);
+            // Set the value to true to indicate that the withdrawal was queued after the slashing upgrade in case it was done outside of the contract.
+            // For example, when the operator undelegates itself from the staker via the DelegationManager::undelegate function.
+            queuedAfterSlashingUpgrade[withdrawalRoot] = true;
         }
     }
 
@@ -519,7 +549,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //--------------------------------------------------------------------------------------
 
     /**
-     * @dev Decreases the queuedShares for a given strategy by the withdrawable amount by checking if the 
+     * @dev Decreases the queued shares by the withdrawable amount after validating if the contract was synchronized after a slashing event.
      * @param _delegationManager The delegation manager contract.
      * @param _allocationManager The allocation manager contract.
      * @param _strategy The strategy to decrease the queued shares for.
@@ -531,25 +561,35 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IStrategy _strategy,
         IDelegationManagerTypes.Withdrawal memory _withdrawal
     ) internal {
-            bytes32 _withdrawalRoot = _delegationManager.calculateWithdrawalRoot(_withdrawal);
+        bytes32 withdrawalRoot = _delegationManager.calculateWithdrawalRoot(_withdrawal);
 
-            // To detect if the queued shares have not been synchronized after a slashing event, we compare the
-            // maxMagnitude of the withdrawal root at the time of queueing with the current maxMagnitude.
-            uint64 _maxMagnitudeBefore = maxMagnitudeByWithdrawalRoot[_withdrawalRoot];
-            uint64 _maxMagnitudeNow = _allocationManager.getMaxMagnitude(_withdrawal.delegatedTo, _strategy);
+        // If the withdrawal was queued before the slashing upgrade, it is considered legacy.
+        if (!queuedAfterSlashingUpgrade[withdrawalRoot]) {
+            // Queued shares is decreased by the scaled shares which for legacy withdrawals is the same as the withdrawable shares.
+            queuedShares[_strategy] -= _withdrawal.scaledShares[0];
+            // Legacy queued shares are decreased by the scaled shares for accounting when calling synchronize.
+            legacyQueuedShares[_strategy] -= _withdrawal.scaledShares[0];
 
-            // If they are different, it means that the queued shares have not been synced. 
-            // In this case, it reverts to prevent accounting issues with the queuedShares variable.
-            if (_maxMagnitudeBefore != _maxMagnitudeNow) {
-                revert MaxMagnitudeChanged(_withdrawalRoot, _maxMagnitudeBefore, _maxMagnitudeNow);
-            }
+            return;
+        }
 
-            // Decreases the queued shares by the withdrawable amount.
-            // This will net to 0 after all queued withdrawals are completed.
-            queuedShares[_strategy] -= withdrawableSharesByWithdrawalRoot[_withdrawalRoot];
+        // To detect if the queued shares have not been synchronized after a slashing event, we compare the
+        // maxMagnitude of the withdrawal root at the time of queueing with the current maxMagnitude.
+        uint64 maxMagnitudeBefore = maxMagnitudeByWithdrawalRoot[withdrawalRoot];
+        uint64 maxMagnitudeNow = _allocationManager.getMaxMagnitude(_withdrawal.delegatedTo, _strategy);
 
-            // Delete the stored sync values to save gas.
-            delete withdrawableSharesByWithdrawalRoot[_withdrawalRoot];
-            delete maxMagnitudeByWithdrawalRoot[_withdrawalRoot];
+        // If they are different, it means that the queued shares have not been synced. 
+        // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+        if (maxMagnitudeBefore != maxMagnitudeNow) {
+            revert MaxMagnitudeChanged(withdrawalRoot, maxMagnitudeBefore, maxMagnitudeNow);
+        }
+
+        // Decreases the queued shares by the withdrawable amount.
+        // This will net to 0 after all queued withdrawals are completed.
+        queuedShares[_strategy] -= withdrawableSharesByWithdrawalRoot[withdrawalRoot];
+
+        // Delete the stored sync values to save gas.
+        delete withdrawableSharesByWithdrawalRoot[withdrawalRoot];
+        delete maxMagnitudeByWithdrawalRoot[withdrawalRoot];
     }
 }
