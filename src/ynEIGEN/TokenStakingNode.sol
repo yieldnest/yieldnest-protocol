@@ -538,19 +538,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             uint64 _maxMagnitudeBefore = maxMagnitudeByWithdrawalRoot[_withdrawalRoot];
             uint64 _maxMagnitudeNow = _allocationManager.getMaxMagnitude(_withdrawal.delegatedTo, _strategy);
 
-            // If the current maxMagnitude is greater than the maxMagnitude stored in the contract. It means that 
-            // there was a slashing event and the synchronize function was not called.
-            if (_maxMagnitudeBefore > _maxMagnitudeNow) {
+            // If they are different, it means that the queued shares have not been synced. 
+            // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+            if (_maxMagnitudeBefore != _maxMagnitudeNow) {
                 revert MaxMagnitudeChanged(_withdrawalRoot, _maxMagnitudeBefore, _maxMagnitudeNow);
-            }
-
-            // This situation can only happen when trying to complete a withdrawal that has been queued before the 
-            // upgrade of the token staking node. In this case, the maxMagnitude for the withdrawal would be zero as it was never assigned.
-            // In this case, we treat it as a withdrawal from the pre slashing era.
-            if (_maxMagnitudeBefore < _maxMagnitudeNow) {
-                queuedShares[_strategy] -= _withdrawal.scaledShares[0];
-
-                return;
             }
 
             // Decreases the queued shares by the withdrawable amount.
