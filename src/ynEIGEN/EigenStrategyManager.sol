@@ -217,14 +217,13 @@ contract EigenStrategyManager is
     } 
 
 
-    // 1. who
     function syncBalances() external onlyRole(STRATEGY_CONTROLLER_ROLE) {
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
         uint256 nodesCount = nodes.length;
 
         for (uint256 i; i < nodesCount; i++ ) {
             ITokenStakingNode node = nodes[i];
-            // node.synchronize();
+            node.synchronize();
         }
         
         IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
