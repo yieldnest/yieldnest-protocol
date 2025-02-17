@@ -217,7 +217,7 @@ contract EigenStrategyManager is
     } 
 
 
-    function syncBalances() external onlyRole(STRATEGY_CONTROLLER_ROLE) {
+    function syncBalances() external {
         ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
         uint256 nodesCount = nodes.length;
 
@@ -231,8 +231,6 @@ contract EigenStrategyManager is
         for (uint256 i = 0; i < assetsLength; i++) {
             _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
         }
-        
-      
     }
 
     /// @notice Updates the staked balances for all nodes for a strategies.
@@ -256,7 +254,7 @@ contract EigenStrategyManager is
             strategyArr[0] = strategy;
             
             (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategyArr);
-            _strategiesBalance += withdrawableShares[0]; // only one strategy was given
+            _strategiesBalance += strategy.sharesToUnderlyingView(withdrawableShares[0]); // only one strategy was given
 
             if (!node.isOperatorSynchronized()) {
                 revert NodeOperatorNotSynchronized(i);
@@ -508,10 +506,18 @@ contract EigenStrategyManager is
     ) internal view returns (uint256 stakedBalance) {
 
         IStrategy strategy = strategies[asset];
+        
+    
+        IStrategy[] memory strategyArr = new IStrategy[](1);
+        strategyArr[0] = strategy;
+        
+        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategyArr);
+        uint256 strategyWithdrawableBalance = strategy.sharesToUnderlyingView(withdrawableShares[0]); // only one strategy was given
+
         (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
         uint256 strategyBalance = wrapper.toUserAssetAmount(
             asset,
-            strategy.userUnderlyingView((address(node))) + strategy.sharesToUnderlyingView(queuedShares)
+            strategyWithdrawableBalance + strategy.sharesToUnderlyingView(queuedShares)
         );
 
         stakedBalance += strategyBalance + strategyWithdrawnBalance;   
