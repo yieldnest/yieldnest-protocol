@@ -1337,6 +1337,8 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
     address private avs;
     IStrategy private wstETHStrategy;
 
+    event QueuedSharesSynced();
+
     constructor() {
         testAssetUtils = new TestAssetUtils();
     }
@@ -1596,6 +1598,12 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0.5 ether, "Max magnitude should be half of the previous withdrawable shares");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
+    }
+
+    function testQueuedSharesSyncedEventIsEmittedOnSynchronize() public {
+        vm.expectEmit();
+        emit QueuedSharesSynced();
+        tokenStakingNode.synchronize();
     }
 
     function testQueuedSharesStorageVariablesResetOnComplete() public {
