@@ -103,7 +103,7 @@ contract M3WithdrawalsTest is Base {
         }
     }
 
-    function testVerifyCheckpoints() public skipOnHolesky {
+    function testVerifyCheckpoints() public {
 
         // setup env
         {
@@ -137,7 +137,7 @@ contract M3WithdrawalsTest is Base {
         }
     }
 
-    function testWithdrawSingleValidator() public skipOnHolesky {
+    function testWithdrawSingleValidator() public {
         testWithdraw();
     }
 
@@ -270,7 +270,7 @@ contract M3WithdrawalsTest is Base {
         assertEq(ynETHWithdrawalQueueManager.pendingRequestedRedemptionAmount(), _pendingRequestedRedemptionAmountBefore + ynETHWithdrawalQueueManager.calculateRedemptionAmount(_amount, ynETHRedemptionAssetsVaultInstance.redemptionRate()), "testRequestWithdrawal: E6");
     }
 
-    function testClaimWithdrawal(uint256 _amount) public skipOnHolesky {
+    function testClaimWithdrawal(uint256 _amount) public {
         vm.assume(_amount > 1 ether);
 
         uint256 _tokenId = testRequestWithdrawal(_amount);
@@ -325,8 +325,8 @@ contract M3WithdrawalsTest is Base {
     }
 
     function _testVerifyCheckpointsBeforeWithdrawalRequest() internal {
-        IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
-        assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+        uint256 eigenPodCurrentCheckPointTimestamp = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
+        assertEq(eigenPodCurrentCheckPointTimestamp, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
         assertApproxEqAbs(uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, 1000000000, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
     }
 
@@ -335,8 +335,8 @@ contract M3WithdrawalsTest is Base {
     }
 
     function _testVerifyCheckpointsAfterWithdrawalRequest() internal {
-        IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
-        assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsAfterWithdrawalRequest: E0");
+        uint256 eigenPodCurrentCheckPointTimestamp = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
+        assertEq(eigenPodCurrentCheckPointTimestamp, 0, "_testVerifyCheckpointsAfterWithdrawalRequest: E0");
         assertEq(uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))), 1000000000, "_testVerifyCheckpointsAfterWithdrawalRequest: E1");
     }
 

@@ -73,16 +73,6 @@ contract Base is Test, Utils {
 
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
-     modifier skipOnHolesky() {
-        vm.skip(_isHolesky(), "Impossible to test on Holesky");
-
-        _;
-    }
-    
-     function _isHolesky() internal view returns (bool) {
-        return block.chainid == chainIds.holeksy;
-    }
-
     function setUp() public virtual {
         assignContracts();
         
