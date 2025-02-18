@@ -20,6 +20,8 @@ import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManage
 import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
@@ -30,6 +32,18 @@ interface ITokenStakingNodeEvents {
     event DeallocatedTokens(uint256 amount, IERC20 token);
     event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
     event ClaimerSet(address indexed claimer);
+}
+
+/// This interface is created because the src/interfaces/IynEigen.sol does not provide a way to obtain the assetRegistry.
+/// TODO: Should we expose assetRegistry in IynEigen?
+interface IynEigenExtended is IynEigen {
+    function assetRegistry() external view returns (IAssetRegistry);
+}
+
+/// This interface is created because src/interfaces/IYieldNestStrategyManager.sol does not provide a way to obtain `ynEigen` which is needed to get the assetRegistry.
+/// TODO: Should we expose ynEigen in IYieldNestStrategyManager?
+interface IYieldNestStrategyManagerExtended is IYieldNestStrategyManager {
+    function ynEigen() external view returns (IynEigenExtended);
 }
 
 /**
@@ -105,21 +119,19 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         nodeId = init.nodeId;
     }
 
-    function initializeV2() public reinitializer(2) {
-        delegatedTo =
-            IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
-    }
-
     /**
-     * @notice Initializes the contract to persist pre slashing queued shares.
-     * @param _strategies The strategies that are going to be persisted.
-     * These can be obtained by:
-     * - Calling src/ynEIGEN/AssetRegistry.sol::getAssets() to obtain the list of assets.
-     * - Calling src/ynEIGEN/EigenStrategyManager.sol::strategies(assets[i]) to obtain the strategy for each asset.
+     * @notice Initializes the contract by storing the current operator and pre slashing queued shares.
      */
-    function initializeV3(IStrategy[] calldata _strategies) public reinitializer(3) {
-        for (uint256 i = 0; i < _strategies.length; i++) {
-            legacyQueuedShares[_strategies[i]] = queuedShares[_strategies[i]];
+    function initializeV2() public reinitializer(2) {
+        delegatedTo = IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
+
+        IYieldNestStrategyManagerExtended eigenStrategyManager = IYieldNestStrategyManagerExtended(tokenStakingNodesManager.yieldNestStrategyManager());
+        IAssetRegistry assetRegistry = IAssetRegistry(eigenStrategyManager.ynEigen().assetRegistry());
+        IERC20[] memory assets = assetRegistry.getAssets();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
+            legacyQueuedShares[strategy] = queuedShares[strategy];
         }
     }
 
