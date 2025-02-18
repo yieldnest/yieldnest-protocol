@@ -8,7 +8,7 @@ import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
-import {IAllocationManagerExtended} from "src/external/eigenlayer/IAllocationManagerExtended.sol";
+import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
 import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
@@ -1407,19 +1407,19 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
     }
 
     function _waitForAllocationDelay() private {
-        IAllocationManagerExtended allocationManager = IAllocationManagerExtended(address(eigenLayer.allocationManager));
+        AllocationManagerStorage allocationManager = AllocationManagerStorage(address(eigenLayer.allocationManager));
         vm.roll(block.number + allocationManager.ALLOCATION_CONFIGURATION_DELAY() + 1);
     }
 
     function _waitForDeallocationDelay() private {
-        IAllocationManagerExtended allocationManager = IAllocationManagerExtended(address(eigenLayer.allocationManager));
+        AllocationManagerStorage allocationManager = AllocationManagerStorage(address(eigenLayer.allocationManager));
         vm.roll(block.number + allocationManager.DEALLOCATION_DELAY() + 1);
     }
 
     function _waitForWithdrawalDelay() private {
         vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
     }
-
+    
     function _allocate() private {
         _allocate(1 ether);
     }
