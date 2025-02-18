@@ -32,6 +32,7 @@ interface ITokenStakingNodeEvents {
     event DeallocatedTokens(uint256 amount, IERC20 token);
     event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
     event ClaimerSet(address indexed claimer);
+    event QueuedSharesSynced();
 }
 
 /// This interface is created because the src/interfaces/IynEigen.sol does not provide a way to obtain the assetRegistry.
@@ -474,6 +475,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             // For example, when the operator undelegates itself from the staker via the DelegationManager::undelegate function.
             queuedAfterSlashingUpgrade[withdrawalRoot] = true;
         }
+
+        emit QueuedSharesSynced();
     }
 
     //--------------------------------------------------------------------------------------
