@@ -187,7 +187,6 @@ contract Base is Test, Utils {
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(
             ITransparentUpgradeableProxy(address(withdrawalsProcessor)),
             newWithdrawalsProcessorImpl,
-            // abi.encodeWithSelector(WithdrawalsProcessor.initialize.selector, stakingNodesManager, actors.admin.ADMIN, actors.ops.WITHDRAWAL_MANAGER)
             ""
         );
         vm.stopPrank();

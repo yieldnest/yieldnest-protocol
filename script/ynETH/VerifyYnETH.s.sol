@@ -639,12 +639,15 @@ contract Verify is BaseYnETHScript {
     function veryifySanityChecks() internal view {
         // Check that previewDeposit of 1 ETH is less than 1 ether
         uint256 previewDepositResult = deployment.ynETH.previewDeposit(1 ether);
+        console.log("previewDepositResult", previewDepositResult);
         require(previewDepositResult < 1 ether, "previewDeposit of 1 ETH should be less than 1 ether");
         console.log("\u2705 previewDeposit of 1 ETH is less than 1 ether");
 
         // Check that totalSupply is less than totalAssets
         uint256 totalSupply = deployment.ynETH.totalSupply();
         uint256 totalAssets = deployment.ynETH.totalAssets();
+        console.log("totalSupply", totalSupply);
+        console.log("totalAssets", totalAssets);
         require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
         console.log("\u2705 totalSupply is less than totalAssets");
 
