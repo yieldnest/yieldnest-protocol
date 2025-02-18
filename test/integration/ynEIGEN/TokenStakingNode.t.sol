@@ -1557,7 +1557,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         _waitForWithdrawalDelay();
 
-        vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.MaxMagnitudeChanged.selector, queuedWithdrawalRoot, 1 ether, 0));
+        vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.NotSyncedAfterSlashing.selector, queuedWithdrawalRoot, 1 ether, 0));
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
     }
