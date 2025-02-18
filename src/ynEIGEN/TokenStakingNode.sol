@@ -28,7 +28,6 @@ interface ITokenStakingNodeEvents {
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
     event QueuedWithdrawals(IStrategy strategies, uint256 shares, bytes32[] fullWithdrawalRoots);
-    event CompletedQueuedWithdrawals(uint256 shares, uint256 amountOut, address strategy);
     event DeallocatedTokens(uint256 amount, IERC20 token);
     event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
     event ClaimerSet(address indexed claimer);
