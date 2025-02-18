@@ -66,7 +66,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error AlreadySynchronized();
     error OperatorNotSynchronized();
     error InvalidWithdrawal(uint256 index);
-    error MaxMagnitudeChanged(bytes32 withdrawalRoot, uint64 before, uint64 current);
+    error NotSyncedAfterSlashing(bytes32 withdrawalRoot, uint64 maxMagnitudeAtSync, uint64 maxMagnitudeNow);
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -587,13 +587,13 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         // To detect if the queued shares have not been synchronized after a slashing event, we compare the
         // maxMagnitude of the withdrawal root at the time of queueing with the current maxMagnitude.
-        uint64 maxMagnitudeBefore = maxMagnitudeByWithdrawalRoot[withdrawalRoot];
+        uint64 maxMagnitudeAtSync = maxMagnitudeByWithdrawalRoot[withdrawalRoot];
         uint64 maxMagnitudeNow = _allocationManager.getMaxMagnitude(_withdrawal.delegatedTo, _strategy);
 
         // If they are different, it means that the queued shares have not been synced. 
         // In this case, it reverts to prevent accounting issues with the queuedShares variable.
-        if (maxMagnitudeBefore != maxMagnitudeNow) {
-            revert MaxMagnitudeChanged(withdrawalRoot, maxMagnitudeBefore, maxMagnitudeNow);
+        if (maxMagnitudeAtSync != maxMagnitudeNow) {
+            revert NotSyncedAfterSlashing(withdrawalRoot, maxMagnitudeAtSync, maxMagnitudeNow);
         }
 
         // Decreases the queued shares by the withdrawable amount.
