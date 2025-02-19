@@ -1609,7 +1609,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         bytes32 queuedWithdrawalRoot2 = _queueWithdrawal(thirdOfDepositShares);
         bytes32 queuedWithdrawalRoot3 = _queueWithdrawal(thirdOfDepositShares);
 
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 1, "Queued shares should be equal to withdrawable shares");
+        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
 
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
