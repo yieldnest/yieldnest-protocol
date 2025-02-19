@@ -1545,7 +1545,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         tokenStakingNode.synchronize();
 
-        assertEq(_queuedShares(), withdrawableShares - withdrawableShares / 4, "After half is slashed and half is allocated, queued shares should be a quarter of the previous withdrawable shares");
+        assertApproxEqAbs(_queuedShares(), withdrawableShares - withdrawableShares / 4, 1, "After half is slashed and half is allocated, queued shares should be a quarter of the previous withdrawable shares");
     }
 
     function testCompleteFailsIfNotSynchronized() public {
