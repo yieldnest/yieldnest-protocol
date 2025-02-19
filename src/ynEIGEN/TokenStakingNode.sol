@@ -535,14 +535,19 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
             // Update the queued shares for the strategy by adding the withdrawable shares.
             queuedShares[strategy] += withdrawableShares;
-            // Store the current withdrawable shares for the withdrawal.
-            withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
-            // Get the current maxMagnitude for operator/strategy of the withdrawal.
-            maxMagnitudeByWithdrawalRoot[withdrawalRoot] = maxMagnitude;
             
+            // Update the withdrawable shares for the withdrawal root.
+            if (withdrawableSharesByWithdrawalRoot[withdrawalRoot] != withdrawableShares) {
+                withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
+            }
 
-            // In case the operator undelegates itself and withdrawals are queued outside of this flow,
-            // `getQueuedWithdrawals` will get them on sync and can be set to be non legacy here.
+            // Update the maxMagnitude for the withdrawal root.
+            if (maxMagnitudeByWithdrawalRoot[withdrawalRoot] != maxMagnitude) {
+                maxMagnitudeByWithdrawalRoot[withdrawalRoot] = maxMagnitude;
+            }
+
+            // Flags the withdrawal as post slashing.
+            // This is to sync queued withdrawals that were caused by undelegating directly from the DelegationManager.
             if (!queuedAfterSlashingUpgrade[withdrawalRoot]) {
                 queuedAfterSlashingUpgrade[withdrawalRoot] = true;
             }
