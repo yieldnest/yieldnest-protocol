@@ -204,6 +204,19 @@ contract EigenStrategyManager is
         }
     }
 
+    function synchronizeNodesAndUpdateBalances(ITokenStakingNode[] calldata nodes) external {
+        uint256 nodesLength = nodes.length;
+        for(uint256 i = 0; i < nodesLength; i++) {
+            nodes[i].synchronize();
+        }
+        
+        IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
+            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        }
+    }
+    
     //--------------------------------------------------------------------------------------
     //------------------------------------ ACCOUNTING  ----------------------------------------
     //--------------------------------------------------------------------------------------
@@ -214,7 +227,7 @@ contract EigenStrategyManager is
     /// @param asset The ERC20 token for which the balances are to be updated.
     function updateTokenStakingNodesBalances(IERC20 asset) public {
         _updateTokenStakingNodesBalances(asset, strategies[asset]);
-    } 
+    }
 
     /// @notice Updates the staked balances for all nodes for a strategies.
     /// @dev Should be called atomically after any node-balance-changing operation.
@@ -233,7 +246,11 @@ contract EigenStrategyManager is
         for (uint256 i; i < nodesCount; i++ ) {
             ITokenStakingNode node = nodes[i];
 
-            _strategiesBalance += strategy.userUnderlyingView((address(node)));
+            IStrategy[] memory strategyArr = new IStrategy[](1);
+            strategyArr[0] = strategy;
+
+            (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategyArr);
+            _strategiesBalance += strategy.sharesToUnderlyingView(withdrawableShares[0]); // only one strategy was given
 
             if (!node.isOperatorSynchronized()) {
                 revert NodeOperatorNotSynchronized(i);
@@ -485,10 +502,17 @@ contract EigenStrategyManager is
     ) internal view returns (uint256 stakedBalance) {
 
         IStrategy strategy = strategies[asset];
+
+        IStrategy[] memory strategyArr = new IStrategy[](1);
+        strategyArr[0] = strategy;
+
+        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategyArr);
+        uint256 strategyWithdrawableBalance = strategy.sharesToUnderlyingView(withdrawableShares[0]); // only one strategy was given
+
         (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
         uint256 strategyBalance = wrapper.toUserAssetAmount(
             asset,
-            strategy.userUnderlyingView((address(node))) + strategy.sharesToUnderlyingView(queuedShares)
+            strategyWithdrawableBalance + strategy.sharesToUnderlyingView(queuedShares)
         );
 
         stakedBalance += strategyBalance + strategyWithdrawnBalance;   
