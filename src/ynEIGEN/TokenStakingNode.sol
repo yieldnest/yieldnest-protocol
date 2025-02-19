@@ -106,6 +106,19 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     mapping(bytes32 => bool) public queuedAfterSlashingUpgrade;
 
     //--------------------------------------------------------------------------------------
+    //----------------------------------  STRUCTS  ------------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @dev Used in the synchronize function to prevent doing an external call to the allocation manager multiple times for the same operator/strategy pair.
+     */
+    struct OperatorStrategyPair {
+        address operator;
+        IStrategy strategy;
+        uint64 maxMagnitude;
+    }
+
+    //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
     //--------------------------------------------------------------------------------------
 
@@ -450,18 +463,17 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         // Requests the queued withdrawals and the withdrawable shares of each from the delegation manager.
         (IDelegationManager.Withdrawal[] memory withdrawals, uint256[][] memory withdrawableSharesPerWithdrawal) = delegationManager.getQueuedWithdrawals(address(this));
 
-        // Stores a list of unique strategies obtained from the queued withdrawals.
-        // Used to avoid accessing storage twice for the same strategy in the loop below.
+        // Stores unique strategies to avoid duplicate storage access when resetting queued shares
         IStrategy[] memory uniqueStrategies = new IStrategy[](withdrawals.length);
         uint256 uniqueStrategiesLength = 0;
 
-        // This loop reset the queued shares to zero or the legacy queued shares value if available.
-        // Necessary to start adding the withdrawable queued shares on top of this base value.
+        // Reset queued shares to base values for each unique strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
             IStrategy strategy = withdrawals[i].strategies[0];
 
             bool alreadyAdded = false;
 
+            // Check if the strategy was already processed
             for (uint256 j = 0; j < uniqueStrategiesLength; j++) {
                 if (uniqueStrategies[j] == strategy) {
                     alreadyAdded = true;
@@ -469,13 +481,19 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
                 }
             }
 
+            // Skip reset if the strategy was already processed
             if (alreadyAdded) {
                 continue;
             }
 
+            // Track the strategy as already processed and reset its queued shares to the base value.
             uniqueStrategies[uniqueStrategiesLength++] = strategy; 
             queuedShares[strategy] = legacyQueuedShares[strategy];
         }
+
+        // Stores unique operator-strategy pairs to avoid duplicate maxMagnitude calls
+        OperatorStrategyPair[] memory uniqueOperatorStrategyPairs = new OperatorStrategyPair[](withdrawals.length);
+        uint256 uniqueOperatorStrategyPairsLength = 0;
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
             IDelegationManagerTypes.Withdrawal memory withdrawal = withdrawals[i];
@@ -484,12 +502,43 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             uint256 withdrawableShares = withdrawableSharesPerWithdrawal[i][0];
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
 
+            // Track if this operator-strategy pair was already processed
+            bool alreadyAdded = false;
+            uint256 alreadyAddedIndex = 0;
+
+            // Look for existing operator-strategy pair
+            for (uint256 j = 0; j < uniqueOperatorStrategyPairsLength; j++) {
+                OperatorStrategyPair memory pair = uniqueOperatorStrategyPairs[j];
+
+                if (pair.operator == withdrawal.delegatedTo && pair.strategy == strategy) {
+                    alreadyAdded = true;
+                    alreadyAddedIndex = j;
+                    break;
+                }
+            }
+
+            uint64 maxMagnitude = 0;
+
+            if (!alreadyAdded) {
+                // Get and store maxMagnitude for new operator-strategy pair
+                maxMagnitude = allocationManager.getMaxMagnitude(withdrawal.delegatedTo, strategy);
+                uniqueOperatorStrategyPairs[uniqueOperatorStrategyPairsLength] = OperatorStrategyPair({
+                    operator: withdrawal.delegatedTo,
+                    strategy: strategy,
+                    maxMagnitude: maxMagnitude
+                });
+                uniqueOperatorStrategyPairsLength++;
+            } else {
+                // Reuse stored maxMagnitude for existing pair
+                maxMagnitude = uniqueOperatorStrategyPairs[alreadyAddedIndex].maxMagnitude;
+            }
+
             // Update the queued shares for the strategy by adding the withdrawable shares.
             queuedShares[strategy] += withdrawableShares;
             // Store the current withdrawable shares for the withdrawal.
             withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
             // Get the current maxMagnitude for operator/strategy of the withdrawal.
-            maxMagnitudeByWithdrawalRoot[withdrawalRoot] = allocationManager.getMaxMagnitude(withdrawal.delegatedTo, strategy);
+            maxMagnitudeByWithdrawalRoot[withdrawalRoot] = maxMagnitude;
             // Set the value to true to indicate that the withdrawal was queued after the slashing upgrade in case it was done outside of the contract.
             // For example, when the operator undelegates itself from the staker via the DelegationManager::undelegate function.
             queuedAfterSlashingUpgrade[withdrawalRoot] = true;
