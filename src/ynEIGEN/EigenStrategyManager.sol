@@ -204,22 +204,19 @@ contract EigenStrategyManager is
         }
     }
 
-    function syncBalances() external {
-        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
-        uint256 nodesCount = nodes.length;
-
-        for (uint256 i; i < nodesCount; i++ ) {
-            ITokenStakingNode node = nodes[i];
-            node.synchronize();
+    function synchronizeNodesAndUpdateBalances(ITokenStakingNode[] calldata nodes) external {
+        uint256 nodesLength = nodes.length;
+        for(uint256 i = 0; i < nodesLength; i++) {
+            nodes[i].synchronize();
         }
-
+        
         IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
         uint256 assetsLength = assets.length;
         for (uint256 i = 0; i < assetsLength; i++) {
             _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
         }
     }
-
+    
     //--------------------------------------------------------------------------------------
     //------------------------------------ ACCOUNTING  ----------------------------------------
     //--------------------------------------------------------------------------------------
@@ -230,7 +227,7 @@ contract EigenStrategyManager is
     /// @param asset The ERC20 token for which the balances are to be updated.
     function updateTokenStakingNodesBalances(IERC20 asset) public {
         _updateTokenStakingNodesBalances(asset, strategies[asset]);
-    } 
+    }
 
     /// @notice Updates the staked balances for all nodes for a strategies.
     /// @dev Should be called atomically after any node-balance-changing operation.
