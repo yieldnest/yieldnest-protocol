@@ -286,21 +286,20 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
                 address _node = address(_nodes[j]);
-                address _delegatedTo = delegationManager.delegatedTo(_node);
                 
-                bytes32[] memory fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
-                IDelegationManagerTypes.Withdrawal memory queuedWithdrawal = delegationManager.getQueuedWithdrawal(fullWithdrawalRoots[0]);
+                bytes32[] memory _fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
+                IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = delegationManager.getQueuedWithdrawal(_fullWithdrawalRoots[0]);
 
-                _queuedWithdrawals[_queuedId++] = QueuedWithdrawal(
-                    _node,
-                    address(_strategy),
-                    delegationManager.cumulativeWithdrawalsQueued(_node), // nonce
-                    queuedWithdrawal.scaledShares[0],
-                    withdrawalQueueManager._tokenIdCounter(),
-                    uint32(block.number), // startBlock
-                    false, // completed,
-                    _delegatedTo // operator
-                );
+                _queuedWithdrawals[_queuedId++] = QueuedWithdrawal({
+                    node: _node,
+                    strategy: address(_queuedWithdrawal.strategies[0]),
+                    nonce: _queuedWithdrawal.nonce,
+                    shares: _queuedWithdrawal.scaledShares[0],
+                    tokenIdToFinalize: withdrawalQueueManager._tokenIdCounter(),
+                    startBlock: _queuedWithdrawal.startBlock,
+                    completed: false,
+                    delegatedTo: _queuedWithdrawal.delegatedTo
+                });
             }
 
             if (_pendingWithdrawalRequestsInShares == 0) {
