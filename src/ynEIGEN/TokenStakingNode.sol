@@ -663,8 +663,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             queuedShares[_strategy] -= _withdrawal.scaledShares[0];
             // Legacy queued shares are decreased by the scaled shares for accounting when calling synchronize.
             legacyQueuedShares[_strategy] -= _withdrawal.scaledShares[0];
-            // Delete the queuedAfterSlashingUpgrade flag to save gas.
-            delete queuedAfterSlashingUpgrade[withdrawalRoot];
 
             return;
         }
@@ -687,5 +685,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         // Delete the stored sync values to save gas.
         delete withdrawableSharesByWithdrawalRoot[withdrawalRoot];
         delete maxMagnitudeByWithdrawalRoot[withdrawalRoot];
+        delete queuedAfterSlashingUpgrade[withdrawalRoot];
     }
 }
