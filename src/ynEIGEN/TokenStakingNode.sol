@@ -450,11 +450,31 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         // Requests the queued withdrawals and the withdrawable shares of each from the delegation manager.
         (IDelegationManager.Withdrawal[] memory withdrawals, uint256[][] memory withdrawableSharesPerWithdrawal) = delegationManager.getQueuedWithdrawals(address(this));
 
-        // Reset the queued shares for each strategy back to zero.
+        // Stores a list of unique strategies obtained from the queued withdrawals.
+        // Used to avoid accessing storage twice for the same strategy in the loop below.
+        IStrategy[] memory uniqueStrategies = new IStrategy[](withdrawals.length);
+        uint256 uniqueStrategiesLength = 0;
+
+        // This loop reset the queued shares to zero or the legacy queued shares value if available.
+        // Necessary to start adding the withdrawable queued shares on top of this base value.
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            // Withdrawals are queued always with a single strategy so we can ignore other entries in the strategies array.
-            // Queued shares are reset to the legacy queued shares value given that `getQueuedWithdrawals` returns only withdrawals post slashing upgrade.
-            queuedShares[withdrawals[i].strategies[0]] = legacyQueuedShares[withdrawals[i].strategies[0]];
+            IStrategy strategy = withdrawals[i].strategies[0];
+
+            bool alreadyAdded = false;
+
+            for (uint256 j = 0; j < uniqueStrategiesLength; j++) {
+                if (uniqueStrategies[j] == strategy) {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+
+            if (alreadyAdded) {
+                continue;
+            }
+
+            uniqueStrategies[uniqueStrategiesLength++] = strategy; 
+            queuedShares[strategy] = legacyQueuedShares[strategy];
         }
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
