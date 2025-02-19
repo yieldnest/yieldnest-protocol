@@ -118,7 +118,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     /**
      * @dev Amount of shares queued for withdrawal (no longer active in staking). 1 share == 1 ETH.
-     * Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals.
+     * Increases when calling queueWithdrawals, and decreases when calling completeQueuedWithdrawals and on slashing
      */
     uint256 public queuedSharesAmount;
 
@@ -126,6 +126,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @dev The address of the operator that this staking node is delegated to.
      */
     address public delegatedTo;
+
+    /**
+     * @dev The amount of shares queued for withdrawal that were queued before the upgrade
+     */
+    uint256 public legacyQueuedSharesAmount;
 
     /**
      * @dev Maps a withdrawal root to the amount of shares that can be withdrawn.
@@ -186,7 +191,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
 
     function initializeV3() external onlyStakingNodesManager reinitializer(3) {
-        delegatedTo = IDelegationManager(address(stakingNodesManager.delegationManager())).delegatedTo(address(this));
+        delegatedTo = stakingNodesManager.delegationManager().delegatedTo(address(this));
+    }
+
+    function initializeV4() external onlyStakingNodesManager reinitializer(4) {
+        legacyQueuedSharesAmount = queuedSharesAmount;
     }
 
     //--------------------------------------------------------------------------------------
@@ -282,7 +291,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
         bytes32 approverSalt
     ) public override onlyDelegator onlyWhenSynchronized {
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         delegationManager.delegateTo(operator, approverSignatureAndExpiry, approverSalt);
 
         delegatedTo = operator;
@@ -296,22 +305,22 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * It emits an `Undelegated` event with the address of the operator from whom the delegation is being removed.
      */
     function undelegate() public onlyDelegator onlyWhenSynchronized returns (bytes32[] memory withdrawalRoots) {
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
         address operator = delegationManager.delegatedTo(address(this));
 
-        // Get current shares before undelegating
-        int256 shares = stakingNodesManager.eigenPodManager().podOwnerDepositShares(address(this));
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = beaconChainETHStrategy;
+
+        (uint256[] memory withdrawableShares, ) = delegationManager.getWithdrawableShares(address(this), strategies);
+
         withdrawalRoots = delegationManager.undelegate(address(this));
 
-        if (shares > 0) {
-            // Adjust queuedSharesAmount by shares
-            queuedSharesAmount += uint256(shares);
-        }
+        syncQueuedShares();
 
         delegatedTo = address(0);
 
-        emit Undelegated(operator, shares);
+        emit Undelegated(operator, int256(withdrawableShares[0]));
     }
 
     /**
@@ -331,10 +340,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Syncs the queuedSharesAmount with the actual withdrawable shares queued for withdrawal.
      * @dev This is generally used when slashing is done on this staking node or operator is slashed
      */
-    function syncQueuedShares() public onlyDelegator {
+    function syncQueuedShares() public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        queuedSharesAmount = 0;
+        queuedSharesAmount = legacyQueuedSharesAmount;
 
         (IDelegationManagerTypes.Withdrawal[] memory withdrawals, uint256[][] memory shares) = delegationManager.getQueuedWithdrawals(address(this));
         for(uint256 i = 0; i < withdrawals.length; i++) {
@@ -360,9 +369,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      */
     function queueWithdrawals(
         uint256 depositSharesAmount
-    ) external onlyStakingNodesWithdrawer returns (bytes32[] memory) {
+    ) external onlyStakingNodesWithdrawer onlyWhenSynchronized returns (bytes32[] memory) {
 
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
         IDelegationManagerTypes.QueuedWithdrawalParams[] memory params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
         IStrategy[] memory strategies = new IStrategy[](1);
@@ -417,15 +426,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      *                    the withdrawal created as part of the queueWithdrawals call.
      */
     function completeQueuedWithdrawals(
-        IDelegationManager.Withdrawal[] memory withdrawals
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyStakingNodesWithdrawer onlyWhenSynchronized {
 
-        uint256 totalWithdrawableShares = 0;
-
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
         IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
+        uint256 totalWithdrawableShares = 0;
         for (uint256 i = 0; i < withdrawals.length; i++) {
             if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
                 revert InvalidWithdrawal();
@@ -439,13 +447,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
-            tokens[i] = new IERC20V4[](withdrawals[i].strategies.length);
+            tokens[i] = new IERC20V4[](1);
+            
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
 
-            for (uint256 j = 0; j < withdrawals[i].scaledShares.length; j++) {
-                totalWithdrawableShares += withdrawableSharesForWithdrawalRoot[withdrawalRoot];
-                withdrawableSharesForWithdrawalRoot[withdrawalRoot] = 0;
-            }
+            totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawalAndGetTotalWithdrawableShare(delegationManager, withdrawals[i]);
         }
 
         uint256 initialETHBalance = address(this).balance;
@@ -465,9 +471,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             revert NotSyncedAfterSlashing();
         }
 
-        // Shares are no longer queued; decrease what was queued for withdrawal
-        queuedSharesAmount -= totalWithdrawableShares;
-
         // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
         withdrawnETH += actualWithdrawalAmount;
 
@@ -482,10 +485,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
-        syncQueuedShares();
-        uint256 totalWithdrawalAmount = 0;
 
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        syncQueuedShares();
+
+        uint256 totalWithdrawableShares = 0;
+
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
 
         // Create empty tokens array since we're not receiving as tokens
         IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
@@ -499,9 +504,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             tokens[i] = new IERC20V4[](1);
             receiveAsTokens[i] = false;
             
-            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
-            totalWithdrawalAmount += withdrawableSharesForWithdrawalRoot[withdrawalRoot];
-            withdrawableSharesForWithdrawalRoot[withdrawalRoot] = 0;
+            totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawalAndGetTotalWithdrawableShare(delegationManager, withdrawals[i]);
         }
 
         // Complete withdrawals with receiveAsTokens = false
@@ -511,10 +514,39 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             receiveAsTokens
         );
 
-        // Decrease queued shares amount
-        queuedSharesAmount -= totalWithdrawalAmount;
+        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawableShares, 0);
+    }
 
-        emit CompletedQueuedWithdrawals(withdrawals, totalWithdrawalAmount, 0);
+    /**
+     * @notice Decreases the queued shares on complete queued withdrawals and returns the total withdrawable shares
+     * @param delegationManager The delegation manager
+     * @param withdrawal The withdrawal struct
+     * @return totalWithdrawableShareForWithdrawalRoot The total withdrawable shares for the withdrawal root
+     */
+    function _decreaseQueuedSharesOnCompleteQueuedWithdrawalAndGetTotalWithdrawableShare(
+        IDelegationManager delegationManager,
+        IDelegationManager.Withdrawal calldata withdrawal
+    ) internal returns (uint256) {
+        uint256 totalWithdrawableShareForWithdrawalRoot = 0;
+        bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
+        uint256 withdrawableSharesForWithdrawalRootValue = withdrawableSharesForWithdrawalRoot[withdrawalRoot];
+
+            if (withdrawableSharesForWithdrawalRootValue != 0) {
+                // If the withdrawableSharesForWithdrawalRootValue are not 0, that means withdrawal root exists in withdrawableSharesForWithdrawalRoot
+                // which means it was queued after the upgrade
+                // so we need to subtract the shares from queuedSharesAmount and set the withdrawableSharesForWithdrawalRoot to 0
+                totalWithdrawableShareForWithdrawalRoot = withdrawableSharesForWithdrawalRootValue;
+                withdrawableSharesForWithdrawalRoot[withdrawalRoot] = 0;
+                queuedSharesAmount -= withdrawableSharesForWithdrawalRootValue;
+            } else {
+                // If the withdrawableSharesForWithdrawalRootValue are 0, that means withdrawal root doesn't exist in withdrawableSharesForWithdrawalRoot
+                // which means it was queued before the upgrade
+                // so we need to subtract the shares from legacyQueuedSharesAmount and queuedSharesAmount
+                totalWithdrawableShareForWithdrawalRoot = withdrawal.scaledShares[0];
+                legacyQueuedSharesAmount -= withdrawal.scaledShares[0];
+                queuedSharesAmount -= withdrawal.scaledShares[0];
+            }
+        return totalWithdrawableShareForWithdrawalRoot;
     }
 
     //--------------------------------------------------------------------------------------
@@ -527,7 +559,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @return True if the delegation state is synced, false otherwise.
      */
     function isSynchronized() public view returns (bool) {
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         return delegatedTo == delegationManager.delegatedTo(address(this));
     }
 
@@ -539,7 +571,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         syncQueuedShares();
 
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         delegatedTo = delegationManager.delegatedTo(address(this));
         stakingNodesManager.updateTotalETHStaked();
     }
@@ -582,7 +614,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function getETHBalance() public view returns (uint256) {
         IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
-        IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         IStrategy[] memory strategies = new IStrategy[](1);
         strategies[0] = beaconChainETHStrategy;
 

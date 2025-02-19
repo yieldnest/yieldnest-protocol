@@ -472,6 +472,11 @@ contract StakingNodesManager is
             initializedVersion = node.getInitializedVersion();
         }
 
+        if (initializedVersion == 3) {
+            node.initializeV4();
+            initializedVersion = node.getInitializedVersion();
+        }
+
         // NOTE: For future versions, add additional if clauses that initialize the node 
         // for the next version while keeping the previous initializers.
     }
