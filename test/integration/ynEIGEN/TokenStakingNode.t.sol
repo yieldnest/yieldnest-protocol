@@ -1600,6 +1600,40 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
     }
 
+    function testSyncWithMultipleQueuedWithdrawals() public {
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+
+        uint256 thirdOfDepositShares = depositShares / 3;
+
+        bytes32 queuedWithdrawalRoot1 = _queueWithdrawal(thirdOfDepositShares);
+        bytes32 queuedWithdrawalRoot2 = _queueWithdrawal(thirdOfDepositShares);
+        bytes32 queuedWithdrawalRoot3 = _queueWithdrawal(thirdOfDepositShares);
+
+        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 1, "Queued shares should be equal to withdrawable shares");
+
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot3), 1 ether, "Max magnitude for withdrawal 3 should be WAD");
+
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot1), withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot2), withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot3), withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
+
+        _slash(0.5 ether);
+
+        tokenStakingNode.synchronize();
+
+        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, 2, "Queued shares should be half of the previous withdrawable shares");
+
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 0.5 ether, "Max magnitude for withdrawal 1 should be half of the previous withdrawable shares");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 0.5 ether, "Max magnitude for withdrawal 2 should be half of the previous withdrawable shares");
+        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot3), 0.5 ether, "Max magnitude for withdrawal 3 should be half of the previous withdrawable shares");
+
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot1), withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 2 / 3");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot2), withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 2 / 3");
+        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot3), withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 2 / 3");
+    }
+
     function testQueuedSharesSyncedEventIsEmittedOnSynchronize() public {
         vm.expectEmit();
         emit QueuedSharesSynced();
