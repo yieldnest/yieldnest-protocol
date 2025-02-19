@@ -539,9 +539,13 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             withdrawableSharesByWithdrawalRoot[withdrawalRoot] = withdrawableShares;
             // Get the current maxMagnitude for operator/strategy of the withdrawal.
             maxMagnitudeByWithdrawalRoot[withdrawalRoot] = maxMagnitude;
-            // Set the value to true to indicate that the withdrawal was queued after the slashing upgrade in case it was done outside of the contract.
-            // For example, when the operator undelegates itself from the staker via the DelegationManager::undelegate function.
-            queuedAfterSlashingUpgrade[withdrawalRoot] = true;
+            
+
+            // In case the operator undelegates itself and withdrawals are queued outside of this flow,
+            // `getQueuedWithdrawals` will get them on sync and can be set to be non legacy here.
+            if (!queuedAfterSlashingUpgrade[withdrawalRoot]) {
+                queuedAfterSlashingUpgrade[withdrawalRoot] = true;
+            }
         }
 
         emit QueuedSharesSynced();
