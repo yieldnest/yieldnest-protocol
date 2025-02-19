@@ -578,6 +578,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         bytes32 withdrawalRoot = _delegationManager.calculateWithdrawalRoot(_withdrawal);
 
         // If the withdrawal was queued before the slashing upgrade, it is considered legacy.
+        // NOTE: There is a particular case in which if the operator undelegates itself from the staker, automatically queueing withdrawals,
+        // If the node is not synchronized, this might not catch it correctly as it will be marked as legacy.
         if (!queuedAfterSlashingUpgrade[withdrawalRoot]) {
             // Queued shares is decreased by the scaled shares which for legacy withdrawals is the same as the withdrawable shares.
             queuedShares[_strategy] -= _withdrawal.scaledShares[0];
