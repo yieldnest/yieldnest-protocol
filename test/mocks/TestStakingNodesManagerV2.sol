@@ -34,14 +34,14 @@ contract TestStakingNodesManagerV2 is StakingNodesManager {
             node.initializeV3();
         }
 
+        // TODO: commented for holesky deployment. Uncomment for mainnet deployment.
+        //  if (initializedVersion == 3) {
+        //     node.initializeV4();
+        //  }
 
          if (initializedVersion == 3) {
-            node.initializeV4();
-         }
-
-         if (initializedVersion == 4) {
             TestStakingNodeV2(payable(address(node)))
-                .initializeV5(TestStakingNodeV2.ReInit({valueToBeInitialized: 23}));
+                .initializeV4(TestStakingNodeV2.ReInit({valueToBeInitialized: 23}));
          }
     }
 

@@ -192,11 +192,13 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function initializeV3() external onlyStakingNodesManager reinitializer(3) {
         delegatedTo = stakingNodesManager.delegationManager().delegatedTo(address(this));
-    }
-
-    function initializeV4() external onlyStakingNodesManager reinitializer(4) {
         legacyQueuedSharesAmount = queuedSharesAmount;
     }
+    
+    // TODO: commented for holesky deployment. Uncomment for mainnet deployment.
+    // function initializeV4() external onlyStakingNodesManager reinitializer(4) {
+    //     legacyQueuedSharesAmount = queuedSharesAmount;
+    // }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EIGENPOD CREATION   ------------------------------
@@ -343,7 +345,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function syncQueuedShares() public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        queuedSharesAmount = legacyQueuedSharesAmount;
+        queuedSharesAmount = 0;
 
         (IDelegationManagerTypes.Withdrawal[] memory withdrawals, uint256[][] memory shares) = delegationManager.getQueuedWithdrawals(address(this));
         for(uint256 i = 0; i < withdrawals.length; i++) {
@@ -353,7 +355,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             queuedSharesAmount += withdrawableShares;
         }
         
-        emit QueuedSharesSynced(queuedSharesAmount);
+        emit QueuedSharesSynced(queuedSharesAmount + legacyQueuedSharesAmount);
     }
 
     //--------------------------------------------------------------------------------------
@@ -544,7 +546,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
                 // so we need to subtract the shares from legacyQueuedSharesAmount and queuedSharesAmount
                 totalWithdrawableShareForWithdrawalRoot = withdrawal.scaledShares[0];
                 legacyQueuedSharesAmount -= withdrawal.scaledShares[0];
-                queuedSharesAmount -= withdrawal.scaledShares[0];
             }
         return totalWithdrawableShareForWithdrawalRoot;
     }
@@ -626,9 +627,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
         // 2. unverifiedStakedETH: ETH staked with validators but not yet verified
         // 3. queuedSharesAmount: Shares queued for withdrawal that can be withdrawn after accounting for slashing (1 share = 1 ETH)
-        // 4. beaconChainETHStrategyWithdrawableShares: Active shares in Eigenlayer, representing staked ETH that can be withdrawn after accounting for slashing
+        // 4. legacyQueuedSharesAmount: Shares queued for withdrawal that were queued before the upgrade (1 share = 1 ETH)
+        // 5. beaconChainETHStrategyWithdrawableShares: Active shares in Eigenlayer, representing staked ETH that can be withdrawn after accounting for slashing
         int256 totalETHBalance =
-            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount + beaconChainETHStrategyWithdrawableShares);
+            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount + legacyQueuedSharesAmount + beaconChainETHStrategyWithdrawableShares);
 
         if (totalETHBalance < 0) {
             return 0;

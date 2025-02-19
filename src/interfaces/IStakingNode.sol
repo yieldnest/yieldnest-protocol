@@ -50,6 +50,8 @@ interface IStakingNode {
 
     function queuedSharesAmount() external view returns (uint256);
 
+    function legacyQueuedSharesAmount() external view returns (uint256);
+
     /**
      * @notice Verifies the withdrawal credentials and balance of validators.
      * @param beaconTimestamp An array of oracle block numbers corresponding to each validator.
@@ -87,7 +89,7 @@ interface IStakingNode {
 
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
     function initializeV3() external;
-    function initializeV4() external;
+    // function initializeV4() external;
 
     function isSynchronized() external view returns (bool);
 

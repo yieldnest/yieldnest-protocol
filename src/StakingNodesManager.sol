@@ -471,11 +471,11 @@ contract StakingNodesManager is
             node.initializeV3();
             initializedVersion = node.getInitializedVersion();
         }
-
-        if (initializedVersion == 3) {
-            node.initializeV4();
-            initializedVersion = node.getInitializedVersion();
-        }
+        // TODO: commented for holesky deployment. Uncomment for mainnet deployment.
+        // if (initializedVersion == 3) {
+        //     node.initializeV4();
+        //     initializedVersion = node.getInitializedVersion();
+        // }
 
         // NOTE: For future versions, add additional if clauses that initialize the node 
         // for the next version while keeping the previous initializers.
