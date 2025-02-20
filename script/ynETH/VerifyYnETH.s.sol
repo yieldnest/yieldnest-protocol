@@ -668,7 +668,8 @@ contract Verify is BaseYnETHScript {
         for (uint256 i = 0; i < stakingNodes.length; i++) {
             stakingNodesBalance += stakingNodes[i].getETHBalance();     
             console.log(string.concat("Balance for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].getETHBalance()), " wei (", vm.toString(stakingNodes[i].getETHBalance() / 1e18), " ETH)"));
-
+            console.log(string.concat("Legacy queued shares for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].legacyQueuedSharesAmount()), " wei (", vm.toString(stakingNodes[i].legacyQueuedSharesAmount() / 1e18), " ETH)"));
+            console.log(string.concat("Queued shares for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].queuedSharesAmount()), " wei (", vm.toString(stakingNodes[i].queuedSharesAmount() / 1e18), " ETH)"));
         }
 
         uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;

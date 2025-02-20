@@ -35,8 +35,4 @@ contract DeployStakingNodesManager is BaseYnETHScript {
 //   Deployment JSON file written successfully: /Users/parth/Desktop/coding/yieldnest/prod-code-repos/yieldnest-protocol-private/deployments/ynETH-1.json
 
 // HOLESKY DEPLOYMENT
-// == Logs ==
-//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
-//   Current Block Number: 3375331
-//   Current Chain ID: 17000
-//   StakingNodesManager Implementation: 0x28fD4C04620D95c4BeC9397E2D303937779C41FD
+//   StakingNodesManager Implementation: 0x99a108a79419c62F2Ff384cE2441b435b918a252

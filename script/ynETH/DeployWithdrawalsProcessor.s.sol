@@ -31,8 +31,4 @@ contract DeployWithdrawalsProcessor is BaseYnETHScript {
 }
 
 // HOLESKY DEPLOYMENT
-// == Logs ==
-//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
-//   Current Block Number: 3375332
-//   Current Chain ID: 17000
-//   Withdrawals Processor Implementation: 0x9904c5D441947dB77cee7F401Ed76C9fb3754f2C
+//   Withdrawals Processor Implementation: 0xAbE3b5bF154d6441C63Dc34691E4F51Dbfac3bB0
