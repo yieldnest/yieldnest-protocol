@@ -136,8 +136,14 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Initializes the contract by storing the current operator and pre slashing queued shares.
      */
     function initializeV2() public reinitializer(2) {
-        delegatedTo = IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
+        delegatedTo =
+            IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
+    }
 
+    /**
+     * @notice Initializes the contract by storing the pre slashing queued shares.
+     */
+    function initializeV3() public reinitializer(3) {
         IYieldNestStrategyManagerExtended eigenStrategyManager = IYieldNestStrategyManagerExtended(tokenStakingNodesManager.yieldNestStrategyManager());
         IAssetRegistry assetRegistry = IAssetRegistry(eigenStrategyManager.ynEigen().assetRegistry());
         IERC20[] memory assets = assetRegistry.getAssets();
