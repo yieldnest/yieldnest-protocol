@@ -20,6 +20,8 @@ interface ITokenStakingNode {
 
     function initializeV2() external;
 
+    function initializeV3() external;
+
     function depositAssetsToEigenlayer(IERC20[] memory assets, uint256[] memory amounts, IStrategy[] memory strategies)
         external;
 
