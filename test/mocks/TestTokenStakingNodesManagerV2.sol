@@ -30,16 +30,10 @@ contract TestTokenStakingNodesManagerV2 is TokenStakingNodesManager {
          }
 
          if (initializedVersion == 2) {
-             node.initializeV3();
-             initializedVersion = node.getInitializedVersion();
-             emit NodeInitialized(address(node), initializedVersion);
-         }
-
-         if (initializedVersion == 3) {
              TestTokenStakingNodeV2.ReInit memory reInit = TestTokenStakingNodeV2.ReInit({
                  valueToBeInitialized: 23
              });
-             TestTokenStakingNodeV2(payable(address(node))).initializeV4(reInit);
+             TestTokenStakingNodeV2(payable(address(node))).initializeV3(reInit);
              initializedVersion = node.getInitializedVersion();
              emit NodeInitialized(address(node), initializedVersion);
          }

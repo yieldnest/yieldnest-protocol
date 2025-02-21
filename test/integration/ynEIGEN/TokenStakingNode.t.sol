@@ -88,7 +88,7 @@ contract NodeStateSnapshot {
             IStrategy strategy = state.eigenStrategyManager().strategies(asset);
 
             // Store queued shares for each strategy
-            snapshot.strategyQueuedShares[strategy] = node.queuedShares(strategy);
+            snapshot.strategyQueuedShares[strategy] = node.postSlashingUpgradeQueuedShares(strategy);
 
             // Store withdrawn amount for each token
             snapshot.withdrawnByToken[address(asset)] = node.withdrawn(asset);
@@ -590,7 +590,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Get initial queued shares
         uint256[] memory initialQueuedShares = new uint256[](2);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            initialQueuedShares[i] = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
         }
 
         // Undelegate
@@ -607,7 +607,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
             assertEq(
                 finalQueuedShares - initialQueuedShares[i],
                 initialShares[i],
@@ -681,7 +681,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory finalShares = delegationManager.getOperatorShares(operator2, strategies);
 
         for (uint256 i = 0; i < strategies.length; i++) {
-            finalShares[i] += tokenStakingNodeInstance.queuedShares(strategies[i]);
+            finalShares[i] += tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
             assertEq(finalShares[i], initialShares[i], "Operator should have same shares");
         }
     }
@@ -735,7 +735,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Get initial queued shares
         uint256[] memory initialQueuedShares = new uint256[](2);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            initialQueuedShares[i] = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
         }
 
         // Undelegate
@@ -763,7 +763,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
             assertEq(
                 finalQueuedShares - initialQueuedShares[i],
                 initialShares[i],
@@ -796,7 +796,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             {
                 // Verify queued shares decreased by the correct amount
                 for (uint256 i = 0; i < strategies.length; i++) {
-                    uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+                    uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
                     assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0");
                 }
             }
@@ -947,7 +947,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Get initial queued shares
         uint256[] memory initialQueuedShares = new uint256[](2);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            initialQueuedShares[i] = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
         }
 
         // Create array of queued withdrawals based on strategies
@@ -976,7 +976,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
             assertEq(
                 finalQueuedShares - initialQueuedShares[i],
                 initialShares[i],
@@ -1004,7 +1004,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             {
                 // Verify queued shares decreased by the correct amount
                 for (uint256 i = 0; i < strategies.length; i++) {
-                    uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+                    uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
                     assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0");
                 }
             }
@@ -1076,7 +1076,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Get initial queued shares
         uint256[] memory initialQueuedShares = new uint256[](3);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            initialQueuedShares[i] = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
         }
 
         // Create array of queued withdrawals based on strategies
@@ -1108,7 +1108,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
             assertEq(
                 finalQueuedShares - initialQueuedShares[i],
                 initialShares[i],
@@ -1136,7 +1136,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             {
                 // Verify queued shares decreased by the correct amount
                 for (uint256 i = 0; i < strategies.length; i++) {
-                    uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+                    uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
                     assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0");
                 }
             }
@@ -1207,7 +1207,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Get initial queued shares
         uint256[] memory initialQueuedShares = new uint256[](3);
         for (uint256 i = 0; i < strategies.length; i++) {
-            initialQueuedShares[i] = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            initialQueuedShares[i] = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
         }
 
         // Create array of queued withdrawals based on strategies
@@ -1236,7 +1236,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
-            uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+            uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
             assertEq(
                 finalQueuedShares - initialQueuedShares[i],
                 initialShares[i],
@@ -1264,7 +1264,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             {
                 // Verify queued shares decreased by the correct amount
                 for (uint256 i = 0; i < strategies.length; i++) {
-                    uint256 finalQueuedShares = tokenStakingNodeInstance.queuedShares(strategies[i]);
+                    uint256 finalQueuedShares = tokenStakingNodeInstance.postSlashingUpgradeQueuedShares(strategies[i]);
                     assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0");
                 }
             }
@@ -1476,7 +1476,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
     }
 
     function _queuedShares() private view returns (uint256) {
-        return tokenStakingNode.queuedShares(wstETHStrategy);
+        return tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy);
     }
 
     function testQueuedSharesAreNotUpdatedIfSynchronizeIsNotCalled_FullSlashed() public {
@@ -1591,7 +1591,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
 
-        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 1 ether, "Max magnitude should be WAD");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares, "Queued withdrawable shares for withdrawalshould be equal to withdrawable shares");
 
@@ -1599,7 +1599,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         tokenStakingNode.synchronize();
 
-        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0.5 ether, "Max magnitude should be half of the previous withdrawable shares");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
     }
@@ -1613,7 +1613,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         bytes32 queuedWithdrawalRoot2 = _queueWithdrawal(thirdOfDepositShares);
         bytes32 queuedWithdrawalRoot3 = _queueWithdrawal(thirdOfDepositShares);
 
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
+        assertApproxEqAbs(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
 
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
@@ -1627,7 +1627,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         tokenStakingNode.synchronize();
 
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, 2, "Queued shares should be half of the previous withdrawable shares");
+        assertApproxEqAbs(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares / 2, 2, "Queued shares should be half of the previous withdrawable shares");
 
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 0.5 ether, "Max magnitude for withdrawal 1 should be half of the previous withdrawable shares");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 0.5 ether, "Max magnitude for withdrawal 2 should be half of the previous withdrawable shares");
@@ -1647,7 +1647,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         bytes32 queuedWithdrawalRoot2 = _queueWithdrawal(thirdOfDepositShares);
         bytes32 queuedWithdrawalRoot3 = _queueWithdrawal(thirdOfDepositShares);
 
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
+        assertApproxEqAbs(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
 
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
@@ -1659,7 +1659,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         tokenStakingNode.synchronize();
 
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
+        assertApproxEqAbs(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
 
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
@@ -1692,7 +1692,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
 
-        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), 0, "Queued shares should be 0");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Queued withdrawable shares should be 0");
     }
@@ -1721,7 +1721,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
 
-        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares, "Withdrawable shares should be equal to withdrawable shares");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 1 ether, "Max magnitude should be WAD");
 
@@ -1732,7 +1732,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
         
-        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(wstETHStrategy), 0, "Queued shares should be 0");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Withdrawable shares should be 0");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
     }

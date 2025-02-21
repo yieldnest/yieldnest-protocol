@@ -170,7 +170,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "queueWithdrawalSTETH: E0");
-        assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "queueWithdrawalSTETH: E1");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy), _shares, "queueWithdrawalSTETH: E1");
     }
 
     function _queueWithdrawalSFRXETH(uint256 _amount) internal {
@@ -185,7 +185,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "queueWithdrawalSFRXETH: E0");
-        assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "queueWithdrawalSFRXETH: E1");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy), _shares, "queueWithdrawalSFRXETH: E1");
     }
 
     function _queueWithdrawalOETH(uint256 _amount) internal {
@@ -200,7 +200,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "queueWithdrawalOETH: E0");
-        assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "queueWithdrawalOETH: E1");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy), _shares, "queueWithdrawalOETH: E1");
     }
 
     function _queueWithdrawalsWrongCaller() internal {
@@ -222,7 +222,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _nonce = delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode)) - 1;
         uint32 _startBlock = uint32(block.number);
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
-        uint256 _share = tokenStakingNode.queuedShares(_strategy);
+        uint256 _share = tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy);
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
@@ -246,7 +246,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "completeQueuedWithdrawalsSTETH: E0");
-        assertEq(tokenStakingNode.queuedShares(_strategy), 0, "completeQueuedWithdrawalsSTETH: E1");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy), 0, "completeQueuedWithdrawalsSTETH: E1");
         assertApproxEqAbs(tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WSTETH_ADDRESS)), _amount, 100, "completeQueuedWithdrawalsSTETH: E2");
     }
 
@@ -259,7 +259,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _nonce = delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode)) - 1;
         uint32 _startBlock = uint32(block.number);
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
-        uint256 _share = tokenStakingNode.queuedShares(_strategy);
+        uint256 _share = tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy);
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
@@ -283,7 +283,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "completeQueuedWithdrawalsSFRXETH: E0");
-        assertEq(tokenStakingNode.queuedShares(_strategy), 0, "completeQueuedWithdrawalsSFRXETH: E1");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy), 0, "completeQueuedWithdrawalsSFRXETH: E1");
         assertApproxEqAbs(tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS)), _amount, 100, "completeQueuedWithdrawalsSFRXETH: E2");
     }
 
@@ -296,7 +296,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         uint256 _nonce = delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode)) - 1;
         uint32 _startBlock = uint32(block.number);
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
-        uint256 _share = tokenStakingNode.queuedShares(_strategy);
+        uint256 _share = tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy);
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = _strategy;
@@ -319,7 +319,7 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
         assertApproxEqAbs(yneigen.totalAssets(), _totalAssetsBefore, 10, "completeQueuedWithdrawalsOETH: E0");
-        assertEq(tokenStakingNode.queuedShares(_strategy), 0, "completeQueuedWithdrawalsOETH: E1");
+        assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_strategy), 0, "completeQueuedWithdrawalsOETH: E1");
         assertApproxEqAbs(tokenStakingNode.withdrawn(IERC20(chainAddresses.lsd.WOETH_ADDRESS)), _amount, 100, "completeQueuedWithdrawalsOETH: E2");
     }
 

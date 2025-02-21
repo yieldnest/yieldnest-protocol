@@ -20,8 +20,6 @@ interface ITokenStakingNode {
 
     function initializeV2() external;
 
-    function initializeV3() external;
-
     function depositAssetsToEigenlayer(IERC20[] memory assets, uint256[] memory amounts, IStrategy[] memory strategies)
         external;
 
@@ -62,6 +60,8 @@ interface ITokenStakingNode {
     function withdrawn(IERC20 _token) external view returns (uint256);
     function maxMagnitudeByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint64);
     function withdrawableSharesByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint256);
+    function postSlashingUpgradeQueuedShares(IStrategy _strategy) external view returns (uint256);
+    function queuedAfterSlashingUpgrade(bytes32 _withdrawalRoot) external view returns (bool);
 
     /**
      * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.

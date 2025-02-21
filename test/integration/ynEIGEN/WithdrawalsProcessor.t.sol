@@ -174,7 +174,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
-            assertEq(tokenStakingNode.queuedShares(_stethStrategy), 0, "completeQueuedWithdrawals: E2");
+            assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_stethStrategy), 0, "completeQueuedWithdrawals: E2");
             assertEq(withdrawalsProcessor.ids().completed, 1, "completeQueuedWithdrawals: E3");
         }
 
@@ -185,7 +185,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
-            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), 0, "completeQueuedWithdrawals: E5");
+            assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_sfrxethStrategy), 0, "completeQueuedWithdrawals: E5");
             assertEq(withdrawalsProcessor.ids().completed, 2, "completeQueuedWithdrawals: E6");
         }
 
@@ -197,7 +197,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
                 vm.prank(keeper);
                 withdrawalsProcessor.completeQueuedWithdrawals();
 
-                assertEq(tokenStakingNode.queuedShares(_oethStrategy), 0, "completeQueuedWithdrawals: E8");
+                assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_oethStrategy), 0, "completeQueuedWithdrawals: E8");
                 assertEq(withdrawalsProcessor.ids().completed, 3, "completeQueuedWithdrawals: E9");
             }
         }
@@ -226,7 +226,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
             assertFalse(_queuedEverything, "queueWithdrawal: E1");
-            assertEq(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E2");
+            assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E2");
             assertEq(withdrawalsProcessor.batch(0), 1, "queueWithdrawal: E3");
 
             WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =
@@ -248,7 +248,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
             assertTrue(_queuedEverything, "queueWithdrawal: E11");
-            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E12");
+            assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E12");
             assertEq(withdrawalsProcessor.batch(1), 2, "queueWithdrawal: E13");
 
             WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =
@@ -271,7 +271,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
                 _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
                 assertFalse(_queuedEverything, "queueWithdrawal: E21");
-                assertEq(tokenStakingNode.queuedShares(_oethStrategy), _oethShares, "queueWithdrawal: E22");
+                assertEq(tokenStakingNode.postSlashingUpgradeQueuedShares(_oethStrategy), _oethShares, "queueWithdrawal: E22");
                 assertEq(withdrawalsProcessor.batch(2), 3, "queueWithdrawal: E23");
 
                 WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =

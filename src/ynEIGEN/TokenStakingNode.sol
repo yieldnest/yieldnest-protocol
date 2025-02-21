@@ -34,18 +34,6 @@ interface ITokenStakingNodeEvents {
     event QueuedSharesSynced();
 }
 
-/// This interface is created because the src/interfaces/IynEigen.sol does not provide a way to obtain the assetRegistry.
-/// TODO: Should we expose assetRegistry in IynEigen?
-interface IynEigenExtended is IynEigen {
-    function assetRegistry() external view returns (IAssetRegistry);
-}
-
-/// This interface is created because src/interfaces/IYieldNestStrategyManager.sol does not provide a way to obtain `ynEigen` which is needed to get the assetRegistry.
-/// TODO: Should we expose ynEigen in IYieldNestStrategyManager?
-interface IYieldNestStrategyManagerExtended is IYieldNestStrategyManager {
-    function ynEigen() external view returns (IynEigenExtended);
-}
-
 /**
  * @title Token Staking Node
  * @dev Implements staking node functionality for tokens, enabling token staking, delegation, and rewards management.
@@ -74,6 +62,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     ITokenStakingNodesManager public override tokenStakingNodesManager;
     uint256 public nodeId;
 
+    /**
+     * @notice Tracks pre slashing upgrade queued shares for each strategy.
+     */
     mapping(IStrategy => uint256) public queuedShares;
     mapping(IERC20 => uint256) public withdrawn;
 
@@ -92,16 +83,14 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     mapping(bytes32 => uint256) public withdrawableSharesByWithdrawalRoot;
 
     /**
-     * @notice Tracks the pre slashing upgrade queued shares for each strategy.
-     * @dev Used to persist any pre slashing queued shares on sync without losing them.
-     * The values will tend to zero as the legacy withdrawals are completed.
+     * @notice Tracks post slashing upgrade queued shares for each strategy.
      */
-    mapping(IStrategy => uint256) public legacyQueuedShares;
+    mapping(IStrategy => uint256) public postSlashingUpgradeQueuedShares;
     
     /**
-     * @notice Tracks if a withdrawal was queued after the slashing upgrade.
-     * @dev using `maxMagnitudeByWithdrawalRoot` or `withdrawableSharesByWithdrawalRoot` might not be enough to detect this
-     * because the operator might be fully slashed and the values provided will be 0, same as the default values.
+     * @notice Tracks whether each withdrawal root was created after the slashing upgrade.
+     * @dev Used to differentiate between pre and post slashing withdrawals, particularly important for 
+     * tagging withdrawals queued by undelegating directly through the DelegationManager.
      */
     mapping(bytes32 => bool) public queuedAfterSlashingUpgrade;
 
@@ -138,23 +127,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function initializeV2() public reinitializer(2) {
         delegatedTo =
             IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
-    }
-
-    /**
-     * @notice Initializes the contract by storing the pre slashing queued shares.
-     */
-    function initializeV3() public reinitializer(3) {
-        IYieldNestStrategyManagerExtended eigenStrategyManager = IYieldNestStrategyManagerExtended(tokenStakingNodesManager.yieldNestStrategyManager());
-        IAssetRegistry assetRegistry = IAssetRegistry(eigenStrategyManager.ynEigen().assetRegistry());
-        IERC20[] memory assets = assetRegistry.getAssets();
-
-        for (uint256 i = 0; i < assets.length; i++) {
-            IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
-            // Store the value of the queued shares as legacy.
-            legacyQueuedShares[strategy] = queuedShares[strategy];
-            // Resets the queued shares to 0 as they will only be used to track new queued withdrawals.
-            delete queuedShares[strategy];
-        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -197,10 +169,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
     /**
      * @notice Returns the queued shares and withdrawn balance for a specific strategy and asset.
-     * @dev The queued shares are the sum of the legacy queued shares and the post slashing queued shares.
+     * @dev The queued shares are the sum of the pre slashing upgrade queued shares and the post slashing upgrade queued shares.
      */
     function getQueuedSharesAndWithdrawn(IStrategy _strategy, IERC20 _asset) external view returns (uint256, uint256) {
-        return (legacyQueuedShares[_strategy] + queuedShares[_strategy], withdrawn[_asset]);
+        return (queuedShares[_strategy] + postSlashingUpgradeQueuedShares[_strategy], withdrawn[_asset]);
     }
 
     /**
@@ -255,7 +227,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _withdrawableShares = operatorSharesBefore[0] - operatorSharesAfter[0];
         }
 
-        queuedShares[_strategy] += _withdrawableShares;
+        postSlashingUpgradeQueuedShares[_strategy] += _withdrawableShares;
         maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
         withdrawableSharesByWithdrawalRoot[_withdrawalRoot] = _withdrawableShares;
         queuedAfterSlashingUpgrade[_withdrawalRoot] = true;
@@ -489,9 +461,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
                 continue;
             }
 
-            // Track the strategy as already processed and reset its queuedShares value back to zero.
+            // Track the strategy as already processed and reset its postSlashingUpgradeQueuedShares value back to zero.
             uniqueStrategies[uniqueStrategiesLength++] = strategy; 
-            delete queuedShares[strategy];
+            delete postSlashingUpgradeQueuedShares[strategy];
         }
 
         // Stores unique operator-strategy pairs to avoid duplicate maxMagnitude calls
@@ -537,7 +509,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             }
 
             // Update the queued shares for the strategy by adding the withdrawable shares.
-            queuedShares[strategy] += withdrawableShares;
+            postSlashingUpgradeQueuedShares[strategy] += withdrawableShares;
             
             // Update the withdrawable shares for the withdrawal root.
             if (withdrawableSharesByWithdrawalRoot[withdrawalRoot] != withdrawableShares) {
@@ -660,7 +632,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         // If the withdrawal was queued before the upgrade, it is considered legacy.
         if (!queuedAfterSlashingUpgrade[withdrawalRoot]) {
-            legacyQueuedShares[_strategy] -= _withdrawal.scaledShares[0];
+            queuedShares[_strategy] -= _withdrawal.scaledShares[0];
 
             return;
         }
@@ -671,14 +643,14 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         uint64 maxMagnitudeNow = _allocationManager.getMaxMagnitude(_withdrawal.delegatedTo, _strategy);
 
         // If they are different, it means that the queued shares have not been synced. 
-        // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+        // In this case, it reverts to prevent accounting issues with the postSlashingUpgradeQueuedShares variable.
         if (maxMagnitudeAtSync != maxMagnitudeNow) {
             revert NotSyncedAfterSlashing(withdrawalRoot, maxMagnitudeAtSync, maxMagnitudeNow);
         }
 
         // Decreases the queued shares by the withdrawable amount.
         // This will net to 0 after all queued withdrawals are completed.
-        queuedShares[_strategy] -= withdrawableSharesByWithdrawalRoot[withdrawalRoot];
+        postSlashingUpgradeQueuedShares[_strategy] -= withdrawableSharesByWithdrawalRoot[withdrawalRoot];
 
         // Delete the stored sync values to save gas.
         delete withdrawableSharesByWithdrawalRoot[withdrawalRoot];

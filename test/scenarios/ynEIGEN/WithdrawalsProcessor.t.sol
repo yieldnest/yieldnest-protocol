@@ -245,7 +245,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
         for (uint256 i = 0; i < _assets.length; ++i) {
             for (uint256 j = 0; j < _nodes.length; ++j) {
                 if (_isHolesky() && _assets[i] == IERC20(chainAddresses.lsd.WOETH_ADDRESS)) continue;
-                if (_nodes[j].queuedShares(eigenStrategyManager.strategies(_assets[i])) > 0) return true;
+                if (_nodes[j].postSlashingUpgradeQueuedShares(eigenStrategyManager.strategies(_assets[i])) > 0) return true;
             }
         }
         return false;

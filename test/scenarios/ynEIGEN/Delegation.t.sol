@@ -55,7 +55,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         uint256[] memory queuedSharesBefore = new uint256[](strategies.length);
         for (uint256 i = 0; i < strategies.length; i++) {
-            queuedSharesBefore[i] = tokenStakingNode.queuedShares(strategies[i]);
+            queuedSharesBefore[i] = tokenStakingNode.postSlashingUpgradeQueuedShares(strategies[i]);
         }
 
         // Call undelegate from operator
@@ -84,7 +84,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(
-                tokenStakingNode.queuedShares(strategies[i]) - queuedSharesBefore[i],
+                tokenStakingNode.postSlashingUpgradeQueuedShares(strategies[i]) - queuedSharesBefore[i],
                 shares[i],
                 "Queued shares should be equal to shares"
             );
@@ -120,7 +120,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(
-                tokenStakingNode.queuedShares(strategies[i]),
+                tokenStakingNode.postSlashingUpgradeQueuedShares(strategies[i]),
                 queuedSharesBefore[i],
                 "Queued shares should be reinvested after completion of withdrawals"
             );
