@@ -1816,8 +1816,10 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
             strategies: strategies
         });
     
-        vm.prank(avs);
+        vm.startPrank(avs);
         allocationManager.createOperatorSets(avs, createSetParams);
+        allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
+        vm.stopPrank();
 
         uint32 allocationConfigurationDelay = AllocationManagerStorage(address(allocationManager)).ALLOCATION_CONFIGURATION_DELAY();
 

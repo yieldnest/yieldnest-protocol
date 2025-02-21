@@ -89,7 +89,7 @@ interface IStakingNode {
 
     function initializeV2(uint256 initialUnverifiedStakedETH) external;
     function initializeV3() external;
-    // function initializeV4() external;
+    function initializeV4() external;
 
     function isSynchronized() external view returns (bool);
 

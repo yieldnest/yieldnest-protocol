@@ -92,7 +92,9 @@ contract Base is Test, Utils {
             stakingNodesManager.nodes(i).syncQueuedShares();
             vm.stopPrank();
         }
-        stakingNodesManager.updateTotalETHStaked();
+        upgradeStakingNodesManagerAndStakingNode();
+        upgradeWithdrawalsProcessor();
+        // stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts() internal {
@@ -130,21 +132,10 @@ contract Base is Test, Utils {
             vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
-
-        upgradeStakingNodesManagerAndStakingNode();
-        upgradeWithdrawalsProcessor();
     }
 
-    function upgradeStakingNodesManagerAndStakingNode() internal {
+    function upgradeStakingNodesManagerAndStakingNode() internal virtual {
 
-        
-        // Upgrade StakingNode implementation
-        address newStakingNodeImpl = address(new StakingNode());
-
-
-        // Register new implementation
-        vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
         // Upgrade StakingNodesManager
         bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
@@ -163,7 +154,13 @@ contract Base is Test, Utils {
 
         assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");
 
+        // Upgrade StakingNode implementation
+        address newStakingNodeImpl = address(new StakingNode());
 
+
+        // Register new implementation
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
 
         // assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");

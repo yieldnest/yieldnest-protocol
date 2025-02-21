@@ -192,13 +192,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
     function initializeV3() external onlyStakingNodesManager reinitializer(3) {
         delegatedTo = stakingNodesManager.delegationManager().delegatedTo(address(this));
-        legacyQueuedSharesAmount = queuedSharesAmount;
     }
     
-    // TODO: commented for holesky deployment. Uncomment for mainnet deployment.
-    // function initializeV4() external onlyStakingNodesManager reinitializer(4) {
-    //     legacyQueuedSharesAmount = queuedSharesAmount;
-    // }
+    function initializeV4() external onlyStakingNodesManager reinitializer(4) {
+        legacyQueuedSharesAmount = queuedSharesAmount;
+        queuedSharesAmount = 0;
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EIGENPOD CREATION   ------------------------------
