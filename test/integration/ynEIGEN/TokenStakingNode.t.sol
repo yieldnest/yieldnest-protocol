@@ -1378,6 +1378,10 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         // Create AVS
         avs = address(new MockAVSRegistrar());
 
+        // Update metadata URI
+        vm.prank(avs);
+        eigenLayer.allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
+
         wstETHStrategy = eigenStrategyManager.strategies(wstETH);
 
         // Create operator set
