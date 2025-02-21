@@ -338,16 +338,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     }
 
     /**
-     * @notice Struct containing strategy and shares information
-     * @param strategy The strategy contract address
-     * @param shares The number of shares
-     */
-    struct StrategyShares {
-        IStrategy strategy;
-        uint256 shares;
-    }
-
-    /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
      * @param withdrawals Array of withdrawals to complete
      */
