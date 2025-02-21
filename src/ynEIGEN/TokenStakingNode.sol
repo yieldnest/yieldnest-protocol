@@ -150,7 +150,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         for (uint256 i = 0; i < assets.length; i++) {
             IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
+            // Store the value of the queued shares as legacy.
             legacyQueuedShares[strategy] = queuedShares[strategy];
+            // Resets the queued shares to 0 as they will only be used to track new queued withdrawals.
+            delete queuedShares[strategy];
         }
     }
 
@@ -192,8 +195,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //-------------------------------- EIGENLAYER WITHDRAWALS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Returns the queued shares and withdrawn balance for a specific strategy and asset.
+     * @dev The queued shares are the sum of the legacy queued shares and the post slashing queued shares.
+     */
     function getQueuedSharesAndWithdrawn(IStrategy _strategy, IERC20 _asset) external view returns (uint256, uint256) {
-        return (queuedShares[_strategy], withdrawn[_asset]);
+        return (legacyQueuedShares[_strategy] + queuedShares[_strategy], withdrawn[_asset]);
     }
 
     /**
@@ -473,7 +480,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IStrategy[] memory uniqueStrategies = new IStrategy[](withdrawals.length);
         uint256 uniqueStrategiesLength = 0;
 
-        // Reset queued shares to base values for each unique strategy
+        // Reset queued shares to 0 for each unique strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
             IStrategy strategy = withdrawals[i].strategies[0];
 
@@ -492,9 +499,9 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
                 continue;
             }
 
-            // Track the strategy as already processed and reset its queued shares to the base value.
+            // Track the strategy as already processed and reset its queuedShares value back to zero.
             uniqueStrategies[uniqueStrategiesLength++] = strategy; 
-            queuedShares[strategy] = legacyQueuedShares[strategy];
+            delete queuedShares[strategy];
         }
 
         // Stores unique operator-strategy pairs to avoid duplicate maxMagnitude calls
@@ -661,13 +668,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     ) internal {
         bytes32 withdrawalRoot = _delegationManager.calculateWithdrawalRoot(_withdrawal);
 
-        // If the withdrawal was queued before the slashing upgrade, it is considered legacy.
-        // NOTE: There is a particular case in which if the operator undelegates itself from the staker, automatically queueing withdrawals,
-        // If the node is not synchronized, this might not catch it correctly as it will be marked as legacy.
+        // If the withdrawal was queued before the upgrade, it is considered legacy.
         if (!queuedAfterSlashingUpgrade[withdrawalRoot]) {
-            // Queued shares is decreased by the scaled shares which for legacy withdrawals is the same as the withdrawable shares.
-            queuedShares[_strategy] -= _withdrawal.scaledShares[0];
-            // Legacy queued shares are decreased by the scaled shares for accounting when calling synchronize.
             legacyQueuedShares[_strategy] -= _withdrawal.scaledShares[0];
 
             return;
