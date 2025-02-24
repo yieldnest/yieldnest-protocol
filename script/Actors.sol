@@ -15,6 +15,7 @@ contract ActorAddresses {
         address FEE_RECEIVER;
         address ORACLE_ADMIN;
         address STAKING_NODES_DELEGATOR;
+        address TOKEN_STAKING_NODES_DELEGATOR;
         address UNPAUSE_ADMIN;
         address ASSET_MANAGER;
         address EIGEN_STRATEGY_ADMIN;
@@ -88,6 +89,7 @@ contract ActorAddresses {
                     FEE_RECEIVER: holeskyWallets.YNSecurityCouncil,
                     ORACLE_ADMIN: holeskyWallets.YNSecurityCouncil,
                     STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
+                    TOKEN_STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
                     UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
                     ASSET_MANAGER: holeskyWallets.YNSecurityCouncil,
                     EIGEN_STRATEGY_ADMIN: holeskyWallets.YNSecurityCouncil
@@ -140,6 +142,7 @@ contract ActorAddresses {
                 FEE_RECEIVER: mainnetWallets.YNSecurityCouncil,
                 ORACLE_ADMIN: mainnetWallets.YNSecurityCouncil,
                 STAKING_NODES_DELEGATOR: mainnetWallets.YNDelegator,
+                TOKEN_STAKING_NODES_DELEGATOR: mainnetWallets.YNDelegator,
                 UNPAUSE_ADMIN: mainnetWallets.YNSecurityCouncil,
                 ASSET_MANAGER: mainnetWallets.YNSecurityCouncil,
                 EIGEN_STRATEGY_ADMIN: mainnetWallets.YNSecurityCouncil

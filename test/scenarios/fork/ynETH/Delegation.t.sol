@@ -27,7 +27,7 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
         address operator = delegationManager.delegatedTo(address(stakingNode));
 
         // Get initial pod shares and block number
-        int256 signedPodSharesBefore = eigenPodManager.podOwnerShares(address(stakingNode));
+        int256 signedPodSharesBefore = eigenPodManager.podOwnerDepositShares(address(stakingNode));
 
         // TODO: ensure
         uint256 podSharesBefore = signedPodSharesBefore < 0 ? 0 : uint256(signedPodSharesBefore);
@@ -99,7 +99,7 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
         address delegator = address(stakingNode);
 
         // Get initial pod shares and block number
-        int256 signedPodSharesBefore = eigenPodManager.podOwnerShares(delegator);
+        int256 signedPodSharesBefore = eigenPodManager.podOwnerDepositShares(delegator);
         uint256 podSharesBefore = signedPodSharesBefore < 0 ? 0 : uint256(signedPodSharesBefore);
         uint32 blockNumberBefore = uint32(block.number);
 

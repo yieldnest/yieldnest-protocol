@@ -35,7 +35,7 @@ contract ynLSDeDepositAdapterTest is ynLSDeScenarioBaseTest {
         assertEq(IERC20(yneigen).balanceOf(user), _ynOut, "testDepositSTETH");
     }
 
-    function testDepositOETH(uint256 _amount) public {
+    function testDepositOETH(uint256 _amount) public skipOnHolesky {
         vm.assume(_amount > 10_000 && _amount <= 10 ether);
 
         testAssetUtils.get_OETH(user, _amount + 10);

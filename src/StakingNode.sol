@@ -5,7 +5,7 @@ import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
 import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
@@ -16,6 +16,8 @@ import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+
+import {IERC20 as IERC20V4} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
 import {DEFAULT_VALIDATOR_STAKE} from "src/Constants.sol";
 
 interface StakingNodeEvents {
@@ -287,7 +289,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         address operator = delegationManager.delegatedTo(address(this));
 
         // Get current shares before undelegating
-        int256 shares = stakingNodesManager.eigenPodManager().podOwnerShares(address(this));
+        int256 shares = stakingNodesManager.eigenPodManager().podOwnerDepositShares(address(this));
         withdrawalRoots = delegationManager.undelegate(address(this));
 
         if (shares > 0) {
@@ -328,7 +330,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     ) external onlyStakingNodesWithdrawer onlyWhenSynchronized returns (bytes32[] memory fullWithdrawalRoots) {
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
-        IDelegationManager.QueuedWithdrawalParams[] memory params = new IDelegationManager.QueuedWithdrawalParams[](1);
+        IDelegationManagerTypes.QueuedWithdrawalParams[] memory params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
         IStrategy[] memory strategies = new IStrategy[](1);
 
         // Assumption: 1 Share of beaconChainETHStrategy = 1 ETH.
@@ -337,10 +339,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         strategies[0] = beaconChainETHStrategy;
         shares[0] = sharesAmount;
         // The delegationManager requires the withdrawer == msg.sender (the StakingNode in this case).
-        params[0] = IDelegationManager.QueuedWithdrawalParams({
+        params[0] = IDelegationManagerTypes.QueuedWithdrawalParams({
             strategies: strategies,
-            shares: shares,
-            withdrawer: address(this)
+            depositShares: shares,
+            __deprecated_withdrawer: address(this)
         });
 
         fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
@@ -370,9 +372,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 totalWithdrawalAmount = 0;
 
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
-        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
                 revert InvalidWithdrawal();
             }
             // Set receiveAsTokens to true to receive ETH when completeQueuedWithdrawals runs.
@@ -384,9 +386,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
             // tokens array must match length of the withdrawals[i].strategies
             // but does not need actual values in the case of the beaconChainETHStrategy
-            tokens[i] = new IERC20[](1);
+            tokens[i] = new IERC20V4[](1);
 
-            totalWithdrawalAmount += withdrawals[i].shares[0];
+            totalWithdrawalAmount += withdrawals[i].scaledShares[0];
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
@@ -399,7 +401,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 2. For beaconChainETHStrategy, the DelegationManager calls _withdrawSharesAsTokens interacts with the EigenPodManager.withdrawSharesAsTokens
         // 3. Finally, the EigenPodManager calls withdrawRestakedBeaconChainETH on the EigenPod of this StakingNode to finalize the withdrawal.
         // 4. the EigenPod decrements withdrawableRestakedExecutionLayerGwei and send the ETH to address(this)
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, receiveAsTokens);
 
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
@@ -427,23 +429,28 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 totalWithdrawalAmount = 0;
 
         // Create empty tokens array since we're not receiving as tokens
-        IERC20[][] memory tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory receiveAsTokens = new bool[](withdrawals.length);
 
         // Calculate total shares being withdrawn
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1 || withdrawals[i].strategies[0] != beaconChainETHStrategy) {
                 revert InvalidWithdrawal();
             }
-            tokens[i] = new IERC20[](1);
+            tokens[i] = new IERC20V4[](1);
             receiveAsTokens[i] = false;
-            totalWithdrawalAmount += withdrawals[i].shares[0];
+            totalWithdrawalAmount += withdrawals[i].scaledShares[0];
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(stakingNodesManager.delegationManager()));
 
         // Complete withdrawals with receiveAsTokens = false
-        delegationManager.completeQueuedWithdrawals(withdrawals, tokens, middlewareTimesIndexes, receiveAsTokens);
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals, 
+            tokens, 
+            // middlewareTimesIndexes, 
+            receiveAsTokens
+        );
 
         // Decrease queued shares amount
         queuedSharesAmount -= totalWithdrawalAmount;
@@ -481,14 +488,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         // We can assume that the Withdrawal queued by the undelegate() call made by the operator
         // is the LAST queued withdrawal since to call queueWithdrawals you require isSynchronized() == true.
-        IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+        IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
             staker: thisNode,
             delegatedTo: delegatedTo,
             withdrawer: thisNode,
             nonce: delegationManager.cumulativeWithdrawalsQueued(thisNode) - 1, // must be the last withdrawal
             startBlock: undelegateBlockNumber,
             strategies: strategies,
-            shares: shares
+            scaledShares: shares
         });
 
         // IMPORTANT: withdrawalRoot is not spoofable because nonce is a strictly increasing value that
@@ -551,9 +558,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
         // 2. unverifiedStakedETH: ETH staked with validators but not yet verified
         // 3. queuedSharesAmount: Shares queued for withdrawal (1 share = 1 ETH)
-        // 4. podOwnerShares: Active shares in Eigenlayer, representing staked ETH
+        // 4. podOwnerDepositShares: Active shares in Eigenlayer, representing staked ETH
         int256 totalETHBalance = int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount)
-            + eigenPodManager.podOwnerShares(address(this));
+            + eigenPodManager.podOwnerDepositShares(address(this));
 
         if (totalETHBalance < 0) return 0;
 

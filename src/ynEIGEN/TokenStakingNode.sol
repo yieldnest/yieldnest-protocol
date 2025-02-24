@@ -6,11 +6,12 @@ import {IBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/IBeacon
 import {ReentrancyGuardUpgradeable} from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC20 as IERC20V4} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ArrayLib} from "src/lib/ArrayLib.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
@@ -114,7 +115,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
             asset.forceApprove(address(strategyManager), amount);
 
-            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), asset, amount);
+            uint256 eigenShares = strategyManager.depositIntoStrategy(IStrategy(strategy), IERC20V4(address(asset)), amount);
             emit DepositToEigenlayer(asset, strategy, amount, eigenShares);
         }
     }
@@ -143,11 +144,11 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         _strategiesArray[0] = _strategy;
         uint256[] memory _sharesArray = new uint256[](1);
         _sharesArray[0] = _shares;
-        IDelegationManager.QueuedWithdrawalParams[] memory _params = new IDelegationManager.QueuedWithdrawalParams[](1);
-        _params[0] = IDelegationManager.QueuedWithdrawalParams({
+        IDelegationManagerTypes.QueuedWithdrawalParams[] memory _params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
+        _params[0] = IDelegationManagerTypes.QueuedWithdrawalParams({
             strategies: _strategiesArray,
-            shares: _sharesArray,
-            withdrawer: address(this)
+            depositShares: _sharesArray,
+            __deprecated_withdrawer: address(this)
         });
 
         queuedShares[_strategy] += _shares;
@@ -174,23 +175,23 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
-        IERC20[][] memory _tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         address[] memory _dupTokens = new address[](withdrawals.length);
 
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
             IStrategy _strategy = withdrawals[i].strategies[0];
-            queuedShares[_strategy] -= withdrawals[i].shares[0];
+            queuedShares[_strategy] -= withdrawals[i].scaledShares[0];
 
             _strategies[i] = _strategy;
-            _tokens[i] = new IERC20[](1);
+            _tokens[i] = new IERC20V4[](1);
             _tokens[i][0] = _strategy.underlyingToken();
-            IERC20 _token = _tokens[i][0];
+            IERC20V4 _token = _tokens[i][0];
             _receiveAsTokens[i] = true;
             _dupTokens[i] = address(_token);
         }
@@ -202,7 +203,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _balancesBefore[i] = IERC20(_dedupTokens[i]).balanceOf(address(this));
         }
 
-        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens); 
+        _delegationManager.completeQueuedWithdrawals(
+            withdrawals, 
+            _tokens, 
+            // middlewareTimesIndexes, 
+            _receiveAsTokens
+        ); 
 
         for (uint256 i = 0; i < _dedupTokens.length; i++) {
             IERC20 _token = IERC20(_dedupTokens[i]);
@@ -261,21 +267,26 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-        IERC20[][] memory _tokens = new IERC20[][](withdrawals.length);
+        IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].shares.length != 1 || withdrawals[i].strategies.length != 1) {
+            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
-            queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].shares[0];
-            _tokens[i] = new IERC20[](1);
+            queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].scaledShares[0];
+            _tokens[i] = new IERC20V4[](1);
             _tokens[i][0] = withdrawals[i].strategies[0].underlyingToken();
             _receiveAsTokens[i] = false;
         }
 
         // Complete withdrawals with receiveAsTokens = false
-        delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, middlewareTimesIndexes, _receiveAsTokens);
+        delegationManager.completeQueuedWithdrawals(
+            withdrawals, 
+            _tokens, 
+            // middlewareTimesIndexes, 
+            _receiveAsTokens
+        );
 
         emit CompletedManyQueuedWithdrawals(withdrawals);
     }
@@ -327,13 +338,15 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IDelegationManagerExtended delegationManager =
             IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
 
-        (IStrategy[] memory strategies, uint256[] memory shares) = delegationManager.getDelegatableShares(address(this));
+        (IStrategy[] memory strategies,) = delegationManager.getDepositedShares(address(this));
+
+        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(this), strategies);
 
         withdrawalRoots = delegationManager.undelegate(address(this));
 
         // Update queued shares for each strategy
         for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += shares[i];
+            queuedShares[strategies[i]] += withdrawableShares[i];
         }
 
         delegatedTo = address(0);
@@ -411,14 +424,14 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             singleStrategy[0] = strategies[i];
             singleShare[0] = queuedSharesAmounts[i];
 
-            IDelegationManager.Withdrawal memory withdrawal = IDelegationManager.Withdrawal({
+            IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
                 staker: thisNode,
                 delegatedTo: _delegatedTo,
                 withdrawer: thisNode,
                 nonce: withdrawalsNonceFromOperatorUndelegate + i,
                 startBlock: undelegateBlockNumber,
                 strategies: singleStrategy,
-                shares: singleShare
+                scaledShares: singleShare
             });
 
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);

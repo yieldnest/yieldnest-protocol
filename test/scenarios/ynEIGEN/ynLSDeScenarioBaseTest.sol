@@ -27,7 +27,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-
 import {Test} from "forge-std/Test.sol";
 
 contract ynLSDeScenarioBaseTest is Test, Utils {
@@ -35,6 +34,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     // Utils
     ContractAddresses public contractAddresses;
     ContractAddresses.ChainAddresses public chainAddresses;
+    ContractAddresses.ChainIds chainIds;
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
 
@@ -62,6 +62,17 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     IDelegationManager public delegationManager;
     IStrategyManager public strategyManager;
 
+
+    modifier skipOnHolesky() {
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
+
+        _;
+    }
+    
+    function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
+    }
+
     function setUp() public virtual {
         assignContracts();
         upgradeTokenStakingNodesManagerAndTokenStakingNode();
@@ -72,7 +83,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(chainId);
-
+        chainIds = contractAddresses.getChainIds();
+        
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
 
@@ -95,7 +107,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         redemptionAssetsVault = RedemptionAssetsVault(chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS);
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
-
     }
 
     function updateTokenStakingNodesBalancesForAllAssets() internal {

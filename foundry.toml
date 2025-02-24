@@ -13,7 +13,7 @@ fs_permissions = [
 optimizer = true
 optimizer-runs = 200
 evm_version = "cancun"
-solc_version = "0.8.24"
+solc_version = "0.8.27"
 prompt_timeout = 120
 
 ignored_error_codes = [5159, 2018, 5574, 3860]

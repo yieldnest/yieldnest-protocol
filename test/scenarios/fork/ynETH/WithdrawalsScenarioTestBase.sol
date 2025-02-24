@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 
@@ -24,14 +24,14 @@ contract WithdrawalsScenarioTestBase is Base {
                 IStrategy[] memory _strategies = new IStrategy[](1);
                 _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
                 address _stakingNode = address(stakingNodesManager.nodes(queuedWithdrawals[i].nodeId));
-                _withdrawals[i] = IDelegationManager.Withdrawal({
+                _withdrawals[i] = IDelegationManagerTypes.Withdrawal({
                     staker: _stakingNode,
                     delegatedTo: operators[i],
                     withdrawer: _stakingNode,
                     nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
                     startBlock: uint32(block.number),
                     strategies: _strategies,
-                    shares: _shares
+                    scaledShares: _shares
                 });   
             }
         }
@@ -57,7 +57,7 @@ contract WithdrawalsScenarioTestBase is Base {
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete queued withdrawals
@@ -87,7 +87,7 @@ contract WithdrawalsScenarioTestBase is Base {
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete queued withdrawals
@@ -122,7 +122,7 @@ contract WithdrawalsScenarioTestBase is Base {
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
 
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
 

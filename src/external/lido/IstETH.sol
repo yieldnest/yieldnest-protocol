@@ -5,4 +5,5 @@ import {IERC20} from  "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.s
 
 interface IstETH is IERC20 {
     function getPooledEthByShares(uint256 _shares) external view returns (uint256);
+    function getCurrentStakeLimit() external view returns (uint256);
 }
