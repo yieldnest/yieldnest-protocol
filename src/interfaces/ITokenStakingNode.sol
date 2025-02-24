@@ -63,7 +63,7 @@ interface ITokenStakingNode {
     function maxMagnitudeByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint64);
     function withdrawableSharesByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint256);
     function legacyQueuedShares(IStrategy _strategy) external view returns (uint256);
-    function queuedAfterSlashingUpgrade(IStrategy _strategy) external view returns (uint256);
+    function queuedAfterSlashingUpgrade(bytes32 _withdrawalRoot) external view returns (bool);
 
     /**
      * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.
