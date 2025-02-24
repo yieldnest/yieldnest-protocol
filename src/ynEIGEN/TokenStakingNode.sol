@@ -171,7 +171,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IERC20[] calldata assets,
         uint256[] calldata amounts,
         IStrategy[] calldata strategies
-    ) external nonReentrant onlyYieldNestStrategyManager onlyWhenOperatorSynchronized {
+    ) external nonReentrant onlyYieldNestStrategyManager onlyWhenSynchronized {
         uint256 assetsLength = assets.length;
         if (assetsLength != amounts.length || assetsLength != strategies.length) {
             revert ArrayLengthMismatch();
@@ -212,7 +212,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function queueWithdrawals(IStrategy _strategy, uint256 _depositShares)
         external
         onlyTokenStakingNodesWithdrawer
-        onlyWhenOperatorSynchronized
+        onlyWhenSynchronized
         returns (bytes32[] memory _fullWithdrawalRoots)
     {
         IStrategy[] memory _strategiesArray = new IStrategy[](1);
@@ -228,7 +228,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
 
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
 
-        // `onlyWhenOperatorSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
+        // `onlyWhenSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
         address _operator = delegatedTo;
         uint256 _withdrawableShares;
         bytes32 _withdrawalRoot;
@@ -271,7 +271,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
         bool updateTokenStakingNodesBalances
-    ) public onlyTokenStakingNodesWithdrawer onlyWhenOperatorSynchronized {
+    ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
@@ -331,7 +331,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal calldata withdrawal,
         bool updateTokenStakingNodesBalances
-    ) public onlyTokenStakingNodesWithdrawer onlyWhenOperatorSynchronized {
+    ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
         _withdrawals[0] = withdrawal;
         completeQueuedWithdrawals(_withdrawals, updateTokenStakingNodesBalances);
@@ -343,7 +343,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      */
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals
-    ) external onlyDelegator onlyWhenOperatorSynchronized {
+    ) external onlyDelegator onlyWhenSynchronized {
         IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
@@ -397,7 +397,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         public
         virtual
         onlyDelegator
-        onlyWhenOperatorSynchronized
+        onlyWhenSynchronized
     {
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
         delegationManager.delegateTo(operator, signature, approverSalt);
@@ -414,7 +414,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         public
         override
         onlyDelegator
-        onlyWhenOperatorSynchronized
+        onlyWhenSynchronized
         returns (bytes32[] memory withdrawalRoots)
     {
         IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
@@ -447,7 +447,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @dev Compares the locally stored delegatedTo address with the actual delegation in DelegationManager.
      * @return True if the delegation state is synced, false otherwise.
      */
-    function isOperatorSynchronized() public view returns (bool) {
+    function isSynchronized() public view returns (bool) {
         IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
         return delegatedTo == delegationManager.delegatedTo(address(this));
     }
@@ -632,8 +632,8 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     }
 
     /// @notice Modifier to ensure the token staking node's delegatedTo is synchronized with the DelegationManager.
-    modifier onlyWhenOperatorSynchronized() {
-        if (!isOperatorSynchronized()) {
+    modifier onlyWhenSynchronized() {
+        if (!isSynchronized()) {
             revert OperatorNotSynchronized();
         }
         _;

@@ -759,7 +759,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             "Delegation not cleared in DelegationManager"
         );
 
-        assertEq(tokenStakingNodeInstance.isOperatorSynchronized(), true, "TokenStakingNode should be synchronized");
+        assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
@@ -853,7 +853,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             "TokenStakingNode delegatedTo not set to operator1 after undelegation even if state is not synchronized"
         );
 
-        assertEq(tokenStakingNodeInstance.isOperatorSynchronized(), false, "TokenStakingNode should not be synchronized");
+        assertEq(tokenStakingNodeInstance.isSynchronized(), false, "TokenStakingNode should not be synchronized");
 
         IStrategy[] memory strategies = new IStrategy[](1);
         uint256[] memory initialShares = new uint256[](1);
@@ -972,7 +972,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.synchronize();
 
-        assertEq(tokenStakingNodeInstance.isOperatorSynchronized(), true, "TokenStakingNode should be synchronized");
+        assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
@@ -1101,7 +1101,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.synchronize();
 
-        assertEq(tokenStakingNodeInstance.isOperatorSynchronized(), true, "TokenStakingNode should be synchronized");
+        assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator2, signature, approverSalt);
@@ -1232,7 +1232,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.synchronize();
 
-        assertEq(tokenStakingNodeInstance.isOperatorSynchronized(), true, "TokenStakingNode should be synchronized");
+        assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
         // Verify queued shares increased by the correct amount
         for (uint256 i = 0; i < strategies.length; i++) {
