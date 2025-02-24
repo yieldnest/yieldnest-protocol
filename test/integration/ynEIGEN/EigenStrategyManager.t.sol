@@ -6,13 +6,11 @@ import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
-import "forge-std/console.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import { EigenStrategyManager } from "src/ynEIGEN/EigenStrategyManager.sol";
+import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSRegistrar.sol";
 import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
@@ -25,14 +23,126 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
     TestAssetUtils testAssetUtils;
     address[10] public depositors;
     address private avs;
+    IStrategy private wstETHStrategy;
+    ITokenStakingNode private tokenStakingNode;
+
+
 
     constructor() {
         testAssetUtils = new TestAssetUtils();
         for (uint i = 0; i < 10; i++) {
             depositors[i] = address(uint160(uint256(keccak256(abi.encodePacked("depositor", i)))));
         }
-        
+    }
+    
+    
+    function _waitForAllocationDelay() private {
+        AllocationManagerStorage allocationManager = AllocationManagerStorage(address(eigenLayer.allocationManager));
+        vm.roll(block.number + allocationManager.ALLOCATION_CONFIGURATION_DELAY() + 1);
+    }
+    
+    function _slash(uint256 _wadsToSlash) private {
+        IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+            operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+            operatorSetId: 1,
+            strategies: new IStrategy[](1),
+            wadsToSlash: new uint256[](1),
+            description: "test"
+        });
+        slashingParams.strategies[0] = wstETHStrategy;
+        slashingParams.wadsToSlash[0] = _wadsToSlash;
+        vm.prank(avs);
+        eigenLayer.allocationManager.slashOperator(avs, slashingParams);
+    }
+    
+    
+    function _allocate() private {
+        _allocate(1 ether);
+    }
+
+    
+    function _allocate(uint64 _newMagnitude) private {
+        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+            operatorSet: OperatorSet({
+                avs: avs,
+                id: 1
+            }),
+            strategies: new IStrategy[](1),
+            newMagnitudes: new uint64[](1)
+        });
+        allocateParams[0].strategies[0] = wstETHStrategy;
+        allocateParams[0].newMagnitudes[0] = _newMagnitude;
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
+    }
+    
+    
+    function setUp() public override {
+        super.setUp();
+
+        // Create token staking node
+        // TODO: Use TOKEN_STAKING_NODE_CREATOR_ROLE instead of STAKING_NODE_CREATOR
+        vm.prank(actors.ops.STAKING_NODE_CREATOR);
+        tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
+
+        // Deposit assets to ynEigen
+        uint256 stakeAmount = 100 ether;
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+        // Stake assets into the token staking node
+        uint256 nodeId = tokenStakingNode.nodeId();
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = IERC20(address(wstETH));
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = stakeAmount;
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        // Register operator
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
+        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, approverSalt);
+
+        // Create AVS
         avs = address(new MockAVSRegistrar());
+
+        // Update metadata URI
+        vm.prank(avs);
+        eigenLayer.allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
+
+        wstETHStrategy = eigenStrategyManager.strategies(wstETH);
+
+        // Create operator set
+        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
+        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
+            operatorSetId: 1, 
+            strategies: new IStrategy[](1) 
+        });
+        createSetParams[0].strategies[0] = wstETHStrategy;
+        vm.prank(avs);
+        eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
+
+        // Register for operator set
+        IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
+            avs: avs,
+            operatorSetIds: new uint32[](1),
+            data: new bytes(0)
+        });
+        registerParams.operatorSetIds[0] = 1;
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.allocationManager.registerForOperatorSets(actors.ops.TOKEN_STAKING_NODE_OPERATOR, registerParams);
+
+        _waitForAllocationDelay();
+
+        // Make all delegated shares slashable
+        _allocate();
     }
 
     function testStakeAssetsToNodeSuccessFuzz(
@@ -195,172 +305,22 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
     }
     
     
-    
-    function _slash(uint256 _wadsToSlash, IERC20 _asset) private {
-        IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
-            operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
-            operatorSetId: 1,
-            strategies: new IStrategy[](1),
-            wadsToSlash: new uint256[](1),
-            description: "test"
-        });
-        slashingParams.strategies[0] = eigenStrategyManager.strategies(_asset);
-        slashingParams.wadsToSlash[0] = _wadsToSlash;
-        
-        vm.prank(avs);
-        eigenLayer.allocationManager.slashOperator(avs, slashingParams);
-    }
-    
-    
-    function _allocate(uint64 _newMagnitude) private {
-        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
-        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
-            operatorSet: OperatorSet({
-                avs: avs,
-                id: 1
-            }),
-            strategies: new IStrategy[](1),
-            newMagnitudes: new uint64[](1)
-        });
-        allocateParams[0].strategies[0] =  eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-        allocateParams[0].newMagnitudes[0] = _newMagnitude;
-        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
-        eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
-    }
-    
-    
     function testStakeNodesAndSlash() public {
-        uint256 wstethAmount = 1000 ether;
-
-        // TODO extract to function
-        address[] memory operators = new address[](1);
-            
-        address operator1 = actors.ops.TOKEN_STAKING_NODE_OPERATOR;
-        // address operator2 = address(0x8888);
-        operators[0] = operator1;
-        //operators[1] = operator2;
-
-        for (uint256 i = 0; i < operators.length; i++) {
-            vm.prank(operators[i]);
-            eigenLayer.delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
-            vm.stopPrank();
-        }
-        
-        IStrategy wstETHStrategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-
-         // Create operator set
-        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
-        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
-            operatorSetId: 1, 
-            strategies: new IStrategy[](1) 
-        });
-        createSetParams[0].strategies[0] = wstETHStrategy;
-        
-        vm.startPrank(avs);
-         // Update metadata URI
-        eigenLayer.allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
-        eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
-        vm.stopPrank();        
-        
-        {
-            // Register for operator set
-            IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
-                avs: avs,
-                operatorSetIds: new uint32[](1),
-                data: new bytes(0)
-            });
-            registerParams.operatorSetIds[0] = 1;
-            
-            AllocationManagerStorage allocationManager = AllocationManagerStorage(address(eigenLayer.allocationManager));
-            vm.roll(block.number + allocationManager.ALLOCATION_CONFIGURATION_DELAY() + 1);
-            _allocate(1 ether);
-            
-            vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
-            eigenLayer.allocationManager.registerForOperatorSets(actors.ops.TOKEN_STAKING_NODE_OPERATOR, registerParams);
-            vm.stopPrank();
-        }
-
-        
-        vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
-        ITokenStakingNode node1 = tokenStakingNodesManager.createTokenStakingNode();
-        uint256 nodeId1 = node1.nodeId();
-
-        // ITokenStakingNode node2 = tokenStakingNodesManager.createTokenStakingNode();
-        // uint256 nodeId2 = node2.nodeId();
-        vm.stopPrank();
-
-        {
-            ISignatureUtils.SignatureWithExpiry memory signature;
-            bytes32 approverSalt;
-            vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            node1.delegate(operator1, signature, approverSalt);
-            // node2.delegate(operator2, signature, approverSalt);
-            vm.stopPrank();
-        }
-        
-        {
-            EigenStrategyManager.NodeAllocation[] memory allocations = new EigenStrategyManager.NodeAllocation[](2);
-            IERC20[] memory assets1 = new IERC20[](1);
-            uint256[] memory amounts1 = new uint256[](1);
-            assets1[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-            amounts1[0] = wstethAmount;
-
-            testAssetUtils.depositAsset(ynEigenToken, address(assets1[0]), amounts1[0], depositors[0]);
-            // testAssetUtils.depositAsset(ynEigenToken, address(assets1[0]), amounts1[0], depositors[1]);
-
-            allocations[0] = EigenStrategyManager.NodeAllocation(0, assets1, amounts1);
-            // allocations[1] = EigenStrategyManager.NodeAllocation(1, assets1, amounts1);
-        
-
-
-            vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
-            eigenStrategyManager.stakeAssetsToNodes(allocations);
-            vm.stopPrank();
-        }
-
-        uint256 totalAssetsBefore = ynEigenToken.totalAssets();
-        
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
 
         {
-            _slash(0.5 ether, IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-           //assertEq(compareWithThreshold(totalAssetsBefore, totalAssetsAfter, 100), true, "Total assets before and after staking to multiple nodes do not match within a threshold of 100");
+            // slash 50%
+            _slash(0.5 ether);
             
+            // update balances after slashing
             ITokenStakingNode[] memory nodes = new ITokenStakingNode[](1);
-            nodes[0] = node1;
+            nodes[0] = tokenStakingNode;
             eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
-            uint256 totalAssetsAfter = ynEigenToken.totalAssets();
-            (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
-
-            // ordenar test
-            // sync actualiza strategiesBalances, stake y withdraw (queued slashedos)
             
-            // assertApproxEqRel
-            assertApproxEqRel(stakeBefore/2, stakeAfter, 1 wei, "pipip");
-
+            (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+            
+            assertApproxEqRel(stakeBefore/2, stakeAfter, 1 wei, "Staked assets before and after slashing do not match");
         }
-
-        // {
-        //     uint256 userUnderlyingViewNode0 = eigenStrategyManager.strategies(assets1[0]).userUnderlyingView(address(tokenStakingNodesManager.nodes(0)));
-        //     IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
-        //     uint256 wstETHAmountNode0 = wstETH.getWstETHByStETH(userUnderlyingViewNode0);
-        //     assertEq(
-        //         compareWithThreshold(wstETHAmountNode0, wstethAmount, 3), true,
-        //         string.concat("Unwrapped stETH amount does not match expected for node 0. Expected: ", vm.toString(wstethAmount), ", Got: ", vm.toString(wstETHAmountNode0))
-        //     );
-        // }
-
-        // {
-        //     uint256 userUnderlyingViewNode1 = eigenStrategyManager.strategies(assets1[0]).userUnderlyingView(address(tokenStakingNodesManager.nodes(1)));
-        //     IwstETH wstETH = IwstETH(chainAddresses.lsd.WSTETH_ADDRESS);
-
-        //     uint256 wstETHAmountNode1 = wstETH.getWstETHByStETH(userUnderlyingViewNode1);
-        //     assertEq(
-        //         compareWithThreshold(wstETHAmountNode1, wstethAmount, 3), true,
-        //         string.concat("Unwrapped stETH amount does not match expected for node 0. Expected: ", vm.toString(wstethAmount), ", Got: ", vm.toString(wstETHAmountNode1))
-        //     );
-        // }
-
     }
 
     function testExpectedStrategiesForAssets() public {
