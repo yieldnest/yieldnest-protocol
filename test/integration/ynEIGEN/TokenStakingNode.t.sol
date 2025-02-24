@@ -23,6 +23,7 @@ import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSRegistrar.sol";
 import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+import {ERC1967Proxy} from "lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 interface ITestState {
 
@@ -1735,5 +1736,41 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
         assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Withdrawable shares should be 0");
         assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
+    }
+
+    function testInitializeV3AssignsQueuedSharesToLegacyQueuedShares() public {
+        IERC20[] memory assets = assetRegistry.getAssets();
+
+        assertGt(assets.length, 0, "There should be at least 1 asset");
+
+        ITokenStakingNode node = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
+
+        ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
+            tokenStakingNodesManager: tokenStakingNodesManager,
+            nodeId: 1337
+        });
+
+        node.initialize(init);
+
+        node.initializeV2();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
+
+            vm.store(
+                address(node),
+                keccak256(abi.encode(strategy, uint256(2))),
+                bytes32(100 ether * i)
+            );
+        }
+
+        node.initializeV3();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
+
+            assertEq(node.queuedShares(strategy), 0, "Queued shares should be 0");
+            assertEq(node.legacyQueuedShares(strategy), 100 ether * i, "Legacy queued shares should be equal to the initial amount");
+        }
     }
 }
