@@ -64,7 +64,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotTokenStakingNodesWithdrawer();
     error ArrayLengthMismatch();
     error AlreadySynchronized();
-    error OperatorNotSynchronized();
+    error NotSynchronized();
     error InvalidWithdrawal(uint256 index);
     error NotSyncedAfterSlashing(bytes32 withdrawalRoot, uint64 maxMagnitudeAtSync, uint64 maxMagnitudeNow);
     //--------------------------------------------------------------------------------------
@@ -634,7 +634,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /// @notice Modifier to ensure the token staking node's delegatedTo is synchronized with the DelegationManager.
     modifier onlyWhenSynchronized() {
         if (!isSynchronized()) {
-            revert OperatorNotSynchronized();
+            revert NotSynchronized();
         }
         _;
     }
