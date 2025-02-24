@@ -1337,6 +1337,7 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
     ITokenStakingNode private tokenStakingNode;
     address private avs;
     IStrategy private wstETHStrategy;
+    IERC20 private wstETH;
 
     event QueuedSharesSynced();
 
@@ -1352,15 +1353,16 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 
+        wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+
         // Deposit assets to ynEigen
         uint256 stakeAmount = 100 ether;
-        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
 
         // Stake assets into the token staking node
         uint256 nodeId = tokenStakingNode.nodeId();
         IERC20[] memory assets = new IERC20[](1);
-        assets[0] = IERC20(address(wstETH));
+        assets[0] = wstETH;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = stakeAmount;
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
@@ -1706,13 +1708,12 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         // Deposit assets to ynEigen
         uint256 stakeAmount = 100 ether;
-        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
 
         // Stake assets into the token staking node
         uint256 nodeId = tokenStakingNode.nodeId();
         IERC20[] memory assets = new IERC20[](1);
-        assets[0] = IERC20(address(wstETH));
+        assets[0] = wstETH;
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = stakeAmount;
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
@@ -1747,12 +1748,14 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
 
         ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
             tokenStakingNodesManager: tokenStakingNodesManager,
-            nodeId: 1337
+            nodeId: tokenStakingNodesManager.nodesLength()
         });
 
         node.initialize(init);
 
         node.initializeV2();
+
+        uint256 legacyQueuedShares = 100 ether;
 
         for (uint256 i = 0; i < assets.length; i++) {
             IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
@@ -1760,8 +1763,11 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
             vm.store(
                 address(node),
                 keccak256(abi.encode(strategy, uint256(2))),
-                bytes32(100 ether * i)
+                bytes32(legacyQueuedShares * i)
             );
+
+            assertEq(node.queuedShares(strategy), legacyQueuedShares * i, "Queued shares should be equal to the initial amount");
+            assertEq(node.legacyQueuedShares(strategy), 0, "Legacy queued shares should be 0");
         }
 
         node.initializeV3();
@@ -1770,7 +1776,189 @@ contract TokenStakingNodeSlashing is ynEigenIntegrationBaseTest {
             IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
 
             assertEq(node.queuedShares(strategy), 0, "Queued shares should be 0");
-            assertEq(node.legacyQueuedShares(strategy), 100 ether * i, "Legacy queued shares should be equal to the initial amount");
+            assertEq(node.legacyQueuedShares(strategy), legacyQueuedShares * i, "Legacy queued shares should be equal to the initial amount");
         }
+    }
+
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndLegacyQueuedShares() public {
+        ITokenStakingNode node = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
+
+        ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
+            tokenStakingNodesManager: tokenStakingNodesManager,
+            nodeId: tokenStakingNodesManager.nodesLength()
+        });
+
+        node.initialize(init);
+        node.initializeV2();
+
+        uint256 legacyQueuedShares = 100 ether;
+
+        vm.store(
+            address(node),
+            keccak256(abi.encode(wstETHStrategy, uint256(2))),
+            bytes32(legacyQueuedShares)
+        );
+
+        node.initializeV3();
+
+        assertEq(node.legacyQueuedShares(wstETHStrategy), legacyQueuedShares, "Legacy queued shares should be equal to the initial amount");
+
+        (uint256 queuedShares,) = node.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);
+
+        assertEq(queuedShares, node.legacyQueuedShares(wstETHStrategy), "Queued shares should be equal to the legacy queued shares");
+    }
+
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndLegacyQueuedShares_WithQueuedWithdrawals() public {
+        tokenStakingNode = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
+
+        ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
+            tokenStakingNodesManager: tokenStakingNodesManager,
+            nodeId: tokenStakingNodesManager.nodesLength()
+        });
+
+        tokenStakingNode.initialize(init);
+        tokenStakingNode.initializeV2();
+
+        uint256 legacyQueuedShares = 100 ether;
+
+        vm.store(
+            address(tokenStakingNode),
+            keccak256(abi.encode(wstETHStrategy, uint256(2))),
+            bytes32(legacyQueuedShares)
+        );
+
+        tokenStakingNode.initializeV3();
+
+        // Add the new node to the nodes array in the TokenStakingNodesManager.
+        {
+            uint256 currentNodesLength = tokenStakingNodesManager.nodesLength();
+            
+            // Increase the length of the nodes array.
+            vm.store(
+                address(tokenStakingNodesManager),
+                bytes32(uint256(4)),
+                bytes32(currentNodesLength + 1)
+            );
+
+            bytes32 nodesBaseSlot = keccak256(abi.encode(uint256(4)));
+
+            // Update the last element of the nodes array to point to the new node.
+            vm.store(
+                address(tokenStakingNodesManager),
+                bytes32(uint256(nodesBaseSlot) + currentNodesLength),
+                bytes32(uint256(uint160(address(tokenStakingNode))))
+            );
+        }
+
+        ITokenStakingNode retrievedNode = ITokenStakingNode(tokenStakingNodesManager.nodes(tokenStakingNodesManager.nodesLength() - 1));
+
+        assertEq(address(retrievedNode), address(tokenStakingNode), "The retrieved node should be the same as the node we stored");
+
+        // Deposit assets to ynEigen
+        uint256 stakeAmount = 100 ether;
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+        // Stake assets into the token staking node
+        uint256 nodeId = tokenStakingNode.nodeId();
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = wstETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = stakeAmount;
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+
+        _queueWithdrawal(depositShares);
+
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to the deposit shares");
+        assertEq(tokenStakingNode.legacyQueuedShares(wstETHStrategy), legacyQueuedShares, "Legacy queued shares should be equal to the deposit shares");
+
+        (uint256 queuedShares,) = tokenStakingNode.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);
+
+        assertEq(queuedShares, withdrawableShares + legacyQueuedShares, "Queued shares should be equal to the sum of the queued shares and the legacy queued shares");
+    }
+
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndLegacyQueuedShares_WithQueuedWithdrawals_WithHalfSlashing() public {
+        tokenStakingNode = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
+
+        ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
+            tokenStakingNodesManager: tokenStakingNodesManager,
+            nodeId: tokenStakingNodesManager.nodesLength()
+        });
+
+        tokenStakingNode.initialize(init);
+        tokenStakingNode.initializeV2();
+
+        uint256 legacyQueuedShares = 100 ether;
+
+        vm.store(
+            address(tokenStakingNode),
+            keccak256(abi.encode(wstETHStrategy, uint256(2))),
+            bytes32(legacyQueuedShares)
+        );
+
+        tokenStakingNode.initializeV3();
+
+        // Add the new node to the nodes array in the TokenStakingNodesManager.
+        {
+            uint256 currentNodesLength = tokenStakingNodesManager.nodesLength();
+            
+            // Increase the length of the nodes array.
+            vm.store(
+                address(tokenStakingNodesManager),
+                bytes32(uint256(4)),
+                bytes32(currentNodesLength + 1)
+            );
+
+            bytes32 nodesBaseSlot = keccak256(abi.encode(uint256(4)));
+
+            // Update the last element of the nodes array to point to the new node.
+            vm.store(
+                address(tokenStakingNodesManager),
+                bytes32(uint256(nodesBaseSlot) + currentNodesLength),
+                bytes32(uint256(uint160(address(tokenStakingNode))))
+            );
+        }
+
+        ITokenStakingNode retrievedNode = ITokenStakingNode(tokenStakingNodesManager.nodes(tokenStakingNodesManager.nodesLength() - 1));
+
+        assertEq(address(retrievedNode), address(tokenStakingNode), "The retrieved node should be the same as the node we stored");
+
+        // Deposit assets to ynEigen
+        uint256 stakeAmount = 100 ether;
+        testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
+
+        // Stake assets into the token staking node
+        uint256 nodeId = tokenStakingNode.nodeId();
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = wstETH;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = stakeAmount;
+        vm.prank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+
+        // Delegate to operator
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        bytes32 approverSalt;
+        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
+        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, approverSalt);
+
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+
+        _queueWithdrawal(depositShares);
+
+        _slash(0.5 ether);
+
+        tokenStakingNode.synchronize();
+
+        uint256 expectedQueuedShares = withdrawableShares / 2;
+
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), expectedQueuedShares, "Queued shares should be equal to half of the deposit shares");
+        assertEq(tokenStakingNode.legacyQueuedShares(wstETHStrategy), legacyQueuedShares, "Legacy queued shares should be equal to the deposit shares");
+
+        (uint256 queuedShares,) = tokenStakingNode.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);
+
+        assertEq(queuedShares, expectedQueuedShares + legacyQueuedShares, "Queued shares should be equal to half of the deposit shares plus the legacy queued shares");
     }
 }
