@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract RewardsReceiverTest is IntegrationBaseTest {
 
@@ -22,9 +23,10 @@ contract RewardsReceiverTest is IntegrationBaseTest {
 		assertEq(compareWithThreshold(address(newReceiver).balance, 100, 1), true);
 	}
 
-	function testFailTransferETHNotWithrdrawerRole() public {
+	function testRevertIfTransferETHNotWithrdrawerRole() public {
 		address newReceiver = address(33);
 		vm.deal(address(executionLayerReceiver), 100);
+		vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), executionLayerReceiver.WITHDRAWER_ROLE()));
 		executionLayerReceiver.transferETH(payable(newReceiver), 100);
 	}
 
@@ -51,9 +53,10 @@ contract RewardsReceiverTest is IntegrationBaseTest {
 		assertEq(mockERC20.balanceOf(receiver), 100);
 	}
 
-	function testFailERC20TransferNotWithrdrawerRole() public {
+	function testRevertIfERC20TransferNotWithrdrawerRole() public {
 		address receiver = address(33);
 		mockERC20.mint(address(executionLayerReceiver), 100);
+		vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), executionLayerReceiver.WITHDRAWER_ROLE()));
 		executionLayerReceiver.transferERC20(mockERC20, receiver, 100);
 	}
 }

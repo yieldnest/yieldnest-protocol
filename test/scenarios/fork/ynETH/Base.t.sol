@@ -121,8 +121,6 @@ contract Base is Test, Utils {
             vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
-
-        upgradeStakingNodesManagerAndStakingNode();
     }
 
     function upgradeStakingNodesManagerAndStakingNode() internal {
