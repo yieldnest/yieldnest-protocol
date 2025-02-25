@@ -58,6 +58,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     // roles
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
+    /**
+     * @notice Tracks how many shares were withdrawn when a QueuedWithdrawal was completed.
+     */
+    mapping(uint256 => uint256) public withdrawnSharesByQueueId;
+
+    /**
+     * @notice Tracks the total queued withdrawals at the time of completion.
+     * @dev Used to prevent front-running between `completeQueuedWithdrawals` and `processPrincipalWithdrawals`.
+     */
+    uint256 public totalQueuedWithdrawalsAtComplete;
+
     //
     // Constructor
     //
@@ -276,6 +287,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         if (_strategy == IStrategy(address(0))) revert InvalidInput();
 
+        uint256 _totalQueuedShares;
         uint256 _queuedId = _ids.queued;
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
         for (uint256 j = 0; j < _nodesLength; ++j) {
@@ -285,13 +297,21 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                     ? _pendingWithdrawalRequestsInShares = 0
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
-                address _node = address(_nodes[j]);
-                
-                bytes32[] memory _fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
+                ITokenStakingNode _node = ITokenStakingNode(_nodes[j]);
+
+                (uint256 _queuedSharesBefore,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+
+                bytes32[] memory _fullWithdrawalRoots = _node.queueWithdrawals(_strategy, _toWithdraw);
+
+                (uint256 _queuedSharesAfter,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+
+                // Stores the difference between the queued shares before and after the withdrawal.
+                _totalQueuedShares += _queuedSharesAfter - _queuedSharesBefore;
+
                 IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = delegationManager.getQueuedWithdrawal(_fullWithdrawalRoots[0]);
 
                 _queuedWithdrawals[_queuedId++] = QueuedWithdrawal({
-                    node: _node,
+                    node: address(_node),
                     strategy: address(_queuedWithdrawal.strategies[0]),
                     nonce: _queuedWithdrawal.nonce,
                     shares: _queuedWithdrawal.scaledShares[0],
@@ -305,7 +325,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             if (_pendingWithdrawalRequestsInShares == 0) {
                 batch[_ids.queued] = _queuedId;
                 _ids.queued = _queuedId;
-                totalQueuedWithdrawals += _toBeQueued;
+                totalQueuedWithdrawals += _sharesToUnit(_totalQueuedShares, _asset, _strategy);
                 return true;
             }
         }
@@ -315,7 +335,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_pendingWithdrawalRequests < _toBeQueued) {
             batch[_ids.queued] = _queuedId;
             _ids.queued = _queuedId;
-            totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
+            totalQueuedWithdrawals += _sharesToUnit(_totalQueuedShares, _asset, _strategy);
         }
 
         return false;
@@ -348,13 +368,26 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 strategies: _strategies,
                 scaledShares: _shares
             });
-            ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
+
+            ITokenStakingNode _node = ITokenStakingNode(queuedWithdrawal_.node);
+
+            IStrategy _strategy = IStrategy(_withdrawal.strategies[0]);
+
+            (uint256 queuedSharesBefore,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+
+            _node.completeQueuedWithdrawals(
                 _withdrawal,
                 true // updateTokenStakingNodesBalances
             );
+
+            (uint256 queuedSharesAfter,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+
+            withdrawnSharesByQueueId[_completedId] = queuedSharesBefore - queuedSharesAfter;
         }
 
         _ids.completed = _completedId;
+
+        totalQueuedWithdrawalsAtComplete = totalQueuedWithdrawals;
     }
 
 
@@ -375,6 +408,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _tokenIdToFinalize;
         uint256 _processedIdAtStart = _processedId;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
+            uint256 _withdrawnShares = withdrawnSharesByQueueId[_processedId];
+
             QueuedWithdrawal memory queuedWithdrawal_ = _queuedWithdrawals[_processedId++];
 
             if (_asset == address(0)) {
@@ -382,7 +417,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 _asset = _underlyingTokenForStrategy(IStrategy(_strategy));
             }
 
-            uint256 _queuedAmountInUnit = _sharesToUnit(queuedWithdrawal_.shares, IERC20(_asset), IStrategy(_strategy));
+            uint256 _queuedAmountInUnit = _sharesToUnit(_withdrawnShares, IERC20(_asset), IStrategy(_strategy));
             _totalWithdrawn += _queuedAmountInUnit;
 
             _actions[i] = IYieldNestStrategyManager.WithdrawalAction({
@@ -400,7 +435,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         _ids.processed = _processedId;
 
         uint256 _totalQueuedWithdrawals = totalQueuedWithdrawals;
-        totalQueuedWithdrawals =
+
+        // Check that the value hasn't changed since `completeQueuedWithdrawals` was called.
+        // If changed, it means that someone tried to `synchronize` in between the two calls, which could affect accounting.
+        if (_totalQueuedWithdrawals != totalQueuedWithdrawalsAtComplete) {
+            revert TotalQueuedWithdrawalsChanged();
+        }
+
+        // Delete value for gas optimization.
+        delete totalQueuedWithdrawalsAtComplete;
+
+        totalQueuedWithdrawals = 
             _totalWithdrawn > _totalQueuedWithdrawals ? 0 : _totalQueuedWithdrawals - _totalWithdrawn;
 
         ynStrategyManager.processPrincipalWithdrawals(_actions);
@@ -422,6 +467,45 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_minPendingWithdrawalRequestAmount == 0) revert InvalidInput();
         minPendingWithdrawalRequestAmount = _minPendingWithdrawalRequestAmount;
         emit MinPendingWithdrawalRequestAmountUpdated(_minPendingWithdrawalRequestAmount);
+    }
+
+    /**
+     * @notice Used to synchronize the token staking nodes queued shares, the strategy manager balances as well 
+     * as the total queued withdrawals after a slashing event.
+     */
+    function synchronize() external {
+        // Get all nodes from the nodes manager.
+        ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
+
+        // Get all assets from the asset registry.
+        IERC20[] memory _assets = assetRegistry.getAssets();
+
+        uint256 _totalQueuedWithdrawals;
+
+        for (uint256 i = 0; i < _nodes.length; ++i) {
+            ITokenStakingNode _node = _nodes[i];
+
+            // Synchronize each of the provided nodes.
+            _node.synchronize();
+
+            for (uint256 j = 0; j < _assets.length; ++j) {
+                IERC20 _asset = _assets[j];
+
+                IStrategy _strategy = ynStrategyManager.strategies(_asset);
+
+                // Get the queued shares for the node.
+                (uint256 _queuedShares,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+
+                // Update the total queued withdrawals with the synchronized node's queued shares.
+                _totalQueuedWithdrawals += _sharesToUnit(_queuedShares, _asset, _strategy);
+            }
+        }
+
+        // Update the total queued withdrawals with the synchronized value.
+        totalQueuedWithdrawals = _totalQueuedWithdrawals;
+
+        // Update the token staking nodes balances (Which uses the synchronized nodes).
+        ynStrategyManager.updateTokenStakingNodesBalances();
     }
 
     //
