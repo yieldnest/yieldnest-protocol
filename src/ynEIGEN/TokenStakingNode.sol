@@ -34,17 +34,17 @@ interface ITokenStakingNodeEvents {
     event QueuedSharesSynced();
 }
 
-/// This interface is created because the src/interfaces/IynEigen.sol does not provide a way to obtain the assetRegistry.
-/// TODO: Should we expose assetRegistry in IynEigen?
-interface IynEigenExtended is IynEigen {
-    function assetRegistry() external view returns (IAssetRegistry);
-}
+// /// This interface is created because the src/interfaces/IynEigen.sol does not provide a way to obtain the assetRegistry.
+// /// TODO: Should we expose assetRegistry in IynEigen?
+// interface IynEigenExtended is IynEigen {
+//     function assetRegistry() external view returns (IAssetRegistry);
+// }
 
-/// This interface is created because src/interfaces/IYieldNestStrategyManager.sol does not provide a way to obtain `ynEigen` which is needed to get the assetRegistry.
-/// TODO: Should we expose ynEigen in IYieldNestStrategyManager?
-interface IYieldNestStrategyManagerExtended is IYieldNestStrategyManager {
-    function ynEigen() external view returns (IynEigenExtended);
-}
+// /// This interface is created because src/interfaces/IYieldNestStrategyManager.sol does not provide a way to obtain `ynEigen` which is needed to get the assetRegistry.
+// /// TODO: Should we expose ynEigen in IYieldNestStrategyManager?
+// interface IYieldNestStrategyManagerExtended is IYieldNestStrategyManager {
+//     function ynEigen() external view returns (IynEigenExtended);
+// }
 
 /**
  * @title Token Staking Node
@@ -144,7 +144,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Initializes the contract by storing the pre slashing queued shares.
      */
     function initializeV3() public reinitializer(3) {
-        IYieldNestStrategyManagerExtended eigenStrategyManager = IYieldNestStrategyManagerExtended(tokenStakingNodesManager.yieldNestStrategyManager());
+        IYieldNestStrategyManager eigenStrategyManager = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager());
         IAssetRegistry assetRegistry = IAssetRegistry(eigenStrategyManager.ynEigen().assetRegistry());
         IERC20[] memory assets = assetRegistry.getAssets();
 
