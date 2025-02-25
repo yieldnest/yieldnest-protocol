@@ -41,6 +41,8 @@ interface IYieldNestStrategyManager {
 
     function isStakingNodesWithdrawer(address _address) external view returns (bool);
 
+    function updateTokenStakingNodesBalances() external;
+
     function updateTokenStakingNodesBalances(IERC20 asset) external;
 
     function strategies(IERC20 asset) external view returns (IStrategy);

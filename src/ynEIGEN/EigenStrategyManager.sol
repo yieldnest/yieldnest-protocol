@@ -203,23 +203,19 @@ contract EigenStrategyManager is
             _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
         }
     }
-
-    function synchronizeNodesAndUpdateBalances(ITokenStakingNode[] calldata nodes) external {
-        uint256 nodesLength = nodes.length;
-        for(uint256 i = 0; i < nodesLength; i++) {
-            nodes[i].synchronize();
-        }
-        
-        IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
-        uint256 assetsLength = assets.length;
-        for (uint256 i = 0; i < assetsLength; i++) {
-            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
-        }
-    }
-    
     //--------------------------------------------------------------------------------------
     //------------------------------------ ACCOUNTING  ----------------------------------------
     //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Updates the staked balances for all nodes for all assets.
+     */
+    function updateTokenStakingNodesBalances() external {
+        IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
+        for (uint256 i = 0; i < assets.length; i++) {
+            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        }
+    }
 
     /// @notice Updates the staked balances for all nodes for a specific asset's strategy.
     /// @dev This function should be called after any operation that changes node balances.
