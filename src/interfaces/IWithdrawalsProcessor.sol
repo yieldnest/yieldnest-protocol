@@ -76,6 +76,7 @@ interface IWithdrawalsProcessor {
     error NothingToProcess();
     error SanityCheck();
     error CurrentAvailableAmountIsSufficient();
+    error TotalQueuedWithdrawalsChanged();
 
     //
     // Events
