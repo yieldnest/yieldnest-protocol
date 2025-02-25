@@ -85,12 +85,11 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
         assertEq(testTokenStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
 
-    function testFailRegisterTokenStakingNodeImplementationTwice() public {
-        address initialImplementation = address(new TestTokenStakingNodeV2());
-        tokenStakingNodesManager.registerTokenStakingNode(initialImplementation);
+    function testRevertIfRegisterTokenStakingNodeImplementationTwice() public {
 
         address newImplementation = address(new TestTokenStakingNodeV2());
-        vm.expectRevert("ynEigenToken: Implementation already exists");
+        vm.expectRevert(abi.encodeWithSelector(TokenStakingNodesManager.BeaconImplementationAlreadyExists.selector));
+        vm.prank(actors.admin.STAKING_ADMIN);
         tokenStakingNodesManager.registerTokenStakingNode(newImplementation);
     }
 

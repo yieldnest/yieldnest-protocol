@@ -17,4 +17,4 @@
 [submodule "lib/eigenlayer-contracts"]
 	path = lib/eigenlayer-contracts
 	url = https://github.com/yieldnest/eigenlayer-contracts
-	commit = d2445d871219f9d9834d9592ab2be1bb9f8cd01b # https://github.com/yieldnest/eigenlayer-contracts/tree/oz-4-remapping Fork for OpenZeppelin compatibility.
+	branch = v1.1.1-v4.9.0

@@ -76,11 +76,6 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](withdrawalRoots.length);
         {
             for (uint256 i = 0; i < withdrawalRoots.length; i++) {
-                // uint256[] memory _shares = new uint256[](1);
-                // _shares[0] = queuedWithdrawals[i].withdrawnAmount;
-                // IStrategy[] memory _strategies = new IStrategy[](1);
-                // _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-                // address _stakingNode = address(stakingNodesManager.nodes(nodeId));
                 _withdrawals[i] = delegationManager.getQueuedWithdrawal(withdrawalRoots[i]);
             }
         }
