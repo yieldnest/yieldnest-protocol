@@ -319,7 +319,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             
             (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
             
-            assertApproxEqRel(stakeBefore/2, stakeAfter, 1 wei, "Staked assets before and after slashing do not match");
+            assertApproxEqRel(stakeAfter, stakeBefore / 2, 1, "Assets should have been staked by half");
         }
     }
 
