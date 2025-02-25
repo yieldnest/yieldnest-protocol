@@ -19,7 +19,7 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
-import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
+import {DelegationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/DelegationManagerStorage.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 
@@ -226,7 +226,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             __deprecated_withdrawer: address(0)
         });
 
-        IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
+        DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
 
         // `onlyWhenSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
         address _operator = delegatedTo;
@@ -272,7 +272,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IDelegationManager.Withdrawal[] memory withdrawals,
         bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
-        IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
+        DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
@@ -344,7 +344,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     function completeQueuedWithdrawalsAsShares(
         IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
-        IDelegationManagerExtended _delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
+        DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
 
@@ -457,7 +457,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @dev Anyone can call this function because every call is beneficial to the protocol as it keeps accounting in sync.
      */
     function synchronize() public {
-        IDelegationManagerExtended delegationManager = IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
+        DelegationManagerStorage delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
         IAllocationManager allocationManager = delegationManager.allocationManager();
 
         // Update the delegatedTo address to the current operator.
@@ -651,7 +651,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @param _withdrawal The withdrawal to decrease the queued shares for.
      */
     function _decreaseQueuedSharesOnCompleteWithdrawals(
-        IDelegationManagerExtended _delegationManager,
+        DelegationManagerStorage _delegationManager,
         IAllocationManager _allocationManager,
         IStrategy _strategy,
         IDelegationManagerTypes.Withdrawal memory _withdrawal

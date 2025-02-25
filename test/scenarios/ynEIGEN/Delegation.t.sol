@@ -18,7 +18,6 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
-import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
 
