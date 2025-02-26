@@ -270,7 +270,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         {
             _shares = new uint256[](_nodesLength);
             uint256 _pendingWithdrawalRequests = bufferFactor * getPendingWithdrawalRequests() / 1 ether;
-            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
+            uint256 _pendingWithdrawalRequestsInShares = 
+                _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
