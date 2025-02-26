@@ -382,7 +382,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             uint256 _queuedSharesAfter = _node.getQueuedShares(_strategy);
 
-            withdrawnSharesByQueueId[_completedId] = queuedSharesBefore - queuedSharesAfter;
+            withdrawnSharesByQueueId[_completedId] = _queuedSharesBefore - _queuedSharesAfter;
         }
 
         _ids.completed = _completedId;
