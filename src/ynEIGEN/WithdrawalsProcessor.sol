@@ -186,7 +186,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @notice Gets the total pending withdrawal requests
     /// @return deficitAmount The total pending withdrawal requests
     function getPendingWithdrawalRequests() public view returns (uint256 deficitAmount) {
-        uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
+        uint256 pendingAmount = bufferFactor * withdrawalQueueManager.pendingRequestedRedemptionAmount() / 1 ether;
         uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + totalQueuedWithdrawals;
         if (pendingAmount <= availableAmount) {
             revert CurrentAvailableAmountIsSufficient();
