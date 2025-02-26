@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import "test/integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
@@ -16,9 +15,6 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
     TestAssetUtils testAssetUtils;
     address[10] public depositors;
-    ITokenStakingNode private tokenStakingNode;
-
-
 
     constructor() {
         testAssetUtils = new TestAssetUtils();
@@ -26,7 +22,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
             depositors[i] = address(uint160(uint256(keccak256(abi.encodePacked("depositor", i)))));
         }
     }
-    
+
     function testStakeAssetsToNodeSuccessFuzz(
         uint256 wstethAmount,
         uint256 woethAmount,
@@ -185,7 +181,7 @@ contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
         }
 
     }
-    
+
     function testExpectedStrategiesForAssets() public {
         address wstethAsset = chainAddresses.lsd.WSTETH_ADDRESS;
         address woethAsset = chainAddresses.lsd.WOETH_ADDRESS;
