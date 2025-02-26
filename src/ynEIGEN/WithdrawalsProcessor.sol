@@ -472,11 +472,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /**
      * @notice Used to synchronize the token staking nodes queued shares, the strategy manager balances as well 
      * as the total queued withdrawals after a slashing event.
+     * @dev The whole list of nodes can be obtained by calling `TokenStakingNodesManager.getAllNodes()`.
+     * Allowing individual nodes to be synchronized prevents the need of synchronizing nodes that are not affected by the slashing event.
      */
-    function synchronize() external {
-        // Get all nodes from the nodes manager.
-        ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
-
+    function synchronize(ITokenStakingNode[] memory _nodes) external {
         // Get all assets from the asset registry.
         IERC20[] memory _assets = assetRegistry.getAssets();
 
