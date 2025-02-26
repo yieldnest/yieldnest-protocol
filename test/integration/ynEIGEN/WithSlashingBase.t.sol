@@ -13,10 +13,11 @@ import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/c
 import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
 
 contract WithSlashingBase is ynEigenIntegrationBaseTest {
-    TestAssetUtils public testAssetUtils;
-    ITokenStakingNode public tokenStakingNode;
-    address public avs;
-    IStrategy public wstETHStrategy;
+    TestAssetUtils internal testAssetUtils;
+    ITokenStakingNode internal tokenStakingNode;
+    address internal avs;
+    IERC20 internal wstETH;
+    IStrategy internal wstETHStrategy;
 
     event QueuedSharesSynced();
 
@@ -32,9 +33,10 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 
+        wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+
         // Deposit assets to ynEigen
         uint256 stakeAmount = 100 ether;
-        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
 
         // Stake assets into the token staking node
@@ -91,25 +93,25 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
         _allocate();
     }
 
-    function _waitForAllocationDelay() public {
+    function _waitForAllocationDelay() internal {
         AllocationManagerStorage allocationManager = AllocationManagerStorage(address(eigenLayer.allocationManager));
         vm.roll(block.number + allocationManager.ALLOCATION_CONFIGURATION_DELAY() + 1);
     }
 
-    function _waitForDeallocationDelay() public {
+    function _waitForDeallocationDelay() internal {
         AllocationManagerStorage allocationManager = AllocationManagerStorage(address(eigenLayer.allocationManager));
         vm.roll(block.number + allocationManager.DEALLOCATION_DELAY() + 1);
     }
 
-    function _waitForWithdrawalDelay() public {
+    function _waitForWithdrawalDelay() internal {
         vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
     }
     
-    function _allocate() public {
+    function _allocate() internal {
         _allocate(1 ether);
     }
 
-    function _allocate(uint64 _newMagnitude) public {
+    function _allocate(uint64 _newMagnitude) internal {
         IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
         allocateParams[0] = IAllocationManagerTypes.AllocateParams({
             operatorSet: OperatorSet({
@@ -125,11 +127,11 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
         eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
     }
 
-    function _slash() public {
+    function _slash() internal {
         _slash(1 ether);
     }
 
-    function _slash(uint256 _wadsToSlash) public {
+    function _slash(uint256 _wadsToSlash) internal {
         IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
             operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
             operatorSetId: 1,
@@ -143,20 +145,20 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
         eigenLayer.allocationManager.slashOperator(avs, slashingParams);
     }
 
-    function _getWithdrawableShares() public view returns (uint256, uint256) {
+    function _getWithdrawableShares() internal view returns (uint256, uint256) {
         IStrategy[] memory strategies = new IStrategy[](1);
         strategies[0] = wstETHStrategy;
         (uint256[] memory withdrawableShares, uint256[] memory depositShares) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), strategies);
         return (withdrawableShares[0], depositShares[0]);
     }
 
-    function _queueWithdrawal(uint256 depositShares) public returns (bytes32) {
+    function _queueWithdrawal(uint256 depositShares) internal returns (bytes32) {
         // TODO: Use TOKEN_STAKING_NODES_WITHDRAWER instead of STAKING_NODES_WITHDRAWER
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         return tokenStakingNode.queueWithdrawals(wstETHStrategy, depositShares)[0];
     }
 
-    function _queuedShares() public view returns (uint256) {
+    function _queuedShares() internal view returns (uint256) {
         return tokenStakingNode.queuedShares(wstETHStrategy);
     }
 }
