@@ -32,6 +32,7 @@ interface IWithdrawalsProcessor {
     function batch(
         uint256 _fromId
     ) external view returns (uint256 _toId);
+    function bufferFactor() external view returns (uint256);
 
     //
     // view functions
@@ -81,5 +82,5 @@ interface IWithdrawalsProcessor {
     // Events
     //
     event MinPendingWithdrawalRequestAmountUpdated(uint256 minPendingWithdrawalRequestAmount);
-
+    event BufferFactorUpdated(uint256 bufferFactor);
 }

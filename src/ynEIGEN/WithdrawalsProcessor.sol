@@ -57,6 +57,13 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     // roles
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
+    bytes32 public constant BUFFER_FACTOR_UPDATER_ROLE = keccak256("BUFFER_FACTOR_UPDATER_ROLE");
+
+    /**
+     * @notice The buffer factor.
+     * @dev The buffer factor is the factor by which the available redemption assets are multiplied to determine the minimum amount of pending withdrawal requests.
+     */
+    uint256 public bufferFactor;
 
     //
     // Constructor
@@ -102,6 +109,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         _grantRole(KEEPER_ROLE, _keeper);
 
         minPendingWithdrawalRequestAmount = 0.1 ether;
+    }
+
+    /**
+     * @notice Initializes the contract.
+     * @param _bufferFactorUpdater The address of the buffer factor updater.
+     * @param _bufferFactor The buffer factor.
+     */
+    function initializeV2(address _bufferFactorUpdater, uint256 _bufferFactor) public reinitializer(2) {
+        _grantRole(BUFFER_FACTOR_UPDATER_ROLE, _bufferFactorUpdater);
+
+        _updateBufferFactor(_bufferFactor);
     }
 
     //
@@ -253,6 +271,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     //
     // mutative functions
     //
+
+    /**
+     * @notice Updates the buffer factor.
+     * @param _bufferFactor The new buffer factor.
+     */
+    function updateBufferFactor(uint256 _bufferFactor) external onlyRole(BUFFER_FACTOR_UPDATER_ROLE) {
+        _updateBufferFactor(_bufferFactor);
+    }
 
     /// @notice Queues withdrawals
     /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
@@ -465,4 +491,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
     }
 
+    /**
+     * @notice Updates the buffer factor.
+     * @param _bufferFactor The new buffer factor.
+     */
+    function _updateBufferFactor(uint256 _bufferFactor) internal {
+        if (_bufferFactor < 1 ether) {
+            revert InvalidInput();
+        }
+
+        bufferFactor = _bufferFactor;
+
+        emit BufferFactorUpdated(_bufferFactor);
+    }
 }
