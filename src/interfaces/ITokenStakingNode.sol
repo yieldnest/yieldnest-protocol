@@ -37,6 +37,9 @@ interface ITokenStakingNode {
     function undelegate() external returns (bytes32[] memory withdrawalRoots);
 
     function getQueuedSharesAndWithdrawn(IStrategy _strategy, IERC20 _asset) external view returns (uint256, uint256);
+
+    function getQueuedShares(IStrategy _strategy) external view returns (uint256);
+
     function queueWithdrawals(IStrategy _strategy, uint256 _shares)
         external
         returns (bytes32[] memory _fullWithdrawalRoots);
