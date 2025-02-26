@@ -299,11 +299,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
                 ITokenStakingNode _node = ITokenStakingNode(_nodes[j]);
 
-                (uint256 _queuedSharesBefore,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+                uint256 _queuedSharesBefore = _node.getQueuedShares(_strategy);
 
                 bytes32[] memory _fullWithdrawalRoots = _node.queueWithdrawals(_strategy, _toWithdraw);
 
-                (uint256 _queuedSharesAfter,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+                uint256 _queuedSharesAfter = _node.getQueuedShares(_strategy);
 
                 // Stores the difference between the queued shares before and after the withdrawal.
                 _totalQueuedShares += _queuedSharesAfter - _queuedSharesBefore;
@@ -373,14 +373,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             IStrategy _strategy = IStrategy(_withdrawal.strategies[0]);
 
-            (uint256 queuedSharesBefore,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+            uint256 _queuedSharesBefore = _node.getQueuedShares(_strategy);
 
             _node.completeQueuedWithdrawals(
                 _withdrawal,
                 true // updateTokenStakingNodesBalances
             );
 
-            (uint256 queuedSharesAfter,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+            uint256 _queuedSharesAfter = _node.getQueuedShares(_strategy);
 
             withdrawnSharesByQueueId[_completedId] = queuedSharesBefore - queuedSharesAfter;
         }
@@ -494,7 +494,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 IStrategy _strategy = ynStrategyManager.strategies(_asset);
 
                 // Get the queued shares for the node.
-                (uint256 _queuedShares,) = _node.getQueuedSharesAndWithdrawn(_strategy, IERC20(address(0)));
+                uint256 _queuedShares = _node.getQueuedShares(_strategy);
 
                 // Update the total queued withdrawals with the synchronized node's queued shares.
                 _totalQueuedWithdrawals += _sharesToUnit(_queuedShares, _asset, _strategy);
