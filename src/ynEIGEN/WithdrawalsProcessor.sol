@@ -57,13 +57,37 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     // roles
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
+
+    /**
+     * @notice The role that can update the buffer factor.
+     */
     bytes32 public constant BUFFER_FACTOR_UPDATER_ROLE = keccak256("BUFFER_FACTOR_UPDATER_ROLE");
 
     /**
-     * @notice The buffer factor.
-     * @dev The buffer factor is the factor by which the available redemption assets are multiplied to determine the minimum amount of pending withdrawal requests.
+     * @notice The buffer factor used to withdraw more than the pending withdrawal requests to account for slashing.
+     * @dev It is denominated in ether (1e18).
+     * @dev If the pending withdrawal requests are 100 ether, and the buffer factor is 1.1 ether, then the amount to withdraw is 110 ether.
      */
     uint256 public bufferFactor;
+
+    /**
+     * @notice The amount of shares withdrawn upon completion of a queued withdrawal.
+     */
+    mapping(uint256 => uint256) public withdrawnAtCompletion;
+
+    /**
+     * @notice The amount of unbuffered withdrawal requests in a batch.
+     * @dev Keeps track of the requested withdrawal amount in a batch before the buffer factor is applied.
+     * @dev It is used to calculate whether more than requested was withdrawn and to reinvest the difference.
+     */
+    mapping(uint256 => uint256) public unbufferedRequestAmountInBatch;
+
+    /**
+     * @notice The amount of queued withdrawal requests in a batch.
+     * @dev Keeps track of the requested withdrawal amount in a batch after the buffer factor is applied.
+     * @dev It is used to prevent accounting issues with totalQueuedWithdrawals in the event of slashing.
+     */
+    mapping(uint256 => uint256) public queuedWithdrawalAmountInBatch;
 
     //
     // Constructor
@@ -245,8 +269,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         // calculate withdrawal amounts for each node
         {
             _shares = new uint256[](_nodesLength);
-            uint256 _pendingWithdrawalRequestsInShares =
-                _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
+            uint256 _pendingWithdrawalRequests = bufferFactor * getPendingWithdrawalRequests() / 1 ether;
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
@@ -272,14 +296,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     // mutative functions
     //
 
-    /**
-     * @notice Updates the buffer factor.
-     * @param _bufferFactor The new buffer factor.
-     */
-    function updateBufferFactor(uint256 _bufferFactor) external onlyRole(BUFFER_FACTOR_UPDATER_ROLE) {
-        _updateBufferFactor(_bufferFactor);
-    }
-
     /// @notice Queues withdrawals
     /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
     /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
@@ -296,7 +312,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _nodesLength = _nodes.length;
         if (_nodesLength != _amounts.length) revert InvalidInput();
 
-        uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests(); // NOTE: reverts if too low
+        uint256 _pendingWithdrawalRequestsWithoutBuffer = getPendingWithdrawalRequests(); // NOTE: reverts if too low
+        uint256 _pendingWithdrawalRequests = bufferFactor * _pendingWithdrawalRequestsWithoutBuffer / 1 ether;
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
@@ -330,6 +347,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             if (_pendingWithdrawalRequestsInShares == 0) {
                 batch[_ids.queued] = _queuedId;
+                unbufferedRequestAmountInBatch[_ids.queued] = _pendingWithdrawalRequestsWithoutBuffer;
+                queuedWithdrawalAmountInBatch[_ids.queued] = _toBeQueued;
                 _ids.queued = _queuedId;
                 totalQueuedWithdrawals += _toBeQueued;
                 return true;
@@ -340,6 +359,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
         if (_pendingWithdrawalRequests < _toBeQueued) {
             batch[_ids.queued] = _queuedId;
+            unbufferedRequestAmountInBatch[_ids.queued] = _pendingWithdrawalRequestsWithoutBuffer;
+            queuedWithdrawalAmountInBatch[_ids.queued] = _toBeQueued - _pendingWithdrawalRequests;
             _ids.queued = _queuedId;
             totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
         }
@@ -374,10 +395,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 strategies: _strategies,
                 scaledShares: _shares
             });
-            ITokenStakingNode(queuedWithdrawal_.node).completeQueuedWithdrawals(
+
+            ITokenStakingNode _node = ITokenStakingNode(queuedWithdrawal_.node);
+            uint256 _queuedSharesBefore = _node.getQueuedShares(_strategies[0]);
+            _node.completeQueuedWithdrawals(
                 _withdrawal,
                 true // updateTokenStakingNodesBalances
             );
+            withdrawnAtCompletion[_completedId] = _queuedSharesBefore - _node.getQueuedShares(_strategies[0]);
         }
 
         _ids.completed = _completedId;
@@ -394,6 +419,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _batchLength = batch[_processedId] - _processedId;
         IYieldNestStrategyManager.WithdrawalAction[] memory _actions =
             new IYieldNestStrategyManager.WithdrawalAction[](_batchLength);
+        uint256 _queuedWithdrawalAmountInBatch = queuedWithdrawalAmountInBatch[_processedId];
+        queuedWithdrawalAmountInBatch[_processedId] = 0;
+        uint256 _unbufferedRequestAmountInBatch = unbufferedRequestAmountInBatch[_processedId];
+        unbufferedRequestAmountInBatch[_processedId] = 0;
 
         address _asset;
         address _strategy;
@@ -401,6 +430,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _tokenIdToFinalize;
         uint256 _processedIdAtStart = _processedId;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
+            uint256 _withdrawnAtCompletion = withdrawnAtCompletion[_processedId];
+            withdrawnAtCompletion[_processedId] = 0;
+
             QueuedWithdrawal memory queuedWithdrawal_ = _queuedWithdrawals[_processedId++];
 
             if (_asset == address(0)) {
@@ -408,13 +440,16 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 _asset = _underlyingTokenForStrategy(IStrategy(_strategy));
             }
 
-            uint256 _queuedAmountInUnit = _sharesToUnit(queuedWithdrawal_.shares, IERC20(_asset), IStrategy(_strategy));
+            uint256 _queuedAmountInUnit = _sharesToUnit(_withdrawnAtCompletion, IERC20(_asset), IStrategy(_strategy));
             _totalWithdrawn += _queuedAmountInUnit;
+
+            // Reinvest the difference between the withdrawn amount and the unbuffered request amount.
+            uint256 _amountToReinvest = _queuedAmountInUnit > _unbufferedRequestAmountInBatch ? _queuedAmountInUnit - _unbufferedRequestAmountInBatch : 0;
 
             _actions[i] = IYieldNestStrategyManager.WithdrawalAction({
                 nodeId: ITokenStakingNode(queuedWithdrawal_.node).nodeId(),
-                amountToReinvest: 0,
-                amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit),
+                amountToReinvest: _amountToReinvest,
+                amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit - _amountToReinvest),
                 asset: _asset
             });
 
@@ -422,6 +457,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         }
 
         if (_tokenIdToFinalize == 0) revert SanityCheck();
+
+        if (_queuedWithdrawalAmountInBatch != 0) {
+            _totalWithdrawn += _queuedWithdrawalAmountInBatch;
+        }
 
         _ids.processed = _processedId;
 
@@ -448,6 +487,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_minPendingWithdrawalRequestAmount == 0) revert InvalidInput();
         minPendingWithdrawalRequestAmount = _minPendingWithdrawalRequestAmount;
         emit MinPendingWithdrawalRequestAmountUpdated(_minPendingWithdrawalRequestAmount);
+    }
+
+    /**
+     * @notice Updates the buffer factor.
+     * @param _bufferFactor The new buffer factor.
+     */
+    function updateBufferFactor(uint256 _bufferFactor) external onlyRole(BUFFER_FACTOR_UPDATER_ROLE) {
+        _updateBufferFactor(_bufferFactor);
     }
 
     //
@@ -491,11 +538,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
     }
 
-    /**
-     * @notice Updates the buffer factor.
-     * @param _bufferFactor The new buffer factor.
-     */
     function _updateBufferFactor(uint256 _bufferFactor) internal {
+        // It must be greater than 1 ether to be effective, as it can only be used to increase the amount of withdrawable requests.
         if (_bufferFactor < 1 ether) {
             revert InvalidInput();
         }
