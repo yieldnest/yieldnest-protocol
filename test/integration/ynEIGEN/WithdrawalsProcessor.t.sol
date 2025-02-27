@@ -70,6 +70,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
 
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER, 1.1 ether);
         }
 
         // grant roles to withdrawalsProcessor
@@ -247,7 +249,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             vm.prank(keeper);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
-            assertTrue(_queuedEverything, "queueWithdrawal: E11");
+            // False because even if the requested amount from the queued manager is reached, it maight not with the added buffer.
+            assertFalse(_queuedEverything, "queueWithdrawal: E11");
+
             assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E12");
             assertEq(withdrawalsProcessor.batch(1), 2, "queueWithdrawal: E13");
 
@@ -297,9 +301,12 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E30");
         }
 
+        // They are not equal because an extra % of the requested amount is queued to account for slashing.
+        // This makes it possible that the total queued withdrawals is greater than the pending requested redemption amount.
+        // Despite not slashing in this example, some precision is lost due to the bufferFactor * requestedAmount / 1e18 calculation.
         assertEq(
-            withdrawalsProcessor.totalQueuedWithdrawals(),
-            withdrawalQueueManager.pendingRequestedRedemptionAmount(),
+            withdrawalsProcessor.totalQueuedWithdrawals() - withdrawalQueueManager.pendingRequestedRedemptionAmount(), 
+            149, 
             "queueWithdrawal: E31"
         );
         

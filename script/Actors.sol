@@ -37,6 +37,7 @@ contract ActorAddresses {
         address TOKEN_STAKING_NODES_WITHDRAWER;
         address YNEIGEN_REQUEST_FINALIZER;
         address YNEIGEN_WITHDRAWAL_MANAGER;
+        address EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER;
     }
 
     struct Wallets {
@@ -109,7 +110,8 @@ contract ActorAddresses {
                     STAKING_NODES_WITHDRAWER: holeskyWallets.YNWithdrawalsETH,
                     TOKEN_STAKING_NODES_WITHDRAWER: holeskyWallets.YNnWithdrawalsYnEigen,
                     YNEIGEN_REQUEST_FINALIZER: holeskyWallets.YNnWithdrawalsYnEigen,
-                    YNEIGEN_WITHDRAWAL_MANAGER: holeskyWallets.YNnWithdrawalsYnEigen
+                    YNEIGEN_WITHDRAWAL_MANAGER: holeskyWallets.YNnWithdrawalsYnEigen,
+                    EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER: holeskyWallets.YNDev
                 }),
                 wallets: holeskyWallets
             });
@@ -162,7 +164,8 @@ contract ActorAddresses {
                 STAKING_NODES_WITHDRAWER: mainnetWallets.YNWithdrawalsETH,
                 TOKEN_STAKING_NODES_WITHDRAWER: mainnetWallets.YNnWithdrawalsYnEigen,
                 YNEIGEN_REQUEST_FINALIZER: mainnetWallets.YNnWithdrawalsYnEigen,
-                YNEIGEN_WITHDRAWAL_MANAGER: mainnetWallets.YNnWithdrawalsYnEigen
+                YNEIGEN_WITHDRAWAL_MANAGER: mainnetWallets.YNnWithdrawalsYnEigen,
+                EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER: mainnetWallets.YNDev
             }),
             wallets: mainnetWallets
         });
