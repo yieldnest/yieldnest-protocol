@@ -449,7 +449,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             _actions[i] = IYieldNestStrategyManager.WithdrawalAction({
                 nodeId: ITokenStakingNode(queuedWithdrawal_.node).nodeId(),
-                amountToReinvest: _amountToReinvest,
+                amountToReinvest: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _amountToReinvest),
                 amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit - _amountToReinvest),
                 asset: _asset
             });
