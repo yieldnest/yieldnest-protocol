@@ -421,9 +421,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         IYieldNestStrategyManager.WithdrawalAction[] memory _actions =
             new IYieldNestStrategyManager.WithdrawalAction[](_batchLength);
         uint256 _queuedWithdrawalAmountInBatch = queuedWithdrawalAmountInBatch[_processedId];
-        queuedWithdrawalAmountInBatch[_processedId] = 0;
         uint256 _unbufferedRequestAmountInBatch = unbufferedRequestAmountInBatch[_processedId];
-        unbufferedRequestAmountInBatch[_processedId] = 0;
+
+        // Delete the values for gas optimization.
+        delete queuedWithdrawalAmountInBatch[_processedId];
+        delete unbufferedRequestAmountInBatch[_processedId];
 
         address _asset;
         address _strategy;
@@ -432,7 +434,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _processedIdAtStart = _processedId;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
             uint256 _withdrawnAtCompletion = withdrawnAtCompletion[_processedId];
-            withdrawnAtCompletion[_processedId] = 0;
+
+            // Delete the value for gas optimization.
+            delete withdrawnAtCompletion[_processedId];
 
             QueuedWithdrawal memory queuedWithdrawal_ = _queuedWithdrawals[_processedId++];
 
