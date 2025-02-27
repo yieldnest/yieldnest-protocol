@@ -25,6 +25,12 @@ interface IWithdrawalsProcessor {
     }
 
     //
+    // roles
+    //
+    function KEEPER_ROLE() external view returns (bytes32);
+    function BUFFER_FACTOR_UPDATER_ROLE() external view returns (bytes32);
+
+    //
     // state variables
     //
     function totalQueuedWithdrawals() external view returns (uint256);
@@ -66,6 +72,9 @@ interface IWithdrawalsProcessor {
     //
     function updateMinPendingWithdrawalRequestAmount(
         uint256 _minPendingWithdrawalRequestAmount
+    ) external;
+    function updateBufferFactor(
+        uint256 _bufferFactor
     ) external;
 
     //

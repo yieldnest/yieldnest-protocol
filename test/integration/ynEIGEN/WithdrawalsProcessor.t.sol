@@ -24,6 +24,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
     address public constant keeper = address(0x4206942069);
+
+    uint256 public constant DEFAULT_BUFFER_FACTOR = 1.1 ether;
     
     uint256 AMOUNT = 50 ether;
 
@@ -71,7 +73,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
 
-            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER, 1.1 ether);
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER, DEFAULT_BUFFER_FACTOR);
         }
 
         // grant roles to withdrawalsProcessor
@@ -155,6 +157,29 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             "testClaimWithdrawal: E2"
         );
     }
+
+    function testBufferFactorSetOnInitializeV2() public {
+        assertEq(withdrawalsProcessor.bufferFactor(), DEFAULT_BUFFER_FACTOR, "Buffer factor not set on initializeV2");
+    }
+
+    function testUpdateBufferFactorFailsIfInvalidCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), address(this), withdrawalsProcessor.BUFFER_FACTOR_UPDATER_ROLE()));
+        withdrawalsProcessor.updateBufferFactor(DEFAULT_BUFFER_FACTOR);
+    }
+
+    function testUpdateBufferFactorFailsIfLowerThanOne() public {
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("InvalidInput()"))));
+        vm.prank(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER);
+        withdrawalsProcessor.updateBufferFactor(1 ether - 1);
+    }
+
+    function testUpdateBufferFactor() public {
+        uint256 _newBufferFactor = DEFAULT_BUFFER_FACTOR + 1;
+        vm.prank(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER);
+        withdrawalsProcessor.updateBufferFactor(_newBufferFactor);
+        assertEq(withdrawalsProcessor.bufferFactor(), _newBufferFactor, "Buffer factor not updated");
+    }
+    
 
     //
     // private helpers
