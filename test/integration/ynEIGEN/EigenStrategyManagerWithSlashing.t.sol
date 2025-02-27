@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "test/integration/ynEIGEN/WithSlashingBase.t.sol";
 
-contract EigenStrategyManagerWithSlashing is WithSlashingBase {
+contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
     function testStakeNodesAndSlash() public {
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
 
