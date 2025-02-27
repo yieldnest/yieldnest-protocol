@@ -46,6 +46,6 @@ contract EigenStrategyManagerWithSlashing is WithSlashingBase {
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
         
-        assertApproxEqRel(stakeAfter, stakeBefore, 1, "Assets should have been staked by half");
+        assertApproxEqRel(stakeAfter, stakeBefore / 2, 1, "Assets should have been staked by half");
     }
 }
