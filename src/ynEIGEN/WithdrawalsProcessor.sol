@@ -451,10 +451,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // Reinvest the difference between the withdrawn amount and the unbuffered request amount.
             uint256 _amountToReinvest = _queuedAmountInUnit > _unbufferedRequestAmountInBatch ? _queuedAmountInUnit - _unbufferedRequestAmountInBatch : 0;
 
+            if (_amountToReinvest > 0) {
+                _amountToReinvest = assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _amountToReinvest);
+            }
+
             _actions[i] = IYieldNestStrategyManager.WithdrawalAction({
                 nodeId: ITokenStakingNode(queuedWithdrawal_.node).nodeId(),
-                amountToReinvest: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _amountToReinvest),
-                amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit - _amountToReinvest),
+                amountToReinvest: _amountToReinvest,
+                amountToQueue: assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _queuedAmountInUnit) - _amountToReinvest,
                 asset: _asset
             });
 
