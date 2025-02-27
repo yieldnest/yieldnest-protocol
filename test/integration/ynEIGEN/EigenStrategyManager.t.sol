@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import "./ynEigenIntegrationBaseTest.sol";
+import "test/integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
-import "forge-std/console.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import { EigenStrategyManager } from "src/ynEIGEN/EigenStrategyManager.sol";
+import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 
 contract EigenStrategyManagerTest is ynEigenIntegrationBaseTest {
 
