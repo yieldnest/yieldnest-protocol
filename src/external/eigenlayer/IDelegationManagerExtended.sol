@@ -2,10 +2,12 @@
 pragma solidity ^0.8.24;
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-
+import {IAllocationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 
 interface IDelegationManagerExtended is IDelegationManager {
-    /// @notice Mapping: hash of withdrawal inputs, aka 'withdrawalRoot' => whether the withdrawal is pending
+    /**
+     * @notice Mapping: hash of withdrawal inputs, aka 'withdrawalRoot' => whether the withdrawal is pending
+     */
     function pendingWithdrawals(bytes32) external view returns (bool);
 
     /**
@@ -13,4 +15,9 @@ interface IDelegationManagerExtended is IDelegationManager {
      * @dev Returns two empty arrays in the case that the Staker has no actively-delegateable shares.
      */
     function getDelegatableShares(address staker) external view returns (IStrategy[] memory, uint256[] memory);
+
+    /**
+     * @notice Returns the allocation manager contract.
+     */
+    function allocationManager() external view returns (IAllocationManager);
 }

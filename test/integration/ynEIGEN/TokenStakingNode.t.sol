@@ -348,7 +348,6 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             });
             tokenStakingNode.completeQueuedWithdrawals(
                 withdrawal,
-                0, // _middlewareTimesIndexes
                 false
             );
             vm.stopPrank();
@@ -392,7 +391,6 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             );
         }
     }
-
 }
 
 contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
@@ -779,12 +777,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             // complete queued withdrawals
             {
-                uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-                // all is zeroed out by default
-                _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes
+                    _withdrawals
                 );
                 vm.stopPrank();
             }
@@ -880,14 +875,13 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
                 strategies: new IStrategy[](0),
                 scaledShares: new uint256[](0)
             }),
-            0,
             true
         );
 
         vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.completeQueuedWithdrawalsAsShares(
-            new IDelegationManager.Withdrawal[](0), new uint256[](0)
+            new IDelegationManager.Withdrawal[](0)
         );
 
         vm.expectRevert(TokenStakingNode.NotSynchronized.selector);
@@ -972,7 +966,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+        tokenStakingNodeInstance.synchronize();
 
         assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
@@ -996,12 +990,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             // complete queued withdrawals
             {
-                uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-                // all is zeroed out by default
-                _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes
+                    _withdrawals
                 );
                 vm.stopPrank();
             }
@@ -1104,7 +1095,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+        tokenStakingNodeInstance.synchronize();
 
         assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
@@ -1131,12 +1122,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             // complete queued withdrawals
             {
-                uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-                // all is zeroed out by default
-                _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes
+                    _withdrawals
                 );
                 vm.stopPrank();
             }
@@ -1238,7 +1226,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         );
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.synchronize(initialShares, uint32(block.number), strategies);
+        tokenStakingNodeInstance.synchronize();
 
         assertEq(tokenStakingNodeInstance.isSynchronized(), true, "TokenStakingNode should be synchronized");
 
@@ -1262,12 +1250,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
             // complete queued withdrawals
             {
-                uint256[] memory _middlewareTimesIndexes = new uint256[](_withdrawals.length);
-                // all is zeroed out by default
-                _middlewareTimesIndexes[0] = 0;
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
                 tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
-                    _withdrawals, _middlewareTimesIndexes
+                    _withdrawals
                 );
                 vm.stopPrank();
             }

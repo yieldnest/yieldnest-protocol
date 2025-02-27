@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from  "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 
 interface IynEigen is IERC20 {
 
@@ -35,4 +36,6 @@ interface IynEigen is IERC20 {
     function assetBalance(IERC20 asset) external view returns (uint256 balance);
 
     function yieldNestStrategyManager() external view returns (address);
+
+    function assetRegistry() external view returns (IAssetRegistry);
 }

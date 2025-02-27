@@ -10,6 +10,7 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+import {IAllocationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
@@ -83,6 +84,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         IDelegationManager delegationManager;
         IStrategyManager strategyManager;
         IRewardsCoordinator rewardsCoordinator;
+        IAllocationManager allocationManager;
     }
 
     EigenLayer public eigenLayer;
@@ -210,6 +212,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         eigenLayer.eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         eigenLayer.delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         eigenLayer.rewardsCoordinator = IRewardsCoordinator(chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+        eigenLayer.allocationManager = IAllocationManager(chainAddresses.eigenlayer.ALLOCATION_MANAGER_ADDRESS);
     }
 
     function setupYnEigen() public {
