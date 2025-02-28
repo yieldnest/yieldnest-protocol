@@ -286,10 +286,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
 
             // second pass: withdraw evenly from all nodes if there is still more to withdraw
-                uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
-                for (uint256 i = 0; i < _nodesLength; ++i) {
-                    _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
-                }
+            uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
+            for (uint256 i = 0; i < _nodesLength; ++i) {
+                _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
+            }
         }
     }
 
