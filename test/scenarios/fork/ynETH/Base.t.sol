@@ -24,6 +24,7 @@ import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {StakingNode} from "src/StakingNode.sol";
+import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
@@ -87,14 +88,14 @@ contract Base is Test, Utils {
             vm.stopPrank();
         }
 
-        for(uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-            vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodesManager.nodes(i).syncQueuedShares();
-            vm.stopPrank();
-        }
+        // for(uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
+        //     vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+        //     stakingNodesManager.nodes(i).syncQueuedShares();
+        //     vm.stopPrank();
+        // }
         upgradeStakingNodesManagerAndStakingNode();
         upgradeWithdrawalsProcessor();
-        // stakingNodesManager.updateTotalETHStaked();
+        stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts() internal {
@@ -140,10 +141,9 @@ contract Base is Test, Utils {
         // Upgrade StakingNodesManager
         bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
-        address newStakingNodesManagerImpl = address(new StakingNodesManager());
-
+        address newStakingNodesManagerImpl = address(new HoleskyStakingNodesManager());
+        // commented here because totalAssets is broken in Holesky
         // uint256 totalAssetsBefore = yneth.totalAssets();
-
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
@@ -161,7 +161,6 @@ contract Base is Test, Utils {
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
-
 
         // assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
     }

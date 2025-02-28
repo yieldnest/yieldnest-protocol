@@ -2,5 +2,5 @@
 pragma solidity ^0.8.24;
 
 contract MockAVS {
-    function registerOperator(address operator, uint32[] calldata operatorSetIds, bytes calldata data) external {}
+    function registerOperator(address operator, address avs, uint32[] calldata operatorSetIds, bytes calldata data) external {}
 }

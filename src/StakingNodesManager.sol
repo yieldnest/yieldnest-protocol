@@ -70,7 +70,7 @@ contract StakingNodesManager is
     error InvalidRewardsType(RewardsType rewardsType);
     error ValidatorUnused(bytes publicKey);
     error ValidatorNotWithdrawn(bytes publicKey, IEigenPod.VALIDATOR_STATUS status);
-    error NodeNotSynchronized();
+    error NodeNotSynchronized(address nodeAddress);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -247,17 +247,17 @@ contract StakingNodesManager is
 
     function initializeV3(
         IRewardsCoordinator _rewardsCoordinator
-    ) external reinitializer(3) {
+    ) external virtual reinitializer(3) {
         if (address(_rewardsCoordinator) == address(0)) revert ZeroAddress();
         rewardsCoordinator = _rewardsCoordinator;
-        // TODO: commenting this for now because getETHBalance() is not available in current deployed version of  stakingNode on holesky
-        // uint256 updatedTotalETHStaked = 0;
-        // IStakingNode[] memory _nodes = getAllNodes();
-        // for (uint256 i = 0; i < _nodes.length; i++) {
-        //     updatedTotalETHStaked += _nodes[i].getETHBalance();
-        // }
-        // emit TotalETHStakedUpdated(updatedTotalETHStaked);
-        // totalETHStaked = updatedTotalETHStaked;
+        
+        uint256 updatedTotalETHStaked = 0;
+        IStakingNode[] memory _nodes = getAllNodes();
+        for (uint256 i = 0; i < _nodes.length; i++) {
+            updatedTotalETHStaked += _nodes[i].getETHBalance();
+        }
+        emit TotalETHStakedUpdated(updatedTotalETHStaked);
+        totalETHStaked = updatedTotalETHStaked;
     }
 
     receive() external payable {
@@ -671,6 +671,9 @@ contract StakingNodesManager is
         uint256 updatedTotalETHStaked = 0;
         IStakingNode[] memory allNodes = getAllNodes();
         for (uint256 i = 0; i < allNodes.length; i++) {
+            if (!allNodes[i].isSynchronized()) {
+                revert NodeNotSynchronized(address(allNodes[i]));
+            }
             updatedTotalETHStaked += allNodes[i].getETHBalance();
         }
 

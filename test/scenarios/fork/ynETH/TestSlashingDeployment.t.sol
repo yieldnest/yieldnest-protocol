@@ -48,10 +48,19 @@ contract SlashingDeploymentTest is Base {
         uint256 withdrawnETH;
         uint256 unverifiedStakedETH;
         uint256 queuedSharesAmount;
-        uint256 legacyQueuedSharesAmount;
+        uint256 preELIP002QueuedSharesAmount;
         int256 podOwnerDepositShares;
         address delegatedTo;
         uint256 ethBalance;
+    }
+
+    modifier skipOnHolesky() {
+        vm.skip(_isHolesky(), "Impossible to test on Holesky");
+        _;
+    }
+    
+     function _isHolesky() internal view returns (bool) {
+        return block.chainid == chainIds.holeksy;
     }
 
     address public user = makeAddr("user");
@@ -65,7 +74,7 @@ contract SlashingDeploymentTest is Base {
         deal(address(user), 100 ether);
     }
 
-    function test_depositBeforeEigenlayerSlashingDeployment() public {
+    function test_depositBeforeEigenlayerSlashingDeployment() public skipOnHolesky {
         vm.startPrank(user);
 
         stakingNodesManager.updateTotalETHStaked();
@@ -121,9 +130,9 @@ contract SlashingDeploymentTest is Base {
                 "queuedSharesAmount wrong for staking node "
             );
             assertEq(
-                stakingNodesStateSnapshotBefore[i].legacyQueuedSharesAmount,
-                stakingNodesStateSnapshotAfter[i].legacyQueuedSharesAmount,
-                "queuedSharesAmount not changed to legacyQueuedSharesAmount for staking node "
+                stakingNodesStateSnapshotBefore[i].preELIP002QueuedSharesAmount,
+                stakingNodesStateSnapshotAfter[i].preELIP002QueuedSharesAmount,
+                "queuedSharesAmount not changed to preELIP002QueuedSharesAmount for staking node "
             );
             assertEq(
                 stakingNodesStateSnapshotBefore[i].podOwnerDepositShares,
@@ -143,7 +152,7 @@ contract SlashingDeploymentTest is Base {
         }
     }
 
-    function test_depositAfterEigenlayerSlashingDeploymentAndBeforeUpgradeOfYnETH() public {
+    function test_depositAfterEigenlayerSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
         upgradeEigenlayerContracts();
 
         vm.startPrank(user);
@@ -202,9 +211,9 @@ contract SlashingDeploymentTest is Base {
                 "queuedSharesAmount wrong for staking node "
             );
             assertEq(
-                stakingNodesStateSnapshotBefore[i].legacyQueuedSharesAmount,
-                stakingNodesStateSnapshotAfter[i].legacyQueuedSharesAmount,
-                "queuedSharesAmount not changed to legacyQueuedSharesAmount for staking node "
+                stakingNodesStateSnapshotBefore[i].preELIP002QueuedSharesAmount,
+                stakingNodesStateSnapshotAfter[i].preELIP002QueuedSharesAmount,
+                "queuedSharesAmount not changed to preELIP002QueuedSharesAmount for staking node "
             );
             assertEq(
                 stakingNodesStateSnapshotBefore[i].podOwnerDepositShares,
@@ -225,7 +234,7 @@ contract SlashingDeploymentTest is Base {
         }
     }
 
-    function test_depositAfterSlashingDeploymentByEigenlayerAfterUpgradeOfYnETH() public {
+    function test_depositAfterSlashingDeploymentByEigenlayerAfterUpgradeOfYnETH() public skipOnHolesky {
         upgradeEigenlayerContracts();
 
 
@@ -281,8 +290,8 @@ contract SlashingDeploymentTest is Base {
             );
             assertEq(
                 stakingNodesStateSnapshotBefore[i].queuedSharesAmount,
-                stakingNodesStateSnapshotAfter[i].legacyQueuedSharesAmount,
-                "queuedSharesAmount not changed to legacyQueuedSharesAmount for staking node "
+                stakingNodesStateSnapshotAfter[i].preELIP002QueuedSharesAmount,
+                "queuedSharesAmount not changed to preELIP002QueuedSharesAmount for staking node "
             );
             assertEq(
                 stakingNodesStateSnapshotAfter[i].queuedSharesAmount,
@@ -389,16 +398,16 @@ contract SlashingDeploymentTest is Base {
         uint256 nodeCount = stakingNodesManager.nodesLength();
         StakingNodeStateSnapshot[] memory stakingNodeStateSnapshot = new StakingNodeStateSnapshot[](nodeCount);
         for (uint256 i = 0; i < nodeCount; i++) {
-            uint256 legacyQueuedSharesAmount;
+            uint256 preELIP002QueuedSharesAmount;
             int256 podOwnerDepositShares;
             address delegatedTo;
             uint256 ethBalance;
 
-            // wrapping in try catch because legacyQueuedSharesAmount function won't be available before the upgrade
-            try stakingNodesManager.nodes(i).legacyQueuedSharesAmount() returns (uint256 _legacyQueuedSharesAmount) {
-                legacyQueuedSharesAmount = _legacyQueuedSharesAmount;
+            // wrapping in try catch because preELIP002QueuedSharesAmount function won't be available before the upgrade
+            try stakingNodesManager.nodes(i).preELIP002QueuedSharesAmount() returns (uint256 _preELIP002QueuedSharesAmount) {
+                preELIP002QueuedSharesAmount = _preELIP002QueuedSharesAmount;
             } catch {
-                legacyQueuedSharesAmount = 0;
+                preELIP002QueuedSharesAmount = 0;
             }
 
             try eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(i))) returns (
@@ -420,7 +429,7 @@ contract SlashingDeploymentTest is Base {
                 withdrawnETH: stakingNodesManager.nodes(i).getWithdrawnETH(),
                 unverifiedStakedETH: stakingNodesManager.nodes(i).unverifiedStakedETH(),
                 queuedSharesAmount: stakingNodesManager.nodes(i).getQueuedSharesAmount(),
-                legacyQueuedSharesAmount: legacyQueuedSharesAmount,
+                preELIP002QueuedSharesAmount: preELIP002QueuedSharesAmount,
                 podOwnerDepositShares: podOwnerDepositShares,
                 delegatedTo: delegatedTo,
                 ethBalance: ethBalance

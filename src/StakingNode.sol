@@ -128,15 +128,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     address public delegatedTo;
 
     /**
-     * @dev The amount of shares queued for withdrawal that were queued before the upgrade
+     * @dev The amount of shares queued for withdrawal that were queued before the eigenlayer ELIP-002 upgrade
      */
-    uint256 public legacyQueuedSharesAmount;
+    uint256 public preELIP002QueuedSharesAmount;
 
     /**
-     * @dev Maps a withdrawal root to the amount of shares that can be withdrawn.
+     * @dev Maps a withdrawal root to the amount of shares that can be withdrawn and whether the withdrawal root is post ELIP-002 slashing upgrade.
      * This is used to track the amount of withdrawable shares that are queued for withdrawal.
      */
-    mapping(bytes32 withdrawalRoot => uint256 withdrawableShares) public withdrawableSharesForWithdrawalRoot;
+    mapping(bytes32 withdrawalRoot => WithdrawableShareInfo withdrawableShareInfo) public withdrawableShareInfo;
 
     /** 
      * @dev Allows only a whitelisted address to configure the contract 
@@ -195,7 +195,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     }
     
     function initializeV4() external onlyStakingNodesManager reinitializer(4) {
-        legacyQueuedSharesAmount = queuedSharesAmount;
+        preELIP002QueuedSharesAmount = queuedSharesAmount;
         queuedSharesAmount = 0;
     }
 
@@ -344,17 +344,24 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     function syncQueuedShares() public {
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
-        queuedSharesAmount = 0;
+        // This is used to track the amount of withdrawable shares that are queued for withdrawal.
+        uint256 queuedWithdrawableShares = 0; 
 
         (IDelegationManagerTypes.Withdrawal[] memory withdrawals, uint256[][] memory shares) = delegationManager.getQueuedWithdrawals(address(this));
         for(uint256 i = 0; i < withdrawals.length; i++) {
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
             uint256 withdrawableShares = shares[i][0];
-            withdrawableSharesForWithdrawalRoot[withdrawalRoot] = withdrawableShares;
-            queuedSharesAmount += withdrawableShares;
+            withdrawableShareInfo[withdrawalRoot] = WithdrawableShareInfo({
+                withdrawableShares: withdrawableShares,
+                postELIP002SlashingUpgrade: true
+            });
+            queuedWithdrawableShares += withdrawableShares;
         }
+
+        // updating queuedSharesAmount due to sync 
+        queuedSharesAmount = queuedWithdrawableShares;
         
-        emit QueuedSharesSynced(queuedSharesAmount + legacyQueuedSharesAmount);
+        emit QueuedSharesSynced(queuedWithdrawableShares + preELIP002QueuedSharesAmount);
     }
 
     //--------------------------------------------------------------------------------------
@@ -388,31 +395,30 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             depositShares: shares,
             __deprecated_withdrawer: address(this)
         });
-        uint256 beaconChainSlashingFactor;
         uint256 withdrawableShares;
         bytes32[] memory fullWithdrawalRoots;
-        IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
 
         if (delegatedTo == address(0)) {
-            beaconChainSlashingFactor = eigenPodManager.beaconChainSlashingFactor(address(this));
+            IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
+            uint256 beaconChainSlashingFactor = eigenPodManager.beaconChainSlashingFactor(address(this));
             fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
             IDelegationManagerTypes.Withdrawal memory withdrawal = delegationManager.getQueuedWithdrawal(fullWithdrawalRoots[0]);
             uint256 scaledShares = withdrawal.scaledShares[0];
             withdrawableShares = scaledShares.mulWad(beaconChainSlashingFactor);
         } else {
             uint256[] memory operatorSharesBefore = delegationManager.getOperatorShares(delegatedTo, strategies);
-
             fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
-
             uint256[] memory operatorSharesAfter = delegationManager.getOperatorShares(delegatedTo, strategies);
-
             withdrawableShares = operatorSharesBefore[0] - operatorSharesAfter[0];
         }
     
         // After running queueWithdrawals, eigenPodManager.getWithdrawableShares(address(this)) decreases by `withdrawableShares`.
         // Therefore queuedSharesAmount increase by `withdrawableShares`.
         queuedSharesAmount += withdrawableShares;
-        withdrawableSharesForWithdrawalRoot[fullWithdrawalRoots[0]] = withdrawableShares;
+        withdrawableShareInfo[fullWithdrawalRoots[0]] = WithdrawableShareInfo({
+            withdrawableShares: withdrawableShares,
+            postELIP002SlashingUpgrade: true
+        });
         emit QueuedWithdrawals(depositSharesAmount, fullWithdrawalRoots);
 
         return fullWithdrawalRoots;
@@ -452,7 +458,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
 
-            totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawalAndGetTotalWithdrawableShare(delegationManager, withdrawals[i]);
+            totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawal(delegationManager, withdrawals[i]);
         }
 
         uint256 initialETHBalance = address(this).balance;
@@ -505,7 +511,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             tokens[i] = new IERC20V4[](1);
             receiveAsTokens[i] = false;
             
-            totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawalAndGetTotalWithdrawableShare(delegationManager, withdrawals[i]);
+            totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawal(delegationManager, withdrawals[i]);
         }
 
         // Complete withdrawals with receiveAsTokens = false
@@ -522,31 +528,27 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Decreases the queued shares on complete queued withdrawals and returns the total withdrawable shares
      * @param delegationManager The delegation manager
      * @param withdrawal The withdrawal struct
-     * @return totalWithdrawableShareForWithdrawalRoot The total withdrawable shares for the withdrawal root
+     * @return totalWithdrawableShare The total withdrawable shares for the withdrawal struct
      */
-    function _decreaseQueuedSharesOnCompleteQueuedWithdrawalAndGetTotalWithdrawableShare(
+    function _decreaseQueuedSharesOnCompleteQueuedWithdrawal(
         IDelegationManager delegationManager,
         IDelegationManager.Withdrawal calldata withdrawal
-    ) internal returns (uint256) {
-        uint256 totalWithdrawableShareForWithdrawalRoot = 0;
-        bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-        uint256 withdrawableSharesForWithdrawalRootValue = withdrawableSharesForWithdrawalRoot[withdrawalRoot];
+    ) internal returns (uint256 totalWithdrawableShare) {
 
-            if (withdrawableSharesForWithdrawalRootValue != 0) {
-                // If the withdrawableSharesForWithdrawalRootValue are not 0, that means withdrawal root exists in withdrawableSharesForWithdrawalRoot
-                // which means it was queued after the upgrade
-                // so we need to subtract the shares from queuedSharesAmount and set the withdrawableSharesForWithdrawalRoot to 0
-                totalWithdrawableShareForWithdrawalRoot = withdrawableSharesForWithdrawalRootValue;
-                withdrawableSharesForWithdrawalRoot[withdrawalRoot] = 0;
-                queuedSharesAmount -= withdrawableSharesForWithdrawalRootValue;
-            } else {
-                // If the withdrawableSharesForWithdrawalRootValue are 0, that means withdrawal root doesn't exist in withdrawableSharesForWithdrawalRoot
-                // which means it was queued before the upgrade
-                // so we need to subtract the shares from legacyQueuedSharesAmount and queuedSharesAmount
-                totalWithdrawableShareForWithdrawalRoot = withdrawal.scaledShares[0];
-                legacyQueuedSharesAmount -= withdrawal.scaledShares[0];
-            }
-        return totalWithdrawableShareForWithdrawalRoot;
+        bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
+        WithdrawableShareInfo storage withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
+
+        if (withdrawableShareInfo.postELIP002SlashingUpgrade) {
+            // If the withdrawal root queued after ELIP-002 slashing upgrade, we need to subtract the shares from queuedSharesAmount 
+            // and set the withdrawableShares to 0 for the withdrawal root
+            totalWithdrawableShare = withdrawableShareInfo.withdrawableShares;
+            queuedSharesAmount -= totalWithdrawableShare;
+            withdrawableShareInfo.withdrawableShares = 0;
+        } else {
+            // If the withdrawal root queued was before ELIP-002 slashing upgrade, we need to subtract the shares from preELIP002QueuedSharesAmount 
+            totalWithdrawableShare = withdrawal.scaledShares[0];
+            preELIP002QueuedSharesAmount -= totalWithdrawableShare;
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -611,9 +613,18 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         (bool success,) = address(stakingNodesManager).call{value: amount}("");
         if (!success) revert TransferFailed();
     }
-
+    
+    /**
+     * @notice Calculates the total ETH balance of the StakingNode
+     * @dev This function aggregates all forms of ETH associated with this StakingNode:
+     *      1. withdrawnETH - ETH that has been withdrawn from Eigenlayer and is held by this contract
+     *      2. unverifiedStakedETH - ETH staked with validators but not yet verified with withdrawal credentials
+     *      3. queuedSharesAmount - Shares queued for withdrawal after ELIP-002 upgrade (1 share = 1 ETH)
+     *      4. preELIP002QueuedSharesAmount - Shares queued before the ELIP-002 upgrade (1 share = 1 ETH)
+     *      5. Active withdrawable shares in Eigenlayer - Representing staked ETH that can be withdrawn (1 share = 1 ETH)
+     * @return The total ETH balance in wei, or 0 if the calculation results in a negative value
+     */
     function getETHBalance() public view returns (uint256) {
-        IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         IStrategy[] memory strategies = new IStrategy[](1);
         strategies[0] = beaconChainETHStrategy;
@@ -622,14 +633,8 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 beaconChainETHStrategyWithdrawableShares = withdrawableShares[0];
     
         // Compute the total ETH balance of the StakingNode
-        // This includes:
-        // 1. withdrawnETH: ETH that has been withdrawn from Eigenlayer and is held by this StakingNode
-        // 2. unverifiedStakedETH: ETH staked with validators but not yet verified
-        // 3. queuedSharesAmount: Shares queued for withdrawal that can be withdrawn after accounting for slashing (1 share = 1 ETH)
-        // 4. legacyQueuedSharesAmount: Shares queued for withdrawal that were queued before the upgrade (1 share = 1 ETH)
-        // 5. beaconChainETHStrategyWithdrawableShares: Active shares in Eigenlayer, representing staked ETH that can be withdrawn after accounting for slashing
         int256 totalETHBalance =
-            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount + legacyQueuedSharesAmount + beaconChainETHStrategyWithdrawableShares);
+            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount + preELIP002QueuedSharesAmount + beaconChainETHStrategyWithdrawableShares);
 
         if (totalETHBalance < 0) {
             return 0;

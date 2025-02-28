@@ -26,6 +26,12 @@ interface IStakingNode {
         uint256 nodeId;
     }
 
+    /// @notice Information about the withdrawable shares for the withdrawal root.
+    struct WithdrawableShareInfo {
+        uint256 withdrawableShares; // amount of shares that can be withdrawn for the withdrawal root
+        bool postELIP002SlashingUpgrade; // whether the withdrawal root is post ELIP-002 slashing upgrade
+    }
+
     function stakingNodesManager() external view returns (IStakingNodesManager);
     function eigenPod() external view returns (IEigenPod);
     function initialize(Init memory init) external;
@@ -50,7 +56,7 @@ interface IStakingNode {
 
     function queuedSharesAmount() external view returns (uint256);
 
-    function legacyQueuedSharesAmount() external view returns (uint256);
+    function preELIP002QueuedSharesAmount() external view returns (uint256);
 
     /**
      * @notice Verifies the withdrawal credentials and balance of validators.
