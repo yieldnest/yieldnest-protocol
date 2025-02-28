@@ -10,6 +10,8 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+
 
 interface ITokenStakingNodesManagerEvents {
 
@@ -67,6 +69,8 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
     ITokenStakingNode[] public nodes;
     uint256 public maxNodeCount;
 
+    IRewardsCoordinator public rewardsCoordinator;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -123,6 +127,14 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
         maxNodeCount = init.maxNodeCount;
     }
 
+    function initializeV2(IRewardsCoordinator _rewardsCoordinator) 
+        external 
+        notZeroAddress(address(_rewardsCoordinator))
+        reinitializer(2)
+    {
+        rewardsCoordinator = _rewardsCoordinator;
+    }
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  STAKING NODE CREATION  ---------------------------
     //--------------------------------------------------------------------------------------
@@ -174,6 +186,12 @@ contract TokenStakingNodesManager is AccessControlUpgradeable, ITokenStakingNode
              );
 
              // update version to latest
+             initializedVersion = node.getInitializedVersion();
+             emit NodeInitialized(address(node), initializedVersion);
+         }
+
+         if (initializedVersion == 1) {
+             node.initializeV2();
              initializedVersion = node.getInitializedVersion();
              emit NodeInitialized(address(node), initializedVersion);
          }

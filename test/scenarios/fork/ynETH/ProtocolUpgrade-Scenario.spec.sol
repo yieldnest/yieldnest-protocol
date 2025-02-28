@@ -12,7 +12,6 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ScenarioBaseTest} from "test/scenarios/ScenarioBaseTest.sol";
 import { Invariants } from "test/scenarios/Invariants.sol";
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -23,7 +22,9 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 
-contract ProtocolUpgradeScenario is ScenarioBaseTest {
+import "./Base.t.sol";
+
+contract ProtocolUpgradeScenario is Base {
 
     address YNSecurityCouncil;
 

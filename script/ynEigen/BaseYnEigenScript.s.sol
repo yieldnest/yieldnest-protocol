@@ -14,6 +14,8 @@ import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
+import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
+
 
 import {ActorAddresses} from "script/Actors.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
@@ -37,6 +39,7 @@ contract BaseYnEigenScript is BaseScript {
         ProxyAddresses redemptionAssetsVault;
         ProxyAddresses withdrawalQueueManager;
         ProxyAddresses wrapper;
+        ProxyAddresses withdrawalsProcessor;
     }
 
     struct Deployment {
@@ -53,6 +56,7 @@ contract BaseYnEigenScript is BaseScript {
         RedemptionAssetsVault redemptionAssetsVault;
         WithdrawalQueueManager withdrawalQueueManager;
         IWrapper wrapper;
+        WithdrawalsProcessor withdrawalsProcessor;
     }
 
     struct Asset {
@@ -199,6 +203,9 @@ contract BaseYnEigenScript is BaseScript {
 
         deployment.wrapper = IWrapper(payable(jsonContent.readAddress(".proxy-wrapper")));
         proxies.wrapper = loadProxyAddresses(jsonContent, "wrapper");
+
+        deployment.withdrawalsProcessor = WithdrawalsProcessor(payable(jsonContent.readAddress(".proxy-withdrawalsProcessor")));
+        proxies.withdrawalsProcessor = loadProxyAddresses(jsonContent, "withdrawalsProcessor");
         
         deployment.upgradeTimelock = TimelockController(payable(jsonContent.readAddress(".upgradeTimelock")));
 

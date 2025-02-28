@@ -8,19 +8,34 @@ import {TestTokenStakingNodeV2} from "test/mocks/TestTokenStakingNodeV2.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 
 contract TestTokenStakingNodesManagerV2 is TokenStakingNodesManager {
-    function initializeTokenStakingNode(ITokenStakingNode node, uint256 nodeId) internal override {
+
+
+    function initializeTokenStakingNode(ITokenStakingNode node, uint256 nodeId) virtual override internal {
 
          uint64 initializedVersion = node.getInitializedVersion();
          if (initializedVersion == 0) {
              node.initialize(
-                ITokenStakingNode.Init(ITokenStakingNodesManager(address(this)), nodeId)
+               ITokenStakingNode.Init(ITokenStakingNodesManager(address(this)), nodeId)
              );
+
+             // update version to latest
              initializedVersion = node.getInitializedVersion();
+             emit NodeInitialized(address(node), initializedVersion);
          }
 
          if (initializedVersion == 1) {
-            TestTokenStakingNodeV2(payable(address(node)))
-                .initializeV2(TestTokenStakingNodeV2.ReInit({valueToBeInitialized: 23}));
+             node.initializeV2();
+             initializedVersion = node.getInitializedVersion();
+             emit NodeInitialized(address(node), initializedVersion);
+         }
+
+         if (initializedVersion == 2) {
+             TestTokenStakingNodeV2.ReInit memory reInit = TestTokenStakingNodeV2.ReInit({
+                 valueToBeInitialized: 23
+             });
+             TestTokenStakingNodeV2(payable(address(node))).initializeV3(reInit);
+             initializedVersion = node.getInitializedVersion();
+             emit NodeInitialized(address(node), initializedVersion);
          }
     }
 }

@@ -8,26 +8,25 @@ import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStra
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
+import {Utils} from "script/Utils.sol";
+import {ContractAddresses} from "script/ContractAddresses.sol";
+import {ActorAddresses} from "script/Actors.sol";
 
-import {Utils} from "../../../script/Utils.sol";
-import {ContractAddresses} from "../../../script/ContractAddresses.sol";
-import {ActorAddresses} from "../../../script/Actors.sol";
+import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 
-import {IDepositContract} from "../../../src/external/ethereum/IDepositContract.sol";
+import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
+import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import {IynETH} from "src/interfaces/IynETH.sol";
 
-import {IRedeemableAsset} from "../../../src/interfaces/IRedeemableAsset.sol";
-import {IRedemptionAssetsVault} from "../../../src/interfaces/IRedemptionAssetsVault.sol";
-import {IynETH} from "../../../src/interfaces/IynETH.sol";
-
-import {ynETH} from "../../../src/ynETH.sol";
-import {StakingNodesManager, IStakingNodesManager} from "../../../src/StakingNodesManager.sol";
-import {StakingNode} from "../../../src/StakingNode.sol";
-import {RewardsReceiver} from "../../../src/RewardsReceiver.sol";
-import {RewardsDistributor} from "../../../src/RewardsDistributor.sol";
-import {StakingNode} from "../../../src/StakingNode.sol";
-import {WithdrawalQueueManager} from "../../../src/WithdrawalQueueManager.sol";
-import {ynETHRedemptionAssetsVault} from "../../../src/ynETHRedemptionAssetsVault.sol";
-import {IStakingNode} from "../../../src/interfaces/IStakingNodesManager.sol";
+import {ynETH} from "src/ynETH.sol";
+import {StakingNodesManager, IStakingNodesManager} from "src/StakingNodesManager.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {RewardsReceiver} from "src/RewardsReceiver.sol";
+import {RewardsDistributor} from "src/RewardsDistributor.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
+import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
+import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
 
 import "forge-std/console.sol";
@@ -124,6 +123,35 @@ contract Base is Test, Utils {
         }
     }
 
+    function upgradeStakingNodesManagerAndStakingNode() internal {
+
+        // Upgrade StakingNode implementation
+        address newStakingNodeImpl = address(new StakingNode());
+
+        // Upgrade StakingNodesManager
+        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+
+        address newStakingNodesManagerImpl = address(new StakingNodesManager());
+
+        uint256 totalAssetsBefore = yneth.totalAssets();
+
+
+        vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
+            ITransparentUpgradeableProxy(address(stakingNodesManager)),
+            newStakingNodesManagerImpl,
+            initializeV3Data
+        );
+
+        assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");
+
+        // Register new implementation
+        vm.prank(actors.admin.STAKING_ADMIN);
+        stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
+
+        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
+    }
+
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
         uint40[] memory validatorIndices = new uint40[](count * nodeIds.length);
         uint256 index = 0;
@@ -169,6 +197,8 @@ contract Base is Test, Utils {
         uint256 previousTotalSupply,
         uint256[] memory previousStakingNodeBalances
     ) public {  
+
+        stakingNodesManager.updateTotalETHStaked();
         assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
 

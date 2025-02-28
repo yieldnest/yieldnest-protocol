@@ -9,6 +9,7 @@ import {depositRootGenerator} from "src/external/ethereum/DepositRootGenerator.s
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
 import {IRewardsDistributor,IRewardsReceiver, RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {IEigenPodManager,IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
@@ -29,6 +30,7 @@ interface StakingNodesManagerEvents {
     event NodeInitialized(address nodeAddress, uint64 initializedVersion);
     event PrincipalWithdrawalProcessed(uint256 nodeId, uint256 amountToReinvest, uint256 amountToQueue, uint256 rewardsAmount);
     event ETHReceived(address sender, uint256 amount);
+    event TotalETHStakedUpdated(uint256 totalETHStaked);
 }
 
 /**
@@ -68,6 +70,7 @@ contract StakingNodesManager is
     error InvalidRewardsType(RewardsType rewardsType);
     error ValidatorUnused(bytes publicKey);
     error ValidatorNotWithdrawn(bytes publicKey, IEigenPod.VALIDATOR_STATUS status);
+    error NodeNotSynchronized();
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -130,6 +133,9 @@ contract StakingNodesManager is
 
     bool public validatorRegistrationPaused;
     IRedemptionAssetsVault public redemptionAssetsVault;
+    uint256 public totalETHStaked;
+
+    IRewardsCoordinator public rewardsCoordinator;
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -239,6 +245,20 @@ contract StakingNodesManager is
         ___deprecated_delayedWithdrawalRouter = address(0);
     }
 
+    function initializeV3(
+        IRewardsCoordinator _rewardsCoordinator
+    ) external reinitializer(3) {
+        if (address(_rewardsCoordinator) == address(0)) revert ZeroAddress();
+        rewardsCoordinator = _rewardsCoordinator;
+        uint256 updatedTotalETHStaked = 0;
+        IStakingNode[] memory _nodes = getAllNodes();
+        for (uint256 i = 0; i < _nodes.length; i++) {
+            updatedTotalETHStaked += _nodes[i].getETHBalance();
+        }
+        emit TotalETHStakedUpdated(updatedTotalETHStaked);
+        totalETHStaked = updatedTotalETHStaked;
+    }
+
     receive() external payable {
         emit ETHReceived(msg.sender, msg.value);
     }
@@ -280,6 +300,9 @@ contract StakingNodesManager is
 
             _registerValidator(validator, DEFAULT_VALIDATOR_STAKE);
         }
+
+        // After registering validators, update the total ETH staked
+        updateTotalETHStaked();
     }
 
     /**
@@ -440,6 +463,12 @@ contract StakingNodesManager is
 
         if (initializedVersion == 1) {
             node.initializeV2(0);
+            initializedVersion = node.getInitializedVersion();
+        }
+
+        if (initializedVersion == 2) {
+            node.initializeV3();
+            initializedVersion = node.getInitializedVersion();
         }
 
         // NOTE: For future versions, add additional if clauses that initialize the node 
@@ -474,6 +503,11 @@ contract StakingNodesManager is
         public
         onlyRole(STAKING_ADMIN_ROLE)
         notZeroAddress(_implementationContract) {
+        _upgradeStakingNodeImplementation(_implementationContract);
+    }
+
+
+    function _upgradeStakingNodeImplementation(address _implementationContract) internal {
         if (address(upgradeableBeacon) == address(0)) {
             revert NoBeaconImplementationExists();
         }
@@ -487,6 +521,7 @@ contract StakingNodesManager is
         }
 
         emit UpgradedStakingNodeImplementationContract(_implementationContract, nodeCount);
+
     }
     
     /**
@@ -544,6 +579,10 @@ contract StakingNodesManager is
         for (uint256 i = 0; i < actions.length; i++) {
             _processPrincipalWithdrawalForNode(actions[i]);
         }
+
+        // After processing all withdrawals, update the total ETH staked across all nodes
+        // This ensures the global ETH staked counter stays in sync with individual node balances
+        updateTotalETHStaked();
     }
 
     /**
@@ -615,6 +654,28 @@ contract StakingNodesManager is
         // Emit an event to log the processed principal withdrawal details
         emit PrincipalWithdrawalProcessed(nodeId, amountToReinvest, amountToQueue, rewardsAmount);
     }
+    /**
+     * @notice Updates the total amount of ETH staked across all nodes in the system
+     * @dev Iterates through all staking nodes, checks their synchronization status,
+     *      and sums up their ETH balances to calculate the new total.
+     *      Reverts if any node is not properly synchronized.
+     * @custom:throws NodeNotSynchronized if any node is not synchronized with the delegation manager
+     */
+    function updateTotalETHStaked() public {
+        uint256 updatedTotalETHStaked = 0;
+        IStakingNode[] memory allNodes = getAllNodes();
+        for (uint256 i = 0; i < allNodes.length; i++) {
+            if (!allNodes[i].isSynchronized()) {
+                revert NodeNotSynchronized();
+            } 
+
+            updatedTotalETHStaked += allNodes[i].getETHBalance();
+        }
+
+        emit TotalETHStakedUpdated(updatedTotalETHStaked);
+        
+        totalETHStaked = updatedTotalETHStaked;
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VIEWS  -------------------------------------------
@@ -678,14 +739,9 @@ contract StakingNodesManager is
      * @return totalETHDeposited The total amount of ETH deposited in the system.
      */
     function totalDeposited() external view returns (uint256) {
-       
-        uint256 _nodesLength = nodes.length;
 
-        uint256 totalETHDeposited = 0;
-
-        for (uint256 i = 0; i < _nodesLength; i++) {
-            totalETHDeposited += nodes[i].getETHBalance();
-        }
+        // Get the total ETH staked across all nodes from the cached totalETHStaked variable
+        uint256 totalETHDeposited = totalETHStaked;
 
         // NOTE: Counting the availableRedemptionAssets towards totalDeposited
         //  opens up ynETH to donation attack for a non boostrapped system.

@@ -9,6 +9,8 @@ import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IynETH} from "src/interfaces/IynETH.sol";
 import {Test} from "forge-std/Test.sol";
@@ -78,6 +80,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         IEigenPodManager eigenPodManager;
         IDelegationManager delegationManager;
         IStrategyManager strategyManager;
+        IRewardsCoordinator rewardsCoordinator;
     }
 
     EigenLayer public eigenLayer;
@@ -173,6 +176,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         eigenLayer.strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
         eigenLayer.eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         eigenLayer.delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
+        eigenLayer.rewardsCoordinator = IRewardsCoordinator(chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
     }
 
     function setupYnEigen() public {
@@ -214,6 +218,8 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         tokenStakingNodesManager.initialize(tokenStakingNodesManagerInit);
         vm.prank(actors.admin.STAKING_ADMIN); // TokenStakingNodesManager is the only contract that can register a staking node implementation contract
         tokenStakingNodesManager.registerTokenStakingNode(address(tokenStakingNodeImplementation));
+
+        tokenStakingNodesManager.initializeV2(eigenLayer.rewardsCoordinator);
     }
 
     function setupYieldNestAssets() public {
