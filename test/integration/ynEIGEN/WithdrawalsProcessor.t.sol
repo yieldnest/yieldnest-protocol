@@ -24,6 +24,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
     address public constant keeper = address(0x4206942069);
+
+    uint256 public constant DEFAULT_BUFFER_FACTOR = 1.1 ether;
     
     uint256 AMOUNT = 50 ether;
 
@@ -70,6 +72,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
 
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER, DEFAULT_BUFFER_FACTOR);
         }
 
         // grant roles to withdrawalsProcessor
@@ -153,6 +157,29 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             "testClaimWithdrawal: E2"
         );
     }
+
+    function testBufferFactorSetOnInitializeV2() public {
+        assertEq(withdrawalsProcessor.bufferFactor(), DEFAULT_BUFFER_FACTOR, "Buffer factor not set on initializeV2");
+    }
+
+    function testUpdateBufferFactorFailsIfInvalidCaller() public {
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("AccessControlUnauthorizedAccount(address,bytes32)")), address(this), withdrawalsProcessor.BUFFER_FACTOR_UPDATER_ROLE()));
+        withdrawalsProcessor.updateBufferFactor(DEFAULT_BUFFER_FACTOR);
+    }
+
+    function testUpdateBufferFactorFailsIfLowerThanOne() public {
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("InvalidInput()"))));
+        vm.prank(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER);
+        withdrawalsProcessor.updateBufferFactor(1 ether - 1);
+    }
+
+    function testUpdateBufferFactor() public {
+        uint256 _newBufferFactor = DEFAULT_BUFFER_FACTOR + 1;
+        vm.prank(actors.ops.EIGEN_WITHDRAWALS_PROCESSOR_BUFFER_FACTOR_UPDATER);
+        withdrawalsProcessor.updateBufferFactor(_newBufferFactor);
+        assertEq(withdrawalsProcessor.bufferFactor(), _newBufferFactor, "Buffer factor not updated");
+    }
+    
 
     //
     // private helpers
@@ -247,7 +274,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             vm.prank(keeper);
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
 
-            assertTrue(_queuedEverything, "queueWithdrawal: E11");
+            // False because even if the requested amount from the queued manager is reached, it maight not with the added buffer.
+            assertFalse(_queuedEverything, "queueWithdrawal: E11");
+
             assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E12");
             assertEq(withdrawalsProcessor.batch(1), 2, "queueWithdrawal: E13");
 
@@ -297,9 +326,12 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E30");
         }
 
+        // They are not equal because an extra % of the requested amount is queued to account for slashing.
+        // This makes it possible that the total queued withdrawals is greater than the pending requested redemption amount.
+        // Despite not slashing in this example, some precision is lost due to the bufferFactor * requestedAmount / 1e18 calculation.
         assertEq(
-            withdrawalsProcessor.totalQueuedWithdrawals(),
-            withdrawalQueueManager.pendingRequestedRedemptionAmount(),
+            withdrawalsProcessor.totalQueuedWithdrawals() - withdrawalQueueManager.pendingRequestedRedemptionAmount(), 
+            149, 
             "queueWithdrawal: E31"
         );
         

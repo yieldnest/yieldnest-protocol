@@ -200,7 +200,11 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @dev The queued shares are the sum of the legacy queued shares and the post slashing queued shares.
      */
     function getQueuedSharesAndWithdrawn(IStrategy _strategy, IERC20 _asset) external view returns (uint256, uint256) {
-        return (legacyQueuedShares[_strategy] + queuedShares[_strategy], withdrawn[_asset]);
+        return (getQueuedShares(_strategy), withdrawn[_asset]);
+    }
+
+    function getQueuedShares(IStrategy _strategy) public view returns (uint256) {
+        return legacyQueuedShares[_strategy] + queuedShares[_strategy];
     }
 
     /**
