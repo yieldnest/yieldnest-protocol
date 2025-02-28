@@ -14,12 +14,13 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
 
     function test_undelegate_Scenario_undelegateByOperator() public {
 
-        // Log total assets before undelegation
-        uint256 totalAssetsBefore = yneth.totalAssets();
-
 
         IStakingNode stakingNode = stakingNodesManager.nodes(0);
 
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNode.synchronize();
+
+        uint256 totalAssetsBefore = yneth.totalAssets();
         // Get initial ETH balance of staking node
         uint256 stakingNodeBalanceBefore = stakingNode.getETHBalance();
 
@@ -53,7 +54,7 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
 
         // Call synchronize after verifying not synchronized
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNode.synchronize(podSharesBefore, blockNumberBefore);
+        stakingNode.synchronize();
 
         // Assert staking node balance remains unchanged after synchronization
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after synchronization");
@@ -103,6 +104,9 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
         uint256 podSharesBefore = signedPodSharesBefore < 0 ? 0 : uint256(signedPodSharesBefore);
         uint32 blockNumberBefore = uint32(block.number);
 
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNode.synchronize();
+
         // Call undelegate from delegator
         vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNode.undelegate();
@@ -121,10 +125,8 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
         // Assert node is synchronized after undelegation
         assertTrue(stakingNode.isSynchronized(), "Node should be synchronized after undelegation");
 
-        // Call synchronize after verifying synchronized
-        vm.expectRevert(StakingNode.AlreadySynchronized.selector);
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNode.synchronize(podSharesBefore, blockNumberBefore);
+        stakingNode.synchronize();
 
         // Assert staking node balance remains unchanged after synchronization
         assertEq(stakingNodeBalanceBefore, stakingNode.getETHBalance(), "Staking node balance should not change after synchronization");

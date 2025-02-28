@@ -52,6 +52,8 @@ interface IStakingNodesManager {
 
     function totalDeposited() external view returns (uint256);
 
+    function updateTotalETHStaked() external;
+
     function processPrincipalWithdrawals(
         WithdrawalAction[] memory actions
     ) external;

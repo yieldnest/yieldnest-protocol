@@ -639,12 +639,15 @@ contract Verify is BaseYnETHScript {
     function veryifySanityChecks() internal view {
         // Check that previewDeposit of 1 ETH is less than 1 ether
         uint256 previewDepositResult = deployment.ynETH.previewDeposit(1 ether);
+        console.log("previewDepositResult", previewDepositResult);
         require(previewDepositResult < 1 ether, "previewDeposit of 1 ETH should be less than 1 ether");
         console.log("\u2705 previewDeposit of 1 ETH is less than 1 ether");
 
         // Check that totalSupply is less than totalAssets
         uint256 totalSupply = deployment.ynETH.totalSupply();
         uint256 totalAssets = deployment.ynETH.totalAssets();
+        console.log("totalSupply", totalSupply);
+        console.log("totalAssets", totalAssets);
         require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
         console.log("\u2705 totalSupply is less than totalAssets");
 
@@ -665,7 +668,8 @@ contract Verify is BaseYnETHScript {
         for (uint256 i = 0; i < stakingNodes.length; i++) {
             stakingNodesBalance += stakingNodes[i].getETHBalance();     
             console.log(string.concat("Balance for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].getETHBalance()), " wei (", vm.toString(stakingNodes[i].getETHBalance() / 1e18), " ETH)"));
-
+            console.log(string.concat("Pre ELIP002 queued shares for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].preELIP002QueuedSharesAmount()), " wei (", vm.toString(stakingNodes[i].preELIP002QueuedSharesAmount() / 1e18), " ETH)"));
+            console.log(string.concat("Queued shares for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].queuedSharesAmount()), " wei (", vm.toString(stakingNodes[i].queuedSharesAmount() / 1e18), " ETH)"));
         }
 
         uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;

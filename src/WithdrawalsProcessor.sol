@@ -63,15 +63,13 @@ contract WithdrawalsProcessor is Initializable, AccessControlUpgradeable, IWithd
      * @notice Bundles the completion of queued withdrawals and processing of principal withdrawals for a single node
      * @param withdrawalAction The withdrawal action containing node ID and withdrawal amounts
      * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes for the withdrawals
      */
     function completeAndProcessWithdrawalsForNode(
         IStakingNodesManager.WithdrawalAction memory withdrawalAction,
-        IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] memory withdrawals
     ) external onlyRole(WITHDRAWAL_MANAGER_ROLE) {
         // Complete queued withdrawals
-        stakingNodesManager.nodes(withdrawalAction.nodeId).completeQueuedWithdrawals(withdrawals, middlewareTimesIndexes);
+        stakingNodesManager.nodes(withdrawalAction.nodeId).completeQueuedWithdrawals(withdrawals);
         
         // Process principal withdrawal
         IStakingNodesManager.WithdrawalAction[] memory actions = new IStakingNodesManager.WithdrawalAction[](1);

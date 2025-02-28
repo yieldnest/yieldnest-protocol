@@ -19,8 +19,10 @@ contract RewardsReceiverTest is IntegrationBaseTest {
 		address newReceiver = address(33);
 		vm.deal(address(executionLayerReceiver), 100);
 		vm.prank(address(rewardsDistributor));
+		uint256 newReceiverBalanceBefore = address(newReceiver).balance;
 		executionLayerReceiver.transferETH(payable(newReceiver), 100);
-		assertEq(compareWithThreshold(address(newReceiver).balance, 100, 1), true);
+		uint256 balanceReceived = address(newReceiver).balance - newReceiverBalanceBefore;
+		assertEq(compareWithThreshold(balanceReceived, 100, 1), true);
 	}
 
 	function testRevertIfTransferETHNotWithrdrawerRole() public {
