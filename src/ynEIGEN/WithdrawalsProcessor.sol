@@ -206,8 +206,13 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
         uint256 _nodesLength = _nodesArray.length;
-        uint256 _minNodeShares = type(uint256).max;
-        uint256[] memory _nodesShares = new uint256[](_nodesLength);
+        uint256 _minNodeShares = type(uint256).max; // withdrawable shares
+        uint256[] memory _nodesShares = new uint256[](_nodesLength); // deposit shares
+        uint256[] memory _nodesWithdrawableShares = new uint256[](_nodesLength);
+
+        // Required for `getWithdrawableShares` which expects an array of strategies.
+        IStrategy[] memory _singleStrategy = new IStrategy[](1);
+        _singleStrategy[0] = _strategy;
 
         // get all nodes and their shares
         {
@@ -216,37 +221,48 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // populate node shares and find the minimum balance
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 ITokenStakingNode _node = _nodesArray[i];
-                uint256 _nodeShares = _strategy.shares(address(_node));
-                _nodesShares[i] = _nodeShares;
+
+                (uint256[] memory _singleWithdrawableShares, uint256[] memory _singleDepositShares) = delegationManager.getWithdrawableShares(address(_node), _singleStrategy);
+
+                uint256 _withdrawableShares = _singleWithdrawableShares[0];
+
+                _nodesShares[i] = _singleDepositShares[0];
+                _nodesWithdrawableShares[i] = _withdrawableShares;
+
                 _nodes[i] = _node;
 
-                if (_nodeShares < _minNodeShares) _minNodeShares = _nodeShares;
+                if (_withdrawableShares < _minNodeShares) {
+                    _minNodeShares = _withdrawableShares;
+                }
             }
         }
 
-        // calculate withdrawal amounts for each node
+        // calculate deposit amounts for each node
         {
             _shares = new uint256[](_nodesLength);
-            uint256 _pendingWithdrawalRequestsInShares =
-                _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
-                if (_nodesShares[i] > _minNodeShares) {
-                    uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
-                    uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares
-                        ? _availableToWithdraw
-                        : _pendingWithdrawalRequestsInShares;
+                if (_nodesWithdrawableShares[i] > _minNodeShares) {
+                    uint256 _availableToWithdraw = _nodesWithdrawableShares[i] - _minNodeShares;
+                    uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares ? _availableToWithdraw : _pendingWithdrawalRequestsInShares;
                     _shares[i] = _toWithdraw;
                     _pendingWithdrawalRequestsInShares -= _toWithdraw;
                 }
             }
 
             // second pass: withdraw evenly from all nodes if there is still more to withdraw
-                uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
-                for (uint256 i = 0; i < _nodesLength; ++i) {
-                    _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
-                }
+            uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
+            for (uint256 i = 0; i < _nodesLength; ++i) {
+                _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesWithdrawableShares[i] ? _nodesWithdrawableShares[i] : _equalWithdrawal;
+            }
+
+            // third pass: convert withdrawable shares to deposit shares
+            for (uint256 i = 0; i < _nodesLength; ++i) {
+                // NOTE: Is it necessary to use mulDiv here?
+                _shares[i] *= _nodesShares[i] / _nodesWithdrawableShares[i];
+            }
         }
     }
 
