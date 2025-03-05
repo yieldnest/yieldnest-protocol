@@ -251,15 +251,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
 
             // second pass: withdraw evenly from all nodes if there is still more to withdraw
+            // convert withdrawable shares to deposit shares.
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesWithdrawableShares[i] ? _nodesWithdrawableShares[i] : _equalWithdrawal;
-            }
-
-            // third pass: convert withdrawable shares to deposit shares
-            for (uint256 i = 0; i < _nodesLength; ++i) {
-                // NOTE: Is it necessary to use mulDiv here?
-                _shares[i] *= _nodesShares[i] / _nodesWithdrawableShares[i];
+                _shares[i] = _shares[i] * _nodesShares[i] / _nodesWithdrawableShares[i];
             }
         }
     }
