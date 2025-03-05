@@ -28,6 +28,7 @@ interface IWithdrawalsProcessor {
     // state variables
     //
     function totalQueuedWithdrawals() external view returns (uint256);
+    function getTotalQueuedWithdrawals() external view returns (uint256);
     function minPendingWithdrawalRequestAmount() external view returns (uint256);
     function batch(
         uint256 _fromId

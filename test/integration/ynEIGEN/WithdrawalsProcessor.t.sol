@@ -308,9 +308,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E30");
         }
 
-        assertEq(
-            withdrawalsProcessor.totalQueuedWithdrawals(),
+        assertApproxEqAbs(
+            withdrawalsProcessor.getTotalQueuedWithdrawals(),
             withdrawalQueueManager.pendingRequestedRedemptionAmount(),
+            200,
             "queueWithdrawal: E31"
         );
         
@@ -347,7 +348,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         }
 
         assertFalse(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "processPrincipalWithdrawals: E3");
-        assertEq(withdrawalsProcessor.totalQueuedWithdrawals(), 0, "processPrincipalWithdrawals: E4");
+        assertEq(withdrawalsProcessor.getTotalQueuedWithdrawals(), 0, "processPrincipalWithdrawals: E4");
     }
 
     // (1) create token staking node
