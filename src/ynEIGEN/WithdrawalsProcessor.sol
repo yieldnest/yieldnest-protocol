@@ -206,11 +206,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
         uint256 _nodesLength = _nodesArray.length;
-        uint256 _minNodeShares = type(uint256).max; // withdrawable shares
-        uint256[] memory _nodesShares = new uint256[](_nodesLength); // deposit shares
+        uint256 _minNodeShares = type(uint256).max;
+        uint256[] memory _nodesShares = new uint256[](_nodesLength);
         uint256[] memory _nodesWithdrawableShares = new uint256[](_nodesLength);
-
-        // Required for `getWithdrawableShares` which expects an array of strategies.
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
         _singleStrategy[0] = _strategy;
 
