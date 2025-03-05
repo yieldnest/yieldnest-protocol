@@ -227,7 +227,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _nodesLength = _nodes.length;
         uint256 _minNodeShares = type(uint256).max;
         uint256[] memory _nodesShares = new uint256[](_nodesLength);
-        uint256[] memory _nodesWithdrawableShares = new uint256[](_nodesLength);
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
         _singleStrategy[0] = _strategy;
 
@@ -237,12 +236,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 ITokenStakingNode _node = _nodes[i];
 
-                (uint256[] memory _singleWithdrawableShares, uint256[] memory _singleDepositShares) = delegationManager.getWithdrawableShares(address(_node), _singleStrategy);
+                (uint256[] memory _singleWithdrawableShares,) = delegationManager.getWithdrawableShares(address(_node), _singleStrategy);
 
                 uint256 _withdrawableShares = _singleWithdrawableShares[0];
 
-                _nodesShares[i] = _singleDepositShares[0];
-                _nodesWithdrawableShares[i] = _withdrawableShares;
+                _nodesShares[i] = _withdrawableShares;
 
                 if (_withdrawableShares < _minNodeShares) {
                     _minNodeShares = _withdrawableShares;
@@ -257,8 +255,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
-                if (_nodesWithdrawableShares[i] > _minNodeShares) {
-                    uint256 _availableToWithdraw = _nodesWithdrawableShares[i] - _minNodeShares;
+                if (_nodesShares[i] > _minNodeShares) {
+                    uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
                     uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares ? _availableToWithdraw : _pendingWithdrawalRequestsInShares;
                     _shares[i] = _toWithdraw;
                     _pendingWithdrawalRequestsInShares -= _toWithdraw;
@@ -272,7 +270,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // - convert withdrawable shares to deposit shares.
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesWithdrawableShares[i] ? _nodesWithdrawableShares[i] : _equalWithdrawal;
+                _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
 
                 _singleWithdrawableShares[0] = _shares[i];
 
