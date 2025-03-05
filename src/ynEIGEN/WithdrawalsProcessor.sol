@@ -24,7 +24,8 @@ import {IWithdrawalsProcessor} from "../interfaces/IWithdrawalsProcessor.sol";
 
 contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessControlUpgradeable {
 
-    uint256 public totalQueuedWithdrawals; // denominated in unit account
+    // @custom:deprecated use `getTotalQueuedWithdrawals()` instead.
+    uint256 public totalQueuedWithdrawals;
 
     // minimum amount of pending withdrawal requests to be queued
     uint256 public minPendingWithdrawalRequestAmount; // denominated in unit account
@@ -128,7 +129,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @return True if withdrawals should be queued, false otherwise
     function shouldQueueWithdrawals() external view returns (bool) {
         uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + totalQueuedWithdrawals;
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + getTotalQueuedWithdrawals();
 
         if (pendingAmount <= availableAmount) {
             return false;
@@ -169,13 +170,31 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @return deficitAmount The total pending withdrawal requests
     function getPendingWithdrawalRequests() public view returns (uint256 deficitAmount) {
         uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + totalQueuedWithdrawals;
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + getTotalQueuedWithdrawals();
         if (pendingAmount <= availableAmount) {
             revert CurrentAvailableAmountIsSufficient();
         }
          deficitAmount = pendingAmount - availableAmount;
         if (deficitAmount < minPendingWithdrawalRequestAmount) {
             revert PendingWithdrawalRequestsTooLow();
+        }
+    }
+
+    /// @notice Gets the total queued withdrawals in unit account
+    /// @dev Replaces `totalQueuedWithdrawals` which was prone to be unsynced due to slashing.
+    function getTotalQueuedWithdrawals() public view returns (uint256 _totalQueuedWithdrawals) {
+        ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
+        IERC20[] memory _assets = assetRegistry.getAssets();
+
+        for (uint256 i = 0; i < _assets.length; ++i) {
+            IERC20 _asset = _assets[i];
+            IStrategy _strategy = ynStrategyManager.strategies(_asset);
+
+            for (uint256 j = 0; j < _nodes.length; ++j) {
+                ITokenStakingNode _node = _nodes[j];
+                (uint256 _queuedWithdrawals, uint256 _withdrawn) = _node.getQueuedSharesAndWithdrawn(_strategy, _asset);
+                _totalQueuedWithdrawals += _sharesToUnit(_queuedWithdrawals, _asset, _strategy) + _withdrawn;
+            }
         }
     }
 
@@ -314,7 +333,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             if (_pendingWithdrawalRequestsInShares == 0) {
                 batch[_ids.queued] = _queuedId;
                 _ids.queued = _queuedId;
-                totalQueuedWithdrawals += _toBeQueued;
                 return true;
             }
         }
@@ -324,7 +342,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_pendingWithdrawalRequests < _toBeQueued) {
             batch[_ids.queued] = _queuedId;
             _ids.queued = _queuedId;
-            totalQueuedWithdrawals += _toBeQueued - _pendingWithdrawalRequests;
         }
 
         return false;
@@ -407,10 +424,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_tokenIdToFinalize == 0) revert SanityCheck();
 
         _ids.processed = _processedId;
-
-        uint256 _totalQueuedWithdrawals = totalQueuedWithdrawals;
-        totalQueuedWithdrawals =
-            _totalWithdrawn > _totalQueuedWithdrawals ? 0 : _totalQueuedWithdrawals - _totalWithdrawn;
 
         ynStrategyManager.processPrincipalWithdrawals(_actions);
 
