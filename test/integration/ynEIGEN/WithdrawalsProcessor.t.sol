@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
+import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSRegistrar.sol";
+import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
+import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManager.sol";
+import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 import {IWithdrawalsProcessor} from "../../../src/interfaces/IWithdrawalsProcessor.sol";
-
 import {WithdrawalsProcessor} from "../../../src/ynEIGEN/WithdrawalsProcessor.sol";
 
 import "./ynEigenIntegrationBaseTest.sol";
@@ -13,6 +18,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     uint256 tokenId;
 
     bool private _setup = true;
+
+    // Change this to true to test slashing.
+    bool private _slashing;
 
     ITokenStakingNode public tokenStakingNode;
     IWithdrawalsProcessor public withdrawalsProcessor;
@@ -29,6 +37,9 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
     function setUp() public virtual override {
         super.setUp();
+
+        // Slashing is disabled by default.
+        _slashing = false;
 
         // deal assets to user
         {
@@ -377,6 +388,117 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
             eigenStrategyManager.stakeAssetsToNode(tokenStakingNode.nodeId(), _assetsToDeposit, _amounts);
             vm.stopPrank();
+        }
+
+        // register operator
+        {
+            vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+            eigenLayer.delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
+        }
+
+        // delegate to operator
+        {
+            ISignatureUtils.SignatureWithExpiry memory signature;
+            vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
+            tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, bytes32(0));
+        }
+
+        address avs;
+
+        // create AVS
+        {
+            avs = address(new MockAVSRegistrar());
+        }
+
+        // update metadata URI
+        {
+            vm.prank(avs);
+            eigenLayer.allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
+        }
+
+        uint256 strategiesLength = _isHolesky() ? 2 : 3;
+
+        // create operator set
+        {
+            IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
+            createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
+                operatorSetId: 1, 
+                strategies: new IStrategy[](strategiesLength) 
+            });
+            createSetParams[0].strategies[0] = _stethStrategy;
+            createSetParams[0].strategies[1] = _sfrxethStrategy;
+            if (!_isHolesky()) { 
+                createSetParams[0].strategies[2] = _oethStrategy;
+            }
+
+            vm.prank(avs);
+            eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
+        }
+
+        // register for operator set
+        {
+            IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
+                avs: avs,
+                operatorSetIds: new uint32[](1),
+                data: new bytes(0)
+            });
+            registerParams.operatorSetIds[0] = 1;
+            vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+            eigenLayer.allocationManager.registerForOperatorSets(actors.ops.TOKEN_STAKING_NODE_OPERATOR, registerParams);
+        }
+
+        // wait for allocation delay
+        {
+            vm.roll(block.number + AllocationManagerStorage(address(eigenLayer.allocationManager)).ALLOCATION_CONFIGURATION_DELAY() + 1);
+        }
+
+        // allocate
+        {
+            IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+            allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+                operatorSet: OperatorSet({
+                    avs: avs,
+                    id: 1
+                }),
+                strategies: new IStrategy[](strategiesLength),
+                newMagnitudes: new uint64[](strategiesLength)
+            });
+            allocateParams[0].strategies[0] = _stethStrategy;
+            allocateParams[0].strategies[1] = _sfrxethStrategy;
+            allocateParams[0].newMagnitudes[0] = 1 ether;
+            allocateParams[0].newMagnitudes[1] = 1 ether;
+            if (!_isHolesky()) {
+                allocateParams[0].strategies[2] = _oethStrategy;
+                allocateParams[0].newMagnitudes[2] = 1 ether;
+            }
+
+            vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+            eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
+        }
+
+        // Only perform slashing if the test is configured to do so.
+        if (_slashing) {
+            // slash
+            {
+                IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+                    operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+                    operatorSetId: 1,
+                    strategies: new IStrategy[](strategiesLength),
+                    wadsToSlash: new uint256[](strategiesLength),
+                    description: "test"
+                });
+                slashingParams.strategies[0] = _stethStrategy;
+                slashingParams.strategies[1] = _sfrxethStrategy;
+                slashingParams.wadsToSlash[0] = 0.1 ether;
+                slashingParams.wadsToSlash[1] = 0.1 ether;
+                if (!_isHolesky()) {
+                    slashingParams.strategies[2] = _oethStrategy;
+                    slashingParams.wadsToSlash[2] = 0.1 ether;
+                }
+
+                vm.prank(avs);
+                eigenLayer.allocationManager.slashOperator(avs, slashingParams);
+            }   
         }
 
         // request withdrawal
