@@ -223,8 +223,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         }
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
-        ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
-        uint256 _nodesLength = _nodesArray.length;
+        _nodes = tokenStakingNodesManager.getAllNodes();
+        uint256 _nodesLength = _nodes.length;
         uint256 _minNodeShares = type(uint256).max;
         uint256[] memory _nodesShares = new uint256[](_nodesLength);
         uint256[] memory _nodesWithdrawableShares = new uint256[](_nodesLength);
@@ -233,11 +233,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
         // get all nodes and their shares
         {
-            _nodes = new ITokenStakingNode[](_nodesLength);
-
             // populate node shares and find the minimum balance
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                ITokenStakingNode _node = _nodesArray[i];
+                ITokenStakingNode _node = _nodes[i];
 
                 (uint256[] memory _singleWithdrawableShares, uint256[] memory _singleDepositShares) = delegationManager.getWithdrawableShares(address(_node), _singleStrategy);
 
@@ -245,8 +243,6 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
                 _nodesShares[i] = _singleDepositShares[0];
                 _nodesWithdrawableShares[i] = _withdrawableShares;
-
-                _nodes[i] = _node;
 
                 if (_withdrawableShares < _minNodeShares) {
                     _minNodeShares = _withdrawableShares;
