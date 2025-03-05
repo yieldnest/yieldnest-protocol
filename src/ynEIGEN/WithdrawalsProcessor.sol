@@ -250,8 +250,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 }
             }
 
-            // second pass: withdraw evenly from all nodes if there is still more to withdraw
-            // convert withdrawable shares to deposit shares.
+            // second pass: withdraw evenly from all nodes if there is still more to withdraw and convert withdrawable shares to deposit shares.
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesWithdrawableShares[i] ? _nodesWithdrawableShares[i] : _equalWithdrawal;
