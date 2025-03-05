@@ -195,7 +195,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             uint256 _highestBalance;
             uint256 _assetsLength = _assets.length;
             for (uint256 i = 0; i < _assetsLength; ++i) {
-                uint256 _balance = _stakedAssetUnits(_assets[i]);
+                uint256 _balance = _stakedAssetBalance(_assets[i]);
                 if (_balance > _highestBalance) {
                     _highestBalance = _balance;
                     _asset = _assets[i];
@@ -443,17 +443,20 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     //
     // private functions
     //
-    function _stakedAssetUnits(IERC20 _asset) public view returns (uint256 _stakedUnits) {
+    function _stakedAssetBalance(IERC20 _asset) private view returns (uint256 _stakedBalance) {
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         uint256 _nodesLength = _nodesArray.length;
         uint256 _stakedShares;
+        IStrategy[] memory _singleStrategy = new IStrategy[](1);
+        _singleStrategy[0] = _strategy;
 
         for (uint256 i = 0; i < _nodesLength; ++i) {
-            _stakedShares += _strategy.shares(address(_nodesArray[i]));
+            (uint256[] memory _singleWithdrawableShares,) = delegationManager.getWithdrawableShares(address(_nodesArray[i]), _singleStrategy);
+            _stakedShares += _singleWithdrawableShares[0];
         }
 
-        _stakedUnits = _sharesToUnit(_stakedShares, _asset, _strategy);
+        _stakedBalance = _sharesToUnit(_stakedShares, _asset, _strategy);
     }
 
     function _underlyingTokenForStrategy(
