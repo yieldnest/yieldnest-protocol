@@ -214,9 +214,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             uint256 _highestBalance;
             uint256 _assetsLength = _assets.length;
             for (uint256 i = 0; i < _assetsLength; ++i) {
-                uint256 _balance = _stakedAssetBalance(_assets[i]);
-                if (_balance > _highestBalance) {
-                    _highestBalance = _balance;
+                uint256 _stakedBalance = _stakedBalanceForStrategy(_assets[i]);
+                if (_stakedBalance > _highestBalance) {
+                    _highestBalance = _stakedBalance;
                     _asset = _assets[i];
                 }
             }
