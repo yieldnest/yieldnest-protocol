@@ -48,7 +48,7 @@ interface IWithdrawalsProcessor {
     function getQueueWithdrawalsArgs()
         external
         view
-        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares);
+        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals);
 
     //
     // mutative functions
@@ -56,7 +56,8 @@ interface IWithdrawalsProcessor {
     function queueWithdrawals(
         IERC20 _asset,
         ITokenStakingNode[] memory _nodes,
-        uint256[] memory _amounts
+        uint256[] memory _amounts,
+        uint256 _totalQueuedWithdrawals
     ) external returns (bool);
     function completeQueuedWithdrawals() external;
     function processPrincipalWithdrawals() external;

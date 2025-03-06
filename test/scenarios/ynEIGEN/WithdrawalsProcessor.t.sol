@@ -99,10 +99,10 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testSatisfyAllWithdrawals: E0");
 
             while (withdrawalsProcessor.shouldQueueWithdrawals()) {
-                (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+                (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals) =
                     withdrawalsProcessor.getQueueWithdrawalsArgs();
                 vm.prank(keeper);
-                withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+                withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares, _totalQueuedWithdrawals);
             }
 
             assertFalse(withdrawalsProcessor.shouldQueueWithdrawals(), "testSatisfyAllWithdrawals: E1");
