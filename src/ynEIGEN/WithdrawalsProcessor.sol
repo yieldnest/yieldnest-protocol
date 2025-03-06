@@ -24,7 +24,7 @@ import {IWithdrawalsProcessor} from "../interfaces/IWithdrawalsProcessor.sol";
 
 contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessControlUpgradeable {
 
-    // @custom:deprecated use `getTotalQueuedWithdrawals()` instead.
+    /// @custom:deprecated use `getTotalQueuedWithdrawals()` instead.
     uint256 public totalQueuedWithdrawals;
 
     // minimum amount of pending withdrawal requests to be queued
@@ -191,15 +191,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     }
 
     /// @notice Gets the arguments for `queueWithdrawals`
-    /// @param _asset The asset to withdraw - the asset with the highest balance
-    /// @param _nodes The list of nodes to withdraw from
-    /// @param _shares The withdrawable share amounts to withdraw from each node to achieve balanced distribution
-    /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
-    function getQueueWithdrawalsArgs()
-        external
-        view
-        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals)
-    {
+    /// @return _args The arguments for `queueWithdrawals`
+    function getQueueWithdrawalsArgs() external view returns (QueueWithdrawalsArgs memory _args) {
         // get `_asset` with the highest balance
         {
             IERC20[] memory _assets = assetRegistry.getAssets();
@@ -210,14 +203,14 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 uint256 _stakedBalance = _stakedBalanceForStrategy(_assets[i]);
                 if (_stakedBalance > _highestBalance) {
                     _highestBalance = _stakedBalance;
-                    _asset = _assets[i];
+                    _args.asset = _assets[i];
                 }
             }
         }
 
-        IStrategy _strategy = ynStrategyManager.strategies(_asset);
-        _nodes = tokenStakingNodesManager.getAllNodes();
-        uint256 _nodesLength = _nodes.length;
+        IStrategy _strategy = ynStrategyManager.strategies(_args.asset);
+        _args.nodes = tokenStakingNodesManager.getAllNodes();
+        uint256 _nodesLength = _args.nodes.length;
         uint256 _minNodeShares = type(uint256).max;
         uint256[] memory _nodesShares = new uint256[](_nodesLength);
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
@@ -227,7 +220,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         {
             // populate node shares and find the minimum balance
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                ITokenStakingNode _node = _nodes[i];
+                ITokenStakingNode _node = _args.nodes[i];
 
                 (uint256[] memory _singleWithdrawableShares,) = delegationManager.getWithdrawableShares(address(_node), _singleStrategy);
 
@@ -243,10 +236,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
         // calculate deposit amounts for withdrawal for each node
         {
-            _shares = new uint256[](_nodesLength);
-            _totalQueuedWithdrawals = getTotalQueuedWithdrawals();
-            uint256 _pendingWithdrawalRequestsInShares = 
-                _unitToShares(_getPendingWithdrawalRequests(_totalQueuedWithdrawals), _asset, _strategy);
+            _args.shares = new uint256[](_nodesLength);
+            _args.totalQueuedWithdrawals = getTotalQueuedWithdrawals();
+            uint256 _pendingWithdrawalRequests = 1.0 ether * _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals) / 1 ether;
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
@@ -255,7 +248,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                     uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares
                         ? _availableToWithdraw
                         : _pendingWithdrawalRequestsInShares;
-                    _shares[i] = _toWithdraw;
+                    _args.shares[i] = _toWithdraw;
                     _pendingWithdrawalRequestsInShares -= _toWithdraw;
                 }
             }
@@ -265,7 +258,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // second pass: withdraw evenly from all nodes if there is still more to withdraw 
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
+                _args.shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
             }
         }
     }
@@ -278,40 +271,35 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @dev Reverts if the total pending withdrawal requests are below the minimum threshold
     /// @dev Saves the queued withdrawals together in a batch, to be completed in the next step (`completeQueuedWithdrawals`)
     /// @dev Before calling this function, call `getQueueWithdrawalsArgs()` to get the arguments
-    /// @param _asset The asset to withdraw
-    /// @param _nodes The list of nodes to withdraw from
-    /// @param _amounts The withdrawable share amounts to withdraw from each node
-    /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
+    /// @param _args The arguments for `queueWithdrawals`
     /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals(
-        IERC20 _asset,
-        ITokenStakingNode[] memory _nodes,
-        uint256[] memory _amounts,
-        uint256 _totalQueuedWithdrawals
+        QueueWithdrawalsArgs memory _args
     ) external onlyRole(KEEPER_ROLE) returns (bool) {
-        uint256 _nodesLength = _nodes.length;
-        if (_nodesLength != _amounts.length) revert InvalidInput();
+        uint256 _nodesLength = _args.nodes.length;
+        if (_nodesLength != _args.shares.length) revert InvalidInput();
 
-        uint256 _pendingWithdrawalRequests = _getPendingWithdrawalRequests(_totalQueuedWithdrawals); // NOTE: reverts if too low
+        uint256 _pendingWithdrawalRequestsNoBuffer = _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals); // NOTE: reverts if too low
+        uint256 _pendingWithdrawalRequests = 1.0 ether * _pendingWithdrawalRequestsNoBuffer / 1 ether;
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
-        IStrategy _strategy = ynStrategyManager.strategies(_asset);
+        IStrategy _strategy = ynStrategyManager.strategies(_args.asset);
         _singleStrategy[0] = _strategy;
         uint256[] memory _singleToWithdraw = new uint256[](1);
         if (_strategy == IStrategy(address(0))) revert InvalidInput();
 
         uint256 _queuedId = _ids.queued;
-        uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
+        uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
         for (uint256 j = 0; j < _nodesLength; ++j) {
-            uint256 _toWithdraw = _amounts[j];
+            uint256 _toWithdraw = _args.shares[j];
             _singleToWithdraw[0] = _toWithdraw;
             if (_toWithdraw > 0) {
                 _toWithdraw > _pendingWithdrawalRequestsInShares
                     ? _pendingWithdrawalRequestsInShares = 0
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
-                address _node = address(_nodes[j]);
+                address _node = address(_args.nodes[j]);
                 uint256 _depositShares = delegationManager.convertToDepositShares(_node, _singleStrategy, _singleToWithdraw)[0];
                 
                 bytes32[] memory _fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _depositShares);
@@ -336,7 +324,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
         }
 
-        _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _asset, _strategy);
+        _pendingWithdrawalRequests = _sharesToUnit(_pendingWithdrawalRequestsInShares, _args.asset, _strategy);
 
         if (_pendingWithdrawalRequests < _toBeQueued) {
             batch[_ids.queued] = _queuedId;
