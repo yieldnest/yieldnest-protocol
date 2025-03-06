@@ -193,7 +193,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @notice Gets the arguments for `queueWithdrawals`
     /// @param _asset The asset to withdraw - the asset with the highest balance
     /// @param _nodes The list of nodes to withdraw from
-    /// @param _shares The share amounts to withdraw from each node to achieve balanced distribution
+    /// @param _shares The withdrawable share amounts to withdraw from each node to achieve balanced distribution
     /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
     function getQueueWithdrawalsArgs()
         external
@@ -262,16 +262,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             uint256[] memory _singleWithdrawableShares = new uint256[](1);
 
-            // second pass: 
-            // - withdraw evenly from all nodes if there is still more to withdraw 
-            // - convert withdrawable shares to deposit shares.
+            // second pass: withdraw evenly from all nodes if there is still more to withdraw 
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 _shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
-
-                _singleWithdrawableShares[0] = _shares[i];
-
-                _shares[i] = delegationManager.convertToDepositShares(address(_nodes[i]), _singleStrategy, _singleWithdrawableShares)[0];
             }
         }
     }
@@ -286,7 +280,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @dev Before calling this function, call `getQueueWithdrawalsArgs()` to get the arguments
     /// @param _asset The asset to withdraw
     /// @param _nodes The list of nodes to withdraw from
-    /// @param _amounts The share amounts to withdraw from each node
+    /// @param _amounts The withdrawable share amounts to withdraw from each node
     /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
     /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals(
@@ -301,21 +295,26 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _pendingWithdrawalRequests = _getPendingWithdrawalRequests(_totalQueuedWithdrawals); // NOTE: reverts if too low
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
+        IStrategy[] memory _singleStrategy = new IStrategy[](1);
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
+        _singleStrategy[0] = _strategy;
+        uint256[] memory _singleToWithdraw = new uint256[](1);
         if (_strategy == IStrategy(address(0))) revert InvalidInput();
 
         uint256 _queuedId = _ids.queued;
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _asset, _strategy);
         for (uint256 j = 0; j < _nodesLength; ++j) {
             uint256 _toWithdraw = _amounts[j];
+            _singleToWithdraw[0] = _toWithdraw;
             if (_toWithdraw > 0) {
                 _toWithdraw > _pendingWithdrawalRequestsInShares
                     ? _pendingWithdrawalRequestsInShares = 0
                     : _pendingWithdrawalRequestsInShares -= _toWithdraw;
 
                 address _node = address(_nodes[j]);
+                uint256 _depositShares = delegationManager.convertToDepositShares(_node, _singleStrategy, _singleToWithdraw)[0];
                 
-                bytes32[] memory _fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
+                bytes32[] memory _fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _depositShares);
                 IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = delegationManager.getQueuedWithdrawal(_fullWithdrawalRoots[0]);
 
                 _queuedWithdrawals[_queuedId++] = QueuedWithdrawal({
