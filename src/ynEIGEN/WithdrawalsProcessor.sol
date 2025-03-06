@@ -248,16 +248,19 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
         }
 
-        // calculate deposit amounts for each node
+        // calculate deposit amounts for withdrawal for each node
         {
             _shares = new uint256[](_nodesLength);
-            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
+            uint256 _pendingWithdrawalRequestsInShares = 
+                _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
                 if (_nodesShares[i] > _minNodeShares) {
                     uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
-                    uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares ? _availableToWithdraw : _pendingWithdrawalRequestsInShares;
+                    uint256 _toWithdraw = _availableToWithdraw < _pendingWithdrawalRequestsInShares
+                        ? _availableToWithdraw
+                        : _pendingWithdrawalRequestsInShares;
                     _shares[i] = _toWithdraw;
                     _pendingWithdrawalRequestsInShares -= _toWithdraw;
                 }
@@ -450,7 +453,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     //
     // private functions
     //
-    function _stakedAssetBalance(IERC20 _asset) private view returns (uint256 _stakedBalance) {
+    function _stakedBalanceForStrategy(
+        IERC20 _asset
+    ) private view returns (uint256 _stakedBalance) {
         ITokenStakingNode[] memory _nodesArray = tokenStakingNodesManager.getAllNodes();
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
         uint256 _nodesLength = _nodesArray.length;
