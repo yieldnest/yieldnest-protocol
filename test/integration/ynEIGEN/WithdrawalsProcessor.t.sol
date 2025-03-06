@@ -231,10 +231,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // 1st queue withdrawals -- sfrxeth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "queueWithdrawal: E0");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals) =
                 withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(keeper);
-            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares, _totalQueuedWithdrawals);
 
             assertFalse(_queuedEverything, "queueWithdrawal: E1");
             assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E2");
@@ -253,10 +253,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         // 2nd queue withdrawals -- steth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "queueWithdrawal: E10");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals) =
                 withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(keeper);
-            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares, _totalQueuedWithdrawals);
 
             assertTrue(_queuedEverything, "queueWithdrawal: E11");
             assertEq(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E12");
@@ -276,10 +276,10 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             if (!_isHolesky()) {
                 assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "queueWithdrawal: E20");
-                (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
+                (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals) =
                     withdrawalsProcessor.getQueueWithdrawalsArgs();
                 vm.prank(keeper);
-                _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+                _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares, _totalQueuedWithdrawals);
 
                 assertFalse(_queuedEverything, "queueWithdrawal: E21");
                 assertEq(tokenStakingNode.queuedShares(_oethStrategy), _oethShares, "queueWithdrawal: E22");

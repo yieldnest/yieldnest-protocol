@@ -169,15 +169,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @notice Gets the total pending withdrawal requests
     /// @return deficitAmount The total pending withdrawal requests
     function getPendingWithdrawalRequests() public view returns (uint256 deficitAmount) {
-        uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
-        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + getTotalQueuedWithdrawals();
-        if (pendingAmount <= availableAmount) {
-            revert CurrentAvailableAmountIsSufficient();
-        }
-         deficitAmount = pendingAmount - availableAmount;
-        if (deficitAmount < minPendingWithdrawalRequestAmount) {
-            revert PendingWithdrawalRequestsTooLow();
-        }
+        return _getPendingWithdrawalRequests(getTotalQueuedWithdrawals());
     }
 
     /// @notice Gets the total queued withdrawals in unit account
@@ -202,10 +194,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @param _asset The asset to withdraw - the asset with the highest balance
     /// @param _nodes The list of nodes to withdraw from
     /// @param _shares The share amounts to withdraw from each node to achieve balanced distribution
+    /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
     function getQueueWithdrawalsArgs()
         external
         view
-        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares)
+        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares, uint256 _totalQueuedWithdrawals)
     {
         // get `_asset` with the highest balance
         {
@@ -251,8 +244,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         // calculate deposit amounts for withdrawal for each node
         {
             _shares = new uint256[](_nodesLength);
+            _totalQueuedWithdrawals = getTotalQueuedWithdrawals();
             uint256 _pendingWithdrawalRequestsInShares = 
-                _unitToShares(getPendingWithdrawalRequests(), _asset, _strategy);
+                _unitToShares(_getPendingWithdrawalRequests(_totalQueuedWithdrawals), _asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
@@ -293,16 +287,18 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @param _asset The asset to withdraw
     /// @param _nodes The list of nodes to withdraw from
     /// @param _amounts The share amounts to withdraw from each node
+    /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
     /// @return True if all pending withdrawal requests were queued, false otherwise
     function queueWithdrawals(
         IERC20 _asset,
         ITokenStakingNode[] memory _nodes,
-        uint256[] memory _amounts
+        uint256[] memory _amounts,
+        uint256 _totalQueuedWithdrawals
     ) external onlyRole(KEEPER_ROLE) returns (bool) {
         uint256 _nodesLength = _nodes.length;
         if (_nodesLength != _amounts.length) revert InvalidInput();
 
-        uint256 _pendingWithdrawalRequests = getPendingWithdrawalRequests(); // NOTE: reverts if too low
+        uint256 _pendingWithdrawalRequests = _getPendingWithdrawalRequests(_totalQueuedWithdrawals); // NOTE: reverts if too low
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy _strategy = ynStrategyManager.strategies(_asset);
@@ -453,6 +449,20 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     //
     // private functions
     //
+    
+    /// @dev This is an internal helper that allows passing a pre-calculated total queued withdrawals value
+    function _getPendingWithdrawalRequests(uint256 _totalQueuedWithdrawals) private view returns (uint256 deficitAmount) {
+        uint256 pendingAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
+        uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets() + _totalQueuedWithdrawals;
+        if (pendingAmount <= availableAmount) {
+            revert CurrentAvailableAmountIsSufficient();
+        }
+         deficitAmount = pendingAmount - availableAmount;
+        if (deficitAmount < minPendingWithdrawalRequestAmount) {
+            revert PendingWithdrawalRequestsTooLow();
+        }
+    }
+
     function _stakedBalanceForStrategy(
         IERC20 _asset
     ) private view returns (uint256 _stakedBalance) {
