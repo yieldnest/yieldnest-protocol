@@ -213,11 +213,26 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     function _queueWithdrawal(uint256 _amount) internal {
         if (_setup) setup_(_amount);
 
-        uint256 _sfrxethShares = _sfrxethStrategy.shares((address(tokenStakingNode)));
-        uint256 _stethShares = _stethStrategy.shares((address(tokenStakingNode)));
+        uint256 _sfrxethShares;
+        uint256 _stethShares;
         uint256 _oethShares;
+
+        {
+            IStrategy[] memory _singleStrategy = new IStrategy[](1);
+
+            _singleStrategy[0] = _sfrxethStrategy;
+            (uint256[] memory _singleSfrxethShares,) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), _singleStrategy);
+            _sfrxethShares = _singleSfrxethShares[0];
+
+            _singleStrategy[0] = _stethStrategy;
+            (uint256[] memory _singleStethShares,) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), _singleStrategy);
+            _stethShares = _singleStethShares[0];
+
         if (!_isHolesky()) {
-            _oethShares = _oethStrategy.shares((address(tokenStakingNode)));
+                _singleStrategy[0] = _oethStrategy;
+                (uint256[] memory _singleOethShares,) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), _singleStrategy);
+                _oethShares = _singleOethShares[0];
+            }
         }
 
         bool _queuedEverything;
