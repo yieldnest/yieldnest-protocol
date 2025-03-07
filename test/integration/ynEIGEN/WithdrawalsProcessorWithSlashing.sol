@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
 import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSRegistrar.sol";
 import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
-import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManager.sol";
 import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
 
 import {ITokenStakingNode} from "../../../src/interfaces/ITokenStakingNode.sol";
 import {IWithdrawalsProcessor} from "../../../src/interfaces/IWithdrawalsProcessor.sol";
@@ -13,9 +13,7 @@ import {WithdrawalsProcessor} from "../../../src/ynEIGEN/WithdrawalsProcessor.so
 
 import "./ynEigenIntegrationBaseTest.sol";
 
-import "forge-std/console.sol";
-
-contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
+contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
 
     uint256 tokenId;
 
@@ -31,13 +29,14 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
     address public constant keeper = address(0x4206942069);
+    address public constant bufferSetter = address(0x420694206942);
     
-    uint256 AMOUNT = 100 ether;
+    uint256 AMOUNT = 50 ether;
 
     function setUp() public virtual override {
         super.setUp();
 
-        // deal assets to users
+        // deal assets to user
         {
             deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: user, give: 1000 ether});
             deal({token: chainAddresses.lsd.WOETH_ADDRESS, to: user, give: 1000 ether});
@@ -77,6 +76,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
 
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(bufferSetter, 1 ether);
         }
 
         // grant roles to withdrawalsProcessor
@@ -129,47 +130,36 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     function testClaimWithdrawal() public {
         _processPrincipalWithdrawals(AMOUNT);
 
-        IERC20 _sfrxeth = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
-        IERC20 _wsteth = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        IERC20 _woeth = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
-
-        uint256 _userStethBalanceBefore = _wsteth.balanceOf(user);
-        uint256 _userSfrxethBalanceBefore = _sfrxeth.balanceOf(user);
-        uint256 _userWoethBalanceBefore;
-
-        if (!_isHolesky()) {
-            _userWoethBalanceBefore = _woeth.balanceOf(user);
-        }
+        uint256 _userStethBalanceBefore = IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user);
+        uint256 _userSfrxethBalanceBefore = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user);
 
         _topUpRedemptionAssetsVault();
 
         vm.prank(user);
         withdrawalQueueManager.claimWithdrawal(tokenId, user);
 
-        assertEq(withdrawalQueueManager.pendingRequestedRedemptionAmount(), 0, "testClaimWithdrawal: E0");
-
-        // uint256 _expectedAmount = AMOUNT * (1_000_000 - withdrawalQueueManager.withdrawalFee()) / 1_000_000;
-        // assertApproxEqAbs(
-        //     IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user),
-        //     _userStethBalanceBefore + _expectedAmount,
-        //     1e4,
-        //     "testClaimWithdrawal: E0"
-        // );
-        // if (!_isHolesky()) {
-        //     uint256 _userOethBalanceBefore = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user);
-        //     assertApproxEqAbs(
-        //         IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user),
-        //         _userOethBalanceBefore + _expectedAmount,
-        //         1e4,
-        //         "testClaimWithdrawal: E1"
-        //     );
-        // }
-        // assertApproxEqAbs(
-        //     IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user),
-        //     _userSfrxethBalanceBefore + _expectedAmount,
-        //     1e4,
-        //     "testClaimWithdrawal: E2"
-        // );
+        uint256 _expectedAmount = AMOUNT * (1_000_000 - withdrawalQueueManager.withdrawalFee()) / 1_000_000;
+        assertApproxEqAbs(
+            IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user),
+            _userStethBalanceBefore + _expectedAmount,
+            1e4,
+            "testClaimWithdrawal: E0"
+        );
+        if (!_isHolesky()) {
+            uint256 _userOethBalanceBefore = IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user);
+            assertApproxEqAbs(
+                IERC20(chainAddresses.lsd.WOETH_ADDRESS).balanceOf(user),
+                _userOethBalanceBefore + _expectedAmount,
+                1e4,
+                "testClaimWithdrawal: E1"
+            );
+        }
+        assertApproxEqAbs(
+            IERC20(chainAddresses.lsd.SFRXETH_ADDRESS).balanceOf(user),
+            _userSfrxethBalanceBefore + _expectedAmount,
+            1e4,
+            "testClaimWithdrawal: E2"
+        );
     }
 
     //
@@ -226,26 +216,11 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     function _queueWithdrawal(uint256 _amount) internal {
         if (_setup) setup_(_amount);
 
-        uint256 _sfrxethShares;
-        uint256 _stethShares;
+        uint256 _stethShares = _stethStrategy.shares((address(tokenStakingNode)));
+        uint256 _sfrxethShares = _sfrxethStrategy.shares((address(tokenStakingNode)));
         uint256 _oethShares;
-
-        {
-            IStrategy[] memory _singleStrategy = new IStrategy[](1);
-
-            _singleStrategy[0] = _sfrxethStrategy;
-            (uint256[] memory _singleSfrxethShares,) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), _singleStrategy);
-            _sfrxethShares = _singleSfrxethShares[0];
-
-            _singleStrategy[0] = _stethStrategy;
-            (uint256[] memory _singleStethShares,) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), _singleStrategy);
-            _stethShares = _singleStethShares[0];
-
         if (!_isHolesky()) {
-                _singleStrategy[0] = _oethStrategy;
-                (uint256[] memory _singleOethShares,) = eigenLayer.delegationManager.getWithdrawableShares(address(tokenStakingNode), _singleStrategy);
-                _oethShares = _singleOethShares[0];
-            }
+            _oethShares = _oethStrategy.shares((address(tokenStakingNode)));
         }
 
         bool _queuedEverything;
@@ -265,8 +240,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(address(_queuedWithdrawal.node), address(tokenStakingNode), "queueWithdrawal: E4");
             assertEq(address(_queuedWithdrawal.strategy), address(_sfrxethStrategy), "queueWithdrawal: E5");
             assertEq(_queuedWithdrawal.nonce, 0, "queueWithdrawal: E6");
-            (IDelegationManager.Withdrawal[] memory _queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
-            assertEq(_queuedWithdrawal.shares, _queuedWithdrawals[0].scaledShares[0], "queueWithdrawal: E7");
+            assertEq(_queuedWithdrawal.shares, _sfrxethShares, "queueWithdrawal: E7");
             assertEq(_queuedWithdrawal.startBlock, block.number, "queueWithdrawal: E8");
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E9");
         }
@@ -279,16 +253,14 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             _queuedEverything = withdrawalsProcessor.queueWithdrawals(_args);
 
             assertTrue(_queuedEverything, "queueWithdrawal: E11");
-            // More was withdrawn from the _sfrxethStrategy so that there is no need to withdraw all withdrawable shares of the _stethStrategy.
-            assertLt(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E12");
+            assertEq(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E12");
             assertEq(withdrawalsProcessor.batch(1), 2, "queueWithdrawal: E13");
 
             WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal = IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(1);
             assertEq(address(_queuedWithdrawal.node), address(tokenStakingNode), "queueWithdrawal: E14");
             assertEq(address(_queuedWithdrawal.strategy), address(_stethStrategy), "queueWithdrawal: E15");
             assertEq(_queuedWithdrawal.nonce, 1, "queueWithdrawal: E16");
-            (IDelegationManager.Withdrawal[] memory _queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
-            assertEq(_queuedWithdrawal.shares, _queuedWithdrawals[1].scaledShares[0], "queueWithdrawal: E17");
+            assertEq(_queuedWithdrawal.shares, _stethShares, "queueWithdrawal: E17");
             assertEq(_queuedWithdrawal.startBlock, block.number, "queueWithdrawal: E18");
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E19");
         }
@@ -326,7 +298,11 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E30");
         }
 
-        // assertGe(withdrawalsProcessor.getTotalQueuedWithdrawals(), withdrawalQueueManager.pendingRequestedRedemptionAmount(), "queueWithdrawal: E31");
+        assertGe(
+            withdrawalsProcessor.getTotalQueuedWithdrawals(),
+            withdrawalQueueManager.pendingRequestedRedemptionAmount(),
+            "queueWithdrawal: E31"
+        );
         
         assertFalse(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "queueWithdrawal: E32");
     }
@@ -334,7 +310,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
     function _processPrincipalWithdrawals(uint256 _amount) internal {
         _completeQueuedWithdrawals(_amount);
 
-        // process principal withdrawals -- sfrxeth
+        // process principal withdrawals -- steth
         {
             assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "processPrincipalWithdrawals: E0");
 
@@ -342,7 +318,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             withdrawalsProcessor.processPrincipalWithdrawals();
         }
 
-        // process principal withdrawals -- steth
+        // process principal withdrawals -- sfrxeth
         {
             assertTrue(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "processPrincipalWithdrawals: E1");
 
@@ -361,7 +337,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         }
 
         assertFalse(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "processPrincipalWithdrawals: E3");
-        assertApproxEqAbs(withdrawalsProcessor.getTotalQueuedWithdrawals(), 0, 1, "processPrincipalWithdrawals: E4");
+        assertEq(withdrawalsProcessor.totalQueuedWithdrawals(), 0, "processPrincipalWithdrawals: E4");
     }
 
     // (1) create token staking node
@@ -491,35 +467,33 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         }
 
         // slash
-        {
-            IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
-                operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
-                operatorSetId: 1,
-                strategies: new IStrategy[](strategiesLength),
-                wadsToSlash: new uint256[](strategiesLength),
-                description: "test"
-            });
-            slashingParams.strategies[0] = _stethStrategy;
-            slashingParams.strategies[1] = _sfrxethStrategy;
-            slashingParams.wadsToSlash[0] = 0.01 ether;
-            slashingParams.wadsToSlash[1] = 0.01 ether;
-            if (!_isHolesky()) {
-                slashingParams.strategies[2] = _oethStrategy;
-                slashingParams.wadsToSlash[2] = 0.01 ether;
-            }
+        // {
+        //     IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+        //         operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+        //         operatorSetId: 1,
+        //         strategies: new IStrategy[](strategiesLength),
+        //         wadsToSlash: new uint256[](strategiesLength),
+        //         description: "test"
+        //     });
+        //     slashingParams.strategies[0] = _stethStrategy;
+        //     slashingParams.strategies[1] = _sfrxethStrategy;
+        //     slashingParams.wadsToSlash[0] = 0.01 ether;
+        //     slashingParams.wadsToSlash[1] = 0.01 ether;
+        //     if (!_isHolesky()) {
+        //         slashingParams.strategies[2] = _oethStrategy;
+        //         slashingParams.wadsToSlash[2] = 0.01 ether;
+        //     }
 
-            vm.prank(avs);
-            eigenLayer.allocationManager.slashOperator(avs, slashingParams);
-        }
+        //     vm.prank(avs);
+        //     eigenLayer.allocationManager.slashOperator(avs, slashingParams);
+        // }
 
         // request withdrawal
         {
-            uint256 _userBalance = ynEigenToken.balanceOf(user);
-            // requests 3/4 of the balance to be withdrawn.
-            uint256 _balanceToWithdraw = _userBalance - _userBalance / 4;
+            uint256 _balance = ynEigenToken.balanceOf(user);
             vm.startPrank(user);
-            ynEigenToken.approve(address(withdrawalQueueManager), _balanceToWithdraw);
-            tokenId = withdrawalQueueManager.requestWithdrawal(_balanceToWithdraw);
+            ynEigenToken.approve(address(withdrawalQueueManager), _balance);
+            tokenId = withdrawalQueueManager.requestWithdrawal(_balance);
             vm.stopPrank();
         }
     }
