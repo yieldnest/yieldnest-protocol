@@ -28,6 +28,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
     address public constant keeper = address(0x4206942069);
+    address public constant bufferSetter = address(0x420694206942);
 
     function setUp() public virtual override {
         super.setUp();
@@ -63,6 +64,8 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             );
 
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(bufferSetter, 1 ether);
         }
 
         // grant roles to withdrawalsProcessor
