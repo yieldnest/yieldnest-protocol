@@ -263,7 +263,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         {
             _args.shares = new uint256[](_nodesLength);
             _args.totalQueuedWithdrawals = getTotalQueuedWithdrawals();
-            uint256 _pendingWithdrawalRequests = getBuffer() * _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals) / 1 ether;
+            uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals)) + MIN_DELTA;
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
@@ -303,7 +303,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_nodesLength != _args.shares.length) revert InvalidInput();
 
         uint256 _pendingWithdrawalRequestsNoBuffer = _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals); // NOTE: reverts if too low
-        uint256 _pendingWithdrawalRequests = getBuffer() * _pendingWithdrawalRequestsNoBuffer / 1 ether;
+        uint256 _pendingWithdrawalRequests = _applyBuffer(_pendingWithdrawalRequestsNoBuffer);
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
@@ -314,7 +314,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
         uint256 _queuedId = _ids.queued;
 
-        pendingRequestsAtBatch[_queuedId] = _pendingWithdrawalRequestsNoBuffer;
+        pendingRequestsAtBatch[_queuedId] = _pendingWithdrawalRequestsNoBuffer + MIN_DELTA;
 
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
         for (uint256 i = 0; i < _nodesLength; ++i) {
@@ -536,7 +536,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         return _token;
     }
 
-    function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
+    function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) internal view returns (uint256) {
         return _strategy.underlyingToSharesView(
             (address(_asset) == address(WSTETH) || address(_asset) == address(WOETH))
                 ? _amount
@@ -544,7 +544,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         );
     }
 
-    function _sharesToUnit(uint256 _shares, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
+    function _sharesToUnit(uint256 _shares, IERC20 _asset, IStrategy _strategy) internal view returns (uint256) {
         uint256 _amount = _strategy.sharesToUnderlyingView(_shares);
         return (address(_asset) == address(WSTETH) || address(_asset) == address(WOETH))
             ? assetRegistry.convertToUnitOfAccount(
@@ -552,6 +552,13 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 address(_asset) == address(WSTETH) ? WSTETH.getWstETHByStETH(_amount) : WOETH.previewDeposit(_amount)
             )
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
+    }
+
+    /// @dev Applies the buffer to the amount.
+    /// @param _amount The amount to apply the buffer to.
+    /// @return The amount after the buffer has been applied.
+    function _applyBuffer(uint256 _amount) internal view returns (uint256) {
+        return getBuffer() * _amount / 1 ether;
     }
 
     /// @dev Updates the buffer value and emits an event.
