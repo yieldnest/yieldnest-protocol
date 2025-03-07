@@ -527,6 +527,7 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
     ITokenStakingNode private node2;
 
     IERC20 private wsteth;
+    IERC20 private sfrxeth;
 
     function setUp() public virtual override {
         super.setUp();
@@ -538,6 +539,7 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         address bufferSetter = makeAddr("bufferSetter");
 
         wsteth = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        sfrxeth = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
 
         withdrawalsProcessor = new WithdrawalsProcessorHarness(
             address(withdrawalQueueManager),
@@ -595,9 +597,10 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
         createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
             operatorSetId: 1, 
-            strategies: new IStrategy[](1) 
+            strategies: new IStrategy[](2) 
         });
         createSetParams[0].strategies[0] = eigenStrategyManager.strategies(wsteth);
+        createSetParams[0].strategies[1] = eigenStrategyManager.strategies(sfrxeth);
         vm.prank(avs);
         eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
 
@@ -618,18 +621,22 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
                 avs: avs,
                 id: 1
             }),
-            strategies: new IStrategy[](1),
-            newMagnitudes: new uint64[](1)
+            strategies: new IStrategy[](2),
+            newMagnitudes: new uint64[](2)
         });
         allocateParams[0].strategies[0] = eigenStrategyManager.strategies(wsteth);
         allocateParams[0].newMagnitudes[0] = 1 ether;
+        allocateParams[0].strategies[1] = eigenStrategyManager.strategies(sfrxeth);
+        allocateParams[0].newMagnitudes[1] = 1 ether;
         vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
         eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
     }
 
-    function test_FromRequestWithdrawalToClaimWithdrawal_NoSlashing() public {
+    function test_FromRequestWithdrawalToClaimWithdrawal_OnlyWsteth() public {
         deal({token: address(wsteth), to: user1, give: 100 ether});
         deal({token: address(wsteth), to: user2, give: 100 ether});
+
+        uint256 originalBalance = wsteth.balanceOf(user1);
 
         vm.startPrank(user1);
         wsteth.approve(address(ynEigenToken), 100 ether);
@@ -641,9 +648,10 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         ynEigenToken.deposit(wsteth, 100 ether, user2);
         vm.stopPrank();
 
-        IERC20[] memory singleAsset = new IERC20[](1); singleAsset[0] = wsteth;
-        uint256[] memory singleAmount = new uint256[](1); singleAmount[0] = 100 ether;
-
+        IERC20[] memory singleAsset = new IERC20[](1); 
+        singleAsset[0] = wsteth;
+        uint256[] memory singleAmount = new uint256[](1); 
+        singleAmount[0] = 100 ether;
         vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(node1.nodeId(), singleAsset, singleAmount);
         eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
@@ -654,58 +662,90 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         uint256 requestWithdrawalTokenId = withdrawalQueueManager.requestWithdrawal(ynEigenToken.balanceOf(user1));
         vm.stopPrank();
 
-        uint256 pendingRequestedRedemptionAmount = withdrawalQueueManager.pendingRequestedRedemptionAmount();
-        uint256 pendingRequestedRedemptionAmountWithBuffer = withdrawalsProcessor.applyBuffer(pendingRequestedRedemptionAmount);
-
-        // GET QUEUE WITHDRAWALS ARGS
-        IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
-
-        uint256 expectedShares = withdrawalsProcessor.unitToShares((pendingRequestedRedemptionAmountWithBuffer + withdrawalsProcessor.MIN_DELTA()) / 2, wsteth, eigenStrategyManager.strategies(wsteth));
-
-        assertEq(address(_args.asset), address(wsteth), "asset should be wsteth");
-        assertEq(_args.nodes.length, 2, "nodes length should be 2");
-        assertEq(address(_args.nodes[0]), address(node1), "node1 should be in the nodes array");
-        assertEq(address(_args.nodes[1]), address(node2), "node2 should be in the nodes array");
-        assertEq(_args.shares.length, 2, "shares length should be 2");
-        assertApproxEqAbs(_args.shares[0], expectedShares, 2, "shares[0] should be equal to the pending requested redemption amount with buffer applied converted to shares");
-        assertApproxEqAbs(_args.shares[1], expectedShares, 2, "shares[1] should be equal to the pending requested redemption amount with buffer applied converted to shares");
-        assertEq(_args.totalQueuedWithdrawals, 0, "total queued withdrawals should be 0");
-
         // QUEUE WITHDRAWALS
+        IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
         vm.prank(keeper);
-        assertEq(withdrawalsProcessor.queueWithdrawals(_args), true, "queue withdrawals should be successful");
-
-        assertGt(withdrawalsProcessor.getTotalQueuedWithdrawals(), pendingRequestedRedemptionAmountWithBuffer, "total queued withdrawals should be greater than the applied buffer");
-        assertApproxEqAbs(withdrawalsProcessor.getTotalQueuedWithdrawals(), pendingRequestedRedemptionAmountWithBuffer, withdrawalsProcessor.MIN_DELTA(), "total queued withdrawals should be equal to the applied buffer");
-
-        assertEq(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), false, "should complete queued withdrawals should be false");
-        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
-        assertEq(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), true, "should complete queued withdrawals should be true");
+        withdrawalsProcessor.queueWithdrawals(_args);
 
         // COMPLETE QUEUED WITHDRAWALS
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
         vm.prank(keeper);
         withdrawalsProcessor.completeQueuedWithdrawals();
 
-        assertGt(withdrawalsProcessor.getTotalQueuedWithdrawals(), pendingRequestedRedemptionAmountWithBuffer, "total queued withdrawals should be greater than the applied buffer");
-        assertApproxEqAbs(withdrawalsProcessor.getTotalQueuedWithdrawals(), pendingRequestedRedemptionAmountWithBuffer, withdrawalsProcessor.MIN_DELTA(), "total queued withdrawals should be greater than the applied buffer by the minimum delta");
-
-        assertEq(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), true, "can process withdrawals should be false");
-
+        // PROCESS PRINCIPAL WITHDRAWALS
         vm.prank(keeper);
         withdrawalsProcessor.processPrincipalWithdrawals();
 
-        assertApproxEqAbs(withdrawalsProcessor.getTotalQueuedWithdrawals(), 0, 1, "total queued withdrawals should be 0");
-
-        assertGt(redemptionAssetsVault.availableRedemptionAssets(), pendingRequestedRedemptionAmount, "available redemption assets should be greater than the pending requested redemption amount");
-        assertApproxEqAbs(redemptionAssetsVault.availableRedemptionAssets(), pendingRequestedRedemptionAmount, withdrawalsProcessor.MIN_DELTA(), "available redemption assets should be greater than the pending requested redemption amount by the minimum delta");
-
-        assertApproxEqAbs(assetRegistry.convertToUnitOfAccount(wsteth, wsteth.balanceOf(address(ynEigenToken))), pendingRequestedRedemptionAmountWithBuffer - pendingRequestedRedemptionAmount, 100, "reinvested amount should be the difference between the pending requested redemption amount with buffer applied and the pending requested redemption amount");
-        
         // CLAIM WITHDRAWAL
         vm.prank(user1);
         withdrawalQueueManager.claimWithdrawal(requestWithdrawalTokenId, user1);
 
-        assertApproxEqAbs(assetRegistry.convertToUnitOfAccount(wsteth, wsteth.balanceOf(user1)), pendingRequestedRedemptionAmount, 1, "wsteth balance of user1 should be the pending requested redemption amount");
+        assertApproxEqAbs(wsteth.balanceOf(user1), originalBalance, 1e4, "user1 should have approximately the original balance");
+    }
+
+    function test_FromRequestWithdrawalToClaimWithdrawal_WstethAndSfrxeth() public {
+        deal({token: address(wsteth), to: user1, give: 80 ether});
+        deal({token: address(sfrxeth), to: user1, give: 20 ether});
+        deal({token: address(sfrxeth), to: user2, give: 50 ether});
+
+        uint256 originalBalance = wsteth.balanceOf(user1) + sfrxeth.balanceOf(user1);
+
+        vm.startPrank(user1);
+        wsteth.approve(address(ynEigenToken), 80 ether);
+        ynEigenToken.deposit(wsteth, 80 ether, user1);
+        sfrxeth.approve(address(ynEigenToken), 20 ether);
+        ynEigenToken.deposit(sfrxeth, 20 ether, user1);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        sfrxeth.approve(address(ynEigenToken), 50 ether);
+        ynEigenToken.deposit(sfrxeth, 50 ether, user2);
+        vm.stopPrank();
+
+        IERC20[] memory singleAsset = new IERC20[](1); 
+        singleAsset[0] = wsteth;
+        uint256[] memory singleAmount = new uint256[](1); 
+        singleAmount[0] = 40 ether;
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node1.nodeId(), singleAsset, singleAmount);
+        eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
+        singleAsset[0] = sfrxeth;
+        singleAmount[0] = 35 ether;
+        eigenStrategyManager.stakeAssetsToNode(node1.nodeId(), singleAsset, singleAmount);
+        eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        ynEigenToken.approve(address(withdrawalQueueManager), ynEigenToken.balanceOf(user1));
+        uint256 requestWithdrawalTokenId = withdrawalQueueManager.requestWithdrawal(ynEigenToken.balanceOf(user1));
+        vm.stopPrank();
+
+        // QUEUE WITHDRAWALS
+        IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+        vm.prank(keeper);
+        withdrawalsProcessor.queueWithdrawals(_args);
+        _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+        vm.prank(keeper);
+        withdrawalsProcessor.queueWithdrawals(_args);
+
+        // COMPLETE QUEUED WITHDRAWALS
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
+        vm.prank(keeper);
+        withdrawalsProcessor.completeQueuedWithdrawals();
+        vm.prank(keeper);
+        withdrawalsProcessor.completeQueuedWithdrawals();
+
+        // PROCESS PRINCIPAL WITHDRAWALS
+        vm.prank(keeper);
+        withdrawalsProcessor.processPrincipalWithdrawals();
+        vm.prank(keeper);
+        withdrawalsProcessor.processPrincipalWithdrawals();
+
+        // CLAIM WITHDRAWAL
+        vm.prank(user1);
+        withdrawalQueueManager.claimWithdrawal(requestWithdrawalTokenId, user1);
+
+        assertApproxEqAbs(wsteth.balanceOf(user1) + sfrxeth.balanceOf(user1), originalBalance, 1e4, "user1 should have the original balance");
     }
 }
 

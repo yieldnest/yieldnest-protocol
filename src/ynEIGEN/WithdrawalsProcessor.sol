@@ -41,6 +41,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     mapping(uint256 => uint256) public pendingRequestsAtBatch;
     mapping(uint256 => uint256) public withdrawnAtCompletedWithdrawal;
+    uint256 public pendingWithdrawalRequestsIgnored;
 
     // yieldnest
     IWithdrawalQueueManager public immutable withdrawalQueueManager;
@@ -263,7 +264,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         {
             _args.shares = new uint256[](_nodesLength);
             _args.totalQueuedWithdrawals = getTotalQueuedWithdrawals();
-            uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals)) + MIN_DELTA;
+            uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals)) + MIN_DELTA + pendingWithdrawalRequestsIgnored;
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
@@ -283,8 +284,17 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // second pass: withdraw evenly from all nodes if there is still more to withdraw 
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                _args.shares[i] = _equalWithdrawal + MIN_DELTA > _nodesShares[i] ? _nodesShares[i] : _equalWithdrawal;
+                if (_equalWithdrawal + MIN_DELTA > _nodesShares[i]) {
+                    _args.pendingWithdrawalRequestsIgnored += _equalWithdrawal + MIN_DELTA - _nodesShares[i];
+                    _args.shares[i] = _nodesShares[i];
+                } else {
+                    _args.shares[i] = _equalWithdrawal;
+                }
             }
+        }
+
+        if (_args.pendingWithdrawalRequestsIgnored > 0) {
+            _args.pendingWithdrawalRequestsIgnored = _sharesToUnit(_args.pendingWithdrawalRequestsIgnored, _args.asset, _strategy);
         }
     }
 
@@ -315,6 +325,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         uint256 _queuedId = _ids.queued;
 
         pendingRequestsAtBatch[_queuedId] = _pendingWithdrawalRequestsNoBuffer + MIN_DELTA;
+        pendingWithdrawalRequestsIgnored = _args.pendingWithdrawalRequestsIgnored;
 
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
         for (uint256 i = 0; i < _nodesLength; ++i) {
