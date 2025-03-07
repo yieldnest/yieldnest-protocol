@@ -210,7 +210,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             for (uint256 j = 0; j < _nodes.length; ++j) {
                 ITokenStakingNode _node = _nodes[j];
                 (uint256 _queuedWithdrawals, uint256 _withdrawn) = _node.getQueuedSharesAndWithdrawn(_strategy, _asset);
-                _totalQueuedWithdrawals += _sharesToUnit(_queuedWithdrawals, _asset, _strategy) + _withdrawn;
+                _totalQueuedWithdrawals += _sharesToUnit(_queuedWithdrawals, _asset, _strategy) + assetRegistry.convertToUnitOfAccount(_asset, _withdrawn);
             }
         }
     }
