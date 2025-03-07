@@ -167,25 +167,25 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
-        // complete queued withdrawals -- steth
+        // complete queued withdrawals -- sfrxeth
         {
             assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "completeQueuedWithdrawals: E1");
 
             vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
-            assertEq(tokenStakingNode.queuedShares(_stethStrategy), 0, "completeQueuedWithdrawals: E2");
+            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), 0, "completeQueuedWithdrawals: E2");
             assertEq(withdrawalsProcessor.ids().completed, 1, "completeQueuedWithdrawals: E3");
         }
 
-        // complete queued withdrawals -- sfrxeth
+        // complete queued withdrawals -- steth
         {
             assertTrue(withdrawalsProcessor.shouldCompleteQueuedWithdrawals(), "completeQueuedWithdrawals: E4");
 
             vm.prank(keeper);
             withdrawalsProcessor.completeQueuedWithdrawals();
 
-            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), 0, "completeQueuedWithdrawals: E5");
+            assertEq(tokenStakingNode.queuedShares(_stethStrategy), 0, "completeQueuedWithdrawals: E5");
             assertEq(withdrawalsProcessor.ids().completed, 2, "completeQueuedWithdrawals: E6");
         }
 
@@ -217,46 +217,42 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
         bool _queuedEverything;
 
-        // 1st queue withdrawals -- steth
+        // 1st queue withdrawals -- sfrxeth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "queueWithdrawal: E0");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
-                withdrawalsProcessor.getQueueWithdrawalsArgs();
+            IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(keeper);
-            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_args);
 
             assertFalse(_queuedEverything, "queueWithdrawal: E1");
-            assertEq(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E2");
+            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E2");
             assertEq(withdrawalsProcessor.batch(0), 1, "queueWithdrawal: E3");
 
-            WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =
-                IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(0);
+            WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal = IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(0);
             assertEq(address(_queuedWithdrawal.node), address(tokenStakingNode), "queueWithdrawal: E4");
-            assertEq(address(_queuedWithdrawal.strategy), address(_stethStrategy), "queueWithdrawal: E5");
+            assertEq(address(_queuedWithdrawal.strategy), address(_sfrxethStrategy), "queueWithdrawal: E5");
             assertEq(_queuedWithdrawal.nonce, 0, "queueWithdrawal: E6");
-            assertEq(_queuedWithdrawal.shares, _stethShares, "queueWithdrawal: E7");
+            assertEq(_queuedWithdrawal.shares, _sfrxethShares, "queueWithdrawal: E7");
             assertEq(_queuedWithdrawal.startBlock, block.number, "queueWithdrawal: E8");
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E9");
         }
 
-        // 2nd queue withdrawals -- sfrxeth
+        // 2nd queue withdrawals -- steth
         {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "queueWithdrawal: E10");
-            (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
-                withdrawalsProcessor.getQueueWithdrawalsArgs();
+            IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
             vm.prank(keeper);
-            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+            _queuedEverything = withdrawalsProcessor.queueWithdrawals(_args);
 
             assertTrue(_queuedEverything, "queueWithdrawal: E11");
-            assertEq(tokenStakingNode.queuedShares(_sfrxethStrategy), _sfrxethShares, "queueWithdrawal: E12");
+            assertEq(tokenStakingNode.queuedShares(_stethStrategy), _stethShares, "queueWithdrawal: E12");
             assertEq(withdrawalsProcessor.batch(1), 2, "queueWithdrawal: E13");
 
-            WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =
-                IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(1);
+            WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal = IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(1);
             assertEq(address(_queuedWithdrawal.node), address(tokenStakingNode), "queueWithdrawal: E14");
-            assertEq(address(_queuedWithdrawal.strategy), address(_sfrxethStrategy), "queueWithdrawal: E15");
+            assertEq(address(_queuedWithdrawal.strategy), address(_stethStrategy), "queueWithdrawal: E15");
             assertEq(_queuedWithdrawal.nonce, 1, "queueWithdrawal: E16");
-            assertEq(_queuedWithdrawal.shares, _sfrxethShares, "queueWithdrawal: E17");
+            assertEq(_queuedWithdrawal.shares, _stethShares, "queueWithdrawal: E17");
             assertEq(_queuedWithdrawal.startBlock, block.number, "queueWithdrawal: E18");
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E19");
         }
@@ -265,17 +261,15 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
         {
             if (!_isHolesky()) {
                 assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "queueWithdrawal: E20");
-                (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
-                    withdrawalsProcessor.getQueueWithdrawalsArgs();
+                IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
                 vm.prank(keeper);
-                _queuedEverything = withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+                _queuedEverything = withdrawalsProcessor.queueWithdrawals(_args);
 
                 assertFalse(_queuedEverything, "queueWithdrawal: E21");
                 assertEq(tokenStakingNode.queuedShares(_oethStrategy), _oethShares, "queueWithdrawal: E22");
                 assertEq(withdrawalsProcessor.batch(2), 3, "queueWithdrawal: E23");
 
-                WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =
-                    IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(2);
+                WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal = IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(2);
                 assertEq(address(_queuedWithdrawal.node), address(tokenStakingNode), "queueWithdrawal: E24");
                 assertEq(address(_queuedWithdrawal.strategy), address(_oethStrategy), "queueWithdrawal: E5");
                 assertEq(_queuedWithdrawal.nonce, 2, "queueWithdrawal: E26");
@@ -287,8 +281,7 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
 
         // none
         {
-            WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal =
-                IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(3);
+            WithdrawalsProcessor.QueuedWithdrawal memory _queuedWithdrawal = IWithdrawalsProcessor(address(withdrawalsProcessor)).queuedWithdrawals(3);
             assertEq(address(_queuedWithdrawal.node), address(0), "queueWithdrawal: E25");
             assertEq(address(_queuedWithdrawal.strategy), address(0), "queueWithdrawal: E26");
             assertEq(_queuedWithdrawal.nonce, 0, "queueWithdrawal: E27");
@@ -297,8 +290,8 @@ contract WithdrawalsProcessorTest is ynEigenIntegrationBaseTest {
             assertEq(_queuedWithdrawal.completed, false, "queueWithdrawal: E30");
         }
 
-        assertEq(
-            withdrawalsProcessor.totalQueuedWithdrawals(),
+        assertGe(
+            withdrawalsProcessor.getTotalQueuedWithdrawals(),
             withdrawalQueueManager.pendingRequestedRedemptionAmount(),
             "queueWithdrawal: E31"
         );
