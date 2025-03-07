@@ -521,6 +521,12 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
     address private user1;
     address private user2;
     address private keeper;
+    address private avs;
+
+    ITokenStakingNode private node1;
+    ITokenStakingNode private node2;
+
+    IERC20 private wsteth;
 
     function setUp() public virtual override {
         super.setUp();
@@ -530,6 +536,8 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         keeper = makeAddr("keeper");
         address owner = makeAddr("owner");
         address bufferSetter = makeAddr("bufferSetter");
+
+        wsteth = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
 
         withdrawalsProcessor = new WithdrawalsProcessorHarness(
             address(withdrawalQueueManager),
@@ -564,11 +572,62 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
 
         vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynEigenToken.unpauseTransfers();
+
+        vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
+        node1 = tokenStakingNodesManager.createTokenStakingNode();
+        node2 = tokenStakingNodesManager.createTokenStakingNode();
+        vm.stopPrank();
+
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
+
+        ISignatureUtils.SignatureWithExpiry memory signature;
+        vm.startPrank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
+        node1.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, bytes32(0));
+        node2.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, bytes32(0));
+        vm.stopPrank();
+
+        avs = address(new MockAVSRegistrar());
+
+        vm.prank(avs);
+        eigenLayer.allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
+
+        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
+        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
+            operatorSetId: 1, 
+            strategies: new IStrategy[](1) 
+        });
+        createSetParams[0].strategies[0] = eigenStrategyManager.strategies(wsteth);
+        vm.prank(avs);
+        eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
+
+        IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
+            avs: avs,
+            operatorSetIds: new uint32[](1),
+            data: new bytes(0)
+        });
+        registerParams.operatorSetIds[0] = 1;
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.allocationManager.registerForOperatorSets(actors.ops.TOKEN_STAKING_NODE_OPERATOR, registerParams);
+
+        vm.roll(block.number + AllocationManagerStorage(address(eigenLayer.allocationManager)).ALLOCATION_CONFIGURATION_DELAY() + 1);
+
+        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+            operatorSet: OperatorSet({
+                avs: avs,
+                id: 1
+            }),
+            strategies: new IStrategy[](1),
+            newMagnitudes: new uint64[](1)
+        });
+        allocateParams[0].strategies[0] = eigenStrategyManager.strategies(wsteth);
+        allocateParams[0].newMagnitudes[0] = 1 ether;
+        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
+        eigenLayer.allocationManager.modifyAllocations(actors.ops.TOKEN_STAKING_NODE_OPERATOR, allocateParams);
     }
 
-    function test_FromRequestWithdrawalToClaimWithdrawal() public {
-        IERC20 wsteth = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-
+    function test_FromRequestWithdrawalToClaimWithdrawal_NoSlashing() public {
         deal({token: address(wsteth), to: user1, give: 100 ether});
         deal({token: address(wsteth), to: user2, give: 100 ether});
 
@@ -580,11 +639,6 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         vm.startPrank(user2);
         wsteth.approve(address(ynEigenToken), 100 ether);
         ynEigenToken.deposit(wsteth, 100 ether, user2);
-        vm.stopPrank();
-
-        vm.startPrank(actors.ops.STAKING_NODE_CREATOR);
-        ITokenStakingNode node1 = tokenStakingNodesManager.createTokenStakingNode();
-        ITokenStakingNode node2 = tokenStakingNodesManager.createTokenStakingNode();
         vm.stopPrank();
 
         IERC20[] memory singleAsset = new IERC20[](1); singleAsset[0] = wsteth;
