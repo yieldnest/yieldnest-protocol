@@ -35,6 +35,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     mapping(uint256 id => QueuedWithdrawal) private _queuedWithdrawals;
     mapping(uint256 fromId => uint256 toId) public batch;
 
+    // ELIP-002 - EigenLayer Slashing Upgrade
+
+    uint256 public buffer;
+
     mapping(uint256 => uint256) public pendingRequestsAtBatch;
     mapping(uint256 => uint256) public withdrawnAtCompletedWithdrawal;
 
@@ -61,6 +65,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     // roles
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
+    bytes32 public constant BUFFER_SETTER_ROLE = keccak256("BUFFER_SETTER_ROLE");
 
     //
     // Constructor
@@ -108,9 +113,26 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         minPendingWithdrawalRequestAmount = 0.1 ether;
     }
 
+    function initializeV2(address _bufferSetter, uint256 _buffer) public reinitializer(2) {
+        _grantRole(BUFFER_SETTER_ROLE, _bufferSetter);
+
+        _setBuffer(_buffer);
+    }
+
     //
     // view functions
     //
+
+    /// @notice Gets the buffer value.
+    /// @dev Reverts if the buffer has not been set.
+    /// @return The buffer value.
+    function getBuffer() public view returns (uint256) {
+        if (buffer == 0) {
+            revert BufferNotSet();
+        }
+
+        return buffer;
+    }
 
     /// @notice IDs of the queued, completed, and processed withdrawals, used for internal accounting
     /// @return The IDs
@@ -241,7 +263,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         {
             _args.shares = new uint256[](_nodesLength);
             _args.totalQueuedWithdrawals = getTotalQueuedWithdrawals();
-            uint256 _pendingWithdrawalRequests = 1.1 ether * _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals) / 1 ether;
+            uint256 _pendingWithdrawalRequests = getBuffer() * _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals) / 1 ether;
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
 
             // first pass: equalize all nodes to the minimum balance
@@ -281,7 +303,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_nodesLength != _args.shares.length) revert InvalidInput();
 
         uint256 _pendingWithdrawalRequestsNoBuffer = _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals); // NOTE: reverts if too low
-        uint256 _pendingWithdrawalRequests = 1.1 ether * _pendingWithdrawalRequestsNoBuffer / 1 ether;
+        uint256 _pendingWithdrawalRequests = getBuffer() * _pendingWithdrawalRequestsNoBuffer / 1 ether;
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
@@ -463,6 +485,13 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         emit MinPendingWithdrawalRequestAmountUpdated(_minPendingWithdrawalRequestAmount);
     }
 
+    /// @notice Updates the buffer value.
+    /// @dev Only callable by the buffer setter role.
+    /// @param _buffer The new buffer value.
+    function setBuffer(uint256 _buffer) external onlyRole(BUFFER_SETTER_ROLE) {
+        _setBuffer(_buffer);
+    }
+
     //
     // private functions
     //
@@ -525,4 +554,15 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
     }
 
+    /// @dev Updates the buffer value and emits an event.
+    /// @dev Reverts if the buffer is less than 1 ether.
+    function _setBuffer(uint256 _buffer) private {
+        if (_buffer < 1 ether) {
+            revert InvalidBuffer();
+        }
+
+        buffer = _buffer;
+
+        emit BufferSet(buffer);
+    }
 }
