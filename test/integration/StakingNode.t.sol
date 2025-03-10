@@ -12,7 +12,7 @@ import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEige
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import {EigenPod} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
 import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
@@ -137,7 +137,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     function testDelegateFailWhenNotAdmin() public {
         vm.expectRevert();
         stakingNodeInstance.delegate(
-            address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            address(this), ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
     }
 
@@ -149,7 +149,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -166,7 +166,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // // Attempt to undelegate with the wrong role
@@ -196,7 +196,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // // Attempt to undelegate with the wrong role
@@ -232,7 +232,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         vm.expectRevert();
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         vm.expectRevert();
@@ -258,7 +258,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -274,7 +274,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -298,7 +298,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -357,7 +357,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -458,7 +458,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -543,7 +543,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -574,7 +574,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -637,7 +637,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -691,7 +691,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // Verify total assets stayed the same after delegation to operator2
@@ -725,7 +725,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -766,7 +766,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     function testSetClaimer() public {
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // Create a claimer address

@@ -7,7 +7,7 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
@@ -464,7 +464,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
     }
 
     function testTokenStakingNodeDelegate() public {
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
@@ -477,7 +477,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
     }
 
     function testTokenStakingNodeUndelegate() public {
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
@@ -513,7 +513,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
@@ -529,7 +529,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator2 = delegationManager.delegatedTo(address(tokenStakingNodeInstance));
@@ -562,7 +562,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
@@ -643,7 +643,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
@@ -710,7 +710,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
@@ -833,7 +833,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
     }
 
     function testOperatorUndelegateTokenStakingNode() public {
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
@@ -925,7 +925,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
@@ -1057,7 +1057,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
@@ -1192,7 +1192,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         assertEq(initialStrategyListLength, 2, "Initial strategy list length should be 2.");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         tokenStakingNodeInstance.delegate(operator1, signature, approverSalt);
