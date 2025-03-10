@@ -243,9 +243,9 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         assertEq(withdrawalQueueManager.pendingRequestedRedemptionAmount(), 0, "pendingRequestedRedemptionAmount should be 0");
     }
 
-    function test_FromRequestWithdrawalToClaimWithdrawal_OnlyWsteth_WithSlashing() public {
+    function test_FromRequestWithdrawalToClaimWithdrawal_OnlyWsteth_WithSlashing_DoesNotAffectPendingRequestedAmountIfDoneBeforeRequestWithdrawal() public {
         deal({token: address(wsteth), to: user1, give: 100 ether});
-        deal({token: address(wsteth), to: user2, give: 500 ether});
+        deal({token: address(wsteth), to: user2, give: 100 ether});
 
         vm.startPrank(user1);
         wsteth.approve(address(ynEigenToken), 100 ether);
@@ -253,8 +253,8 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         vm.stopPrank();
 
         vm.startPrank(user2);
-        wsteth.approve(address(ynEigenToken), 500 ether);
-        ynEigenToken.deposit(wsteth, 500 ether, user2);
+        wsteth.approve(address(ynEigenToken), 100 ether);
+        ynEigenToken.deposit(wsteth, 100 ether, user2);
         vm.stopPrank();
 
         IERC20[] memory singleAsset = new IERC20[](1); 
@@ -266,6 +266,9 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
         vm.stopPrank();
 
+        uint256 user1BalanceBefore = wsteth.balanceOf(user1);
+        uint256 ynEigenBalanceBefore = wsteth.balanceOf(address(ynEigenToken));
+
         IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
             operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
             operatorSetId: 1,
@@ -274,6 +277,7 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
             description: "test"
         });
         slashingParams.strategies[0] = eigenStrategyManager.strategies(wsteth);
+        // 20 wsteth of the 200 staked are slashed.
         slashingParams.wadsToSlash[0] = 0.1 ether;
         vm.prank(avs);
         eigenLayer.allocationManager.slashOperator(avs, slashingParams);
@@ -285,6 +289,10 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
 
         vm.startPrank(user1);
         ynEigenToken.approve(address(withdrawalQueueManager), ynEigenToken.balanceOf(user1));
+        // Requests withdrawal of all ynEIGEN 
+        // - 90 wsteth are requested for withdrawal. 
+        // - 20 were slashed from the whole stake, but given that user has 50%, 10 wsteth are slashed from the user balance. 
+        // - Buffer adds 9 ether to withdraw, so the withdrawal would be for 99 ether
         uint256 requestWithdrawalTokenId = withdrawalQueueManager.requestWithdrawal(ynEigenToken.balanceOf(user1));
         vm.stopPrank();
 
@@ -306,6 +314,12 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         vm.prank(user1);
         withdrawalQueueManager.claimWithdrawal(requestWithdrawalTokenId, user1);
 
+        // User claims its unslashed part.
+        assertApproxEqRel(wsteth.balanceOf(user1), 89.99 ether, 0.01 ether, "wsteth balance of user1 should be 89.99");
+        // The buffer part if reinvested.
+        assertApproxEqRel(wsteth.balanceOf(address(ynEigenToken)), 8.99 ether, 0.01 ether, "wsteth balance of ynEigenToken should be 8.99");
+
+        // The requested amount, given that slashing was prior to requesting, was satisfied.
         assertEq(withdrawalQueueManager.pendingRequestedRedemptionAmount(), 0, "pendingRequestedRedemptionAmount should be 0");
     }
 }
