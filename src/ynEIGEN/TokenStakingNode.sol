@@ -227,37 +227,22 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         });
 
         DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
+        // Queue the withdrawals and get the withdrawal root.
+        _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
+        // Only one withdrawal root is generated given that only 1 strategy is provided.
+        bytes32 _withdrawalRoot = _fullWithdrawalRoots[0];
+        // Get the withdrawable shares for withdraw.
+        // Also, given that only 1 strategy was withdrawn, we can expect the withdrawable shares array to contain only 1 value.
+        (, uint256[] memory _singleWithdrawableShares) = _delegationManager.getQueuedWithdrawal(_withdrawalRoot);
+        uint256 _withdrawableShares = _singleWithdrawableShares[0];
 
-        // `onlyWhenSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
-        address _operator = delegatedTo;
-        uint256 _withdrawableShares;
-        bytes32 _withdrawalRoot;
-
-        if (_operator == address(0)) {
-            _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-            _withdrawalRoot = _fullWithdrawalRoots[0];
-            IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = _delegationManager.getQueuedWithdrawal(_withdrawalRoot);
-
-            // If the staker has not yet delegated to an operator, and given that this contract does not handle the beacon chain strategy.
-            // We can assume that the scaledShares can be used as the withdrawable shares because:
-            // - withdrawableShares = scaledShares * maxMagnitude * beaconChainSlashFactor.
-            // - scaledShares = withdrawableShares / (maxMagnitude * beaconChainSlashFactor).
-            // - scaledShares = withdrawableShares / (1 * 1). maxMagnitude is 1 when not delegated and beaconChainSlashFactor is 1 because it is not using the beacon chain strategy.
-            // - scaledShares = withdrawableShares.
-            _withdrawableShares = _queuedWithdrawal.scaledShares[0];
-        } else {
-            uint256[] memory operatorSharesBefore = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
-            _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-            _withdrawalRoot = _fullWithdrawalRoots[0];
-            uint256[] memory operatorSharesAfter = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
-
-            // Operator shares are decreased by the amount of withdrawable shares so we can use the difference to update the queued shares.
-            _withdrawableShares = operatorSharesBefore[0] - operatorSharesAfter[0];
-        }
-
+        // Add the new withdrawn shares to the queued shares mapping.
         queuedShares[_strategy] += _withdrawableShares;
-        maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
+        // Store the current maxMagnitude to verify later if the operator was slashed mid withdrawal.
+        maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(delegatedTo, _strategy);
+        // Store the withdrawable shares for the particular withdrawal root.
         withdrawableSharesByWithdrawalRoot[_withdrawalRoot] = _withdrawableShares;
+        // Flags the withdrawal as done after the slashing upgrade.
         queuedAfterSlashingUpgrade[_withdrawalRoot] = true;
 
         emit QueuedWithdrawals(_strategy, _withdrawableShares, _fullWithdrawalRoots);

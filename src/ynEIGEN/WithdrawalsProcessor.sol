@@ -288,7 +288,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 address _node = address(_nodes[j]);
                 
                 bytes32[] memory _fullWithdrawalRoots = ITokenStakingNode(_node).queueWithdrawals(_strategy, _toWithdraw);
-                IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = delegationManager.getQueuedWithdrawal(_fullWithdrawalRoots[0]);
+                (IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal,) = delegationManager.getQueuedWithdrawal(_fullWithdrawalRoots[0]);
 
                 _queuedWithdrawals[_queuedId++] = QueuedWithdrawal({
                     node: _node,
