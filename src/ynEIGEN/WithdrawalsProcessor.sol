@@ -269,7 +269,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
         }
 
-        // calculate deposit amounts for withdrawal for each node
+        // calculate withdrawal amounts for each node.
         {
             _args.shares = new uint256[](_nodesLength);
             _args.totalQueuedWithdrawals = getTotalQueuedWithdrawals();
