@@ -37,10 +37,19 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     // ELIP-002 - EigenLayer Slashing Upgrade
 
+    /// @notice Multiplier applied to withdrawal amounts to account for potential slashing
+    /// @dev Value is in ether units (1 ether = 100%), used to add safety margin to withdrawal amounts
     uint256 public buffer;
 
+    /// @notice Tracks the amount of pending requests at each batch ID
+    /// @dev Used to determine how much to queue vs reinvest during principal withdrawals
     mapping(uint256 => uint256) public pendingRequestsAtBatch;
+    
+    /// @notice Tracks the actual amount withdrawn at each completed withdrawal ID
+    /// @dev Used to calculate the correct amount to process in processPrincipalWithdrawals
     mapping(uint256 => uint256) public withdrawnAtCompletedWithdrawal;
+    
+    /// @notice Tracks withdrawal requests that couldn't be processed due to insufficient shares
     uint256 public pendingWithdrawalRequestsIgnored;
 
     // yieldnest
