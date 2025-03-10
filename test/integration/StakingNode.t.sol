@@ -1334,7 +1334,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         for (uint256 i = 0; i < slashedValidatorCount; i++) {
             slashedValidators[i] = validatorIndices[i];
         }
-        beaconChain.slashValidators(slashedValidators);
+        beaconChain.slashValidators(slashedValidators, BeaconChainMock.SlashType.Minor);
 
         beaconChain.advanceEpoch_NoRewards();
 
@@ -1367,7 +1367,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         // Capture final state
         StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
 
-        uint256 slashedAmount = slashedValidatorCount * (beaconChain.SLASH_AMOUNT_GWEI() * 1e9);
+        uint256 slashedAmount = slashedValidatorCount * (beaconChain.MINOR_SLASH_AMOUNT_GWEI() * 1e9);
 
         // Assertions
         assertEq(
@@ -1425,7 +1425,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         stakingNodeInstance.queueWithdrawals(withdrawalAmount);
 
         // Exit the validator
-        beaconChain.slashValidators(validatorIndices);
+        beaconChain.slashValidators(validatorIndices, BeaconChainMock.SlashType.Minor);
 
         beaconChain.advanceEpoch_NoRewards();
 
@@ -1433,7 +1433,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         startAndVerifyCheckpoint(nodeId, validatorIndices);
 
         // Assert that podOwnerDepositShares are equal to negative slashingAmount
-        uint256 slashedAmount = beaconChain.SLASH_AMOUNT_GWEI() * 1e9;
+        uint256 slashedAmount = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * 1e9;
         assertEq(
             eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance)),
             -int256(slashedAmount),
