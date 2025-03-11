@@ -164,6 +164,27 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         deal({token: address(sfrxeth), to: user2, give: 1000 ether});
     }
 
+    function _slash(address _operator, uint256 _wadsToSlash) public {
+        // Slash the operator.
+        IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
+            operator: _operator,
+            operatorSetId: _operator == operator1 ? 1 : 2,
+            strategies: new IStrategy[](1),
+            wadsToSlash: new uint256[](1),
+            description: "test"
+        });
+        slashingParams.strategies[0] = eigenStrategyManager.strategies(_operator == operator1 ? wsteth : sfrxeth);
+        slashingParams.wadsToSlash[0] = _wadsToSlash;
+        vm.prank(avs);
+        eigenLayer.allocationManager.slashOperator(avs, slashingParams);
+
+        // Synchronize nodes and balances.
+        ITokenStakingNode[] memory nodes = new ITokenStakingNode[](2);
+        nodes[0] = node1;
+        nodes[1] = node2;
+        eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
+    }
+
     function test_ReceivesSameValueOnClaimWithdraw() public {
         uint256 user1WstethDeposit = 100 ether;
         uint256 user2SfrxethDeposit = 200 ether;
@@ -231,6 +252,85 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
             assetRegistry.convertToUnitOfAccount(sfrxeth, sfrxeth.balanceOf(user1) - user1SfrxethBalanceBefore),
             1e4,
             "The claimed sfrxeth should have the same value as the original wsteth deposit"
+        );
+    }
+
+    function test_ReceivesSameValueOnClaimWithdraw_WithSlashing_PreRequest() public {
+        uint256 user1WstethDeposit = 100 ether;
+        uint256 user2SfrxethDeposit = 200 ether;
+
+        // User 1 deposits wsteth.
+        vm.startPrank(user1);
+        wsteth.approve(address(ynEigenToken), type(uint256).max);
+        ynEigenToken.deposit(wsteth, user1WstethDeposit, user1);
+        vm.stopPrank();
+
+        // User 2 deposits sfrxeth.
+        vm.startPrank(user2);
+        sfrxeth.approve(address(ynEigenToken), type(uint256).max);
+        ynEigenToken.deposit(sfrxeth, user2SfrxethDeposit, user2);
+        vm.stopPrank();
+
+        IERC20[] memory singleAsset = new IERC20[](1);
+        uint256[] memory singleAmount = new uint256[](1);
+        
+        // Stake wsteth to node 1.
+        singleAsset[0] = wsteth;
+        singleAmount[0] = user1WstethDeposit;
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node1.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        // Stake sfrxeth to node 2.
+        singleAsset[0] = sfrxeth;
+        singleAmount[0] = user2SfrxethDeposit;        
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        uint256 user1YnEigenTokenBalance = ynEigenToken.balanceOf(user1);
+
+        // Slash 🗡️
+        // Before requesting withdrawals.
+        // This will cause the requested amount to be calculated based on the already slashed assets.
+        _slash(operator2, 0.1 ether);
+
+        // Sfrxeth is slashed by 10% so the 200 staked will be reduced to 180.
+        (uint128 stakedSfrxeth,) = eigenStrategyManager.strategiesBalance(eigenStrategyManager.strategies(sfrxeth));
+        assertEq(stakedSfrxeth, 180 ether, "Remaining sfrxeth staked after slashing");
+
+        // User 1 request to withdraw all their ynEigenToken balance.
+        vm.startPrank(user1);
+        ynEigenToken.approve(address(withdrawalQueueManager), type(uint256).max);
+        uint256 requestTokenId = withdrawalQueueManager.requestWithdrawal(user1YnEigenTokenBalance);
+        vm.stopPrank();
+
+        // Get the arguments and queue withdrawals.
+        IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+        vm.prank(keeper);
+        withdrawalsProcessor.queueWithdrawals(_args);
+
+        // Wait for the withdrawal delay and complete the withdrawal.
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
+        vm.prank(keeper);
+        withdrawalsProcessor.completeQueuedWithdrawals();
+
+        // Process principal withdrawals.
+        vm.prank(keeper);
+        withdrawalsProcessor.processPrincipalWithdrawals();
+
+        uint256 user1SfrxethBalanceBefore = sfrxeth.balanceOf(user1);
+
+        // User1 claims the withdrawn assets.
+        vm.prank(user1);
+        withdrawalQueueManager.claimWithdrawal(requestTokenId, user1);
+
+        // Check that the user received the correct amount of sfrxeth.
+        assertApproxEqAbs(
+            assetRegistry.convertToUnitOfAccount(wsteth, user1WstethDeposit) * 0.93 ether / 1 ether,
+            assetRegistry.convertToUnitOfAccount(sfrxeth, sfrxeth.balanceOf(user1) - user1SfrxethBalanceBefore),
+            0.2 ether,
+            "The claimed sfrxeth should have ~93% the value of the original wsteth deposit due to slashing"
         );
     }
 
