@@ -124,6 +124,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         minPendingWithdrawalRequestAmount = 0.1 ether;
     }
 
+    /// @notice Initializes the v2 version of the contract.
+    /// @param _bufferSetter The address that will be granted the BUFFER_SETTER_ROLE.
+    /// @param _buffer The buffer value.
     function initializeV2(address _bufferSetter, uint256 _buffer) public reinitializer(2) {
         _grantRole(BUFFER_SETTER_ROLE, _bufferSetter);
 
