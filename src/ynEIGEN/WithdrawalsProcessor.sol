@@ -587,7 +587,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         return _token;
     }
 
-    function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) internal view returns (uint256) {
+    function _unitToShares(uint256 _amount, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
         return _strategy.underlyingToSharesView(
             (address(_asset) == address(WSTETH) || address(_asset) == address(WOETH))
                 ? _amount
@@ -595,7 +595,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         );
     }
 
-    function _sharesToUnit(uint256 _shares, IERC20 _asset, IStrategy _strategy) internal view returns (uint256) {
+    function _sharesToUnit(uint256 _shares, IERC20 _asset, IStrategy _strategy) private view returns (uint256) {
         uint256 _amount = _strategy.sharesToUnderlyingView(_shares);
         return (address(_asset) == address(WSTETH) || address(_asset) == address(WOETH))
             ? assetRegistry.convertToUnitOfAccount(
@@ -608,7 +608,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @dev Applies the buffer to the amount.
     /// @param _amount The amount to apply the buffer to.
     /// @return The amount after the buffer has been applied.
-    function _applyBuffer(uint256 _amount) internal view returns (uint256) {
+    function _applyBuffer(uint256 _amount) private view returns (uint256) {
         return getBuffer() * _amount / 1 ether;
     }
 
