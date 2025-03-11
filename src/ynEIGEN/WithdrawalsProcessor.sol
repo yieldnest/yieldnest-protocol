@@ -228,7 +228,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     /// @notice Gets the arguments for `queueWithdrawals`
     /// @return _args The arguments for `queueWithdrawals`
     function getQueueWithdrawalsArgs() external view returns (QueueWithdrawalsArgs memory _args) {
-        // get `_asset` with the highest balance
+        // Phase 1: Identify the asset with the highest staked balance
+        // This determines which asset will be used for the withdrawal batch
         {
             IERC20[] memory _assets = assetRegistry.getAssets();
 
@@ -251,9 +252,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
         _singleStrategy[0] = _strategy;
 
-        // get all nodes and their shares
+        // Phase 2: Collect node share information and identify the minimum balance
+        // This helps ensure we maintain balance across nodes during withdrawals
         {
-            // populate node shares and find the minimum balance
+            // Iterate through all nodes to get their withdrawable shares and find the minimum balance
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 ITokenStakingNode _node = _args.nodes[i];
 
@@ -269,14 +271,24 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             }
         }
 
-        // calculate withdrawal amounts for each node.
+        // Phase 3: Calculate withdrawal amounts for each node
         {
             _args.shares = new uint256[](_nodesLength);
+            // Store the current total of all queued withdrawals in the arguments structure.
+            // Computing this value here in a view function is more gas-efficient than calculating it 
+            // during the actual `queueWithdrawals` transaction execution.
             _args.totalQueuedWithdrawals = getTotalQueuedWithdrawals();
+            // Calculate the total amount to withdraw by applying a buffer percentage to pending withdrawal requests.
+            // This includes any shares that couldn't be withdrawn in previous batches, ensuring the buffer is consistently applied.
+            // Example: If a 10% buffer is set and some assets had insufficient shares in a previous batch, those missing shares
+            // will be included in the next batch to maintain the intended buffer ratio across all withdrawals.
             uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals)) + MIN_DELTA + pendingWithdrawalRequestsIgnored;
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
 
-            // first pass: equalize all nodes to the minimum balance
+            // First pass: Balance nodes by withdrawing from nodes with more shares than the minimum threshold.
+            // This loop withdraws shares from nodes with excess balance (above _minNodeShares) until either:
+            // 1. All pending withdrawal requests are satisfied, or
+            // 2. All nodes have been reduced to the minimum balance threshold
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
                 if (_nodesShares[i] > _minNodeShares) {
                     uint256 _availableToWithdraw = _nodesShares[i] - _minNodeShares;
@@ -288,22 +300,31 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 }
             }
 
-            uint256[] memory _singleWithdrawableShares = new uint256[](1);
+            // Exit early if all withdrawal requests have been satisfied by the first pass
+            if (_pendingWithdrawalRequestsInShares == 0) {
+                return _args;
+            }
 
-            // second pass: withdraw evenly from all nodes if there is still more to withdraw 
+            // Second pass: Distribute remaining withdrawal requests evenly across all nodes
+            // Calculate an equal amount to withdraw from each node, adding 1 to handle integer division rounding
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
                 if (_equalWithdrawal + MIN_DELTA > _nodesShares[i]) {
-                    _args.pendingWithdrawalRequestsIgnored += _equalWithdrawal + MIN_DELTA - _nodesShares[i];
+                    // If a node has insufficient shares to handle its equal portion:
+                    // 1. Withdraw all available shares from this node
                     _args.shares[i] = _nodesShares[i];
+                    // 2. Track the shortfall to be included in future withdrawal batches
+                    _args.pendingWithdrawalRequestsIgnored += _equalWithdrawal + MIN_DELTA - _nodesShares[i];
                 } else {
-                    _args.shares[i] = _equalWithdrawal;
-                }
+                    // If the node has sufficient shares, withdraw the calculated equal amount
+                    _args.shares[i] += _equalWithdrawal;
             }
         }
 
+            // Convert any tracked shortfall from shares back to units for consistent tracking across batches
         if (_args.pendingWithdrawalRequestsIgnored > 0) {
             _args.pendingWithdrawalRequestsIgnored = _sharesToUnit(_args.pendingWithdrawalRequestsIgnored, _args.asset, _strategy);
+            }
         }
     }
 
