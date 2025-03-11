@@ -358,7 +358,10 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
         uint256 _queuedId = _ids.queued;
 
-        pendingRequestsAtBatch[_queuedId] = _pendingWithdrawalRequestsNoBuffer + MIN_DELTA;
+        // Stores how much was requested for this particular batch.
+        // This is useful for the `processPrincipalWithdrawals` to calculate how much surplus was withdrawn in order to reinvest.
+        pendingRequestsAtBatch[_queuedId] = _pendingWithdrawalRequestsNoBuffer;
+        // Stores the amount of units that could not be withdrawn in this queue to be included in future batches.
         pendingWithdrawalRequestsIgnored = _args.pendingWithdrawalRequestsIgnored;
 
         uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
@@ -438,6 +441,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 true // updateTokenStakingNodesBalances
             ); 
 
+            // Stores how many shares were withdrawn.
+            // This is useful for the `processPrincipalWithdrawals` along `pendingRequestsAtBatch` to calculate if the amount withdrawn matches the amount requested.
             withdrawnAtCompletedWithdrawal[_completedId] = _totalSharesBefore - _strategies[0].totalShares();
         }
 
@@ -460,7 +465,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         address _strategy;
         uint256 _tokenIdToFinalize;
         uint256 _processedIdAtStart = _processedId;
-        uint256 _pendingRequestsAtBatch = pendingRequestsAtBatch[_processedIdAtStart];
+        // Adds a extra to the pending requests amount to avoid rounding errors and ensure that the redemption vault receives the same or more of what was requested
+        uint256 _pendingRequestsAtBatch = pendingRequestsAtBatch[_processedIdAtStart] + MIN_DELTA;
         uint256 _accWithdrawnUnits;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
             uint256 _withdrawnAtCompletedWithdrawal = withdrawnAtCompletedWithdrawal[_processedId];
@@ -480,7 +486,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             uint256 _amountToQueue;
 
             if (_accWithdrawnUnits <= _pendingRequestsAtBatch) {
-                // If we haven't exceeded the pending requests amount, queue everything
+                // If we haven't exceeded the pending requests amount, queue everything for the redemption vault
                 _amountToReinvest = 0;
                 _amountToQueue = assetRegistry.convertFromUnitOfAccount(IERC20(_asset), _withdrawnUnits);
             } else if (_accWithdrawnUnits - _withdrawnUnits < _pendingRequestsAtBatch) {
