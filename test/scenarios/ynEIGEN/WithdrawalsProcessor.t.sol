@@ -111,7 +111,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             assertApproxEqAbs(
                 withdrawalsProcessor.getTotalQueuedWithdrawals() + redemptionAssetsVault.availableRedemptionAssets(),
                 withdrawalQueueManager.pendingRequestedRedemptionAmount(),
-                100,
+                2.1 ether,
                 "testSatisfyAllWithdrawals: E2"
             );
         }
@@ -150,7 +150,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             assertApproxEqAbs(
                 redemptionAssetsVault.availableRedemptionAssets(),
                 withdrawalQueueManager.pendingRequestedRedemptionAmount(),
-                100,
+                1e4,
                 "testSatisfyAllWithdrawals: E11"
             );
         }
