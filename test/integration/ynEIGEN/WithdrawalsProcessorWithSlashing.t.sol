@@ -409,6 +409,155 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         );
     }
 
+    function test_ReceivesSameValueOnClaimWithdraw_WithSlashing_PreComplete_RevertsWithoutBuffer() public {
+        uint256 user1WstethDeposit = 100 ether;
+        uint256 user2SfrxethDeposit = 200 ether;
+
+        // User 1 deposits wsteth.
+        vm.startPrank(user1);
+        wsteth.approve(address(ynEigenToken), type(uint256).max);
+        ynEigenToken.deposit(wsteth, user1WstethDeposit, user1);
+        vm.stopPrank();
+
+        // User 2 deposits sfrxeth.
+        vm.startPrank(user2);
+        sfrxeth.approve(address(ynEigenToken), type(uint256).max);
+        ynEigenToken.deposit(sfrxeth, user2SfrxethDeposit, user2);
+        vm.stopPrank();
+
+        IERC20[] memory singleAsset = new IERC20[](1);
+        uint256[] memory singleAmount = new uint256[](1);
+        
+        // Stake wsteth to node 1.
+        singleAsset[0] = wsteth;
+        singleAmount[0] = user1WstethDeposit;
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node1.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        // Stake sfrxeth to node 2.
+        singleAsset[0] = sfrxeth;
+        singleAmount[0] = user2SfrxethDeposit;        
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        uint256 user1YnEigenTokenBalance = ynEigenToken.balanceOf(user1);
+
+        // User 1 request to withdraw all their ynEigenToken balance.
+        vm.startPrank(user1);
+        ynEigenToken.approve(address(withdrawalQueueManager), type(uint256).max);
+        uint256 requestTokenId = withdrawalQueueManager.requestWithdrawal(user1YnEigenTokenBalance);
+        vm.stopPrank();
+
+        // Get the arguments and queue withdrawals.
+        IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+        vm.prank(keeper);
+        withdrawalsProcessor.queueWithdrawals(_args);
+
+        // Slash 🗡️
+        // After the withdrawals have been queued.
+        // This means that less shares than expected will be withdrawn and the user can't claim what they deserve.
+        _slash(operator2, 0.1 ether);
+
+        // Wait for the withdrawal delay and complete the withdrawal.
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
+        vm.prank(keeper);
+        withdrawalsProcessor.completeQueuedWithdrawals();
+
+        // Process principal withdrawals.
+        vm.prank(keeper);
+        withdrawalsProcessor.processPrincipalWithdrawals();
+
+        uint256 user1SfrxethBalanceBefore = sfrxeth.balanceOf(user1);
+
+        // User1 tries to claim their withdrawal but fails because the redemption vault does not have enough assets.
+        vm.expectPartialRevert(WithdrawalQueueManager.InsufficientBalance.selector);
+        vm.prank(user1);
+        withdrawalQueueManager.claimWithdrawal(requestTokenId, user1);
+    }
+
+    function test_ReceivesSameValueOnClaimWithdraw_WithSlashing_PreComplete() public {
+        uint256 user1WstethDeposit = 100 ether;
+        uint256 user2SfrxethDeposit = 200 ether;
+
+        // User 1 deposits wsteth.
+        vm.startPrank(user1);
+        wsteth.approve(address(ynEigenToken), type(uint256).max);
+        ynEigenToken.deposit(wsteth, user1WstethDeposit, user1);
+        vm.stopPrank();
+
+        // User 2 deposits sfrxeth.
+        vm.startPrank(user2);
+        sfrxeth.approve(address(ynEigenToken), type(uint256).max);
+        ynEigenToken.deposit(sfrxeth, user2SfrxethDeposit, user2);
+        vm.stopPrank();
+
+        IERC20[] memory singleAsset = new IERC20[](1);
+        uint256[] memory singleAmount = new uint256[](1);
+        
+        // Stake wsteth to node 1.
+        singleAsset[0] = wsteth;
+        singleAmount[0] = user1WstethDeposit;
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node1.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        // Stake sfrxeth to node 2.
+        singleAsset[0] = sfrxeth;
+        singleAmount[0] = user2SfrxethDeposit;        
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        eigenStrategyManager.stakeAssetsToNode(node2.nodeId(), singleAsset, singleAmount);
+        vm.stopPrank();
+
+        uint256 user1YnEigenTokenBalance = ynEigenToken.balanceOf(user1);
+
+        // User 1 request to withdraw all their ynEigenToken balance.
+        vm.startPrank(user1);
+        ynEigenToken.approve(address(withdrawalQueueManager), type(uint256).max);
+        uint256 requestTokenId = withdrawalQueueManager.requestWithdrawal(user1YnEigenTokenBalance);
+        vm.stopPrank();
+
+        // Set buffer to 10%.
+        vm.prank(bufferSetter);
+        withdrawalsProcessor.setBuffer(1.1 ether);
+
+        // Get the arguments and queue withdrawals.
+        IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
+        vm.prank(keeper);
+        withdrawalsProcessor.queueWithdrawals(_args);
+
+        // Slash 🗡️
+        // After the withdrawals have been queued.
+        // This means that less shares than expected will be withdrawn.
+        // But with the buffer set to 10%, so as long as the slashed amount is lower than this buffer, the withdrawal will still succeed.
+        _slash(operator2, 0.1 ether);
+
+        // Wait for the withdrawal delay and complete the withdrawal.
+        vm.roll(block.number + eigenLayer.delegationManager.minWithdrawalDelayBlocks() + 1);
+        vm.prank(keeper);
+        withdrawalsProcessor.completeQueuedWithdrawals();
+
+        // Process principal withdrawals.
+        vm.prank(keeper);
+        withdrawalsProcessor.processPrincipalWithdrawals();
+
+        uint256 user1SfrxethBalanceBefore = sfrxeth.balanceOf(user1);
+
+        // User1 tries to claim their withdrawal.
+        // Thanks to the buffer, they can claim their share.
+        vm.prank(user1);
+        withdrawalQueueManager.claimWithdrawal(requestTokenId, user1);
+
+        // Check that the user received the correct amount of sfrxeth.
+        assertApproxEqAbs(
+            assetRegistry.convertToUnitOfAccount(wsteth, user1WstethDeposit) * 0.93 ether / 1 ether,
+            assetRegistry.convertToUnitOfAccount(sfrxeth, sfrxeth.balanceOf(user1) - user1SfrxethBalanceBefore),
+            0.2 ether,
+            "The claimed sfrxeth should have ~93% the value of the original wsteth deposit due to slashing"
+        );
+    }
+
     // function test_FromRequestWithdrawalToClaimWithdrawal_OnlyWsteth() public {
     //     deal({token: address(wsteth), to: user1, give: 100 ether});
     //     deal({token: address(wsteth), to: user2, give: 100 ether});
