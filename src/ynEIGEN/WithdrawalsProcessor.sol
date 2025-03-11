@@ -318,12 +318,12 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 } else {
                     // If the node has sufficient shares, withdraw the calculated equal amount
                     _args.shares[i] += _equalWithdrawal;
+                }
             }
-        }
 
             // Convert any tracked shortfall from shares back to units for consistent tracking across batches
-        if (_args.pendingWithdrawalRequestsIgnored > 0) {
-            _args.pendingWithdrawalRequestsIgnored = _sharesToUnit(_args.pendingWithdrawalRequestsIgnored, _args.asset, _strategy);
+            if (_args.pendingWithdrawalRequestsIgnored > 0) {
+                _args.pendingWithdrawalRequestsIgnored = _sharesToUnit(_args.pendingWithdrawalRequestsIgnored, _args.asset, _strategy);
             }
         }
     }
