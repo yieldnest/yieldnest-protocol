@@ -304,21 +304,18 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 }
             }
 
-            // Exit early if all withdrawal requests have been satisfied by the first pass
-            if (_pendingWithdrawalRequestsInShares == 0) {
-                return _args;
-            }
-
             // Second pass: Distribute remaining withdrawal requests evenly across all nodes
             // Calculate an equal amount to withdraw from each node, adding 1 to handle integer division rounding
             uint256 _equalWithdrawal = _pendingWithdrawalRequestsInShares / _nodesLength + 1;
             for (uint256 i = 0; i < _nodesLength; ++i) {
-                if (_equalWithdrawal + MIN_DELTA > _nodesShares[i]) {
+                uint256 _nodeRemainingShares = _nodesShares[i] - _args.shares[i];
+
+                if (_equalWithdrawal > _nodeRemainingShares) {
                     // If a node has insufficient shares to handle its equal portion:
                     // 1. Withdraw all available shares from this node
-                    _args.shares[i] = _nodesShares[i];
+                    _args.shares[i] = _nodeRemainingShares;
                     // 2. Track the shortfall to be included in future withdrawal batches
-                    _args.pendingWithdrawalRequestsIgnored += _equalWithdrawal + MIN_DELTA - _nodesShares[i];
+                    _args.pendingWithdrawalRequestsIgnored += _equalWithdrawal - _nodeRemainingShares;
                 } else {
                     // If the node has sufficient shares, withdraw the calculated equal amount
                     _args.shares[i] += _equalWithdrawal;
