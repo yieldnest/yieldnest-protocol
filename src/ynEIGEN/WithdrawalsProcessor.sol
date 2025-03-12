@@ -279,8 +279,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // This is helpful in case there is a slashing event after queuing the withdrawals.
             // This is beause on a slashing event, the withdrawn shares will be less.
             // Without the buffer, the withdrawn shares would not be enough for the users to claim.
-            uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals)) + MIN_DELTA;
-            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy);
+            uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals));
+            // Adds an extra amount of shares to have some leeway.
+            uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy) + MIN_DELTA;
 
             // Try to normalize the value each node has by withdrawing from the nodes that have more shares. 
             for (uint256 i = 0; i < _nodesLength && _pendingWithdrawalRequestsInShares > 0; ++i) {
@@ -439,7 +440,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         address _strategy;
         uint256 _tokenIdToFinalize;
         uint256 _processedIdAtStart = _processedId;
-        // Adds a extra to the pending requests amount to avoid rounding errors and ensure that the redemption vault receives the same or more of what was requested
+        // Adds an extra to avoid queuing less than requested due to rounding.
         uint256 _pendingRequestsAtBatch = pendingRequestsAtBatch[_processedIdAtStart] + MIN_DELTA;
         uint256 _accWithdrawnUnits;
         for (uint256 i = 0; _processedId < _processedIdAtStart + _batchLength; ++i) {
