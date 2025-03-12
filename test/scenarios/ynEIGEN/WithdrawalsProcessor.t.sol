@@ -111,7 +111,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             assertApproxEqAbs(
                 withdrawalsProcessor.getTotalQueuedWithdrawals() + redemptionAssetsVault.availableRedemptionAssets(),
                 withdrawalQueueManager.pendingRequestedRedemptionAmount(),
-                2.1 ether,
+                1e4,
                 "testSatisfyAllWithdrawals: E2"
             );
         }
@@ -166,7 +166,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                 assertApproxEqAbs(
                     _stethStrategy.shares(address(_nodes[i])),
                     _stethStrategyShares,
-                    1e4,
+                    100,
                     "testSatisfyAllWithdrawals: E12"
                 );
                 if (!_isHolesky()) {
@@ -177,7 +177,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                 assertApproxEqAbs(
                     _sfrxethStrategy.shares(address(_nodes[i])),
                     _sfrxethStrategyShares,
-                    1e4,
+                    100,
                     "testSatisfyAllWithdrawals: E14"
                 );
             }
