@@ -34,18 +34,6 @@ interface ITokenStakingNodeEvents {
     event QueuedSharesSynced();
 }
 
-// /// This interface is created because the src/interfaces/IynEigen.sol does not provide a way to obtain the assetRegistry.
-// /// TODO: Should we expose assetRegistry in IynEigen?
-// interface IynEigenExtended is IynEigen {
-//     function assetRegistry() external view returns (IAssetRegistry);
-// }
-
-// /// This interface is created because src/interfaces/IYieldNestStrategyManager.sol does not provide a way to obtain `ynEigen` which is needed to get the assetRegistry.
-// /// TODO: Should we expose ynEigen in IYieldNestStrategyManager?
-// interface IYieldNestStrategyManagerExtended is IYieldNestStrategyManager {
-//     function ynEigen() external view returns (IynEigenExtended);
-// }
-
 /**
  * @title Token Staking Node
  * @dev Implements staking node functionality for tokens, enabling token staking, delegation, and rewards management.
