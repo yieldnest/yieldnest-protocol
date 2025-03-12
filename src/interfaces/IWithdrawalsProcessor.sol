@@ -28,13 +28,11 @@ interface IWithdrawalsProcessor {
     /// @param _nodes The list of nodes to withdraw from
     /// @param _shares The withdrawable share amounts to withdraw from each node
     /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
-    /// @param _pendingWithdrawalRequestsIgnored The amount of pending withdrawal requests that were left out due to asset balance in the node.
     struct QueueWithdrawalsArgs {
         IERC20 asset;
         ITokenStakingNode[] nodes;
         uint256[] shares;
         uint256 totalQueuedWithdrawals;
-        uint256 pendingWithdrawalRequestsIgnored;
     }
 
     //
