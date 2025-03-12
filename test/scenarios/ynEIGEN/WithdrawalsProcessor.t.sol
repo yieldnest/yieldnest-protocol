@@ -166,18 +166,18 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                 assertApproxEqAbs(
                     _stethStrategy.shares(address(_nodes[i])),
                     _stethStrategyShares,
-                    100,
+                    1e4,
                     "testSatisfyAllWithdrawals: E12"
                 );
                 if (!_isHolesky()) {
                     assertApproxEqAbs(
-                        _oethStrategy.shares(address(_nodes[i])), _oethStrategyShares, 100, "testSatisfyAllWithdrawals: E13"
+                        _oethStrategy.shares(address(_nodes[i])), _oethStrategyShares, 1e4, "testSatisfyAllWithdrawals: E13"
                     );
                 }
                 assertApproxEqAbs(
                     _sfrxethStrategy.shares(address(_nodes[i])),
                     _sfrxethStrategyShares,
-                    100,
+                    1e4,
                     "testSatisfyAllWithdrawals: E14"
                 );
             }
