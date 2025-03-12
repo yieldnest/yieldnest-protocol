@@ -300,11 +300,8 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 uint256 _nodeRemainingShares = _nodesShares[i] - _args.shares[i];
 
                 if (_equalWithdrawal > _nodeRemainingShares) {
-                    // If a node has insufficient shares to handle its equal portion:
-                    // 1. Withdraw all available shares from this node
                     _args.shares[i] += _nodeRemainingShares;
                 } else {
-                    // If the node has sufficient shares, withdraw the calculated equal amount
                     _args.shares[i] += _equalWithdrawal;
                 }
             }
