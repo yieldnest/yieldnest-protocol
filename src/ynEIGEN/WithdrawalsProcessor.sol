@@ -313,7 +313,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
                 if (_equalWithdrawal > _nodeRemainingShares) {
                     // If a node has insufficient shares to handle its equal portion:
                     // 1. Withdraw all available shares from this node
-                    _args.shares[i] = _nodeRemainingShares;
+                    _args.shares[i] += _nodeRemainingShares;
                     // 2. Track the shortfall to be included in future withdrawal batches
                     _args.pendingWithdrawalRequestsIgnored += _equalWithdrawal - _nodeRemainingShares;
                 } else {
