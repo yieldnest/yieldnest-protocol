@@ -217,6 +217,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         ITokenStakingNode[] memory _nodes = tokenStakingNodesManager.getAllNodes();
         IERC20[] memory _assets = assetRegistry.getAssets();
 
+        // For each asset, sum the total amount of queued withdrawals in unit of account of each node.
         for (uint256 i = 0; i < _assets.length; ++i) {
             IERC20 _asset = _assets[i];
             IStrategy _strategy = ynStrategyManager.strategies(_asset);
@@ -224,7 +225,13 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             for (uint256 j = 0; j < _nodes.length; ++j) {
                 ITokenStakingNode _node = _nodes[j];
                 (uint256 _queuedWithdrawals, uint256 _withdrawn) = _node.getQueuedSharesAndWithdrawn(_strategy, _asset);
-                _totalQueuedWithdrawals += _sharesToUnit(_queuedWithdrawals, _asset, _strategy) + assetRegistry.convertToUnitOfAccount(_asset, _withdrawn);
+
+                uint256 _queuedWithdrawalsInUnit = _sharesToUnit(_queuedWithdrawals, _asset, _strategy);
+                // When completeQueuedWithdrawals occur, the assets are transferred from eigen layer to the tokens staking node.
+                // These assets, until not processed, should be counted as queued withdrawals.
+                uint256 _withdrawnInUnit = assetRegistry.convertToUnitOfAccount(_asset, _withdrawn);
+
+                _totalQueuedWithdrawals += _queuedWithdrawalsInUnit + _withdrawnInUnit;
             }
         }
     }
