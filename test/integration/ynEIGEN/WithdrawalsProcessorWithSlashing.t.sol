@@ -21,7 +21,7 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
     address private operator1;
     address private operator2;
     address private keeper;
-    address private bufferSetter;
+    address private bufferMultiplierSetter;
     address private avs;
 
     ITokenStakingNode private node1;
@@ -38,7 +38,7 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         operator1 = makeAddr("operator1");
         operator2 = makeAddr("operator2");
         keeper = makeAddr("keeper");
-        bufferSetter = makeAddr("bufferSetter");
+        bufferMultiplierSetter = makeAddr("bufferMultiplierSetter");
         address owner = makeAddr("owner");
 
         wsteth = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
@@ -61,7 +61,7 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         );
         withdrawalsProcessor = WithdrawalsProcessor(address(new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")));
         WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
-        WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(bufferSetter, 1 ether);
+        WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(bufferMultiplierSetter, 1 ether);
 
         // Give the required permissions to the WithdrawalsProcessor.
         vm.startPrank(actors.wallets.YNSecurityCouncil);
@@ -518,9 +518,9 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         uint256 requestTokenId = withdrawalQueueManager.requestWithdrawal(user1YnEigenTokenBalance);
         vm.stopPrank();
 
-        // Set buffer to 10%.
-        vm.prank(bufferSetter);
-        withdrawalsProcessor.setBuffer(1.1 ether);
+        // Set buffer multiplier to 10%.
+        vm.prank(bufferMultiplierSetter);
+        withdrawalsProcessor.setBufferMultiplier(1.1 ether);
 
         // Get the arguments and queue withdrawals.
         IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();

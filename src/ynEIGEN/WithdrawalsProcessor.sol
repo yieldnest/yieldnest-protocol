@@ -61,11 +61,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
     // ELIP-002 - EigenLayer Slashing Upgrade
 
-    bytes32 public constant BUFFER_SETTER_ROLE = keccak256("BUFFER_SETTER_ROLE");
+    bytes32 public constant BUFFER_MULTIPLIER_SETTER_ROLE = keccak256("BUFFER_MULTIPLIER_SETTER_ROLE");
 
     /// @notice Multiplier applied to withdrawal amounts to account for potential slashing.
     /// @dev Value is in ether units. To withdraw 10% more, set buffer to 1.1 ether.
-    uint256 public buffer;
+    uint256 public bufferMultiplier;
 
     /// @notice Tracks the amount of requested amounts at each batch.
     /// @dev Used to determine how much to queue vs reinvest during principal withdrawals.
@@ -122,27 +122,30 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
     }
 
     /// @notice Initializes the v2 version of the contract.
-    /// @param _bufferSetter The address that will be granted the BUFFER_SETTER_ROLE.
-    /// @param _buffer The buffer value.
-    function initializeV2(address _bufferSetter, uint256 _buffer) public reinitializer(2) {
-        _grantRole(BUFFER_SETTER_ROLE, _bufferSetter);
+    /// @param _bufferMultiplierSetter The address that will be granted the BUFFER_MULTIPLIER_SETTER_ROLE.
+    /// @param _bufferMultiplier The buffer multiplier value.
+    function initializeV2(address _bufferMultiplierSetter, uint256 _bufferMultiplier) public reinitializer(2) {
+        _grantRole(BUFFER_MULTIPLIER_SETTER_ROLE, _bufferMultiplierSetter);
 
-        _setBuffer(_buffer);
+        _setBufferMultiplier(_bufferMultiplier);
     }
 
     //
     // view functions
     //
 
-    /// @notice Gets the buffer value.
-    /// @dev Reverts if the buffer has not been set.
-    /// @return The buffer value.
-    function getBuffer() public view returns (uint256) {
-        if (buffer == 0) {
-            revert BufferNotSet();
+    /// @notice Gets the buffer multiplier value.
+    /// @dev Reverts if the buffer multiplier has not been set.
+    /// @return The buffer multiplier value.
+    function getBufferMultiplier() public view returns (uint256) {
+        // Store in memory to prevent re-reading storage.
+        uint256 _bufferMultiplier = bufferMultiplier;
+
+        if (_bufferMultiplier == 0) {
+            revert BufferMultiplierNotSet();
         }
 
-        return buffer;
+        return _bufferMultiplier;
     }
 
     /// @notice IDs of the queued, completed, and processed withdrawals, used for internal accounting
@@ -279,7 +282,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             // This is helpful in case there is a slashing event after queuing the withdrawals.
             // This is beause on a slashing event, the withdrawn shares will be less.
             // Without the buffer, the withdrawn shares would not be enough for the users to claim.
-            uint256 _pendingWithdrawalRequests = _applyBuffer(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals));
+            uint256 _pendingWithdrawalRequests = _applyBufferMultiplier(_getPendingWithdrawalRequests(_args.totalQueuedWithdrawals));
             // Adds an extra amount of shares to have some leeway.
             uint256 _pendingWithdrawalRequestsInShares = _unitToShares(_pendingWithdrawalRequests, _args.asset, _strategy) + MIN_DELTA;
 
@@ -324,7 +327,7 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         if (_nodesLength != _args.shares.length) revert InvalidInput();
 
         uint256 _pendingWithdrawalRequestsNoBuffer = _getPendingWithdrawalRequests(_args.totalQueuedWithdrawals); // NOTE: reverts if too low
-        uint256 _pendingWithdrawalRequests = _applyBuffer(_pendingWithdrawalRequestsNoBuffer);
+        uint256 _pendingWithdrawalRequests = _applyBufferMultiplier(_pendingWithdrawalRequestsNoBuffer);
         uint256 _toBeQueued = _pendingWithdrawalRequests;
 
         IStrategy[] memory _singleStrategy = new IStrategy[](1);
@@ -511,11 +514,11 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
         emit MinPendingWithdrawalRequestAmountUpdated(_minPendingWithdrawalRequestAmount);
     }
 
-    /// @notice Updates the buffer value.
-    /// @dev Only callable by the buffer setter role.
-    /// @param _buffer The new buffer value.
-    function setBuffer(uint256 _buffer) external onlyRole(BUFFER_SETTER_ROLE) {
-        _setBuffer(_buffer);
+    /// @notice Updates the buffer multiplier value.
+    /// @dev Only callable by the buffer multiplier setter role.
+    /// @param _bufferMultiplier The new buffer multiplier value.
+    function setBufferMultiplier(uint256 _bufferMultiplier) external onlyRole(BUFFER_MULTIPLIER_SETTER_ROLE) {
+        _setBufferMultiplier(_bufferMultiplier);
     }
 
     //
@@ -580,22 +583,22 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
             : assetRegistry.convertToUnitOfAccount(_asset, _amount);
     }
 
-    /// @dev Applies the buffer to the amount.
-    /// @param _amount The amount to apply the buffer to.
-    /// @return The amount after the buffer has been applied.
-    function _applyBuffer(uint256 _amount) private view returns (uint256) {
-        return getBuffer() * _amount / 1 ether;
+    /// @dev Applies the buffer multiplier to the amount.
+    /// @param _amount The amount to apply the buffer multiplier to.
+    /// @return The amount after the buffer multiplier has been applied.
+    function _applyBufferMultiplier(uint256 _amount) private view returns (uint256) {
+        return getBufferMultiplier() * _amount / 1 ether;
     }
 
-    /// @dev Updates the buffer value and emits an event.
-    /// @dev Reverts if the buffer is less than 1 ether.
-    function _setBuffer(uint256 _buffer) private {
-        if (_buffer < 1 ether) {
-            revert InvalidBuffer();
+    /// @dev Updates the buffer multiplier value and emits an event.
+    /// @dev Reverts if the buffer multiplier is less than 1 ether.
+    function _setBufferMultiplier(uint256 _bufferMultiplier) private {
+        if (_bufferMultiplier < 1 ether) {
+            revert InvalidBufferMultiplier();
         }
 
-        buffer = _buffer;
+        bufferMultiplier = _bufferMultiplier;
 
-        emit BufferSet(buffer);
+        emit BufferMultiplierSet(bufferMultiplier);
     }
 }

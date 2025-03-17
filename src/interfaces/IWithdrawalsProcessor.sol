@@ -81,12 +81,12 @@ interface IWithdrawalsProcessor {
     error NothingToProcess();
     error SanityCheck();
     error CurrentAvailableAmountIsSufficient();
-    error InvalidBuffer();
-    error BufferNotSet();
+    error InvalidBufferMultiplier();
+    error BufferMultiplierNotSet();
 
     //
     // Events
     //
     event MinPendingWithdrawalRequestAmountUpdated(uint256 minPendingWithdrawalRequestAmount);
-    event BufferSet(uint256 buffer);
+    event BufferMultiplierSet(uint256 bufferMultiplier);
 }
