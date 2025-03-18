@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
@@ -471,7 +471,7 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, approverSalt);

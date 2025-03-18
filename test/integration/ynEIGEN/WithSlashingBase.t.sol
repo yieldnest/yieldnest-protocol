@@ -6,7 +6,7 @@ import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSRegistrar.sol";
 import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
@@ -53,7 +53,7 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
         eigenLayer.delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
 
         // Delegate to operator
-        ISignatureUtils.SignatureWithExpiry memory signature;
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
         bytes32 approverSalt;
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
         tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, approverSalt);

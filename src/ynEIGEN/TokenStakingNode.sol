@@ -9,7 +9,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IERC20 as IERC20V4} from "lib/eigenlayer-contracts/lib/openzeppelin-contracts-v4.9.0/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ArrayLib} from "src/lib/ArrayLib.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
@@ -227,37 +227,22 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         });
 
         DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
+        // Queue the withdrawals and get the withdrawal root.
+        _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
+        // Only one withdrawal root is generated given that only 1 strategy is provided.
+        bytes32 _withdrawalRoot = _fullWithdrawalRoots[0];
+        // Get the withdrawable shares for withdraw.
+        // Also, given that only 1 strategy was withdrawn, we can expect the withdrawable shares array to contain only 1 value.
+        (, uint256[] memory _singleWithdrawableShares) = _delegationManager.getQueuedWithdrawal(_withdrawalRoot);
+        uint256 _withdrawableShares = _singleWithdrawableShares[0];
 
-        // `onlyWhenSynchronized` is used so we can assume that the operator is the same as the one in the DelegationManager.
-        address _operator = delegatedTo;
-        uint256 _withdrawableShares;
-        bytes32 _withdrawalRoot;
-
-        if (_operator == address(0)) {
-            _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-            _withdrawalRoot = _fullWithdrawalRoots[0];
-            IDelegationManagerTypes.Withdrawal memory _queuedWithdrawal = _delegationManager.getQueuedWithdrawal(_withdrawalRoot);
-
-            // If the staker has not yet delegated to an operator, and given that this contract does not handle the beacon chain strategy.
-            // We can assume that the scaledShares can be used as the withdrawable shares because:
-            // - withdrawableShares = scaledShares * maxMagnitude * beaconChainSlashFactor.
-            // - scaledShares = withdrawableShares / (maxMagnitude * beaconChainSlashFactor).
-            // - scaledShares = withdrawableShares / (1 * 1). maxMagnitude is 1 when not delegated and beaconChainSlashFactor is 1 because it is not using the beacon chain strategy.
-            // - scaledShares = withdrawableShares.
-            _withdrawableShares = _queuedWithdrawal.scaledShares[0];
-        } else {
-            uint256[] memory operatorSharesBefore = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
-            _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
-            _withdrawalRoot = _fullWithdrawalRoots[0];
-            uint256[] memory operatorSharesAfter = _delegationManager.getOperatorShares(_operator, _params[0].strategies);
-
-            // Operator shares are decreased by the amount of withdrawable shares so we can use the difference to update the queued shares.
-            _withdrawableShares = operatorSharesBefore[0] - operatorSharesAfter[0];
-        }
-
+        // Add the new withdrawn shares to the queued shares mapping.
         queuedShares[_strategy] += _withdrawableShares;
-        maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(_operator, _strategy);
+        // Store the current maxMagnitude to verify later if the operator was slashed mid withdrawal.
+        maxMagnitudeByWithdrawalRoot[_withdrawalRoot] = _delegationManager.allocationManager().getMaxMagnitude(delegatedTo, _strategy);
+        // Store the withdrawable shares for the particular withdrawal root.
         withdrawableSharesByWithdrawalRoot[_withdrawalRoot] = _withdrawableShares;
+        // Flags the withdrawal as done after the slashing upgrade.
         queuedAfterSlashingUpgrade[_withdrawalRoot] = true;
 
         emit QueuedWithdrawals(_strategy, _withdrawableShares, _fullWithdrawalRoots);
@@ -393,7 +378,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      * @notice Delegates the staking operation to a specified operator.
      * @param operator The address of the operator to whom the staking operation is being delegated.
      */
-    function delegate(address operator, ISignatureUtils.SignatureWithExpiry memory signature, bytes32 approverSalt)
+    function delegate(address operator, ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature, bytes32 approverSalt)
         public
         virtual
         onlyDelegator

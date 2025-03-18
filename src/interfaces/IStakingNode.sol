@@ -5,7 +5,7 @@ import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/librarie
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
 struct WithdrawalCompletionParams {
@@ -40,7 +40,7 @@ interface IStakingNode {
     function createEigenPod() external returns (IEigenPod);
     function delegate(
         address operator,
-        ISignatureUtils.SignatureWithExpiry memory approverSignatureAndExpiry,
+        ISignatureUtilsMixinTypes.SignatureWithExpiry memory approverSignatureAndExpiry,
         bytes32 approverSalt
     ) external;
     function undelegate() external returns (bytes32[] memory withdrawalRoots);
