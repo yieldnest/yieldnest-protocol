@@ -395,28 +395,17 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             depositShares: shares,
             __deprecated_withdrawer: address(this)
         });
-        uint256 withdrawableShares;
-        bytes32[] memory fullWithdrawalRoots;
+        uint256[] memory withdrawableShares;
+        // fullWithdrawalRoots will be of length 1 because there is only one strategy
+        bytes32[] memory fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
 
-        if (delegatedTo == address(0)) {
-            IEigenPodManager eigenPodManager = IEigenPodManager(IStakingNodesManager(stakingNodesManager).eigenPodManager());
-            uint256 beaconChainSlashingFactor = eigenPodManager.beaconChainSlashingFactor(address(this));
-            fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
-            IDelegationManagerTypes.Withdrawal memory withdrawal = delegationManager.getQueuedWithdrawal(fullWithdrawalRoots[0]);
-            uint256 scaledShares = withdrawal.scaledShares[0];
-            withdrawableShares = scaledShares.mulWad(beaconChainSlashingFactor);
-        } else {
-            uint256[] memory operatorSharesBefore = delegationManager.getOperatorShares(delegatedTo, strategies);
-            fullWithdrawalRoots = delegationManager.queueWithdrawals(params);
-            uint256[] memory operatorSharesAfter = delegationManager.getOperatorShares(delegatedTo, strategies);
-            withdrawableShares = operatorSharesBefore[0] - operatorSharesAfter[0];
-        }
+        (, withdrawableShares) = delegationManager.getQueuedWithdrawal(fullWithdrawalRoots[0]);
     
         // After running queueWithdrawals, eigenPodManager.getWithdrawableShares(address(this)) decreases by `withdrawableShares`.
         // Therefore queuedSharesAmount increase by `withdrawableShares`.
-        queuedSharesAmount += withdrawableShares;
+        queuedSharesAmount += withdrawableShares[0];
         withdrawableShareInfo[fullWithdrawalRoots[0]] = WithdrawableShareInfo({
-            withdrawableShares: withdrawableShares,
+            withdrawableShares: withdrawableShares[0],
             postELIP002SlashingUpgrade: true
         });
         emit QueuedWithdrawals(depositSharesAmount, fullWithdrawalRoots);
