@@ -326,10 +326,10 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         withdrawalQueueManager.claimWithdrawal(requestTokenId, user1);
 
         // Check that the user received the correct amount of sfrxeth.
-        assertApproxEqAbs(
+        assertApproxEqRel(
             assetRegistry.convertToUnitOfAccount(wsteth, user1WstethDeposit) * 0.93 ether / 1 ether,
             assetRegistry.convertToUnitOfAccount(sfrxeth, sfrxeth.balanceOf(user1) - user1SfrxethBalanceBefore),
-            0.2 ether,
+            0.01 ether,
             "The claimed sfrxeth should have ~93% the value of the original wsteth deposit due to slashing"
         );
     }
@@ -401,10 +401,10 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         withdrawalQueueManager.claimWithdrawal(requestTokenId, user1);
 
         // Check that the user received the correct amount of sfrxeth.
-        assertApproxEqAbs(
+        assertApproxEqRel(
             assetRegistry.convertToUnitOfAccount(wsteth, user1WstethDeposit) * 0.93 ether / 1 ether,
             assetRegistry.convertToUnitOfAccount(sfrxeth, sfrxeth.balanceOf(user1) - user1SfrxethBalanceBefore),
-            0.2 ether,
+            0.01 ether,
             "The claimed sfrxeth should have ~93% the value of the original wsteth deposit due to slashing"
         );
     }
@@ -550,10 +550,10 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         withdrawalQueueManager.claimWithdrawal(requestTokenId, user1);
 
         // Check that the user received the correct amount of sfrxeth.
-        assertApproxEqAbs(
+        assertApproxEqRel(
             assetRegistry.convertToUnitOfAccount(wsteth, user1WstethDeposit) * 0.93 ether / 1 ether,
             assetRegistry.convertToUnitOfAccount(sfrxeth, sfrxeth.balanceOf(user1) - user1SfrxethBalanceBefore),
-            0.2 ether,
+            0.01 ether,
             "The claimed sfrxeth should have ~93% the value of the original wsteth deposit due to slashing"
         );
     }
