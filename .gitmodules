@@ -17,4 +17,4 @@
 [submodule "lib/eigenlayer-contracts"]
 	path = lib/eigenlayer-contracts
 	url = https://github.com/yieldnest/eigenlayer-contracts
-	branch = v1.1.1-v4.9.0
+	branch = v1.4.0-testnet-holesky-v4.9.0
