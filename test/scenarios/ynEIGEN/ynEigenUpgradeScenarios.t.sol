@@ -279,7 +279,10 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             pauserRegistry, 
             IPermissionController(address(2)), 
             1, 
-            1
+            1,
+            // This version is just the version of the EL contracts, however, I don't know the real version used for this.
+            // Doesn't seem to be relevant and it works as it is.
+            "1.3.0" 
         );
 
         DelegationManager newDelegationManager = new DelegationManager(
@@ -288,7 +291,8 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             allocationManager, 
             pauserRegistry, 
             IPermissionController(address(2)), 
-            1
+            1,
+            "1.3.0"
         );
         
         vm.etch(address(delegationManager), address(newDelegationManager).code);
@@ -297,14 +301,16 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             ethposDeposit, 
             eigenPodBeacon, 
             delegationManager, 
-            pauserRegistry
+            pauserRegistry,
+            "1.3.0"
         );
         
         vm.etch(address(eigenPodManager), address(newEigenPodManager).code);
 
         StrategyManager newStrategyManager = new StrategyManager(
             strategyManager.delegation(), 
-            strategyManager.pauserRegistry()
+            strategyManager.pauserRegistry(),
+            "1.3.0"
         );
         vm.etch(address(strategyManager), address(newStrategyManager).code);
     }
