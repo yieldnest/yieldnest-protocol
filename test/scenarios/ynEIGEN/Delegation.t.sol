@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy,ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -35,7 +35,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         tokenStakingNode = tokenStakingNodesManager.nodes(0);
 
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
+        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
     }
 
     function test_undelegate_Scenario_undelegateByOperator1() public {
