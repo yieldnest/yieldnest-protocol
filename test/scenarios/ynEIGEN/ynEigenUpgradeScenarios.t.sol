@@ -126,6 +126,8 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         afterState = getSystemSnapshot(user1);
 
         for (uint256 i = 0; i < afterState.queuedShares.length; i++) {
+            // NOTE: There is actually an issue here of the previous version that was not handling _equalWithdrawal correctly.
+            // It is withdrawing 0.02 shares for each node.
             assertEq(afterState.queuedShares[i], 23865954487681102, "Queued shares don't match expected amount");
         }
 
@@ -238,27 +240,23 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         withdrawalQueueManager.requestWithdrawal(yneigenBalance);
         vm.stopPrank();
 
-        // Queue Withdrawal
-        // TODO: To use the withdrawals processor, https://github.com/yieldnest/yieldnest-protocol/pull/235 has to be merged first.
-        // Now we are directly using the node.
-        // Update this test with the withdrawals processor when available.
-        vm.startPrank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
-        ITokenStakingNode node = tokenStakingNodesManager.getNodeById(0);
-        node.queueWithdrawals(eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS)), 10 ether);
-        vm.stopPrank();
+        // Queue Withdrawals
+        WithdrawalsProcessor.QueueWithdrawalsArgs memory queueArgs = withdrawalsProcessor.getQueueWithdrawalsArgs();
+        
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+        withdrawalsProcessor.queueWithdrawals(queueArgs);
 
         // Capture system state after withdrawal
         afterState = getSystemSnapshot(user1);
 
-        for (uint256 i = 0; i < afterState.queuedShares.length; i++) {
-            if (i == 0) {
-                // The first node has queued shares.
-                assertEq(afterState.queuedShares[i], 10 ether, "Queued shares don't match expected amount");
-            } else {
-                // The rest not.
-                assertEq(afterState.queuedShares[i], 0, "Queued shares should be 0");
-            }
-        }
+        // 1000 ether steth was staked to node 0
+        // The node with the min amount of shares steth has ~158 ether shares
+        // After normalizing to the min amount and equaly withdrawing, the shares are distributed as follows:
+        assertEq(afterState.queuedShares[0], 1150965644186752619822);
+        assertEq(afterState.queuedShares[1], 22593691601638727254);
+        assertEq(afterState.queuedShares[2], 22593691601638727254);
+        assertEq(afterState.queuedShares[3], 22593691601638727254);
+        assertEq(afterState.queuedShares[4], 22593691601638727271);
 
         for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
             ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
@@ -327,7 +325,6 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         EigenStrategyManager newEigenStrategyManager = new EigenStrategyManager();
         vm.etch(address(eigenStrategyManager), address(newEigenStrategyManager).code);
 
-        // TODO: WithdrawalsProcessor.initializeV2 has to be called but it is available after https://github.com/yieldnest/yieldnest-protocol/pull/235 is merged.
         WithdrawalsProcessor newWithdrawalsProcessor = new WithdrawalsProcessor(
             address(withdrawalsProcessor.withdrawalQueueManager()),
             address(withdrawalsProcessor.tokenStakingNodesManager()),
@@ -343,6 +340,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             address(withdrawalsProcessor.WOETH())
         );
         vm.etch(address(withdrawalsProcessor), address(newWithdrawalsProcessor).code);
+        withdrawalsProcessor.initializeV2(address(this), 1.1 ether);
     }
     
     function getSystemSnapshot(address user) internal view returns (SystemSnapshot memory) {
