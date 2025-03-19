@@ -246,10 +246,10 @@ contract EigenStrategyManager is
         for (uint256 i; i < nodesCount; i++ ) {
             ITokenStakingNode node = nodes[i];
 
-            IStrategy[] memory strategies = new IStrategy[](1);
-            strategies[0] = strategy;
+            IStrategy[] memory singleStrategy = new IStrategy[](1);
+            singleStrategy[0] = strategy;
 
-            (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategies);
+            (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), singleStrategy);
             _strategiesBalance += strategy.sharesToUnderlyingView(withdrawableShares[0]);
 
             if (!node.isSynchronized()) {
@@ -503,10 +503,10 @@ contract EigenStrategyManager is
 
         IStrategy strategy = strategies[asset];
 
-        IStrategy[] memory strategies = new IStrategy[](1);
-        strategies[0] = strategy;
+        IStrategy[] memory singleStrategy = new IStrategy[](1);
+        singleStrategy[0] = strategy;
 
-        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), strategies);
+        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(node), singleStrategy);
         uint256 strategyWithdrawableBalance = strategy.sharesToUnderlyingView(withdrawableShares[0]);
 
         (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
