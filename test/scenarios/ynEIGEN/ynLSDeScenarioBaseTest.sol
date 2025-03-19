@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IEigenPodManager} from "@eigenlayer/src/contracts/interfaces/IEigenPodManager.sol";
 import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
-import {IStrategyManager} from "@eigenlayer/src/contracts/interfaces/IStrategyManager.sol";
+import {StrategyManager} from "@eigenlayer/src/contracts/core/StrategyManager.sol";
 
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
@@ -60,7 +60,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     // Eigen
     IEigenPodManager public eigenPodManager;
     IDelegationManager public delegationManager;
-    IStrategyManager public strategyManager;
+    StrategyManager public strategyManager;
 
 
     modifier skipOnHolesky() {
@@ -91,7 +91,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         // Assign Eigenlayer addresses
         eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
         delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
-        strategyManager = IStrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
+        strategyManager = StrategyManager(chainAddresses.eigenlayer.STRATEGY_MANAGER_ADDRESS);
 
         // Assign LSD addresses
         // Example: sfrxeth = ISFRXETH(chainAddresses.lsd.SFRXETH_ADDRESS);

@@ -12,10 +12,18 @@ import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {AllocationManager} from "@eigenlayer/src/contracts/core/AllocationManager.sol";
 import {DelegationManager} from "@eigenlayer/src/contracts/core/DelegationManager.sol";
 import {EigenPodManager} from "@eigenlayer/src/contracts/pods/EigenPodManager.sol";
+import {IStrategy} from "@eigenlayer/src/contracts/interfaces/IStrategy.sol";
+import {StrategyManager} from "@eigenlayer/src/contracts/core/StrategyManager.sol";
+import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
+import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
+import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
+import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
+    uint256 public constant WSTETH_AMOUNT = 1000 ether;
 
     IAllocationManager public allocationManager;
+    WithdrawalsProcessor public withdrawalsProcessor;
 
     address private user1;
 
@@ -30,28 +38,41 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         uint256 userBalance;
         uint256 wstEthBalance;
         uint256 tokenStakingNodesCount;
+        uint256[] queuedShares;
+    }
+
+    modifier configure {
+        // Not using chainIds.mainnet because it will be declared on assignContracts which has to be done after vm.rollFork.
+        // Checking the chainId first to prevent rolling into a block number that does not exist on other chains.
+        vm.skip(block.chainid != 1);
+        vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
+        assignContracts();
+
+        withdrawalsProcessor = WithdrawalsProcessor(chainAddresses.ynEigen.WITHDRAWALS_PROCESSOR_ADDRESS);
+        user1 = makeAddr("user1");
+        deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: user1, give: WSTETH_AMOUNT});
+
+        _;
     }
 
     function setUp() public virtual override {
-        super.setUp();
-
-        user1 = makeAddr("user1");
-        deal({token: chainAddresses.lsd.WSTETH_ADDRESS, to: user1, give: 1000 ether});
+        // NOTE: I don't want to run setup here because I need precise fork configuration.
+        // These tests only need to be run on mainnet at a certain block number.
+        // The expected setup is done on configure modifier.
     }
 
-    // forge test --fork-url $MAINNET_RPC --match-contract ynEigenUpgradeScenarios -vv --fork-block-number 22046726
-    function testDepositBeforeELUpgradeAndBeforeynEigenUpgrade() public {
+    function testDepositAndWithdrawBeforeELUpgradeAndBeforeynEigenUpgrade() public configure {
         // Capture system state before deposit
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         
         vm.startPrank(user1);
-        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(yneigen), 10 ether);
-        uint256 expectedShares = yneigen.previewDeposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), 10 ether);
+        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(yneigen), WSTETH_AMOUNT);
+        uint256 expectedShares = yneigen.previewDeposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), WSTETH_AMOUNT);
         uint256 sharesBefore = yneigen.balanceOf(user1);
-        yneigen.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), 10 ether, user1);
+        yneigen.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), WSTETH_AMOUNT, user1);
         uint256 sharesAfter = yneigen.balanceOf(user1);
         vm.stopPrank();
-        
+
         // Capture system state after deposit
         SystemSnapshot memory afterState = getSystemSnapshot(user1);
         
@@ -60,30 +81,83 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertGt(afterState.totalAssets, beforeState.totalAssets, "Total assets should increase after deposit");
         assertEq(afterState.totalSupply, beforeState.totalSupply + expectedShares, "Total supply didn't increase by expected amount");
         assertEq(afterState.userBalance, beforeState.userBalance + expectedShares, "User balance didn't increase by expected amount");
-        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance - 10 ether, "wstETH wasn't transferred from user");
-        
-        // Assert nodes weren't affected
+        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance - WSTETH_AMOUNT, "wstETH wasn't transferred from user");
         assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes shouldn't change");
-        
-        // Assert system is functional
+    
+        // Stake assets to node
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        IERC20[] memory singleAsset = new IERC20[](1);
+        singleAsset[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256[] memory singleAmount = new uint256[](1);
+        singleAmount[0] = WSTETH_AMOUNT;
+        eigenStrategyManager.stakeAssetsToNode(0, singleAsset, singleAmount);
+        vm.stopPrank();
+
+        // Request Withdrawal
+        vm.startPrank(user1);
+        uint256 yneigenBalance = yneigen.balanceOf(user1);
+        yneigen.approve(address(withdrawalQueueManager), yneigenBalance);
+        withdrawalQueueManager.requestWithdrawal(yneigenBalance);
+        vm.stopPrank();
+
+        // Queue Withdrawals
+        // Using call because the older version returns a different values.
+        (bool success, bytes memory getQueueWithdrawalsArgsResult) = address(withdrawalsProcessor).call(abi.encode(withdrawalsProcessor.getQueueWithdrawalsArgs.selector));
+        assertTrue(success, "Failed to get queue withdrawals args");
+        (
+            address getQueueWithdrawalsArgsResultAsset, 
+            address[] memory getQueueWithdrawalsArgsResultNodes, 
+            uint256[] memory getQueueWithdrawalsArgsResultShares
+        ) = abi.decode(getQueueWithdrawalsArgsResult, (address, address[], uint256[]));
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+        // Using call because the older version receives different values.
+        (success, ) = address(withdrawalsProcessor).call(
+            abi.encodeWithSelector(
+                bytes4(keccak256("queueWithdrawals(address,address[],uint256[])")), 
+                getQueueWithdrawalsArgsResultAsset, 
+                getQueueWithdrawalsArgsResultNodes, 
+                getQueueWithdrawalsArgsResultShares
+            )
+        );
+        assertTrue(success, "Failed to queue withdrawals");
+        vm.stopPrank();
+
+        // Capture system state after withdrawal
+        afterState = getSystemSnapshot(user1);
+
+        for (uint256 i = 0; i < afterState.queuedShares.length; i++) {
+            assertEq(afterState.queuedShares[i], 23865954487681102, "Queued shares don't match expected amount");
+        }
+
+        // Check that legacyQueuedShares and isSynchronized don't exist on the new version
         for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
             ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
-            assertTrue(node.isSynchronized(), "Node should be synchronized in normal state");
+
+            IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            
+            // legacyQueuedShares exists on the new version only.
+            vm.expectRevert();
+            node.legacyQueuedShares(strategy);
+
+            // isSynchronized exists on the new version only.
+            vm.expectRevert();
+            node.isSynchronized();
         }
         
-        // Successfully call strategy manager functions
+        // // Successfully call strategy manager functions
         eigenStrategyManager.getStakedAssetBalance(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
     }
 
-    function testDepositAfterELUpgradeAndBeforeynEigenUpgrade() public {
+    function testDepositAndWithdrawAfterELUpgradeAndBeforeynEigenUpgrade() public configure {
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         
         upgradeEigenLayerContracts();
         
         vm.startPrank(user1);
-        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(yneigen), 10 ether);
+        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(yneigen), WSTETH_AMOUNT);
         uint256 sharesBefore = yneigen.balanceOf(user1);
-        yneigen.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), 10 ether, user1);
+        // The user can still deposit despite eigen breaking changes.
+        yneigen.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), WSTETH_AMOUNT, user1);
         uint256 sharesAfter = yneigen.balanceOf(user1);
         vm.stopPrank();
         
@@ -95,10 +169,108 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertGt(afterState.totalAssets, beforeState.totalAssets, "Total assets should increase after deposit");
         assertEq(afterState.totalSupply, beforeState.totalSupply + sharesMinted, "Total supply didn't increase by shares minted");
         assertEq(afterState.userBalance, beforeState.userBalance + sharesMinted, "User balance didn't increase by shares minted");
-        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance - 10 ether, "wstETH wasn't transferred from user");
-        
+        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance - WSTETH_AMOUNT, "wstETH wasn't transferred from user");
         assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes shouldn't change");
+
+        // Stake assets to node
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        IERC20[] memory singleAsset = new IERC20[](1);
+        singleAsset[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256[] memory singleAmount = new uint256[](1);
+        singleAmount[0] = WSTETH_AMOUNT;
+        // Should revert because new eigen contracts have breaking changes.
+        vm.expectRevert();
+        eigenStrategyManager.stakeAssetsToNode(0, singleAsset, singleAmount);
+        vm.stopPrank();
+
+        // Request Withdrawal
+        vm.startPrank(user1);
+        uint256 yneigenBalance = yneigen.balanceOf(user1);
+        yneigen.approve(address(withdrawalQueueManager), yneigenBalance);
+        // The user should still be able to request a withdrawal.
+        withdrawalQueueManager.requestWithdrawal(yneigenBalance);
+        vm.stopPrank();
+
+        // Queue Withdrawals
+        // Using call because the older version returns a different values.
+        (bool success,) = address(withdrawalsProcessor).call(abi.encode(withdrawalsProcessor.getQueueWithdrawalsArgs.selector));
+        // Cannot get queue withdrawals args because new eigen contracts have breaking changes.
+        assertFalse(success, "Failed to get queue withdrawals args");
+    }
+
+    function testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
+        SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         
+        upgradeEigenLayerContracts();
+        upgradeynEigenContracts();
+        
+        vm.startPrank(user1);
+        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(yneigen), WSTETH_AMOUNT);
+        uint256 sharesBefore = yneigen.balanceOf(user1);
+        yneigen.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), WSTETH_AMOUNT, user1);
+        uint256 sharesAfter = yneigen.balanceOf(user1);
+        vm.stopPrank();
+        
+        // Capture system state after deposit
+        SystemSnapshot memory afterState = getSystemSnapshot(user1);
+        
+        uint256 sharesMinted = sharesAfter - sharesBefore;
+        assertGt(sharesMinted, 0, "No shares were minted");
+        assertGt(afterState.totalAssets, beforeState.totalAssets, "Total assets should increase after deposit");
+        assertEq(afterState.totalSupply, beforeState.totalSupply + sharesMinted, "Total supply didn't increase by shares minted");
+        assertEq(afterState.userBalance, beforeState.userBalance + sharesMinted, "User balance didn't increase by shares minted");
+        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance - WSTETH_AMOUNT, "wstETH wasn't transferred from user");
+        assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes shouldn't change");
+
+        // Stake assets to node
+        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
+        IERC20[] memory singleAsset = new IERC20[](1);
+        singleAsset[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        uint256[] memory singleAmount = new uint256[](1);
+        singleAmount[0] = WSTETH_AMOUNT;
+        eigenStrategyManager.stakeAssetsToNode(0, singleAsset, singleAmount);
+        vm.stopPrank();
+
+        // Request Withdrawal
+        vm.startPrank(user1);
+        uint256 yneigenBalance = yneigen.balanceOf(user1);
+        yneigen.approve(address(withdrawalQueueManager), yneigenBalance);
+        withdrawalQueueManager.requestWithdrawal(yneigenBalance);
+        vm.stopPrank();
+
+        // Queue Withdrawal
+        // TODO: To use the withdrawals processor, https://github.com/yieldnest/yieldnest-protocol/pull/235 has to be merged first.
+        // Now we are directly using the node.
+        // Update this test with the withdrawals processor when available.
+        vm.startPrank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+        ITokenStakingNode node = tokenStakingNodesManager.getNodeById(0);
+        node.queueWithdrawals(eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS)), 10 ether);
+        vm.stopPrank();
+
+        // Capture system state after withdrawal
+        afterState = getSystemSnapshot(user1);
+
+        for (uint256 i = 0; i < afterState.queuedShares.length; i++) {
+            if (i == 0) {
+                // The first node has queued shares.
+                assertEq(afterState.queuedShares[i], 10 ether, "Queued shares don't match expected amount");
+            } else {
+                // The rest not.
+                assertEq(afterState.queuedShares[i], 0, "Queued shares should be 0");
+            }
+        }
+
+        for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+            ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+
+            IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+
+            assertEq(0, node.legacyQueuedShares(strategy));
+            assertEq(true, node.isSynchronized());
+        }
+
+        // Successfully call strategy manager functions
+        eigenStrategyManager.getStakedAssetBalance(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
     }
     
     function upgradeEigenLayerContracts() internal {
@@ -129,15 +301,60 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         );
         
         vm.etch(address(eigenPodManager), address(newEigenPodManager).code);
+
+        StrategyManager newStrategyManager = new StrategyManager(
+            strategyManager.delegation(), 
+            strategyManager.pauserRegistry()
+        );
+        vm.etch(address(strategyManager), address(newStrategyManager).code);
+    }
+
+    function upgradeynEigenContracts() internal {
+        TokenStakingNode newTokenStakingNode = new TokenStakingNode();
+
+        TokenStakingNodesManager newTokenStakingNodesManager = new TokenStakingNodesManager();
+        vm.etch(address(tokenStakingNodesManager), address(newTokenStakingNodesManager).code);
+
+        vm.prank(address(timelockController));
+        tokenStakingNodesManager.upgradeTokenStakingNode(address(newTokenStakingNode));
+        
+        EigenStrategyManager newEigenStrategyManager = new EigenStrategyManager();
+        vm.etch(address(eigenStrategyManager), address(newEigenStrategyManager).code);
+
+        // TODO: WithdrawalsProcessor.initializeV2 has to be called but it is available after https://github.com/yieldnest/yieldnest-protocol/pull/235 is merged.
+        WithdrawalsProcessor newWithdrawalsProcessor = new WithdrawalsProcessor(
+            address(withdrawalsProcessor.withdrawalQueueManager()),
+            address(withdrawalsProcessor.tokenStakingNodesManager()),
+            address(withdrawalsProcessor.assetRegistry()),
+            address(withdrawalsProcessor.ynStrategyManager()),
+            address(withdrawalsProcessor.delegationManager()),
+            address(withdrawalsProcessor.yneigen()),
+            address(withdrawalsProcessor.redemptionAssetsVault()),
+            address(withdrawalsProcessor.wrapper()),
+            address(withdrawalsProcessor.STETH()),
+            address(withdrawalsProcessor.WSTETH()),
+            address(withdrawalsProcessor.OETH()),
+            address(withdrawalsProcessor.WOETH())
+        );
+        vm.etch(address(withdrawalsProcessor), address(newWithdrawalsProcessor).code);
     }
     
     function getSystemSnapshot(address user) internal view returns (SystemSnapshot memory) {
+        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        uint256[] memory queuedShares = new uint256[](nodes.length);
+        IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+
+        for (uint256 i = 0; i < nodes.length; i++) {
+            queuedShares[i] = nodes[i].queuedShares(strategy);
+        }
+        
         return SystemSnapshot({
             totalAssets: yneigen.totalAssets(),
             totalSupply: yneigen.totalSupply(),
             userBalance: yneigen.balanceOf(user),
             wstEthBalance: IERC20(chainAddresses.lsd.WSTETH_ADDRESS).balanceOf(user),
-            tokenStakingNodesCount: tokenStakingNodesManager.nodesLength()
+            tokenStakingNodesCount: tokenStakingNodesManager.nodesLength(),
+            queuedShares: queuedShares
         });
     }
 }
