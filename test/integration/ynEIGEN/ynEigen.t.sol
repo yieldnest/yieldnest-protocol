@@ -657,10 +657,12 @@ contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
         uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
         // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 wstETH to the Vault by observing the mempool
         vm.startPrank(alice);
-        uint256 aliceDepositAmount = 1;
+        // Depositing 1 wei under certain conditions will cause alice's deposit to fail with ZeroShares().
+        // Using 2 wei instead to avoid this rounding issue
+        uint256 aliceDepositAmount = 2;
         uint256 aliceShares = ynEigenToken.deposit(assetToken, aliceDepositAmount, alice);
         // Since there are bootstrap funds, this has no effect
-        assertEq(compareWithThreshold(aliceShares, 1, 1), true, "Alice's shares should be dust");
+        assertEq(compareWithThreshold(aliceShares, 2, 2), true, "Alice's shares should be dust");
         // Try to inflate shares value
         assetToken.transfer(address(ynEigenToken), bobDepositAmount);
         vm.stopPrank();

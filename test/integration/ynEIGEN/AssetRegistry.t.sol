@@ -39,10 +39,12 @@ contract AssetRegistryTest is ynEigenIntegrationBaseTest {
         uint256 woethAmount,
         uint256 rethAmount
         ) public {
+        // Under certain conditions, depositing 1 wei will cause the deposit to fail with ZeroShares().
+        // Using 2 wei instead to avoid this rounding issue.
         vm.assume(
-            wstethAmount < 100 ether && wstethAmount >= 1 wei &&
-            woethAmount < 100 ether && woethAmount >= 1 wei &&
-            rethAmount < 100 ether && rethAmount >= 1 wei
+            wstethAmount < 100 ether && wstethAmount >= 2 wei &&
+            woethAmount < 100 ether && woethAmount >= 2 wei &&
+            rethAmount < 100 ether && rethAmount >= 2 wei
         );
 
         {

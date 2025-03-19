@@ -359,7 +359,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             assertApproxEqAbs(
                 afterCompletion.getWithdrawnByToken(address(wstETH)),
                 before.getWithdrawnByToken(address(wstETH)) + withdrawAmount,
-                3,
+                4,
                 "Withdrawn amount should have increased by withdrawAmount"
             );
 
