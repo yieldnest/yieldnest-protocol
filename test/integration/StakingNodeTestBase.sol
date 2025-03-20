@@ -76,7 +76,7 @@ contract StakingNodeTestBase is IntegrationBaseTest {
         IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](withdrawalRoots.length);
         {
             for (uint256 i = 0; i < withdrawalRoots.length; i++) {
-                _withdrawals[i] = delegationManager.getQueuedWithdrawal(withdrawalRoots[i]);
+                (_withdrawals[i],) = delegationManager.getQueuedWithdrawal(withdrawalRoots[i]);
             }
         }
 

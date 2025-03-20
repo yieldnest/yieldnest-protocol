@@ -12,6 +12,7 @@ import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEige
 import {IEigenPodManagerErrors} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {StakingNodeTestBase} from "./StakingNodeTestBase.sol";
 import {SlashingLib} from "lib/eigenlayer-contracts/src/contracts/libraries/SlashingLib.sol";
+import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 contract StakingNodeWithdrawals is StakingNodeTestBase {
 
@@ -192,11 +193,11 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         uint256 withdrawalAmount = 32 ether;
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         bytes32[] memory _withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-        IDelegationManagerTypes.Withdrawal memory _withdrawal = delegationManager.getQueuedWithdrawal(_withdrawalRoots[0]);
+        (IDelegationManagerTypes.Withdrawal memory _withdrawal, ) = delegationManager.getQueuedWithdrawal(_withdrawalRoots[0]);
         uint256 _scaledShares = _withdrawal.scaledShares[0];
 
         // Exit the validator
-        beaconChain.slashValidators(validatorIndices);
+        beaconChain.slashValidators(validatorIndices, BeaconChainMock.SlashType.Minor);
 
         beaconChain.advanceEpoch_NoRewards();
 
@@ -208,7 +209,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         uint256 _beaconChainSlashingFactorAfter = eigenPodManager.beaconChainSlashingFactor(address(stakingNodeInstance));
         assertLt(_beaconChainSlashingFactorAfter, 1e18, "_testQueueWithdrawalsBeforeExitingAndVerifyingValidator: E1");
         // Assert that podOwnerDepositShares are equal to negative slashingAmount
-        uint256 slashedAmount = beaconChain.SLASH_AMOUNT_GWEI() * 1e9;
+        uint256 slashedAmount = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * 1e9;
         assertEq(
             eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance)), 0,
             "Pod owner shares should not change"

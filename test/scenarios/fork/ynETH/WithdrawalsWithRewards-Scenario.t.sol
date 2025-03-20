@@ -11,6 +11,7 @@ import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, 
 import {Utils} from "script/Utils.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
+import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {WithdrawalsScenarioTestBase} from "./WithdrawalsScenarioTestBase.sol";
 
@@ -575,7 +576,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
         uint256 withdrawnAmount = amount;
 
         // NOTE: This triggers the a exit of all validators
-        beaconChain.slashValidators(validatorIndices);
+        beaconChain.slashValidators(validatorIndices, BeaconChainMock.SlashType.Minor);
         beaconChain.advanceEpoch();
 
         // queue withdrawals
@@ -593,7 +594,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
         IEigenPod pod = stakingNodesManager.nodes(nodeId).eigenPod();
         uint64 withdrawableGwei = pod.withdrawableRestakedExecutionLayerGwei();
 
-        uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
+        uint256 totalSlashAmount = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
         state.totalAssetsBefore = state.totalAssetsBefore + accumulatedRewards - totalSlashAmount;
         state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] + accumulatedRewards - totalSlashAmount;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
@@ -616,7 +617,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
         uint256 withdrawnAmount = amount;
 
         // NOTE: This triggers the a exit of all validators
-        beaconChain.slashValidators(validatorIndices);
+        beaconChain.slashValidators(validatorIndices, BeaconChainMock.SlashType.Minor);
         beaconChain.advanceEpoch();
 
         // queue withdrawals
@@ -630,7 +631,7 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
 
         startAndVerifyCheckpoint(nodeId, state);
 
-        uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
+        uint256 totalSlashAmount = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
         state.totalAssetsBefore = state.totalAssetsBefore - totalSlashAmount;
         state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalSlashAmount;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
@@ -685,12 +686,12 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
 
         // Trigger slashing of validators after withdrawals were queued
         // NOTE: This triggers the a exit of all validators
-        beaconChain.slashValidators(validatorIndices);
+        beaconChain.slashValidators(validatorIndices, BeaconChainMock.SlashType.Minor);
         beaconChain.advanceEpoch();
 
         startAndVerifyCheckpoint(nodeId, state);
 
-        uint256 totalSlashAmount = beaconChain.SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
+        uint256 totalSlashAmount = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
         state.totalAssetsBefore = state.totalAssetsBefore - totalSlashAmount;
         state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalSlashAmount;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);

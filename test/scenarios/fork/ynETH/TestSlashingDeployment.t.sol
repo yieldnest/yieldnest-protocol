@@ -68,6 +68,7 @@ contract SlashingDeploymentTest is Base {
     IStrategyManager public strategyManager = IStrategyManager(0x858646372CC42E1A627fcE94aa7A7033e7CF075A);
     IETHPOSDeposit public ethposDeposit = IETHPOSDeposit(0x00000000219ab540356cBB839Cbe05303d7705Fa);
     IBeacon public eigenPodBeacon = IBeacon(0x5a2a4F2F3C18f09179B6703e63D9eDD165909073);
+    string public version = "v1.3.0";
 
     function setUp() public override {
         super.assignContracts();
@@ -324,7 +325,8 @@ contract SlashingDeploymentTest is Base {
                 pauserRegistry,
                 IPermissionController(address(0)),
                 15 days,
-                15 days
+                15 days,
+                version
             )
         );
 
@@ -340,14 +342,16 @@ contract SlashingDeploymentTest is Base {
             IAllocationManager(address(allocationManagerProxy)),
             pauserRegistry,
             IPermissionController(address(0)),
-            14 days
+            14 days,
+            version
         );
 
         EigenPodManager newEigenPodManagerImpl = new EigenPodManager(
             ethposDeposit,
             eigenPodBeacon,
             delegationManager,
-            pauserRegistry
+            pauserRegistry,
+            version
         );
 
         vm.etch(oldDelegationManagerImpl, address(newDelegationManagerImpl).code);

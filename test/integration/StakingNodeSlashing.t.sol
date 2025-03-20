@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
 import {EigenPod} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
 import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
@@ -16,6 +16,7 @@ import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/Oper
 import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
 import {MockAVS} from "test/mocks/MockAVS.sol";
 import {IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     using stdStorage for StdStorage;
@@ -47,15 +48,17 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
 
         for (uint256 i = 0; i < operators.length; i++) {
             vm.prank(operators[i]);
-            delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
+            delegationManager.registerAsOperator(address(0),1, "ipfs://some-ipfs-hash");
         }
+
+        vm.roll(block.number + 2);
 
         nodeId = createStakingNodes(1)[0];
         stakingNodeInstance = stakingNodesManager.nodes(nodeId);
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         allocationManager = IAllocationManager(chainAddresses.eigenlayer.ALLOCATION_MANAGER_ADDRESS);
@@ -93,13 +96,14 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
             strategies: strategies,
             newMagnitudes: newMagnitudes
         });
-
-        vm.roll(block.number + allocationConfigurationDelay);
-
+    
+        vm.roll(block.number + allocationConfigurationDelay + 2);
         vm.startPrank(operator1);
         allocationManager.registerForOperatorSets(operator1, registerParams);
         allocationManager.modifyAllocations(operator1, allocateParams);
         vm.stopPrank();
+
+        vm.roll(block.number + allocationConfigurationDelay + 2);
 
         uint256 depositAmount = 32 ether;
         totalDepositedAmount = depositAmount * validatorCount;
@@ -394,7 +398,7 @@ contract StakingNodeValidatorSlashing is StakingNodeTestBase {
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
             
-        beaconChain.slashValidators(slashedValidators);
+        beaconChain.slashValidators(slashedValidators, BeaconChainMock.SlashType.Minor);
 
         beaconChain.advanceEpoch_NoRewards();
 
@@ -409,14 +413,14 @@ contract StakingNodeValidatorSlashing is StakingNodeTestBase {
         uint256 withdrawalAmount = 1 ether;
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         bytes32[] memory withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-        IDelegationManagerTypes.Withdrawal memory withdrawal = delegationManager.getQueuedWithdrawal(withdrawalRoots[0]);
+        (IDelegationManagerTypes.Withdrawal memory withdrawal, ) = delegationManager.getQueuedWithdrawal(withdrawalRoots[0]);
         uint256 scaledShares = withdrawal.scaledShares[0];
         uint256 withdrawableShares = scaledShares.mulWad(beaconChainSlashingFactorAfter);
 
         // Get final state
         StateSnapshot memory finalState = takeSnapshot(nodeId);
 
-        uint256 slashedAmountInWei = beaconChain.SLASH_AMOUNT_GWEI() * 1e9;
+        uint256 slashedAmountInWei = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * 1e9;
         // Assert
         assertLt(beaconChainSlashingFactorAfter, beaconChainSlashingFactorBefore, "Beacon chain slashing factor should decrease due to slashing");
         assertEq(finalState.totalAssets, initialState.totalAssets, "Total assets should remain unchanged");
@@ -480,7 +484,7 @@ contract StakingNodeValidatorSlashing is StakingNodeTestBase {
             slashedValidators[i] = validatorIndices[i];
         }
             
-        beaconChain.slashValidators(slashedValidators);
+        beaconChain.slashValidators(slashedValidators, BeaconChainMock.SlashType.Minor);
 
         beaconChain.advanceEpoch_NoRewards();
 
@@ -588,7 +592,7 @@ contract StakingNodeValidatorSlashing is StakingNodeTestBase {
             uint256 queuedSharesAmountBeforeSlashing = stakingNodeInstance.queuedSharesAmount();
             assertEq(queuedSharesAmountBeforeSlashing, withdrawalAmount, "Queued shares should be equal to withdrawal amount");
 
-            beaconChain.slashValidators(slashedValidators);
+            beaconChain.slashValidators(slashedValidators, BeaconChainMock.SlashType.Minor);
 
             // Exit remaining validators
             for (uint256 i = slashedValidatorCount; i < validatorCount; i++) {
@@ -702,7 +706,7 @@ contract StakingNodeValidatorSlashing is StakingNodeTestBase {
 
         _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
 
-        beaconChain.slashValidators(slashedValidators);
+        beaconChain.slashValidators(slashedValidators, BeaconChainMock.SlashType.Minor);
 
         beaconChain.advanceEpoch_NoRewards();
 
