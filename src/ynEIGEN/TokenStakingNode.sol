@@ -41,6 +41,7 @@ interface ITokenStakingNodeEvents {
  */
 contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUpgradeable, ITokenStakingNodeEvents {
     using SafeERC20 for IERC20;
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  ------------------------------------------
     //--------------------------------------------------------------------------------------
@@ -55,6 +56,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotSynchronized();
     error InvalidWithdrawal(uint256 index);
     error NotSyncedAfterSlashing(bytes32 withdrawalRoot, uint64 maxMagnitudeAtSync, uint64 maxMagnitudeNow);
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -66,6 +68,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     mapping(IERC20 => uint256) public withdrawn;
 
     address public delegatedTo;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ELIP-002 VARIABLES  ------------------------------
+    //--------------------------------------------------------------------------------------
 
     /**
      * @notice Tracks the operator/strategy maxMagnitude.
@@ -94,7 +100,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     mapping(bytes32 => bool) public queuedAfterSlashingUpgrade;
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  STRUCTS  ------------------------------------------
+    //----------------------------------  STRUCTS  -----------------------------------------
     //--------------------------------------------------------------------------------------
 
     /**
@@ -613,7 +619,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     }
 
     //--------------------------------------------------------------------------------------
-    //----------------------------------  INTERNAL  ------------------------------
+    //----------------------------------  INTERNAL  ----------------------------------------
     //--------------------------------------------------------------------------------------
 
     /**
