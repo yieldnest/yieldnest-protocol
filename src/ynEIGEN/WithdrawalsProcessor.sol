@@ -224,9 +224,9 @@ contract WithdrawalsProcessor is IWithdrawalsProcessor, Initializable, AccessCon
 
             for (uint256 j = 0; j < _nodes.length; ++j) {
                 ITokenStakingNode _node = _nodes[j];
-                (uint256 _queuedWithdrawals, uint256 _withdrawn) = _node.getQueuedSharesAndWithdrawn(_strategy, _asset);
+                (uint256 _queuedShares, uint256 _withdrawn) = _node.getQueuedSharesAndWithdrawn(_strategy, _asset);
 
-                uint256 _queuedWithdrawalsInUnit = _sharesToUnit(_queuedWithdrawals, _asset, _strategy);
+                uint256 _queuedWithdrawalsInUnit = _sharesToUnit(_queuedShares, _asset, _strategy);
                 // When completeQueuedWithdrawals occur, the assets are transferred from eigen layer to the tokens staking node.
                 // These assets, until not processed, should be counted as queued withdrawals.
                 uint256 _withdrawnInUnit = assetRegistry.convertToUnitOfAccount(_asset, _withdrawn);
