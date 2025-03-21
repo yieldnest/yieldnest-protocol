@@ -21,7 +21,6 @@ import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {DelegationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/DelegationManagerStorage.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
-import {IynEigen} from "src/interfaces/IynEigen.sol";
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
