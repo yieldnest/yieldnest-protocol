@@ -15,7 +15,7 @@ Objective: Ensure that deposits are correctly paused and resumed, preventing or 
 
 Objective: Test the end-to-end flow of depositing ETH to an eigenpod, and withdrawing ETH to the staking nodes manager.
 
-**Scenario 4:** Share Accouting and Yield Accrual
+**Scenario 4:** Share Accounting and Yield Accrual
 
 Objective: Verify that the share price correctly increases after the contract earns yield from consensus and execution rewards.
 
