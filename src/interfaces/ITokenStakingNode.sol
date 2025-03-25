@@ -14,6 +14,12 @@ interface ITokenStakingNode {
         uint256 nodeId;
     }
 
+    /// @notice Information about the withdrawable shares for the withdrawal root.
+    struct WithdrawableShareInfo {
+        uint256 withdrawableShares; // amount of shares that can be withdrawn for the withdrawal root
+        bool postELIP002SlashingUpgrade; // whether the withdrawal root is post ELIP-002 slashing upgrade
+    }
+
     function nodeId() external returns (uint256);
 
     function initialize(Init calldata init) external;
@@ -60,10 +66,9 @@ interface ITokenStakingNode {
 
     function queuedShares(IStrategy _strategy) external view returns (uint256);
     function withdrawn(IERC20 _token) external view returns (uint256);
-    function maxMagnitudeByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint64);
-    function withdrawableSharesByWithdrawalRoot(bytes32 _withdrawalRoot) external view returns (uint256);
-    function legacyQueuedShares(IStrategy _strategy) external view returns (uint256);
-    function queuedAfterSlashingUpgrade(bytes32 _withdrawalRoot) external view returns (bool);
+    function withdrawableShareInfo(bytes32 _withdrawalRoot) external view returns (uint256, bool);
+    function preELIP002QueuedSharesAmount(IStrategy _strategy) external view returns (uint256);
+    function getWithdrawableShares(IStrategy _strategy) external view returns (uint256);
 
     /**
      * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.

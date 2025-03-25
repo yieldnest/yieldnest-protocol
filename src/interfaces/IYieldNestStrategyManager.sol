@@ -27,8 +27,6 @@ interface IYieldNestStrategyManager {
         IERC20[] calldata assets
     ) external view returns (uint256[] memory stakedBalances);
 
-    function getStakedAssetBalance(IERC20 asset) external view returns (uint256 stakedBalance);
-
     function supportsAsset(IERC20 asset) external view returns (bool);
 
     function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);

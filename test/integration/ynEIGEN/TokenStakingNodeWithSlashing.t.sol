@@ -98,7 +98,7 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
 
         _waitForWithdrawalDelay();
 
-        vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.NotSyncedAfterSlashing.selector, queuedWithdrawalRoot, 1 ether, 0));
+        vm.expectRevert(abi.encodeWithSelector(TokenStakingNode.NotSyncedAfterSlashing.selector, queuedWithdrawalRoot));
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
     }
@@ -127,16 +127,16 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 1 ether, "Max magnitude should be WAD");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares, "Queued withdrawable shares for withdrawalshould be equal to withdrawable shares");
+        (uint256 withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot);
+        assertEq(withdrawableShares1, withdrawableShares, "Queued withdrawable shares for withdrawal root should be equal to withdrawable shares");
 
         _slash(0.5 ether);
 
         tokenStakingNode.synchronize();
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, "Queued shares should be half of the previous withdrawable shares");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0.5 ether, "Max magnitude should be half of the previous withdrawable shares");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares / 2, "Queued withdrawable shares for withdrawalshould be equal to half of the previous withdrawable shares");
+        (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot);
+        assertEq(withdrawableShares1, withdrawableShares / 2, "Queued withdrawable shares for withdrawal root should be equal to half of the previous withdrawable shares");
     }
 
     function testSyncWithMultipleQueuedWithdrawals() public {
@@ -149,28 +149,24 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         bytes32 queuedWithdrawalRoot3 = _queueWithdrawal(thirdOfDepositShares);
 
         assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
-
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot3), 1 ether, "Max magnitude for withdrawal 3 should be WAD");
-
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot1), withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot2), withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot3), withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
+        (uint256 withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
+        assertEq(withdrawableShares1, withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
+        (uint256 withdrawableShares2, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot2);
+        assertEq(withdrawableShares2, withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
+        (uint256 withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
+        assertEq(withdrawableShares3, withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
 
         _slash(0.5 ether);
 
         tokenStakingNode.synchronize();
 
         assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, 2, "Queued shares should be half of the previous withdrawable shares");
-
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 0.5 ether, "Max magnitude for withdrawal 1 should be half of the previous withdrawable shares");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 0.5 ether, "Max magnitude for withdrawal 2 should be half of the previous withdrawable shares");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot3), 0.5 ether, "Max magnitude for withdrawal 3 should be half of the previous withdrawable shares");
-
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot1), withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 2 / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot2), withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 2 / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot3), withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 2 / 3");
+        (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
+        assertEq(withdrawableShares1, withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 2 / 3");
+        (withdrawableShares2, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot2);
+        assertEq(withdrawableShares2, withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 2 / 3");
+        (withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
+        assertEq(withdrawableShares3, withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 2 / 3");
     }
 
     function testSyncWithMultipleQueuedWithdrawals_NoSlashing() public {
@@ -184,25 +180,23 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
 
         assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
 
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot3), 1 ether, "Max magnitude for withdrawal 3 should be WAD");
-
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot1), withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot2), withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot3), withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
+        (uint256 withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
+        assertEq(withdrawableShares1, withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
+        (uint256 withdrawableShares2, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot2);
+        assertEq(withdrawableShares2, withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
+        (uint256 withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
+        assertEq(withdrawableShares3, withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
 
         tokenStakingNode.synchronize();
 
         assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, 2, "Queued shares should be equal to withdrawable shares");
 
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot1), 1 ether, "Max magnitude for withdrawal 1 should be WAD");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot2), 1 ether, "Max magnitude for withdrawal 2 should be WAD");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot3), 1 ether, "Max magnitude for withdrawal 3 should be WAD");
-
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot1), withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot2), withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot3), withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
+        (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
+        assertEq(withdrawableShares1, withdrawableShares / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 3");
+        (withdrawableShares2, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot2);
+        assertEq(withdrawableShares2, withdrawableShares / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 3");
+        (withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
+        assertEq(withdrawableShares3, withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
     }
 
     function testQueuedSharesSyncedEventIsEmittedOnSynchronize() public {
@@ -228,8 +222,8 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Queued withdrawable shares should be 0");
+        (uint256 withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot);
+        assertEq(withdrawableShares1, 0, "Queued withdrawable shares should be 0");
     }
 
     function testQueueAndCompleteWhenUndelegated() public {
@@ -256,8 +250,8 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to withdrawable shares");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), withdrawableShares, "Withdrawable shares should be equal to withdrawable shares");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 1 ether, "Max magnitude should be WAD");
+        (uint256 withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot);
+        assertEq(withdrawableShares1, withdrawableShares, "Withdrawable shares should be equal to withdrawable shares");
 
         _waitForWithdrawalDelay();
 
@@ -267,11 +261,11 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.completeQueuedWithdrawals(queuedWithdrawals, false);
         
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), 0, "Queued shares should be 0");
-        assertEq(tokenStakingNode.withdrawableSharesByWithdrawalRoot(queuedWithdrawalRoot), 0, "Withdrawable shares should be 0");
-        assertEq(tokenStakingNode.maxMagnitudeByWithdrawalRoot(queuedWithdrawalRoot), 0, "Max magnitude should be 0");
+        (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot);
+        assertEq(withdrawableShares1, 0, "Withdrawable shares should be 0");
     }
 
-    function testInitializeV3AssignsQueuedSharesToLegacyQueuedShares() public {
+    function testInitializeV3AssignsQueuedSharesToPreELIP002QueuedSharesAmount() public {
         IERC20[] memory assets = assetRegistry.getAssets();
 
         assertGt(assets.length, 0, "There should be at least 1 asset");
@@ -287,7 +281,7 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
 
         node.initializeV2();
 
-        uint256 legacyQueuedShares = 100 ether;
+        uint256 preELIP002QueuedSharesAmount = 100 ether;
 
         for (uint256 i = 0; i < assets.length; i++) {
             IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
@@ -295,11 +289,11 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
             vm.store(
                 address(node),
                 keccak256(abi.encode(strategy, uint256(2))),
-                bytes32(legacyQueuedShares * i)
+                bytes32(preELIP002QueuedSharesAmount * i)
             );
 
-            assertEq(node.queuedShares(strategy), legacyQueuedShares * i, "Queued shares should be equal to the initial amount");
-            assertEq(node.legacyQueuedShares(strategy), 0, "Legacy queued shares should be 0");
+            assertEq(node.queuedShares(strategy), preELIP002QueuedSharesAmount * i, "Queued shares should be equal to the initial amount");
+            assertEq(node.preELIP002QueuedSharesAmount(strategy), 0, "Pre ELIP-002 queued shares should be 0");
         }
 
         node.initializeV3();
@@ -308,11 +302,11 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
             IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
 
             assertEq(node.queuedShares(strategy), 0, "Queued shares should be 0");
-            assertEq(node.legacyQueuedShares(strategy), legacyQueuedShares * i, "Legacy queued shares should be equal to the initial amount");
+            assertEq(node.preELIP002QueuedSharesAmount(strategy), preELIP002QueuedSharesAmount * i, "Pre ELIP-002 queued shares should be equal to the initial amount");
         }
     }
 
-    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndLegacyQueuedShares() public {
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount() public {
         ITokenStakingNode node = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
 
         ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
@@ -323,24 +317,24 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         node.initialize(init);
         node.initializeV2();
 
-        uint256 legacyQueuedShares = 100 ether;
+        uint256 preELIP002QueuedSharesAmount = 100 ether;
 
         vm.store(
             address(node),
             keccak256(abi.encode(wstETHStrategy, uint256(2))),
-            bytes32(legacyQueuedShares)
+            bytes32(preELIP002QueuedSharesAmount)
         );
 
         node.initializeV3();
 
-        assertEq(node.legacyQueuedShares(wstETHStrategy), legacyQueuedShares, "Legacy queued shares should be equal to the initial amount");
+        assertEq(node.preELIP002QueuedSharesAmount(wstETHStrategy), preELIP002QueuedSharesAmount, "Pre ELIP-002 queued shares should be equal to the initial amount");
 
         (uint256 queuedShares,) = node.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);
 
-        assertEq(queuedShares, node.legacyQueuedShares(wstETHStrategy), "Queued shares should be equal to the legacy queued shares");
+        assertEq(queuedShares, node.preELIP002QueuedSharesAmount(wstETHStrategy), "Queued shares should be equal to the pre ELIP-002 queued shares");
     }
 
-    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndLegacyQueuedShares_WithQueuedWithdrawals() public {
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount_WithQueuedWithdrawals() public {
         tokenStakingNode = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
 
         ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
@@ -351,12 +345,12 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.initialize(init);
         tokenStakingNode.initializeV2();
 
-        uint256 legacyQueuedShares = 100 ether;
+        uint256 preELIP002QueuedSharesAmount = 100 ether;
 
         vm.store(
             address(tokenStakingNode),
             keccak256(abi.encode(wstETHStrategy, uint256(2))),
-            bytes32(legacyQueuedShares)
+            bytes32(preELIP002QueuedSharesAmount)
         );
 
         tokenStakingNode.initializeV3();
@@ -404,14 +398,14 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         _queueWithdrawal(depositShares);
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares, "Queued shares should be equal to the deposit shares");
-        assertEq(tokenStakingNode.legacyQueuedShares(wstETHStrategy), legacyQueuedShares, "Legacy queued shares should be equal to the deposit shares");
+        assertEq(tokenStakingNode.preELIP002QueuedSharesAmount(wstETHStrategy), preELIP002QueuedSharesAmount, "Pre ELIP-002 queued shares should be equal to the deposit shares");
 
         (uint256 queuedShares,) = tokenStakingNode.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);
 
-        assertEq(queuedShares, withdrawableShares + legacyQueuedShares, "Queued shares should be equal to the sum of the queued shares and the legacy queued shares");
+        assertEq(queuedShares, withdrawableShares + preELIP002QueuedSharesAmount, "Queued shares should be equal to the sum of the queued shares and the pre ELIP-002 queued shares");
     }
 
-    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndLegacyQueuedShares_WithQueuedWithdrawals_WithHalfSlashing() public {
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount_WithQueuedWithdrawals_WithHalfSlashing() public {
         tokenStakingNode = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
 
         ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
@@ -422,12 +416,12 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.initialize(init);
         tokenStakingNode.initializeV2();
 
-        uint256 legacyQueuedShares = 100 ether;
+        uint256 preELIP002QueuedSharesAmount = 100 ether;
 
         vm.store(
             address(tokenStakingNode),
             keccak256(abi.encode(wstETHStrategy, uint256(2))),
-            bytes32(legacyQueuedShares)
+            bytes32(preELIP002QueuedSharesAmount)
         );
 
         tokenStakingNode.initializeV3();
@@ -487,10 +481,10 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         uint256 expectedQueuedShares = withdrawableShares / 2;
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), expectedQueuedShares, "Queued shares should be equal to half of the deposit shares");
-        assertEq(tokenStakingNode.legacyQueuedShares(wstETHStrategy), legacyQueuedShares, "Legacy queued shares should be equal to the deposit shares");
+        assertEq(tokenStakingNode.preELIP002QueuedSharesAmount(wstETHStrategy), preELIP002QueuedSharesAmount, "Pre ELIP-002 queued shares should be equal to the deposit shares");
 
         (uint256 queuedShares,) = tokenStakingNode.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);
 
-        assertEq(queuedShares, expectedQueuedShares + legacyQueuedShares, "Queued shares should be equal to half of the deposit shares plus the legacy queued shares");
+        assertEq(queuedShares, expectedQueuedShares + preELIP002QueuedSharesAmount, "Queued shares should be equal to half of the deposit shares plus the pre ELIP-002 queued shares");
     }
 }

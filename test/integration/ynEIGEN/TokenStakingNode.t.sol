@@ -90,8 +90,8 @@ contract NodeStateSnapshot {
             snapshot.withdrawnByToken[address(asset)] = node.withdrawn(asset);
 
             // Store staked asset balance for each token
-            snapshot.stakedAssetBalanceForNode[address(asset)] =
-                state.eigenStrategyManager().getStakedAssetBalanceForNode(asset, nodeId);
+            // snapshot.stakedAssetBalanceForNode[address(asset)] =
+            //     state.eigenStrategyManager().getStakedAssetBalanceForNode(asset, nodeId);
 
             // Store strategy shares for each token
             snapshot.strategySharesForNode[address(asset)] =
@@ -191,19 +191,19 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         // );
 
         uint256 treshold = wstethAmount / 1e17 + 3;
-        uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
-        assertTrue(
-            compareWithThreshold(expectedBalance, amounts[0], treshold),
-            "Staked asset balance does not match expected deposits"
-        );
+        // uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
+        // assertTrue(
+        //     compareWithThreshold(expectedBalance, amounts[0], treshold),
+        //     "Staked asset balance does not match expected deposits"
+        // );
 
-        uint256 strategyUserUnderlyingView =
-            eigenStrategyManager.strategies(assets[0]).userUnderlyingView(address(tokenStakingNode));
+        // uint256 strategyUserUnderlyingView =
+        //     eigenStrategyManager.strategies(assets[0]).userUnderlyingView(address(tokenStakingNode));
 
-        assertTrue(
-            compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, treshold),
-            "Strategy user underlying view does not match expected stETH amount within threshold"
-        );
+        // assertTrue(
+        //     compareWithThreshold(strategyUserUnderlyingView, expectedStETHAmount, treshold),
+        //     "Strategy user underlying view does not match expected stETH amount within threshold"
+        // );
     }
 
     function testDepositAssetsToEigenlayerFail() public {

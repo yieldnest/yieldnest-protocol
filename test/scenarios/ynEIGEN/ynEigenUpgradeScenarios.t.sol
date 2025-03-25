@@ -131,23 +131,24 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             assertEq(afterState.queuedShares[i], 23865954487681102, "Queued shares don't match expected amount");
         }
 
-        // Check that legacyQueuedShares and isSynchronized don't exist on the new version
+        // Check that preELIP002QueuedSharesAmount and isSynchronized don't exist on the new version
         for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
             ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
 
             IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
             
-            // legacyQueuedShares exists on the new version only.
+            // preELIP002QueuedSharesAmount exists on the new version only.
             vm.expectRevert();
-            node.legacyQueuedShares(strategy);
+            node.preELIP002QueuedSharesAmount(strategy);
 
             // isSynchronized exists on the new version only.
             vm.expectRevert();
             node.isSynchronized();
         }
-        
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         // // Successfully call strategy manager functions
-        eigenStrategyManager.getStakedAssetBalance(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        eigenStrategyManager.getStakedAssetsBalances(assets);
     }
 
     function testDepositAndWithdrawAfterELUpgradeAndBeforeynEigenUpgrade() public configure {
@@ -263,12 +264,14 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
             IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
 
-            assertEq(0, node.legacyQueuedShares(strategy));
+            assertEq(0, node.preELIP002QueuedSharesAmount(strategy));
             assertEq(true, node.isSynchronized());
         }
-
+        
+        IERC20[] memory assets = new IERC20[](1);
+        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         // Successfully call strategy manager functions
-        eigenStrategyManager.getStakedAssetBalance(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        eigenStrategyManager.getStakedAssetsBalances(assets);
     }
     
     function upgradeEigenLayerContracts() internal {
