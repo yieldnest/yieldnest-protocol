@@ -395,7 +395,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         // Get the total number of withdrawals queued for this staking node
-        // this is respresented as nonce in Eigenlayer's Withdrawal struct
+        // this is represented as nonce in Eigenlayer's Withdrawal struct
         uint256 totalWithdrawals = delegationManager.cumulativeWithdrawalsQueued(thisNode);
 
         // operator which called undelegate on this staking node
