@@ -15,10 +15,7 @@ import {RewardsType} from "src/interfaces/IRewardsDistributor.sol";
 import {TestStakingNodeV2} from "test/mocks/TestStakingNodeV2.sol";
 import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.sol";
 import {StakingNodeTestBase} from "./StakingNodeTestBase.sol";
-
-import "forge-std/console.sol";
-
-
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
 
@@ -68,7 +65,7 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
         stakingNodesManager.createStakingNode();
     }
 
-    function testFailToCreateStakingNodeWhenMaxCountReached() public {
+    function testRevertIfCreateStakingNodeWhenMaxCountReached() public {
         // Set the max node count to the current number of nodes to simulate the limit being reached
         uint256 currentNodesCount = stakingNodesManager.nodesLength();
         vm.prank(actors.admin.STAKING_ADMIN);
@@ -76,23 +73,20 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
 
         // Attempt to create a new staking node should fail due to max node count reached
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        vm.expectRevert(StakingNodesManager.TooManyStakingNodes.selector);
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.TooManyStakingNodes.selector, currentNodesCount));
         stakingNodesManager.createStakingNode();
     }
 
-    function testFailToCreateStakingNodeWithZeroAddressBeacon() public {
+    function testRevertIfRegisterStakingNodeWithZeroAddressBeacon() public {
         // Attempt to create a staking node with a zero address beacon should fail
         vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.registerStakingNodeImplementationContract(address(0));
-        
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
         vm.expectRevert(StakingNodesManager.ZeroAddress.selector);
-        stakingNodesManager.createStakingNode();
+        stakingNodesManager.registerStakingNodeImplementationContract(address(0));
     }
 
-    function testFailToCreateStakingNodeWithoutStakingNodeCreatorRole() public {
+    function testRevertIfCreateStakingNodeWithoutStakingNodeCreatorRole() public {
         // Attempt to create a staking node without STAKING_NODE_CREATOR_ROLE should fail
-        vm.expectRevert("AccessControlUnauthorizedAccount");
+        vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), stakingNodesManager.STAKING_NODE_CREATOR_ROLE()));
         stakingNodesManager.createStakingNode();
     }
 
@@ -155,15 +149,11 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
         assertEq(testStakingNodeV2Instance.valueToBeInitialized(), 23, "Value to be initialized does not match expected value");
     }
 
-    function testFailRegisterStakingNodeImplementationTwice() public {
+    function testRevertIfRegisterStakingNodeImplementationTwice() public {
         address initialImplementation = address(new TestStakingNodeV2());
         vm.prank(actors.admin.STAKING_ADMIN);
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.BeaconImplementationAlreadyExists.selector));
         stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
-
-        address newImplementation = address(new TestStakingNodeV2());
-        vm.expectRevert("StakingNodesManager: Implementation already exists");
-        vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
     }
 
     function testIsStakingNodesAdmin() public {

@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {NonPayableContract} from "test/utils/NonPayableContract.sol";
+import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+
 
 contract RewardsDistributorTest is IntegrationBaseTest {
 
@@ -14,8 +16,9 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		assertEq(rewardsDistributor.feesReceiver(), newReceiver);
 	}
 
-	function testFailSetFeeReceiverNotAdmin() public {
+	function testRevertIfSetFeeReceiverNotAdmin() public {
 		address newReceiver = address(0x123);
+		vm.expectRevert(abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, address(this), rewardsDistributor.REWARDS_ADMIN_ROLE()));
 		rewardsDistributor.setFeesReceiver(payable(newReceiver));
 	}
 
@@ -59,11 +62,11 @@ contract RewardsDistributorTest is IntegrationBaseTest {
 		assertEq(rewardsDistributor.feesBasisPoints(), newFeeBasisPoints);
 	}
 
-	function testFailSetFeeBasisPointsExceedsLimit() public {
+	function testRevertIfSetFeeBasisPointsExceedsLimit() public {
 		
 		uint16 newFeeBasisPoints = 15000; // 150%, exceeds 100%
 		vm.prank(actors.admin.REWARDS_ADMIN);
-		vm.expectRevert(abi.encodeWithSelector(RewardsDistributor.InvalidBasisPoints.selector, newFeeBasisPoints));
+		vm.expectRevert(abi.encodeWithSelector(RewardsDistributor.InvalidBasisPoints.selector));
 		rewardsDistributor.setFeesBasisPoints(newFeeBasisPoints);
 	}
 }
