@@ -16,5 +16,5 @@
 	commit = 1edc2ae004974ebf053f4eba26b45469937b9381
 [submodule "lib/eigenlayer-contracts"]
 	path = lib/eigenlayer-contracts
-	url = https://github.com/yieldnest/eigenlayer-contracts
-	branch = v1.1.1-v4.9.0
+	url = https://github.com/yieldnest/eigenlayer-contracts.git
+	branch = v1.3.0-v4.9.0

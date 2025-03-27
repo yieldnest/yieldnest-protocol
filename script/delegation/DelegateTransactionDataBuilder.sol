@@ -9,7 +9,7 @@ import {PooledDepositsVault} from "src/PooledDepositsVault.sol"; // Renamed from
 import {ActorAddresses} from "script/Actors.sol";
 import {console} from "lib/forge-std/src/console.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 
@@ -52,7 +52,7 @@ contract DelegateTransactionBuilder is BaseScript {
             bytes memory delegateTxData = abi.encodeWithSelector(
                 IStakingNode.delegate.selector,
                 currentOperator,
-                ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}),
+                ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}),
                 bytes32(0)
             );
             console.log("Node address:", stakingNodes[i]);
