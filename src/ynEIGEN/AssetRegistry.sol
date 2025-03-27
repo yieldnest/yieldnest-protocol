@@ -191,10 +191,13 @@ interface IAssetRegistryEvents {
         if (balanceInPool != 0) {
             revert AssetBalanceNonZeroInPool(balanceInPool);
         }
-
-        uint256 strategyBalance = strategyManager.getStakedAssetBalance(asset);
-        if (strategyBalance != 0) {
-            revert AssetBalanceNonZeroInStrategyManager(strategyBalance);
+        IERC20[] memory assetsToDelete = new IERC20[](1);
+        assetsToDelete[0] = asset;
+        uint256[] memory strategyBalances = strategyManager.getStakedAssetsBalances(assetsToDelete);
+        for (uint256 i = 0; i < strategyBalances.length; i++) {
+            if (strategyBalances[i] != 0) {
+                revert AssetBalanceNonZeroInStrategyManager(strategyBalances[i]);
+            }
         }
 
         // Remove asset from the assets array

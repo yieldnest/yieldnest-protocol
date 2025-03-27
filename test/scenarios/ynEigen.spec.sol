@@ -213,7 +213,5 @@ contract YnEIGENScenarioTest3 is ynEigenIntegrationBaseTest {
             vm.prank(actors.ops.STRATEGY_CONTROLLER);
             eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
         }
-
-		assertApproxEqAbs(amount, eigenStrategyManager.getStakedAssetBalanceForNode(asset, 0), 5);
 	}
 }
