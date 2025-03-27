@@ -79,8 +79,8 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
 
     function testRevertIfRegisterStakingNodeWithZeroAddressBeacon() public {
         // Attempt to create a staking node with a zero address beacon should fail
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.ZeroAddress.selector));
         vm.prank(actors.admin.STAKING_ADMIN);
-        vm.expectRevert(StakingNodesManager.ZeroAddress.selector);
         stakingNodesManager.registerStakingNodeImplementationContract(address(0));
     }
 
