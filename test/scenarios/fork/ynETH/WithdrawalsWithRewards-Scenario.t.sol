@@ -11,6 +11,7 @@ import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, 
 import {Utils} from "script/Utils.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
+import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
 import {WithdrawalsScenarioTestBase} from "./WithdrawalsScenarioTestBase.sol";
 
@@ -695,10 +696,10 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
         state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalSlashAmount;
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
-        // check podOwnerShares are now negative becaose validators were slashed after withdrawals were queued up
+        // Assert that the node's podOwnerShares is 0 and not negative
         assertEq(
             eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId))),
-            0 - int256(totalSlashAmount),
+            0,
             "Node's podOwnerShares should be 0 after completing withdrawals"
         );
 
