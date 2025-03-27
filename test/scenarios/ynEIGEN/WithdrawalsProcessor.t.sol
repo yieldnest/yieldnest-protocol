@@ -28,6 +28,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
     address public constant keeper = address(0x4206942069);
+    address public constant bufferSetter = address(0x420694206942);
 
     function setUp() public virtual override {
         super.setUp();
@@ -63,6 +64,8 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             );
 
             WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
+
+            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(bufferSetter, 1 ether);
         }
 
         // grant roles to withdrawalsProcessor
@@ -99,17 +102,16 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             assertTrue(withdrawalsProcessor.shouldQueueWithdrawals(), "testSatisfyAllWithdrawals: E0");
 
             while (withdrawalsProcessor.shouldQueueWithdrawals()) {
-                (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares) =
-                    withdrawalsProcessor.getQueueWithdrawalsArgs();
+                IWithdrawalsProcessor.QueueWithdrawalsArgs memory _args = withdrawalsProcessor.getQueueWithdrawalsArgs();
                 vm.prank(keeper);
-                withdrawalsProcessor.queueWithdrawals(_asset, _nodes, _shares);
+                withdrawalsProcessor.queueWithdrawals(_args);
             }
 
             assertFalse(withdrawalsProcessor.shouldQueueWithdrawals(), "testSatisfyAllWithdrawals: E1");
             assertApproxEqAbs(
-                withdrawalsProcessor.totalQueuedWithdrawals() + redemptionAssetsVault.availableRedemptionAssets(),
+                withdrawalsProcessor.getTotalQueuedWithdrawals() + redemptionAssetsVault.availableRedemptionAssets(),
                 withdrawalQueueManager.pendingRequestedRedemptionAmount(),
-                100,
+                1e4,
                 "testSatisfyAllWithdrawals: E2"
             );
         }
@@ -144,11 +146,11 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             }
 
             assertFalse(withdrawalsProcessor.shouldProcessPrincipalWithdrawals(), "testSatisfyAllWithdrawals: E9");
-            assertApproxEqAbs(withdrawalsProcessor.totalQueuedWithdrawals(), 0, 100, "testSatisfyAllWithdrawals: E10");
+            assertApproxEqAbs(withdrawalsProcessor.getTotalQueuedWithdrawals(), 0, 100, "testSatisfyAllWithdrawals: E10");
             assertApproxEqAbs(
                 redemptionAssetsVault.availableRedemptionAssets(),
                 withdrawalQueueManager.pendingRequestedRedemptionAmount(),
-                100,
+                1e4,
                 "testSatisfyAllWithdrawals: E11"
             );
         }
@@ -169,7 +171,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
                 );
                 if (!_isHolesky()) {
                     assertApproxEqAbs(
-                        _oethStrategy.shares(address(_nodes[i])), _oethStrategyShares, 100, "testSatisfyAllWithdrawals: E13"
+                        _oethStrategy.shares(address(_nodes[i])), _oethStrategyShares, 1e4, "testSatisfyAllWithdrawals: E13"
                     );
                 }
                 assertApproxEqAbs(

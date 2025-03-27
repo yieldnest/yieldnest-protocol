@@ -6,6 +6,7 @@ import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManage
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
+import {IynEigen} from "src/interfaces/IynEigen.sol";
 
 interface IRedemptionAssetsVaultExt is IRedemptionAssetsVault {
     function deposit(uint256 amount, address asset) external;
@@ -26,8 +27,6 @@ interface IYieldNestStrategyManager {
         IERC20[] calldata assets
     ) external view returns (uint256[] memory stakedBalances);
 
-    function getStakedAssetBalance(IERC20 asset) external view returns (uint256 stakedBalance);
-
     function supportsAsset(IERC20 asset) external view returns (bool);
 
     function tokenStakingNodesManager() external view returns (ITokenStakingNodesManager);
@@ -43,4 +42,6 @@ interface IYieldNestStrategyManager {
     function updateTokenStakingNodesBalances(IERC20 asset) external;
 
     function strategies(IERC20 asset) external view returns (IStrategy);
+
+    function ynEigen() external view returns (IynEigen);
 }

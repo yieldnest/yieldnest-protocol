@@ -24,10 +24,22 @@ interface IWithdrawalsProcessor {
         uint256 processed;
     }
 
+    /// @param _asset The asset to withdraw
+    /// @param _nodes The list of nodes to withdraw from
+    /// @param _shares The withdrawable share amounts to withdraw from each node
+    /// @param _totalQueuedWithdrawals The current total queued withdrawals in unit account obtained from `getTotalQueuedWithdrawals()`
+    struct QueueWithdrawalsArgs {
+        IERC20 asset;
+        ITokenStakingNode[] nodes;
+        uint256[] shares;
+        uint256 totalQueuedWithdrawals;
+    }
+
     //
     // state variables
     //
     function totalQueuedWithdrawals() external view returns (uint256);
+    function getTotalQueuedWithdrawals() external view returns (uint256);
     function minPendingWithdrawalRequestAmount() external view returns (uint256);
     function batch(
         uint256 _fromId
@@ -44,19 +56,12 @@ interface IWithdrawalsProcessor {
     function shouldCompleteQueuedWithdrawals() external view returns (bool);
     function shouldProcessPrincipalWithdrawals() external returns (bool);
     function getPendingWithdrawalRequests() external view returns (uint256 _pendingWithdrawalRequests);
-    function getQueueWithdrawalsArgs()
-        external
-        view
-        returns (IERC20 _asset, ITokenStakingNode[] memory _nodes, uint256[] memory _shares);
+    function getQueueWithdrawalsArgs() external view returns (QueueWithdrawalsArgs memory _args);
 
     //
     // mutative functions
     //
-    function queueWithdrawals(
-        IERC20 _asset,
-        ITokenStakingNode[] memory _nodes,
-        uint256[] memory _amounts
-    ) external returns (bool);
+    function queueWithdrawals(QueueWithdrawalsArgs memory _args) external returns (bool);
     function completeQueuedWithdrawals() external;
     function processPrincipalWithdrawals() external;
 
@@ -76,10 +81,12 @@ interface IWithdrawalsProcessor {
     error NothingToProcess();
     error SanityCheck();
     error CurrentAvailableAmountIsSufficient();
+    error InvalidBufferMultiplier();
+    error BufferMultiplierNotSet();
 
     //
     // Events
     //
     event MinPendingWithdrawalRequestAmountUpdated(uint256 minPendingWithdrawalRequestAmount);
-
+    event BufferMultiplierSet(uint256 bufferMultiplier);
 }

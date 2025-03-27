@@ -1137,5 +1137,4 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             );
         }
     }
-
 }

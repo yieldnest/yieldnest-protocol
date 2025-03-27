@@ -14,21 +14,23 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+import {IAllocationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IWrapper} from "src/interfaces/IWrapper.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
-import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
+import {DelegationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/DelegationManagerStorage.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 
 interface ITokenStakingNodeEvents {
     event DepositToEigenlayer(IERC20 indexed asset, IStrategy indexed strategy, uint256 amount, uint256 eigenShares);
     event Delegated(address indexed operator, bytes32 approverSalt);
     event Undelegated(bytes32[] withdrawalRoots);
     event QueuedWithdrawals(IStrategy strategies, uint256 shares, bytes32[] fullWithdrawalRoots);
-    event CompletedQueuedWithdrawals(uint256 shares, uint256 amountOut, address strategy);
     event DeallocatedTokens(uint256 amount, IERC20 token);
     event CompletedManyQueuedWithdrawals(IDelegationManager.Withdrawal[] withdrawals);
     event ClaimerSet(address indexed claimer);
+    event QueuedSharesSynced();
 }
 
 /**
@@ -50,11 +52,10 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     error NotTokenStakingNodesWithdrawer();
     error ArrayLengthMismatch();
     error AlreadySynchronized();
-    error WithdrawalMismatch(IStrategy singleStrategy, uint256 singleShare);
     error NotSynchronized();
-    error StrategyNotFound(address strategy);
-    error AlreadyDelegated();
     error InvalidWithdrawal(uint256 index);
+    error NotSyncedAfterSlashing(bytes32 withdrawalRoot);
+
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
@@ -66,6 +67,36 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     mapping(IERC20 => uint256) public withdrawn;
 
     address public delegatedTo;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  ELIP-002 VARIABLES  ------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @notice Tracks the pre slashing upgrade(ELIP-002) queued shares for each strategy.
+     * @dev Used to persist any pre slashing queued shares on sync without losing them.
+     * The values will tend to zero as the legacy withdrawals are completed.
+     */
+    mapping(IStrategy => uint256) public preELIP002QueuedSharesAmount;
+
+    /**
+     * @dev Maps a withdrawal root to the amount of shares that can be withdrawn and whether the withdrawal root is post ELIP-002 slashing upgrade.
+     * This is used to track the amount of withdrawable shares that are queued for withdrawal.
+    */
+    mapping(bytes32 withdrawalRoot => WithdrawableShareInfo) public withdrawableShareInfo;
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  STRUCTS  -----------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @dev Used in the synchronize function to prevent doing an external call to the allocation manager multiple times for the same operator/strategy pair.
+     */
+    struct OperatorStrategyPair {
+        address operator;
+        IStrategy strategy;
+        uint64 maxMagnitude;
+    }
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  INITIALIZATION  ----------------------------------
@@ -81,9 +112,29 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         nodeId = init.nodeId;
     }
 
+    /**
+     * @notice Initializes the contract by storing the current operator and pre slashing queued shares.
+     */
     function initializeV2() public reinitializer(2) {
         delegatedTo =
             IDelegationManager(address(tokenStakingNodesManager.delegationManager())).delegatedTo(address(this));
+    }
+
+    /**
+     * @notice Initializes the contract by storing the pre slashing queued shares.
+     */
+    function initializeV3() public reinitializer(3) {
+        IYieldNestStrategyManager eigenStrategyManager = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager());
+        IAssetRegistry assetRegistry = IAssetRegistry(eigenStrategyManager.ynEigen().assetRegistry());
+        IERC20[] memory assets = assetRegistry.getAssets();
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
+            // Store the value of the queued shares as legacy.
+            preELIP002QueuedSharesAmount[strategy] = queuedShares[strategy];
+            // Resets the queued shares to 0 as they will only be used to track new queued withdrawals.
+            delete queuedShares[strategy];
+        }
     }
 
     //--------------------------------------------------------------------------------------
@@ -124,17 +175,21 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //-------------------------------- EIGENLAYER WITHDRAWALS  -----------------------------
     //--------------------------------------------------------------------------------------
 
+    /**
+     * @notice Returns the queued shares and withdrawn balance for a specific strategy and asset.
+     * @dev The queued shares are the sum of the legacy queued shares and the post slashing queued shares.
+     */
     function getQueuedSharesAndWithdrawn(IStrategy _strategy, IERC20 _asset) external view returns (uint256, uint256) {
-        return (queuedShares[_strategy], withdrawn[_asset]);
+        return (preELIP002QueuedSharesAmount[_strategy] + queuedShares[_strategy], withdrawn[_asset]);
     }
 
     /**
      * @notice Queues withdrawals for a specific strategy
      * @param _strategy The strategy from which to withdraw
-     * @param _shares The number of shares to withdraw
+     * @param _depositShares The number of deposit shares to withdraw. The amount of withdrawn shares on completion might be lower due to slashing.
      * @return _fullWithdrawalRoots An array of withdrawal roots generated by the queueWithdrawals operation
      */
-    function queueWithdrawals(IStrategy _strategy, uint256 _shares)
+    function queueWithdrawals(IStrategy _strategy, uint256 _depositShares)
         external
         onlyTokenStakingNodesWithdrawer
         onlyWhenSynchronized
@@ -142,58 +197,70 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     {
         IStrategy[] memory _strategiesArray = new IStrategy[](1);
         _strategiesArray[0] = _strategy;
-        uint256[] memory _sharesArray = new uint256[](1);
-        _sharesArray[0] = _shares;
+        uint256[] memory _depositSharesArray = new uint256[](1);
+        _depositSharesArray[0] = _depositShares;
         IDelegationManagerTypes.QueuedWithdrawalParams[] memory _params = new IDelegationManagerTypes.QueuedWithdrawalParams[](1);
         _params[0] = IDelegationManagerTypes.QueuedWithdrawalParams({
             strategies: _strategiesArray,
-            depositShares: _sharesArray,
-            __deprecated_withdrawer: address(this)
+            depositShares: _depositSharesArray,
+            __deprecated_withdrawer: address(0)
         });
 
-        queuedShares[_strategy] += _shares;
+        DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
+        // Queue the withdrawals and get the withdrawal root.
+        _fullWithdrawalRoots = _delegationManager.queueWithdrawals(_params);
+        // Only one withdrawal root is generated given that only 1 strategy is provided.
+        bytes32 _withdrawalRoot = _fullWithdrawalRoots[0];
+        // Get the withdrawable shares for withdraw.
+        // Also, given that only 1 strategy was withdrawn, we can expect the withdrawable shares array to contain only 1 value.
+        (, uint256[] memory _singleWithdrawableShares) = _delegationManager.getQueuedWithdrawal(_withdrawalRoot);
+        uint256 _withdrawableShares = _singleWithdrawableShares[0];
 
-        _fullWithdrawalRoots = tokenStakingNodesManager.delegationManager().queueWithdrawals(_params);
+        // Add the new withdrawn shares to the queued shares mapping.
+        queuedShares[_strategy] += _withdrawableShares;
+        // Store the withdrawable shares for the particular withdrawal root.
+        withdrawableShareInfo[_withdrawalRoot] = WithdrawableShareInfo({
+            withdrawableShares: _withdrawableShares,
+            postELIP002SlashingUpgrade: true
+        });
 
-        emit QueuedWithdrawals(_strategy, _shares, _fullWithdrawalRoots);
+        emit QueuedWithdrawals(_strategy, _withdrawableShares, _fullWithdrawalRoots);
     }
 
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to true
      * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes
      * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
      */
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes,
         bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
-
-        if (withdrawals.length != middlewareTimesIndexes.length) {
-            revert ArrayLengthMismatch();
-        }
-
-        IDelegationManager _delegationManager = tokenStakingNodesManager.delegationManager();
+        DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         IStrategy[] memory _strategies = new IStrategy[](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         address[] memory _dupTokens = new address[](withdrawals.length);
 
+        IAllocationManager _allocationManager = _delegationManager.allocationManager();
+
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
+            IDelegationManagerTypes.Withdrawal memory _withdrawal = withdrawals[i];
+
+            if (_withdrawal.scaledShares.length != 1 || _withdrawal.strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
-            IStrategy _strategy = withdrawals[i].strategies[0];
-            queuedShares[_strategy] -= withdrawals[i].scaledShares[0];
+
+            IStrategy _strategy = _withdrawal.strategies[0];
 
             _strategies[i] = _strategy;
             _tokens[i] = new IERC20V4[](1);
             _tokens[i][0] = _strategy.underlyingToken();
-            IERC20V4 _token = _tokens[i][0];
             _receiveAsTokens[i] = true;
-            _dupTokens[i] = address(_token);
+            _dupTokens[i] = address(_tokens[i][0]);
+
+            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _allocationManager, _strategy, _withdrawal);
         }
 
         address[] memory _dedupTokens = ArrayLib.deduplicate(_dupTokens);
@@ -203,12 +270,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _balancesBefore[i] = IERC20(_dedupTokens[i]).balanceOf(address(this));
         }
 
-        _delegationManager.completeQueuedWithdrawals(
-            withdrawals, 
-            _tokens, 
-            // middlewareTimesIndexes, 
-            _receiveAsTokens
-        ); 
+        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, _receiveAsTokens);
 
         for (uint256 i = 0; i < _dedupTokens.length; i++) {
             IERC20 _token = IERC20(_dedupTokens[i]);
@@ -228,65 +290,49 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to true
      * @param withdrawal The withdrawal to complete
-     * @param middlewareTimesIndex The middleware times index
      * @param updateTokenStakingNodesBalances If true calls updateTokenStakingNodesBalances for yieldNestStrategyManager
      */
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal calldata withdrawal,
-        uint256 middlewareTimesIndex,
         bool updateTokenStakingNodesBalances
     ) public onlyTokenStakingNodesWithdrawer onlyWhenSynchronized {
         IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
         _withdrawals[0] = withdrawal;
-        uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-        _middlewareTimesIndexes[0] = middlewareTimesIndex;
-        completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes, updateTokenStakingNodesBalances);
-    }
-
-    /**
-     * @notice Struct containing strategy and shares information
-     * @param strategy The strategy contract address
-     * @param shares The number of shares
-     */
-    struct StrategyShares {
-        IStrategy strategy;
-        uint256 shares;
+        completeQueuedWithdrawals(_withdrawals, updateTokenStakingNodesBalances);
     }
 
     /**
      * @notice Completes queued withdrawals with receiveAsTokens set to false
      * @param withdrawals Array of withdrawals to complete
-     * @param middlewareTimesIndexes Array of middleware times indexes
      */
     function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external onlyDelegator onlyWhenSynchronized {
-        if (withdrawals.length != middlewareTimesIndexes.length) {
-            revert ArrayLengthMismatch();
-        }
-
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
+        DelegationManagerStorage _delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
+
+        IAllocationManager _allocationManager = _delegationManager.allocationManager();
+
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
-            if (withdrawals[i].scaledShares.length != 1 || withdrawals[i].strategies.length != 1) {
+            IDelegationManagerTypes.Withdrawal memory _withdrawal = withdrawals[i];
+
+            if (_withdrawal.scaledShares.length != 1 || _withdrawal.strategies.length != 1) {
                 revert InvalidWithdrawal(i);
             }
-            queuedShares[withdrawals[i].strategies[0]] -= withdrawals[i].scaledShares[0];
+
+            IStrategy _strategy = _withdrawal.strategies[0];
+
             _tokens[i] = new IERC20V4[](1);
-            _tokens[i][0] = withdrawals[i].strategies[0].underlyingToken();
+            _tokens[i][0] = _strategy.underlyingToken();
             _receiveAsTokens[i] = false;
+
+            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _allocationManager, _strategy, _withdrawal);
         }
 
         // Complete withdrawals with receiveAsTokens = false
-        delegationManager.completeQueuedWithdrawals(
-            withdrawals, 
-            _tokens, 
-            // middlewareTimesIndexes, 
-            _receiveAsTokens
-        );
+        _delegationManager.completeQueuedWithdrawals(withdrawals, _tokens, _receiveAsTokens);
 
         emit CompletedManyQueuedWithdrawals(withdrawals);
     }
@@ -335,21 +381,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         onlyWhenSynchronized
         returns (bytes32[] memory withdrawalRoots)
     {
-        IDelegationManagerExtended delegationManager =
-            IDelegationManagerExtended(address(tokenStakingNodesManager.delegationManager()));
-
-        (IStrategy[] memory strategies,) = delegationManager.getDepositedShares(address(this));
-
-        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(this), strategies);
+        IDelegationManager delegationManager = tokenStakingNodesManager.delegationManager();
 
         withdrawalRoots = delegationManager.undelegate(address(this));
 
-        // Update queued shares for each strategy
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += withdrawableShares[i];
-        }
-
-        delegatedTo = address(0);
+        // Call to synchronize to update the queued shares and delegatedTo address.
+        synchronize();
 
         emit Undelegated(withdrawalRoots);
     }
@@ -370,7 +407,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     //--------------------------------------------------------------------------------------
 
     /**
-     * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.
+     * @notice Checks if the StakingNode's delegatedTo is synced with the DelegationManager.
      * @dev Compares the locally stored delegatedTo address with the actual delegation in DelegationManager.
      * @return True if the delegation state is synced, false otherwise.
      */
@@ -380,74 +417,49 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     }
 
     /**
-     * @notice Synchronizes the staking node's delegation state with the DelegationManager.
-     * @dev This function will be called by the trusted entity when the operator calls undelegate() on this staking node because shares accounting will be out of sync
-     * @param queuedSharesAmounts The amount of shares to be queued for each strategy.
-     * @param undelegateBlockNumber The block number of the undelegate() call by the operator
-     * @param strategies The strategies to be queued.
+     * @notice Synchronizes both the delegatedTo address with the DelegationManager and the queued shares.
+     * @dev Anyone can call this function because every call is beneficial to the protocol as it keeps accounting in sync.
      */
-    function synchronize(
-        uint256[] calldata queuedSharesAmounts,
-        uint32 undelegateBlockNumber,
-        IStrategy[] calldata strategies
-    ) public onlyDelegator {
-        if (isSynchronized()) {
-            revert AlreadySynchronized();
+    function synchronize() public {
+        DelegationManagerStorage delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
+        IAllocationManager allocationManager = delegationManager.allocationManager();
+
+        // Update the delegatedTo address to the current operator.
+        delegatedTo = delegationManager.delegatedTo(address(this));
+
+        // Requests the queued withdrawals and the withdrawable shares of each from the delegation manager.
+        (IDelegationManager.Withdrawal[] memory withdrawals, uint256[][] memory withdrawableSharesPerWithdrawal) = delegationManager.getQueuedWithdrawals(address(this));
+
+        // Stores unique strategies to avoid duplicate storage access when resetting queued shares
+        IStrategy[] memory uniqueStrategies = new IStrategy[](withdrawals.length);
+        uint256 uniqueStrategiesLength = 0;
+
+        // Reset queued shares to 0 for each strategy
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            IStrategy strategy = withdrawals[i].strategies[0];
+            delete queuedShares[strategy];
         }
 
-        if (queuedSharesAmounts.length != strategies.length) {
-            revert ArrayLengthMismatch();
-        }
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            IDelegationManagerTypes.Withdrawal memory withdrawal = withdrawals[i];
+            IStrategy strategy = withdrawal.strategies[0];
 
-        IDelegationManager delegationManager = IDelegationManager(address(tokenStakingNodesManager.delegationManager()));
-
-        address thisNode = address(this);
-
-        if (delegationManager.isDelegated(thisNode)) {
-            revert AlreadyDelegated();
-        }
-
-        // Get the total number of withdrawals queued for this staking node
-        // this is respresented as nonce in Eigenlayer's Withdrawal struct
-        uint256 totalWithdrawals = delegationManager.cumulativeWithdrawalsQueued(thisNode);
-
-        // operator which called undelegate on this staking node
-        address _delegatedTo = delegatedTo;
-
-        // if there are other queued withdrawals apart from the ones due to undelegate call
-        uint256 withdrawalsNonceFromOperatorUndelegate = totalWithdrawals - strategies.length;
-
-        // Loop through the last withdrawals in reverse order to verify each strategy withdrawal
-        for (uint256 i = 0; i < strategies.length; i++) {
-            IStrategy[] memory singleStrategy = new IStrategy[](1);
-            uint256[] memory singleShare = new uint256[](1);
-            singleStrategy[0] = strategies[i];
-            singleShare[0] = queuedSharesAmounts[i];
-
-            IDelegationManagerTypes.Withdrawal memory withdrawal = IDelegationManagerTypes.Withdrawal({
-                staker: thisNode,
-                delegatedTo: _delegatedTo,
-                withdrawer: thisNode,
-                nonce: withdrawalsNonceFromOperatorUndelegate + i,
-                startBlock: undelegateBlockNumber,
-                strategies: singleStrategy,
-                scaledShares: singleShare
-            });
-
+            uint256 withdrawableShares = withdrawableSharesPerWithdrawal[i][0];
             bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
 
-            // Each withdrawal must exist
-            if (!IDelegationManagerExtended(address(delegationManager)).pendingWithdrawals(withdrawalRoot)) {
-                revert WithdrawalMismatch(singleStrategy[0], singleShare[0]);
+            // Update the queued shares for the strategy by adding the withdrawable shares.
+            queuedShares[strategy] += withdrawableShares;
+            
+            // Update the withdrawable shares for the withdrawal root.
+            if (withdrawableShareInfo[withdrawalRoot].withdrawableShares != withdrawableShares) {
+                withdrawableShareInfo[withdrawalRoot] = WithdrawableShareInfo({
+                    withdrawableShares: withdrawableShares,
+                    postELIP002SlashingUpgrade: true
+                });
             }
         }
 
-        // queue shares
-        for (uint256 i = 0; i < strategies.length; i++) {
-            queuedShares[strategies[i]] += queuedSharesAmounts[i];
-        }
-
-        delegatedTo = address(0);
+        emit QueuedSharesSynced();
     }
 
     //--------------------------------------------------------------------------------------
@@ -522,10 +534,67 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         _;
     }
 
+    /// @notice Modifier to ensure the token staking node's delegatedTo is synchronized with the DelegationManager.
     modifier onlyWhenSynchronized() {
         if (!isSynchronized()) {
             revert NotSynchronized();
         }
         _;
+    }
+
+    //--------------------------------------------------------------------------------------
+    //----------------------------------  INTERNAL  ----------------------------------------
+    //--------------------------------------------------------------------------------------
+
+    /**
+     * @dev Decreases the queued shares by the withdrawable amount after validating if the contract was synchronized after a slashing event.
+     * @param _delegationManager The delegation manager contract.
+     * @param _allocationManager The allocation manager contract.
+     * @param _strategy The strategy to decrease the queued shares for.
+     * @param _withdrawal The withdrawal to decrease the queued shares for.
+     */
+    function _decreaseQueuedSharesOnCompleteWithdrawals(
+        DelegationManagerStorage _delegationManager,
+        IAllocationManager _allocationManager,
+        IStrategy _strategy,
+        IDelegationManagerTypes.Withdrawal memory _withdrawal
+    ) internal {
+        bytes32 withdrawalRoot = _delegationManager.calculateWithdrawalRoot(_withdrawal);
+        WithdrawableShareInfo storage _withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
+
+        // If the withdrawal was queued before the upgrade, it is considered legacy.
+        if (!_withdrawableShareInfo.postELIP002SlashingUpgrade) {
+            preELIP002QueuedSharesAmount[_strategy] -= _withdrawal.scaledShares[0];
+            return;
+        }
+
+        uint256 withdrawableSharesOfWithdrawalRoot = _withdrawableShareInfo.withdrawableShares;
+
+        // To detect if the queued shares have not been synchronized after a slashing event, we compare the
+        // maxMagnitude of the withdrawal root at the time of queueing with the current maxMagnitude.
+       
+       
+        // Also, given that only 1 strategy was withdrawn, we can expect the withdrawable shares array to contain only 1 value.
+        (, uint256[] memory _singleWithdrawableShares) = _delegationManager.getQueuedWithdrawal(withdrawalRoot);
+        uint256 withdrawableShares = _singleWithdrawableShares[0];
+
+        // If they are different, it means that the queued shares have not been synced. 
+        // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+        if (withdrawableSharesOfWithdrawalRoot != withdrawableShares) {
+            revert NotSyncedAfterSlashing(withdrawalRoot);
+        }
+
+        // Decreases the queued shares by the withdrawable amount.
+        // This will net to 0 after all queued withdrawals are completed.
+        queuedShares[_strategy] -= withdrawableSharesOfWithdrawalRoot;
+        _withdrawableShareInfo.withdrawableShares = 0;
+    }
+
+    function getWithdrawableShares(IStrategy _strategy) public view returns (uint256) {
+        IDelegationManager delegationManager =  tokenStakingNodesManager.delegationManager();
+        IStrategy[] memory singleStrategy = new IStrategy[](1);
+        singleStrategy[0] = _strategy;
+        (uint256[] memory withdrawableShares,) = delegationManager.getWithdrawableShares(address(this), singleStrategy);
+        return withdrawableShares[0];
     }
 }

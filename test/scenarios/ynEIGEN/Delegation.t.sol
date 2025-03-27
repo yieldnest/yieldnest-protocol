@@ -18,7 +18,6 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
-import {IDelegationManagerExtended} from "src/external/eigenlayer/IDelegationManagerExtended.sol";
 
 import "./ynLSDeScenarioBaseTest.sol";
 
@@ -80,7 +79,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         //Call synchronize after verifying not synchronized
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.synchronize(shares, blockNumberBefore, strategies);
+        tokenStakingNode.synchronize();
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(
@@ -96,7 +95,6 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         // Complete queued withdrawals as shares
         IDelegationManager.Withdrawal[] memory withdrawals = new IDelegationManager.Withdrawal[](strategies.length);
-        uint256[] memory middlewareTimesIndexes = new uint256[](strategies.length);
         for (uint256 i = 0; i < strategies.length; i++) {
             IStrategy[] memory singleStrategy = new IStrategy[](1);
             singleStrategy[0] = strategies[i];
@@ -112,13 +110,12 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
                 strategies: singleStrategy,
                 scaledShares: singleShare
             });
-            middlewareTimesIndexes[i] = 0;
         }
         //  advance time to allow completion
         vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
 
         vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.completeQueuedWithdrawalsAsShares(withdrawals, middlewareTimesIndexes);
+        tokenStakingNode.completeQueuedWithdrawalsAsShares(withdrawals);
 
         for (uint256 i = 0; i < strategies.length; i++) {
             assertEq(
@@ -154,11 +151,5 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         assertApproxEqAbs(
             totalAssetsBefore, yneigen.totalAssets(), 10, "Total assets should not change after undelegation"
         );
-
-        // Call synchronize after verifying synchronized
-        vm.expectRevert(TokenStakingNode.AlreadySynchronized.selector);
-        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.synchronize(new uint256[](0), uint32(block.number), new IStrategy[](0));
     }
-
 }
