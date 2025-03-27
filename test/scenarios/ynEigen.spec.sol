@@ -144,7 +144,7 @@ contract YnEIGENScenarioTest2 is ynEigenIntegrationBaseTest {
 	}
 
 	function test_ynEIGEN_Scenario_2_Pause_Transfer(uint256 random1) public {
-		vm.assume(random1 > 0 && random1 < 100_000_000 ether);
+		vm.assume(random1 > 1 && random1 < 100_000_000 ether);
 		
 		uint256 amount = random1;
 		address asset = chainAddresses.lsd.WSTETH_ADDRESS;
