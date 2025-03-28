@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {console} from "lib/forge-std/src/console.sol";
+import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 
 contract DeployStakingNodesManager is BaseYnETHScript {
 
@@ -20,9 +21,9 @@ contract DeployStakingNodesManager is BaseYnETHScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
-        StakingNodesManager stakingNodesManagerImplementation = new StakingNodesManager();
+        HoleskyStakingNodesManager holeSkyStakingNodesManagerImplementation = new HoleskyStakingNodesManager();
 
-        console.log("StakingNodesManager Implementation:", address(stakingNodesManagerImplementation));
+        console.log("HoleskyStakingNodesManager Implementation:", address(holeSkyStakingNodesManagerImplementation));
 
         vm.stopBroadcast();
     }
@@ -30,9 +31,8 @@ contract DeployStakingNodesManager is BaseYnETHScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
-//   StakingNodesManager Implementation: 0x8E0b49B4A4384D812Bc6F55fA6412547524D41Ab
-//   Deployment JSON file written successfully: /Users/parth/Desktop/coding/yieldnest/prod-code-repos/yieldnest-protocol-private/deployments/ynETH-1.json
+//   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
+//   Current Block Number: 3571615
+//   Current Chain ID: 17000
+//   HoleskyStakingNodesManager Implementation: 0x47A3906DED4f477a9769eca210C3D4562C08572e
 
-// HOLESKY DEPLOYMENT
-//   StakingNodesManager Implementation: 0x99a108a79419c62F2Ff384cE2441b435b918a252
