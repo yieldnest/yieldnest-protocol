@@ -17,10 +17,6 @@ import {TestStakingNodesManagerV2} from "test/mocks/TestStakingNodesManagerV2.so
 import {StakingNodeTestBase} from "./StakingNodeTestBase.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
 
-import "forge-std/console.sol";
-
-
-
 contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
 
     function testCreateStakingNode() public {
@@ -81,14 +77,11 @@ contract StakingNodesManagerStakingNodeCreation is IntegrationBaseTest {
         stakingNodesManager.createStakingNode();
     }
 
-    function testRevertIfCreateStakingNodeWithZeroAddressBeacon() public {
+    function testRevertIfRegisterStakingNodeWithZeroAddressBeacon() public {
         // Attempt to create a staking node with a zero address beacon should fail
         vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.ZeroAddress.selector));
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.registerStakingNodeImplementationContract(address(0));
-        
-        vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        stakingNodesManager.createStakingNode();
     }
 
     function testRevertIfCreateStakingNodeWithoutStakingNodeCreatorRole() public {
@@ -157,10 +150,10 @@ contract StakingNodesManagerStakingNodeImplementation is IntegrationBaseTest {
     }
 
     function testRevertIfRegisterStakingNodeImplementationTwice() public {
-        address newImplementation = address(new TestStakingNodeV2());
-        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.BeaconImplementationAlreadyExists.selector));
+        address initialImplementation = address(new TestStakingNodeV2());
         vm.prank(actors.admin.STAKING_ADMIN);
-        stakingNodesManager.registerStakingNodeImplementationContract(newImplementation);
+        vm.expectRevert(abi.encodeWithSelector(StakingNodesManager.BeaconImplementationAlreadyExists.selector));
+        stakingNodesManager.registerStakingNodeImplementationContract(initialImplementation);
     }
 
     function testIsStakingNodesAdmin() public {

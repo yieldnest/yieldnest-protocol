@@ -64,7 +64,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
-        upgradeTokenStakingNodesManagerAndTokenStakingNode();
     }
 
     function assignContracts() internal {
