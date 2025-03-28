@@ -13,9 +13,9 @@
   "YnSecurityCouncil": "0x743b91CDB1C694D4F51bCDA3a4A59DcC0d02b913",
   "implementation-ynLSDe": "0x350793a4B8F19Ae1a67E5b4F3646483847CB7550",
   "implementation-assetRegistry": "0xB8d77186574BB4951C20464DBBfB31C6b018c4B0",
-  "implementation-eigenStrategyManager": "0x0B02f50fB5c498eB63231f65844B88763b91C5C9",
+  "implementation-eigenStrategyManager": "0x99a108a79419c62F2Ff384cE2441b435b918a252",
   "implementation-rateProvider": "0x0Ca50907B8B5fDc6b0B1d5F23195209aD0457113",
-  "implementation-tokenStakingNodesManager": "0x3E07B130533A8D3285203c697d6ff2b25996397B",
+  "implementation-tokenStakingNodesManager": "0x015Edc11DF33Fdb3D4e711Fe94Ec4E95F68E722a",
   "implementation-ynEigenDepositAdapter": "0x9E12251f0A7728d6804Aba297a7CE725C4B77e4c",
   "implementation-ynEigenViewer": "0x85bB85b81Db2f9b446e9100057420AE5DE7232E4",
   "implementation-redemptionAssetsVault": "0x398e9AE08179E2e07dDD51C7DCB9d585F3abC31A",
@@ -31,6 +31,7 @@
   "proxy-redemptionAssetsVault": "0xd536087701fFf805d20ee6651E55C90D645fD1a3",
   "proxy-withdrawalQueueManager": "0xaF8052DC454318D52A4478a91aCa14305590389f",
   "proxy-wrapper": "0x8F61bcb28C5b88e5F10ec5bb3C18f231D763A309",
+  "proxy-withdrawalsProcessor": "0x0000000000000000000000000000000000000000",
   "proxyAdmin-ynLSDe": "0x31456Eef519b7ab236e3638297Ed392390bf304F",
   "proxyAdmin-assetRegistry": "0x4248392db8Ee31aA579822207d059A28A38c4510",
   "proxyAdmin-eigenStrategyManager": "0x010c60d663fddDAA076F0cE63f6692f0b5605fE5",
@@ -41,6 +42,8 @@
   "proxyAdmin-redemptionAssetsVault": "0x9885975Dd0b7425fE261C85197C3fd511eA6387C",
   "proxyAdmin-withdrawalQueueManager": "0xa4BC4Ac496BEf4E652AD518C25a70F1797BF7620",
   "proxyAdmin-wrapper": "0x47963bcB8d4d2faB0fc600E2c4B3151b917BF4b1",
-  "tokenStakingNodeImplementation": "0x4486c96883ee436525e11cfb1b0f589c11ff75C6",
-  "upgradeTimelock": "0x62173555C27C67644C5634e114e42A63A59CD7A5"
+  "tokenStakingNodeImplementation": "0x8b5fa9e9275ded825aBE52f8EC016569d10796b2",
+  "upgradeTimelock": "0x62173555C27C67644C5634e114e42A63A59CD7A5",
+  "implementation-withdrawalsProcessor": "0x71Cfb28506f5Cc4398b1035f1c07908D5c35C4C9",
+  "proxyAdmin-withdrawalsProcessor": "0x0000000000000000000000000000000000000000"
 }

@@ -6,6 +6,7 @@ import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transp
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
+import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 
 /**
  * @title GenerateYnLSDeUpgradeTxData

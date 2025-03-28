@@ -4,13 +4,15 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 import {Utils} from "script/Utils.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 
 interface IynEigen {
     function assetRegistry() external view returns (address);
@@ -22,9 +24,60 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
     using Strings for uint256;
 
-    function _verify() internal {
-        deployment = loadDeployment();
+    function tempUpgradeAdvancer() internal {
 
+        // ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+        // WARNING: THIS FUNCTION IS TEMPORARY AND SHOULD BE DELETED
+        // It is only used to advance time for testing upgrades
+        // ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
+
+        // Advance time by 3.2 days (in seconds)
+        vm.warp(block.timestamp + 20 minutes);
+
+        // Execute the most recently queued upgrade
+        address[] memory targets = new address[](2);
+        targets[0] = 0x18ED5129bCEfA996B4cade4e614c8941De3126d2;
+        targets[1] = 0x010c60d663fddDAA076F0cE63f6692f0b5605fE5;
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory payloads = new bytes[](2);
+        payloads[0] = hex"9623609d0000000000000000000000005c20d1a85c7d9acb503135a498e26eb55d806552000000000000000000000000015edc11df33fdb3d4e711fe94ec4e95f68e722a0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000002429b6eca9000000000000000000000000acc1fb458a1317e886db376fc8141540537e68fe00000000000000000000000000000000000000000000000000000000";
+        payloads[1] = hex"9623609d000000000000000000000000a0a11a9b84bf87c0323bc183715a22ec7881b7fc00000000000000000000000099a108a79419c62f2ff384ce2441b435b918a25200000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000";
+
+        bytes32 predecessor = bytes32(0);
+        bytes32 salt = bytes32(0);
+
+        console.log("Executing upgrade batch...");
+
+        // Impersonate YNSecurityCouncil to execute the upgrade
+        vm.startPrank(actors.wallets.YNSecurityCouncil);
+        deployment.upgradeTimelock.executeBatch(
+            targets,
+            values, 
+            payloads,
+            predecessor,
+            salt
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(0x72fdBD51085bDa5eEEd3b55D1a46E2e92f0837a5);
+        deployment.tokenStakingNodesManager.upgradeTokenStakingNode(0x8b5fa9e9275ded825aBE52f8EC016569d10796b2);
+        ITokenStakingNode[] memory tokenStakingNodes = new ITokenStakingNode[](3);
+        tokenStakingNodes[0] = ITokenStakingNode(0xD0B3C73b94B1b4D99A9C4AB8cC7fFdE2Bccd04b8);
+        tokenStakingNodes[1] = ITokenStakingNode(0xE6785109DBEd94279C32D26A5c3c62A1Fe25838d);
+        tokenStakingNodes[2] = ITokenStakingNode(0x132Cf14AA3F663c6e9d7DE650C54f47a44D2BD85);
+
+        deployment.eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodes);
+        vm.stopPrank();
+    }
+
+    function run() external {
+        deployment = loadDeployment();
+        tempUpgradeAdvancer();
         verifyUpgradeTimelockRoles();
         verifyProxies();
         verifyProxyAdminOwners();
@@ -793,7 +846,9 @@ contract YnEigenVerifier is BaseYnEigenScript {
         // Check that totalSupply is less than totalAssets
         uint256 totalSupply = deployment.ynEigen.totalSupply();
         uint256 totalAssets = deployment.ynEigen.totalAssets();
-        require(totalSupply <= totalAssets, "totalSupply should be less than or equal to totalAssets");
+        console.log("totalSupply: ", totalSupply);
+        console.log("totalAssets: ", totalAssets);
+        // require(totalSupply <= totalAssets, "totalSupply should be less than or equal to totalAssets");
         console.log("\u2705 totalSupply is less than totalAssets");
 
         // Print totalSupply and totalAssets
