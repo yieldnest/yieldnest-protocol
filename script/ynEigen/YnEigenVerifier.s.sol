@@ -77,7 +77,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
     function run() external {
         deployment = loadDeployment();
-        tempUpgradeAdvancer();
+        // tempUpgradeAdvancer();
         verifyUpgradeTimelockRoles();
         verifyProxies();
         verifyProxyAdminOwners();
