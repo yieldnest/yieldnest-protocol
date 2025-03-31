@@ -243,8 +243,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IWrapper _wrapper = IYieldNestStrategyManager(tokenStakingNodesManager.yieldNestStrategyManager()).wrapper();
         address[] memory _dupTokens = new address[](withdrawals.length);
 
-        IAllocationManager _allocationManager = _delegationManager.allocationManager();
-
         for (uint256 i = 0; i < withdrawals.length; i++) {
             IDelegationManagerTypes.Withdrawal memory _withdrawal = withdrawals[i];
 
@@ -260,7 +258,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _receiveAsTokens[i] = true;
             _dupTokens[i] = address(_tokens[i][0]);
 
-            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _allocationManager, _strategy, _withdrawal);
+            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _strategy, _withdrawal);
         }
 
         address[] memory _dedupTokens = ArrayLib.deduplicate(_dupTokens);
@@ -312,8 +310,6 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         IERC20V4[][] memory _tokens = new IERC20V4[][](withdrawals.length);
         bool[] memory _receiveAsTokens = new bool[](withdrawals.length);
 
-        IAllocationManager _allocationManager = _delegationManager.allocationManager();
-
         // Decrease queued shares for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
             IDelegationManagerTypes.Withdrawal memory _withdrawal = withdrawals[i];
@@ -328,7 +324,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
             _tokens[i][0] = _strategy.underlyingToken();
             _receiveAsTokens[i] = false;
 
-            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _allocationManager, _strategy, _withdrawal);
+            _decreaseQueuedSharesOnCompleteWithdrawals(_delegationManager, _strategy, _withdrawal);
         }
 
         // Complete withdrawals with receiveAsTokens = false
@@ -422,17 +418,12 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
      */
     function synchronize() public {
         DelegationManagerStorage delegationManager = DelegationManagerStorage(address(tokenStakingNodesManager.delegationManager()));
-        IAllocationManager allocationManager = delegationManager.allocationManager();
 
         // Update the delegatedTo address to the current operator.
         delegatedTo = delegationManager.delegatedTo(address(this));
 
         // Requests the queued withdrawals and the withdrawable shares of each from the delegation manager.
         (IDelegationManager.Withdrawal[] memory withdrawals, uint256[][] memory withdrawableSharesPerWithdrawal) = delegationManager.getQueuedWithdrawals(address(this));
-
-        // Stores unique strategies to avoid duplicate storage access when resetting queued shares
-        IStrategy[] memory uniqueStrategies = new IStrategy[](withdrawals.length);
-        uint256 uniqueStrategiesLength = 0;
 
         // Reset queued shares to 0 for each strategy
         for (uint256 i = 0; i < withdrawals.length; i++) {
@@ -549,13 +540,11 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
     /**
      * @dev Decreases the queued shares by the withdrawable amount after validating if the contract was synchronized after a slashing event.
      * @param _delegationManager The delegation manager contract.
-     * @param _allocationManager The allocation manager contract.
      * @param _strategy The strategy to decrease the queued shares for.
      * @param _withdrawal The withdrawal to decrease the queued shares for.
      */
     function _decreaseQueuedSharesOnCompleteWithdrawals(
         DelegationManagerStorage _delegationManager,
-        IAllocationManager _allocationManager,
         IStrategy _strategy,
         IDelegationManagerTypes.Withdrawal memory _withdrawal
     ) internal {
@@ -569,11 +558,7 @@ contract TokenStakingNode is ITokenStakingNode, Initializable, ReentrancyGuardUp
         }
 
         uint256 withdrawableSharesOfWithdrawalRoot = _withdrawableShareInfo.withdrawableShares;
-
-        // To detect if the queued shares have not been synchronized after a slashing event, we compare the
-        // maxMagnitude of the withdrawal root at the time of queueing with the current maxMagnitude.
-       
-       
+              
         // Also, given that only 1 strategy was withdrawn, we can expect the withdrawable shares array to contain only 1 value.
         (, uint256[] memory _singleWithdrawableShares) = _delegationManager.getQueuedWithdrawal(withdrawalRoot);
         uint256 withdrawableShares = _singleWithdrawableShares[0];

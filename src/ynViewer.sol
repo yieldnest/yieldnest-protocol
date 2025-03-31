@@ -38,7 +38,7 @@ contract ynViewer is IynViewer {
     }
 
     /// @inheritdoc IynViewer
-    function withdrawalDelayBlocks(address _strategy) external view returns (uint256) {
+    function withdrawalDelayBlocks(address) external view returns (uint256) {
         IDelegationManager _delegationManager = stakingNodesManager.delegationManager();
         return _delegationManager.minWithdrawalDelayBlocks();
     }

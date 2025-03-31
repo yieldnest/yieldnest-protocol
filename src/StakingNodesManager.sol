@@ -70,7 +70,7 @@ contract StakingNodesManager is
     error InvalidRewardsType(RewardsType rewardsType);
     error ValidatorUnused(bytes publicKey);
     error ValidatorNotWithdrawn(bytes publicKey, IEigenPod.VALIDATOR_STATUS status);
-    error NodeNotSynchronized(address nodeAddress);
+    error NodeNotSynchronized(address );
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
