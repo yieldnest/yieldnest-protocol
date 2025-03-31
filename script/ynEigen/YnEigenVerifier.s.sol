@@ -75,7 +75,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         vm.stopPrank();
     }
 
-    function run() external {
+    function _verify() public {
         deployment = loadDeployment();
         // tempUpgradeAdvancer();
         verifyUpgradeTimelockRoles();
