@@ -459,7 +459,6 @@ contract StakingNodesManager is
 
             // Update to the newly upgraded version.
             initializedVersion = node.getInitializedVersion();
-            emit NodeInitialized(address(node), initializedVersion);
         }
 
         if (initializedVersion == 1) {
@@ -476,6 +475,8 @@ contract StakingNodesManager is
             node.initializeV4();
             initializedVersion = node.getInitializedVersion();
         }
+
+        emit NodeInitialized(address(node), initializedVersion);
 
         // NOTE: For future versions, add additional if clauses that initialize the node 
         // for the next version while keeping the previous initializers.

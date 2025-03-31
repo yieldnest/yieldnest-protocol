@@ -620,13 +620,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 beaconChainETHStrategyWithdrawableShares = withdrawableShares[0];
     
         // Compute the total ETH balance of the StakingNode
-        int256 totalETHBalance =
-            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount + preELIP002QueuedSharesAmount + beaconChainETHStrategyWithdrawableShares);
+        uint256 totalETHBalance = withdrawnETH + unverifiedStakedETH + queuedSharesAmount + preELIP002QueuedSharesAmount + beaconChainETHStrategyWithdrawableShares;
 
-        if (totalETHBalance < 0) {
-            return 0;
-        }
-        return uint256(totalETHBalance);
+        return totalETHBalance;
     }
 
     /**
