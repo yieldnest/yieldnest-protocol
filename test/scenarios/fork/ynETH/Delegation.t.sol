@@ -33,8 +33,6 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
         // TODO: ensure
         uint256 podSharesBefore = signedPodSharesBefore < 0 ? 0 : uint256(signedPodSharesBefore);
 
-        uint32 blockNumberBefore = uint32(block.number);
-
         // Call undelegate from operator
         vm.startPrank(operator);
         delegationManager.undelegate(address(stakingNode));
@@ -95,14 +93,6 @@ contract YnETHDelegationScenarioTest is WithdrawalsScenarioTestBase {
 
         // Get initial ETH balance of staking node
         uint256 stakingNodeBalanceBefore = stakingNode.getETHBalance();
-
-        // Get delegator address for node 0
-        address delegator = address(stakingNode);
-
-        // Get initial pod shares and block number
-        int256 signedPodSharesBefore = eigenPodManager.podOwnerDepositShares(delegator);
-        uint256 podSharesBefore = signedPodSharesBefore < 0 ? 0 : uint256(signedPodSharesBefore);
-        uint32 blockNumberBefore = uint32(block.number);
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNode.synchronize();

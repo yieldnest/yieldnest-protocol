@@ -59,10 +59,10 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
 
         // Call undelegate from operator
         vm.startPrank(operator);
-        bytes32[] memory withdrawalRoots = delegationManager.undelegate(address(tokenStakingNode));
+        delegationManager.undelegate(address(tokenStakingNode));
         vm.stopPrank();
 
-        uint256 nonceAfter = delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode));
+        delegationManager.cumulativeWithdrawalsQueued(address(tokenStakingNode));
 
         // Assert node is no longer delegated after undelegation
         assertEq(
@@ -132,9 +132,7 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
     function test_undelegate_Scenario_undelegateByDelegator() public {
         uint256 totalAssetsBefore = yneigen.totalAssets();
 
-        ITokenStakingNode tokenStakingNode = tokenStakingNodesManager.nodes(0);
-
-        uint256 undelegateBlockNumber = uint32(block.number);
+        tokenStakingNode = tokenStakingNodesManager.nodes(0);
 
         // Call undelegate from delegator
         vm.startPrank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);

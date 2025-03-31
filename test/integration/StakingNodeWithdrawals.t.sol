@@ -193,8 +193,7 @@ contract StakingNodeWithdrawals is StakingNodeTestBase {
         uint256 withdrawalAmount = 32 ether;
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
         bytes32[] memory _withdrawalRoots = stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-        (IDelegationManagerTypes.Withdrawal memory _withdrawal, ) = delegationManager.getQueuedWithdrawal(_withdrawalRoots[0]);
-        uint256 _scaledShares = _withdrawal.scaledShares[0];
+        delegationManager.getQueuedWithdrawal(_withdrawalRoots[0]);
 
         // Exit the validator
         beaconChain.slashValidators(validatorIndices, BeaconChainMock.SlashType.Minor);

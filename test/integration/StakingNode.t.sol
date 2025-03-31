@@ -370,9 +370,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Get initial total assets
         uint256 initialTotalAssets = yneth.totalAssets();
 
-        // Undelegate
-        uint32 undelegateBlockNumber = uint32(block.number);
-
         {
             // Get initial queued shares
             uint256 initialQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
@@ -410,7 +407,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
 
             {
-                IStrategy[] memory strategies = new IStrategy[](1);
+                strategies = new IStrategy[](1);
                 strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
                 // advance time to allow completion
                 vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
@@ -468,9 +465,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Get initial total assets
         uint256 initialTotalAssets = yneth.totalAssets();
 
-        // Undelegate
-        uint32 undelegateBlockNumber = uint32(block.number);
-
         {
             // Get initial queued shares
             uint256 initialQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
@@ -508,7 +502,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
 
             {
-                IStrategy[] memory strategies = new IStrategy[](1);
+                strategies = new IStrategy[](1);
                 strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
                 // advance time to allow completion
                 vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
@@ -581,8 +575,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Get initial total assets
         uint256 initialTotalAssets = yneth.totalAssets();
 
-        // Undelegate
-        uint32 undelegateBlockNumber = uint32(block.number);
         IDelegationManager.Withdrawal[] memory calculatedWithdrawals;
 
         {
@@ -637,7 +629,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         );
 
         {
-            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies = new IStrategy[](1);
             strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
             // advance time to allow completion
             vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
@@ -647,10 +639,10 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         {
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
             stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
-        }
 
-        uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
-        assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0 after withdrawal");
+            uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
+            assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0 after withdrawal");
+        }
 
         // Verify total assets stayed the same
         assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after withdrawal");
@@ -773,7 +765,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
     function testImplementViewFunction() public {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        stakingNodeInstance = stakingNodesManager.createStakingNode();
         address expectedImplementation = address(stakingNodesManager.upgradeableBeacon().implementation());
         assertEq(stakingNodeInstance.implementation(), expectedImplementation, "Implementation address mismatch");
     }
