@@ -445,8 +445,6 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             // but does not need actual values in the case of the beaconChainETHStrategy
             tokens[i] = new IERC20V4[](1);
             
-            bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawals[i]);
-
             totalWithdrawableShares += _decreaseQueuedSharesOnCompleteQueuedWithdrawal(delegationManager, withdrawals[i]);
         }
 
@@ -525,14 +523,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     ) internal returns (uint256 totalWithdrawableShare) {
 
         bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
-        WithdrawableShareInfo storage withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
+        WithdrawableShareInfo storage _withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
 
-        if (withdrawableShareInfo.postELIP002SlashingUpgrade) {
+        if (_withdrawableShareInfo.postELIP002SlashingUpgrade) {
             // If the withdrawal root queued after ELIP-002 slashing upgrade, we need to subtract the shares from queuedSharesAmount 
             // and set the withdrawableShares to 0 for the withdrawal root
-            totalWithdrawableShare = withdrawableShareInfo.withdrawableShares;
+            totalWithdrawableShare = _withdrawableShareInfo.withdrawableShares;
             queuedSharesAmount -= totalWithdrawableShare;
-            withdrawableShareInfo.withdrawableShares = 0;
+            _withdrawableShareInfo.withdrawableShares = 0;
         } else {
             // If the withdrawal root queued was before ELIP-002 slashing upgrade, we need to subtract the shares from preELIP002QueuedSharesAmount 
             totalWithdrawableShare = withdrawal.scaledShares[0];
@@ -622,13 +620,9 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 beaconChainETHStrategyWithdrawableShares = withdrawableShares[0];
     
         // Compute the total ETH balance of the StakingNode
-        int256 totalETHBalance =
-            int256(withdrawnETH + unverifiedStakedETH + queuedSharesAmount + preELIP002QueuedSharesAmount + beaconChainETHStrategyWithdrawableShares);
+        uint256 totalETHBalance = withdrawnETH + unverifiedStakedETH + queuedSharesAmount + preELIP002QueuedSharesAmount + beaconChainETHStrategyWithdrawableShares;
 
-        if (totalETHBalance < 0) {
-            return 0;
-        }
-        return uint256(totalETHBalance);
+        return totalETHBalance;
     }
 
     /**

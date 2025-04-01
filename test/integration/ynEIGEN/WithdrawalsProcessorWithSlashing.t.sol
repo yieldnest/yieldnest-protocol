@@ -469,8 +469,6 @@ contract WithdrawalsProcessorWithSlashingTest is ynEigenIntegrationBaseTest {
         vm.prank(keeper);
         withdrawalsProcessor.processPrincipalWithdrawals();
 
-        uint256 user1SfrxethBalanceBefore = sfrxeth.balanceOf(user1);
-
         // User1 tries to claim their withdrawal but fails because the redemption vault does not have enough assets.
         vm.expectPartialRevert(WithdrawalQueueManager.InsufficientBalance.selector);
         vm.prank(user1);

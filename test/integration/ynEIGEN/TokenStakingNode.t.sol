@@ -182,15 +182,12 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
 
-        uint256 expectedStETHAmount = IwstETH(address(wstETH)).stEthPerToken() * amounts[0] / 1e18;
-
         // TODO: figure out why this doesn't match.
         // assertTrue(
         //     compareWithThreshold(deposits[0], expectedStETHAmount, 2),
         //     "Strategy user underlying view does not match expected stETH amount within threshold"
         // );
 
-        uint256 treshold = wstethAmount / 1e17 + 3;
         // uint256 expectedBalance = eigenStrategyManager.getStakedAssetBalance(assets[0]);
         // assertTrue(
         //     compareWithThreshold(expectedBalance, amounts[0], treshold),
@@ -437,10 +434,10 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
     function _getWithdrawals(
         QueuedWithdrawalInfo[] memory queuedWithdrawals,
-        uint256 nodeId
+        uint256 _nodeId
     ) internal returns (IDelegationManager.Withdrawal[] memory _withdrawals) {
         _withdrawals = new IDelegationManager.Withdrawal[](queuedWithdrawals.length);
-        address _stakingNode = address(tokenStakingNodesManager.nodes(nodeId));
+        address _stakingNode = address(tokenStakingNodesManager.nodes(_nodeId));
         uint256 indexStartForWithdrawalRoots =
             eigenLayer.delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - queuedWithdrawals.length;
 
@@ -551,9 +548,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = wstethAmount;
         amounts[1] = sfrxethAmount;
-        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        uint256 _nodeId = tokenStakingNodeInstance.nodeId();
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        eigenStrategyManager.stakeAssetsToNode(_nodeId, assets, amounts);
 
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
@@ -632,9 +629,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = wstethAmount;
         amounts[1] = sfrxethAmount;
-        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        uint256 _nodeId = tokenStakingNodeInstance.nodeId();
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        eigenStrategyManager.stakeAssetsToNode(_nodeId, assets, amounts);
 
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
@@ -699,9 +696,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = wstethAmount;
         amounts[1] = sfrxethAmount;
-        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        uint256 _nodeId = tokenStakingNodeInstance.nodeId();
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        eigenStrategyManager.stakeAssetsToNode(_nodeId, assets, amounts);
 
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
@@ -768,7 +765,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         {
-            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, _nodeId);
 
             {
                 // advance time to allow completion
@@ -778,7 +775,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             // complete queued withdrawals
             {
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-                tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
+                tokenStakingNodesManager.nodes(_nodeId).completeQueuedWithdrawalsAsShares(
                     _withdrawals
                 );
                 vm.stopPrank();
@@ -910,9 +907,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = wstethAmount;
         amounts[1] = sfrxethAmount;
-        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        uint256 _nodeId = tokenStakingNodeInstance.nodeId();
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        eigenStrategyManager.stakeAssetsToNode(_nodeId, assets, amounts);
 
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
@@ -956,7 +953,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Undelegate by operator
         vm.prank(operator1);
-        bytes32[] memory withdrawalRoots = eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
+        eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
 
         assertEq(tokenStakingNodeInstance.delegatedTo(), address(operator1), "TokenStakingNode delegatedTo not cleared");
         assertEq(
@@ -981,7 +978,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         {
-            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, _nodeId);
 
             {
                 // advance time to allow completion
@@ -991,7 +988,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             // complete queued withdrawals
             {
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-                tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
+                tokenStakingNodesManager.nodes(_nodeId).completeQueuedWithdrawalsAsShares(
                     _withdrawals
                 );
                 vm.stopPrank();
@@ -1039,9 +1036,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = wstethAmount;
         amounts[1] = sfrxethAmount;
-        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        uint256 _nodeId = tokenStakingNodeInstance.nodeId();
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        eigenStrategyManager.stakeAssetsToNode(_nodeId, assets, amounts);
 
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
@@ -1085,7 +1082,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Undelegate by operator
         vm.prank(operator1);
-        bytes32[] memory withdrawalRoots = eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
+        eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
 
         assertEq(tokenStakingNodeInstance.delegatedTo(), address(operator1), "TokenStakingNode delegatedTo not cleared");
         assertEq(
@@ -1113,7 +1110,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         {
-            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, _nodeId);
 
             {
                 // advance time to allow completion
@@ -1123,7 +1120,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             // complete queued withdrawals
             {
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-                tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
+                tokenStakingNodesManager.nodes(_nodeId).completeQueuedWithdrawalsAsShares(
                     _withdrawals
                 );
                 vm.stopPrank();
@@ -1171,9 +1168,9 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = wstethAmount;
         amounts[1] = sfrxethAmount;
-        uint256 nodeId = tokenStakingNodeInstance.nodeId();
+        uint256 _nodeId = tokenStakingNodeInstance.nodeId();
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+        eigenStrategyManager.stakeAssetsToNode(_nodeId, assets, amounts);
 
         IStrategyManager strategyManager = tokenStakingNodesManager.strategyManager();
         uint256 initialStrategyListLength = strategyManager.stakerStrategyListLength(address(tokenStakingNodeInstance));
@@ -1216,7 +1213,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
 
         // Undelegate by operator
         vm.prank(operator1);
-        bytes32[] memory withdrawalRoots = eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
+        eigenLayer.delegationManager.undelegate(address(tokenStakingNodeInstance));
 
         assertEq(tokenStakingNodeInstance.delegatedTo(), address(operator1), "TokenStakingNode delegatedTo not cleared");
         assertEq(
@@ -1241,7 +1238,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
         }
 
         {
-            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, nodeId);
+            IDelegationManager.Withdrawal[] memory _withdrawals = _getWithdrawals(queuedWithdrawals, _nodeId);
 
             {
                 // advance time to allow completion
@@ -1251,7 +1248,7 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
             // complete queued withdrawals
             {
                 vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-                tokenStakingNodesManager.nodes(nodeId).completeQueuedWithdrawalsAsShares(
+                tokenStakingNodesManager.nodes(_nodeId).completeQueuedWithdrawalsAsShares(
                     _withdrawals
                 );
                 vm.stopPrank();
@@ -1307,22 +1304,22 @@ contract TokenStakingNodeDelegate is ynEigenIntegrationBaseTest {
     function testSetClaimerOnTokenStakingNode() public {
         // Create token staking node
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        ITokenStakingNode tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
+        ITokenStakingNode _tokenStakingNodeInstance = tokenStakingNodesManager.createTokenStakingNode();
 
         // Create a claimer address
         address claimer = vm.addr(12_345);
 
         // Set claimer should fail from non-delegator
         vm.expectRevert(TokenStakingNode.NotTokenStakingNodeDelegator.selector);
-        tokenStakingNodeInstance.setClaimer(claimer);
+        _tokenStakingNodeInstance.setClaimer(claimer);
 
         // Set claimer from delegator
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        tokenStakingNodeInstance.setClaimer(claimer);
+        _tokenStakingNodeInstance.setClaimer(claimer);
 
         // Verify claimer is set correctly in rewards coordinator
         IRewardsCoordinator rewardsCoordinator = tokenStakingNodesManager.rewardsCoordinator();
-        assertEq(rewardsCoordinator.claimerFor(address(tokenStakingNodeInstance)), claimer, "Claimer not set correctly");
+        assertEq(rewardsCoordinator.claimerFor(address(_tokenStakingNodeInstance)), claimer, "Claimer not set correctly");
     }
-
 }
+

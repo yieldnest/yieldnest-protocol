@@ -14,8 +14,6 @@ contract DeployWithdrawalsProcessor is BaseYnETHScript {
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
 
-        address _broadcaster = vm.addr(deployerPrivateKey);
-
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("Current Block Number:", block.number);

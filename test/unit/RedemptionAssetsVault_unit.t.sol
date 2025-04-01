@@ -250,7 +250,7 @@ contract RedemptionAssetsVaultUnitTest is Test {
 
 
         // Get preview of claim
-        (IERC20[] memory previewAssets, uint256[] memory previewAmounts) = vault.previewClaim(claimAmount);
+        (, uint256[] memory previewAmounts) = vault.previewClaim(claimAmount);
 
         // Do actual withdrawal
         vm.prank(redeemer);

@@ -590,10 +590,6 @@ contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
 
         startAndVerifyCheckpoint(nodeId, state);
 
-        // Print withdrawableRestakedExecutionLayerGwei for each EigenPod
-        IEigenPod pod = stakingNodesManager.nodes(nodeId).eigenPod();
-        uint64 withdrawableGwei = pod.withdrawableRestakedExecutionLayerGwei();
-
         uint256 totalSlashAmount = beaconChain.MINOR_SLASH_AMOUNT_GWEI() * state.validatorCount * 1e9;
         state.totalAssetsBefore = state.totalAssetsBefore + accumulatedRewards - totalSlashAmount;
         state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] + accumulatedRewards - totalSlashAmount;

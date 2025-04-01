@@ -107,7 +107,7 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
 
         uint256 depositAmount = 32 ether;
         totalDepositedAmount = depositAmount * validatorCount;
-        address user = vm.addr(156_737);
+        user = vm.addr(156_737);
         vm.deal(user, 1000 ether);
         yneth.depositETH{value: totalDepositedAmount}(user);
 
