@@ -7,6 +7,7 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
+import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
 
 /**
  * @title GenerateYnLSDeUpgradeTxData
@@ -74,7 +75,7 @@ contract GenerateYnLSDeUpgradeTxData is BaseYnEigenScript {
         ITransparentUpgradeableProxy proxy = ITransparentUpgradeableProxy(proxyAddress);
         address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(proxy));
 
-        bytes memory data = ""; // Empty data for now, can be customized if needed
+        bytes memory data= ""; // Empty data for now, can be customized if needed
         bytes memory txData =
             abi.encodeWithSelector(ProxyAdmin.upgradeAndCall.selector, address(proxy), newImplementation, data);
 

@@ -29,8 +29,8 @@ contract DeployStakingNodesManager is BaseYnETHScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
-//   Current Block Number: 3571615
+// Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
+//   Current Block Number: 3595151
 //   Current Chain ID: 17000
-//   HoleskyStakingNodesManager Implementation: 0x47A3906DED4f477a9769eca210C3D4562C08572e
+//   HoleskyStakingNodesManager Implementation: 0x9b51f1b677F5670ED375b824f769a1db3ea783f5
 

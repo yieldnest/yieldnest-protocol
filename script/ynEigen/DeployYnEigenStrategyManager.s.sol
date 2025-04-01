@@ -29,6 +29,6 @@ contract DeployYnEigenStrategyManager is BaseYnEigenScript {
 
 // == Logs ==
 //   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
-//   Current Block Number: 3571452
+//   Current Block Number: 3595484
 //   Current Chain ID: 17000
-//   EigenStrategyManager Implementation: 0x99a108a79419c62F2Ff384cE2441b435b918a252
+//   EigenStrategyManager Implementation: 0x22f84aDBDafd2EA54f73bd8E049CBaBcb8a301CF

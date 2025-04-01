@@ -28,7 +28,7 @@ contract DeployTokenStakingNodesManager is BaseYnEigenScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
-//   Current Block Number: 3571468
+// Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
+//   Current Block Number: 3595474
 //   Current Chain ID: 17000
-//   TokenStakingNodesManager Implementation: 0x015Edc11DF33Fdb3D4e711Fe94Ec4E95F68E722a
+//   TokenStakingNodesManager Implementation: 0xB4EDF422522e6f2ED86CBA8Ff0e80fB308614b7B

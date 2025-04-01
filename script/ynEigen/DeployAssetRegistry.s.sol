@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
-import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
+import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
-contract DeployTokenStakingNode is BaseYnEigenScript {
+contract DeployAssetRegistry is BaseYnEigenScript {
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -18,9 +18,9 @@ contract DeployTokenStakingNode is BaseYnEigenScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
-        TokenStakingNode tokenStakingNodeImplementation = new TokenStakingNode();
+        AssetRegistry assetRegistryImplementation = new AssetRegistry();
 
-        console.log("TokenStakingNode Implementation:", address(tokenStakingNodeImplementation));
+        console.log("AssetRegistry Implementation:", address(assetRegistryImplementation));
 
         vm.stopBroadcast();
     }
@@ -28,7 +28,7 @@ contract DeployTokenStakingNode is BaseYnEigenScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
-//   Current Block Number: 3595480
+//  Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
+//   Current Block Number: 3595504
 //   Current Chain ID: 17000
-//   TokenStakingNode Implementation: 0xaE3e488Cd3746424E636dba3Cf2aE502e47ffb13
+//   AssetRegistry Implementation: 0x655CE6CE176B7B6341397292D93198AC4F0833aA
