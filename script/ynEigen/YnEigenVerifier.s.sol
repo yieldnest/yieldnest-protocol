@@ -82,7 +82,6 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
     function _verify() public {
         deployment = loadDeployment();
-        tempUpgradeAdvancer();
         verifyUpgradeTimelockRoles();
         verifyProxies();
         verifyProxyAdminOwners();
@@ -853,8 +852,11 @@ contract YnEigenVerifier is BaseYnEigenScript {
         uint256 totalAssets = deployment.ynEigen.totalAssets();
         console.log("totalSupply: ", totalSupply);
         console.log("totalAssets: ", totalAssets);
-        // require(totalSupply <= totalAssets, "totalSupply should be less than or equal to totalAssets");
-        console.log("\u2705 totalSupply is less than totalAssets");
+        if (totalSupply <= totalAssets) {
+            console.log("\u2705 totalSupply is less than or equal to totalAssets");
+        } else {
+            console.log("\u274C\u274C\u274C RATE WARNING: totalSupply exceeds totalAssets \u274C\u274C\u274C");            
+        }
 
         // Print totalSupply and totalAssets
         console.log(string.concat("Total Supply: ", vm.toString(totalSupply), " ynEigen (", vm.toString(totalSupply / 1e18), " units)"));
