@@ -93,9 +93,9 @@ contract Base is Test, Utils {
         //     stakingNodesManager.nodes(i).syncQueuedShares();
         //     vm.stopPrank();
         // }
-        upgradeStakingNodesManagerAndStakingNode();
-        upgradeWithdrawalsProcessor();
-        stakingNodesManager.updateTotalETHStaked();
+        // upgradeStakingNodesManagerAndStakingNode();
+        // upgradeWithdrawalsProcessor();
+        // stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts() internal {
