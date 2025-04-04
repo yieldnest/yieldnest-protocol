@@ -5,6 +5,7 @@ import {IntegrationBaseTest} from "test/integration/IntegrationBaseTest.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {NonPayableContract} from "test/utils/NonPayableContract.sol";
 import {IAccessControl} from "lib/openzeppelin-contracts/contracts/access/IAccessControl.sol";
+
 contract RewardsDistributorTest is IntegrationBaseTest {
 
 	function testSetFeeReceiver() public {
