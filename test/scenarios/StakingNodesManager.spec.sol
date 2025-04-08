@@ -63,6 +63,7 @@ contract StakingNodesManagerScenarioTest1 is IntegrationBaseTest {
         }
 
         // setup 1 validator for each stakingNode
+		// TODO: uncomment this and see why test is failing
 	    setupValidators(validatorNodeIds, user1Amount);
 
         runInvariants(user1, previousTotalDeposited, previousTotalShares, user1Amount, user1Shares, 0);

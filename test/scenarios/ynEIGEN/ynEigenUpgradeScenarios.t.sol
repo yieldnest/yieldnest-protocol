@@ -44,8 +44,9 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     modifier configure {
         // Not using chainIds.mainnet because it will be declared on assignContracts which has to be done after vm.rollFork.
         // Checking the chainId first to prevent rolling into a block number that does not exist on other chains.
-        vm.skip(block.chainid != 1);
-        vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
+        // todo: remove this skip once others are refactored
+        vm.skip(block.chainid == 1);
+        // vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
         assignContracts();
 
         withdrawalsProcessor = WithdrawalsProcessor(chainAddresses.ynEigen.WITHDRAWALS_PROCESSOR_ADDRESS);

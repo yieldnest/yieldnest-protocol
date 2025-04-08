@@ -33,9 +33,6 @@ contract YnEigenDelegationScenarioTest is ynLSDeScenarioBaseTest {
         delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
 
         tokenStakingNode = tokenStakingNodesManager.nodes(0);
-
-        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0));
     }
 
     function test_undelegate_Scenario_undelegateByOperator1() public {
