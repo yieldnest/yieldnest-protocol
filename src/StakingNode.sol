@@ -556,13 +556,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @notice Synchronizes the StakingNode's delegation state with the DelegationManager and queued shares.
      * @dev This function should be called after operator undelegate to this StakingNode or there is slashing event.
      */
-    function synchronize() public onlyDelegator {
+    function synchronize() public {
 
         syncQueuedShares();
 
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         delegatedTo = delegationManager.delegatedTo(address(this));
-        stakingNodesManager.updateTotalETHStaked();
     }
 
     //--------------------------------------------------------------------------------------
