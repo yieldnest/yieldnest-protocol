@@ -317,9 +317,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         withdrawalRoots = delegationManager.undelegate(address(this));
 
-        syncQueuedShares();
-
-        delegatedTo = address(0);
+        synchronize();
 
         emit Undelegated(operator, int256(withdrawableShares[0]));
     }
