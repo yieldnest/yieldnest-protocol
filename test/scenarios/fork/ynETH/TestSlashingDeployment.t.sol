@@ -154,7 +154,6 @@ contract SlashingDeploymentTest is Base {
     // }
 
     function test_depositAfterEigenlayerSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
-        upgradeEigenlayerContracts();
 
         vm.startPrank(user);
 
@@ -236,8 +235,6 @@ contract SlashingDeploymentTest is Base {
     }
 
     function test_depositAfterSlashingDeploymentByEigenlayerAfterUpgradeOfYnETH() public skipOnHolesky {
-        upgradeEigenlayerContracts();
-
 
         YnETHStateSnapshot memory ynethStateSnapshotBefore = takeYnETHStateSnapshot();
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();

@@ -472,7 +472,6 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         if (!_isHolesky()) {
             uint256 _ynEigenWOETHBalanceBefore = yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS);
-            // uint256 _redemptionVaultWOETHBalanceBefore = redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS);
             assertApproxEqAbs(redemptionAssetsVault.balances(chainAddresses.lsd.WOETH_ADDRESS) - _redemptionVaultWOETHBalanceBefore, _availableToWithdraw, 50, "processPrincipalWithdrawalsNoReinvest: E2");
             assertEq(yneigen.assets(chainAddresses.lsd.WOETH_ADDRESS), _ynEigenWOETHBalanceBefore, "processPrincipalWithdrawalsNoReinvest: E5");
         }
