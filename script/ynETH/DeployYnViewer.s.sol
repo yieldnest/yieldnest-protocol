@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
-import {ynViewer} from "src/YnViewer.sol";
+import {ynViewer} from "src/ynViewer.sol";
 import {console} from "lib/forge-std/src/console.sol";
 
 contract DeployYnViewer is BaseYnETHScript {
