@@ -75,84 +75,6 @@ contract SlashingDeploymentTest is Base {
         deal(address(user), 100 ether);
     }
 
-    // function test_depositBeforeEigenlayerSlashingDeployment() public skipOnHolesky {
-    //     vm.startPrank(user);
-
-    //     stakingNodesManager.updateTotalETHStaked();
-    //     YnETHStateSnapshot memory ynethStateSnapshotBefore = takeYnETHStateSnapshot();
-    //     StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();
-
-    //     uint256 depositAmount = 10 ether;
-    //     uint256 sharesBefore = yneth.balanceOf(address(this));
-    //     yneth.depositETH{value: depositAmount}(address(this));
-    //     uint256 sharesReceived = yneth.balanceOf(address(this)) - sharesBefore;
-
-    //     // Take snapshots after deposit
-    //     stakingNodesManager.updateTotalETHStaked();
-    //     YnETHStateSnapshot memory ynethStateSnapshotAfter = takeYnETHStateSnapshot();
-    //     StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotAfter = takeStakingNodesStateSnapshot();
-
-    //     assertEq(
-    //         ynethStateSnapshotAfter.totalAssets,
-    //         ynethStateSnapshotBefore.totalAssets + depositAmount,
-    //         "totalAssets not changed correctly"
-    //     );
-    //     assertEq(
-    //         ynethStateSnapshotAfter.totalSupply,
-    //         ynethStateSnapshotBefore.totalSupply + sharesReceived,
-    //         "totalSupply not changed correctly"
-    //     );
-    //     assertEq(
-    //         ynethStateSnapshotAfter.totalStakingNodes,
-    //         ynethStateSnapshotBefore.totalStakingNodes,
-    //         "totalStakingNodes changed"
-    //     );
-    //     assertEq(
-    //         ynethStateSnapshotAfter.totalDepositedInPool,
-    //         ynethStateSnapshotBefore.totalDepositedInPool + depositAmount,
-    //         "totalDepositedInPool not changed correctly"
-    //     );
-    //     assertEq(ynethStateSnapshotAfter.rate, ynethStateSnapshotBefore.rate, "rate changed");
-
-    //     for (uint256 i = 0; i < stakingNodesStateSnapshotBefore.length; i++) {
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].withdrawnETH,
-    //             stakingNodesStateSnapshotAfter[i].withdrawnETH,
-    //             "withdrawnETH changed for staking node "
-    //         );
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].unverifiedStakedETH,
-    //             stakingNodesStateSnapshotAfter[i].unverifiedStakedETH,
-    //             "unverifiedStakedETH changed for staking node "
-    //         );
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].queuedSharesAmount,
-    //             stakingNodesStateSnapshotAfter[i].queuedSharesAmount,
-    //             "queuedSharesAmount wrong for staking node "
-    //         );
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].preELIP002QueuedSharesAmount,
-    //             stakingNodesStateSnapshotAfter[i].preELIP002QueuedSharesAmount,
-    //             "queuedSharesAmount not changed to preELIP002QueuedSharesAmount for staking node "
-    //         );
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].podOwnerDepositShares,
-    //             stakingNodesStateSnapshotAfter[i].podOwnerDepositShares,
-    //             "podOwnerDepositShares wrong for staking node "
-    //         );
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].delegatedTo,
-    //             stakingNodesStateSnapshotAfter[i].delegatedTo,
-    //             "delegatedTo wrong for staking node "
-    //         );
-    //         assertEq(
-    //             stakingNodesStateSnapshotBefore[i].ethBalance,
-    //             stakingNodesStateSnapshotAfter[i].ethBalance,
-    //             "ethBalance wrong for staking node "
-    //         );
-    //     }
-    // }
-
     function test_depositAfterEigenlayerSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
 
         vm.startPrank(user);
@@ -240,7 +162,7 @@ contract SlashingDeploymentTest is Base {
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();
 
         upgradeStakingNodesManagerAndStakingNode();
-                
+        
         vm.startPrank(user);
 
         uint256 depositAmount = 10 ether;
@@ -248,7 +170,6 @@ contract SlashingDeploymentTest is Base {
         yneth.depositETH{value: depositAmount}(address(this));
         uint256 sharesReceived = yneth.balanceOf(address(this)) - sharesBefore;
 
-        stakingNodesManager.updateTotalETHStaked();
 
         YnETHStateSnapshot memory ynethStateSnapshotAfter = takeYnETHStateSnapshot();
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotAfter = takeStakingNodesStateSnapshot();
