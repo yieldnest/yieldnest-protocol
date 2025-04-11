@@ -185,6 +185,7 @@ contract YnETHScenarioTest3 is IntegrationBaseTest {
 		// Staking Node Creator Role creates the staking nodes
 		vm.prank(actors.ops.STAKING_NODE_CREATOR);
 		stakingNode = stakingNodesManager.createStakingNode();
+		stakingNode.getETHBalance();
 
 		// Create a new Validator Data object
 		validatorData = new IStakingNodesManager.ValidatorData[](1);

@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
@@ -29,11 +30,12 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
+import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 
-contract Base is Test, Utils {
+contract Base is Test, Utils, TestUpgradeUtils {
 
     bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -93,9 +95,9 @@ contract Base is Test, Utils {
         //     stakingNodesManager.nodes(i).syncQueuedShares();
         //     vm.stopPrank();
         // }
-        // upgradeStakingNodesManagerAndStakingNode();
-        // upgradeWithdrawalsProcessor();
-        // stakingNodesManager.updateTotalETHStaked();
+        upgradeStakingNodesManagerAndStakingNode();
+        upgradeWithdrawalsProcessor();
+        stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts() internal {
@@ -128,6 +130,9 @@ contract Base is Test, Utils {
             delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         }
 
+        // execute scheduled transactions for slashing upgrades
+        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+
         // deploy EigenLayer mocks
         {
             vm.warp(GENESIS_TIME_LOCAL);
@@ -139,9 +144,9 @@ contract Base is Test, Utils {
 
 
         // Upgrade StakingNodesManager
-        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+        // bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
-        address newStakingNodesManagerImpl = address(new HoleskyStakingNodesManager());
+        address newStakingNodesManagerImpl = address(new StakingNodesManager());
         // commented here because totalAssets is broken in Holesky
         // uint256 totalAssetsBefore = yneth.totalAssets();
 
@@ -149,7 +154,7 @@ contract Base is Test, Utils {
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingNodesManager)),
             newStakingNodesManagerImpl,
-            initializeV3Data
+            ""
         );
 
         assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");

@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
@@ -44,9 +45,10 @@ import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManage
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
+import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 
-contract ynEigenIntegrationBaseTest is Test, Utils {
+contract ynEigenIntegrationBaseTest is Test, Utils, TestUpgradeUtils {
 
     // State
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -111,6 +113,9 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
 
         chainIds = contractAddresses.getChainIds();
 
+        // execute scheduled transactions for slashing upgrades
+        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+
         // Setup Protocol
         setupUtils();
         setupYnEigenProxies();
@@ -121,12 +126,12 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         setupYnEigenDepositAdapter();
         
         // Upgrade StakingNode implementation with EL slashing upgrade changes
-        if (_isHolesky()) {
+        // if (_isHolesky()) {
             address newStakingNodeImplementation = address(new TokenStakingNode());
             vm.startPrank(actors.admin.STAKING_ADMIN);
             tokenStakingNodesManager.upgradeTokenStakingNode(newStakingNodeImplementation);
             vm.stopPrank();
-        }
+        // }
     }
 
     function setupYnEigenProxies() public {
@@ -282,11 +287,32 @@ contract ynEigenIntegrationBaseTest is Test, Utils {
         lsdAssets[3] = IERC20(chainAddresses.lsd.METH_ADDRESS);
         strategies[3] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
 
+        
+
         if (!_isHolesky()) {
+            // stETH
+            // We accept deposits in wstETH, and deploy to the stETH strategy
+            lsdAssets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+            strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
+
+            // rETH
+            lsdAssets[1] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+            strategies[1] = IStrategy(chainAddresses.lsdStrategies.RETH_STRATEGY_ADDRESS);
+
             // oETH
             // We accept deposits in woETH, and deploy to the oETH strategy
             lsdAssets[2] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
             strategies[2] = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
+
+            // sfrxETH
+            // We accept deposits in wsfrxETH, and deploy to the sfrxETH strategy
+            lsdAssets[3] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+            strategies[3] = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
+
+            // mETH
+            // We accept deposits in wmETH, and deploy to the mETH strategy
+            lsdAssets[4] = IERC20(chainAddresses.lsd.METH_ADDRESS);
+            strategies[4] = IStrategy(chainAddresses.lsdStrategies.METH_STRATEGY_ADDRESS);
         }
 
         for (uint i = 0; i < lsdAssets.length; i++) {

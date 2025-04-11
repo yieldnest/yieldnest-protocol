@@ -10,7 +10,7 @@ import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {StakingNode} from "src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
 import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
-import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
+import {BytesLib} from "lib/eigenlayer-contracts/src/test/utils/BytesLib.sol";
 import {EigenPod} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
 import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
 import {IEigenPodManager, IEigenPodManagerErrors} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
@@ -112,6 +112,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     address operator2 = address(0x8888);
     uint256 nodeId;
     IStakingNode stakingNodeInstance;
+    IStakingNode stakingNodeInstance2;
 
     function setUp() public override {
         super.setUp();
@@ -125,8 +126,10 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
         }
 
-        nodeId = createStakingNodes(1)[0];
-        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        uint256[] memory nodeIds = createStakingNodes(2);
+        nodeId = nodeIds[0];
+        stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+        stakingNodeInstance2 = stakingNodesManager.nodes(nodeIds[1]);
     }
 
     function testDelegateFailWhenNotAdmin() public {
@@ -179,6 +182,56 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Verify undelegation
         address delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
+    }
+
+    function testStakingNodeSynchronize() public {
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+        stakingNodeInstance2.delegate(
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+        vm.stopPrank();
+
+        // Now operator1 undelegate
+        vm.startPrank(operator1);
+        delegationManager.undelegate(address(stakingNodeInstance));
+        delegationManager.undelegate(address(stakingNodeInstance2));
+        vm.stopPrank();
+
+        // Verify undelegation
+        assertEq(delegationManager.delegatedTo(address(stakingNodeInstance)), address(0), "Delegation should be cleared after undelegation.");
+        assertEq(delegationManager.delegatedTo(address(stakingNodeInstance2)), address(0), "Delegation should be cleared after undelegation.");
+        // Verify delegatedTo is set to operator1 in the StakingNode contract
+        assertEq(
+            stakingNodeInstance.delegatedTo(),
+            operator1,
+            "StakingNode delegatedTo not set to operator1 after undelegation even if state is not synchronized"
+        );
+        assertEq(
+            stakingNodeInstance2.delegatedTo(),
+            operator1,
+            "StakingNode delegatedTo not set to operator1 after undelegation even if state is not synchronized"
+        );
+        
+        vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.synchronize();
+        stakingNodeInstance2.synchronize();
+        vm.stopPrank();
+
+        assertEq(
+            stakingNodeInstance.delegatedTo(),
+            address(0),
+            "StakingNode delegatedTo not correctly set to address(0) after synchronization"
+        );
+        assertEq(
+            stakingNodeInstance2.delegatedTo(),
+            address(0),
+            "StakingNode delegatedTo not correctly set to address(0) after synchronization"
+        );
     }
 
     function testOperatorUndelegate() public {

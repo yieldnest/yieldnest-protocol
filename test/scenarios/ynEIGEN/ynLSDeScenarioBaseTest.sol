@@ -22,14 +22,14 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {Test} from "forge-std/Test.sol";
 
-contract ynLSDeScenarioBaseTest is Test, Utils {
+contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -62,7 +62,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     IDelegationManager public delegationManager;
     StrategyManager public strategyManager;
 
-
     modifier skipOnHolesky() {
         vm.skip(_isHolesky(), "Impossible to test on Holesky");
 
@@ -75,7 +74,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
 
     function setUp() public virtual {
         assignContracts();
-        // upgradeTokenStakingNodesManagerAndTokenStakingNode();
+        upgradeTokenStakingNodesManagerAndTokenStakingNode();
     }
 
     function assignContracts() internal {
@@ -107,6 +106,9 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
         redemptionAssetsVault = RedemptionAssetsVault(chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS);
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
+
+        // execute scheduled transactions for slashing upgrades
+        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
     }
 
     function updateTokenStakingNodesBalancesForAllAssets() internal {
@@ -120,20 +122,13 @@ contract ynLSDeScenarioBaseTest is Test, Utils {
     function upgradeTokenStakingNodesManagerAndTokenStakingNode() internal {
         // Deploy new TokenStakingNode implementation
         address newTokenStakingNodeImpl = address(new TokenStakingNode());
-
-        // Upgrade TokenStakingNodesManager
-        bytes memory initializeV3Data = abi.encodeWithSelector(
-            tokenStakingNodesManager.initializeV2.selector,
-            chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS
-        );
-
         address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
 
         vm.prank(address(timelockController));
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager))).upgradeAndCall(
             ITransparentUpgradeableProxy(address(tokenStakingNodesManager)),
             newTokenStakingNodesManagerImpl,
-            initializeV3Data
+            ""
         );
 
         // Register new implementation
