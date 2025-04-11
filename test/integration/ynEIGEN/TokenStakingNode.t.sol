@@ -10,7 +10,7 @@ import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contra
 import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {TestAssetUtils} from "test/utils/TestAssetUtils.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
+import {BytesLib} from "lib/eigenlayer-contracts/src/test/utils/BytesLib.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
