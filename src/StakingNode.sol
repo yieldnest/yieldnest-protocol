@@ -133,6 +133,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     uint256 public preELIP002QueuedSharesAmount;
 
     /**
+     * @dev The amount of gwei in 1 wei
+     */
+    uint256 internal constant GWEI_TO_WEI = 1e9;
+
+    /**
      * @dev Maps a withdrawal root to the amount of shares that can be withdrawn and whether the withdrawal root is post ELIP-002 slashing upgrade.
      * This is used to track the amount of withdrawable shares that are queued for withdrawal.
      */
@@ -459,7 +464,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
 
-        if (actualWithdrawalAmount != totalWithdrawableShares) {
+        if (actualWithdrawalAmount / GWEI_TO_WEI != totalWithdrawableShares / GWEI_TO_WEI) {
             revert NotSyncedAfterSlashing();
         }
 
@@ -522,6 +527,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
         WithdrawableShareInfo storage _withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
+
+        (, uint256[] memory _singleWithdrawableShares) = delegationManager.getQueuedWithdrawal(withdrawalRoot);
+        uint256 withdrawableShares = _singleWithdrawableShares[0];
+
+        // If they are different, it means that the queued shares have not been synced. 
+        // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+        if (_withdrawableShareInfo.withdrawableShares != withdrawableShares) {
+            revert NotSyncedAfterSlashing();
+        }
 
         if (_withdrawableShareInfo.postELIP002SlashingUpgrade) {
             // If the withdrawal root queued after ELIP-002 slashing upgrade, we need to subtract the shares from queuedSharesAmount 
