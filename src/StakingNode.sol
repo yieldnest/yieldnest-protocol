@@ -77,6 +77,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error InsufficientWithdrawnETH(uint256 amount, uint256 withdrawnETH);
     error NotStakingNodesWithdrawer();
     error NotSyncedAfterSlashing();
+    error IncorrectWithdrawalAmount();
 
     error NotSynchronized();
     error AlreadySynchronized();
@@ -464,8 +465,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
 
+        // comparing the actual withdrawal amount with the total withdrawable shares
+        // comparing gwei values because eigenlayer truncates the precision to gweu
         if (actualWithdrawalAmount / GWEI_TO_WEI != totalWithdrawableShares / GWEI_TO_WEI) {
-            revert NotSyncedAfterSlashing();
+            revert IncorrectWithdrawalAmount();
         }
 
         // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
