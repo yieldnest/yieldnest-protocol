@@ -36,6 +36,7 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     IAllocationManager allocationManager;
     uint256 validatorCount = 2;
     uint256 totalDepositedAmount;
+    uint256 GWEI_TO_WEI = 1e9;
 
     function setUp() public override {
         super.setUp();
@@ -246,7 +247,7 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
                 _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
                 uint256 nodeBalanceAfterWithdrawal = address(stakingNodeInstance).balance;
                 nodeBalanceReceived = nodeBalanceAfterWithdrawal - nodeBalanceBeforeWithdrawal;
-                expectedWithdrawalAmount = withdrawalAmount.mulWad(1 ether - slashingPercent);
+                expectedWithdrawalAmount = withdrawalAmount.mulWad(1 ether - slashingPercent) / GWEI_TO_WEI * GWEI_TO_WEI;
                 assertEq(nodeBalanceReceived, expectedWithdrawalAmount, "Node's ETH balance should increase by expected withdrawal amount");
             }
         }
@@ -263,12 +264,13 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
             // Assert
             assertEq(beaconChainSlashingFactorBefore, beaconChainSlashingFactorAfter, "Beacon chain slashing factor should not change");
             assertLt(operatorMaxMagnitudeAfter, operatorMaxMagnitudeBefore, "Operator max magnitude should decrease due to slashing");
-            assertEq(finalState.totalAssets, initialState.totalAssets - slashedAmount, "Total assets should decrease by slashed amount");
+            assertApproxEqAbs(finalState.totalAssets, initialState.totalAssets - slashedAmount, GWEI_TO_WEI, "Total assets should approximately decrease by slashed amount");
             assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
-            assertEq(
+            assertApproxEqAbs(
                 finalState.stakingNodeBalance,
                 initialState.stakingNodeBalance - slashedAmount,
-                "Staking node balance should decrease by slashed amount"
+                GWEI_TO_WEI,
+                "Staking node balance should approximately decrease by slashed amount"
             );
             assertEq(
                 finalState.queuedShares,

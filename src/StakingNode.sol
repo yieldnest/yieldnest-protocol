@@ -77,6 +77,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
     error InsufficientWithdrawnETH(uint256 amount, uint256 withdrawnETH);
     error NotStakingNodesWithdrawer();
     error NotSyncedAfterSlashing();
+    error IncorrectWithdrawalAmount();
 
     error NotSynchronized();
     error AlreadySynchronized();
@@ -131,6 +132,11 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
      * @dev The amount of shares queued for withdrawal that were queued before the eigenlayer ELIP-002 upgrade
      */
     uint256 public preELIP002QueuedSharesAmount;
+
+    /**
+     * @dev The amount of gwei in 1 wei
+     */
+    uint256 internal constant GWEI_TO_WEI = 1e9;
 
     /**
      * @dev Maps a withdrawal root to the amount of shares that can be withdrawn and whether the withdrawal root is post ELIP-002 slashing upgrade.
@@ -459,8 +465,10 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         uint256 finalETHBalance = address(this).balance;
         uint256 actualWithdrawalAmount = finalETHBalance - initialETHBalance;
 
-        if (actualWithdrawalAmount != totalWithdrawableShares) {
-            revert NotSyncedAfterSlashing();
+        // comparing the actual withdrawal amount with the total withdrawable shares
+        // comparing gwei values because eigenlayer truncates the precision to gweu
+        if (actualWithdrawalAmount / GWEI_TO_WEI != totalWithdrawableShares / GWEI_TO_WEI) {
+            revert IncorrectWithdrawalAmount();
         }
 
         // Withdraw validator principal resides in the StakingNode until StakingNodesManager retrieves it.
@@ -522,6 +530,15 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
 
         bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
         WithdrawableShareInfo storage _withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
+
+        (, uint256[] memory _singleWithdrawableShares) = delegationManager.getQueuedWithdrawal(withdrawalRoot);
+        uint256 withdrawableShares = _singleWithdrawableShares[0];
+
+        // If they are different, it means that the queued shares have not been synced. 
+        // In this case, it reverts to prevent accounting issues with the queuedShares variable.
+        if (_withdrawableShareInfo.withdrawableShares != withdrawableShares) {
+            revert NotSyncedAfterSlashing();
+        }
 
         if (_withdrawableShareInfo.postELIP002SlashingUpgrade) {
             // If the withdrawal root queued after ELIP-002 slashing upgrade, we need to subtract the shares from queuedSharesAmount 
