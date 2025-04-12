@@ -191,7 +191,9 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         }
     }
 
-    function testSlashedOperatorBetweenQueuedAndCompletedWithdrawals() public {
+    function testSlashedOperatorBetweenQueuedAndCompletedWithdrawals(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -216,7 +218,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
             // Start and verify checkpoint for all validators
             startAndVerifyCheckpoint(nodeId, validatorIndices);
 
-            uint256 slashingPercent = 0.3 ether;
             {
                 IStrategy[] memory strategies = new IStrategy[](1);
                 strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
@@ -288,7 +289,9 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         }
     }
 
-    function testSlashedOperatorAfterCompletedWithdrawals() public {
+    function testSlashedOperatorAfterCompletedWithdrawals(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -315,7 +318,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         }
 
         // Perform slashing after withdrawals
-        uint256 slashingPercent = 0.3 ether;
         {
             IStrategy[] memory strategies = new IStrategy[](1);
             strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
