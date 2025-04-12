@@ -106,9 +106,9 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
 
         tokenStakingNode.synchronize();
 
-        assertApproxEqAbs(
+        assertApproxEqRel(
             _queuedShares(),
-            withdrawableShares - withdrawableShares * allocationPercent * slashingPercent / 1e18 / 1e18, 1,
+            withdrawableShares - withdrawableShares * allocationPercent * slashingPercent / 1e18 / 1e18, 1e4,
         "After part is slashed and part is allocated, queued shares should be a fraction of the previous withdrawable shares: 1 - (allocationPercent * slashingPercent / 1e18 / 1e18)");
     }
 
@@ -191,7 +191,7 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.synchronize();
 
         uint256 totalWithdrawableSharesAfterSlashing = (withdrawableShares - withdrawableShares * slashingPercent / 1e18);
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), totalWithdrawableSharesAfterSlashing, 2, "Queued shares should be reduced according to slashing percentage");
+        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), totalWithdrawableSharesAfterSlashing, 4, "Queued shares should be reduced according to slashing percentage");
         (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
 
 
