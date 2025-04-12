@@ -87,6 +87,31 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         assertApproxEqAbs(_queuedShares(), withdrawableShares - withdrawableShares / 4, 1, "After half is slashed and half is allocated, queued shares should be a quarter of the previous withdrawable shares");
     }
 
+
+    function testFuzz_QueuedSharesAreDecreased(uint64 allocationPercent, uint64 slashingPercent) public {
+
+        vm.assume(allocationPercent > 0 && allocationPercent <= 1 ether);
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
+
+        _allocate(allocationPercent);
+
+        _waitForDeallocationDelay();
+
+        (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
+        assertEq(withdrawableShares, depositShares);
+
+        _queueWithdrawal(depositShares);
+
+        _slash(slashingPercent);
+
+        tokenStakingNode.synchronize();
+
+        assertApproxEqAbs(
+            _queuedShares(),
+            withdrawableShares - withdrawableShares * allocationPercent * slashingPercent / 1e18 / 1e18, 1,
+        "After part is slashed and part is allocated, queued shares should be a fraction of the previous withdrawable shares: 1 - (allocationPercent * slashingPercent / 1e18 / 1e18)");
+    }
+
     function testCompleteFailsIfNotSynchronized() public {
         (,uint256 depositShares) = _getWithdrawableShares();
 
