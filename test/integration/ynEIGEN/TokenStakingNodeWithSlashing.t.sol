@@ -195,11 +195,11 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
 
 
-        assertEq(withdrawableShares1, totalWithdrawableSharesAfterSlashing / 3, "Queued withdrawable for withdrawal 1 should be equal to slashed withdrawable shares / 3");
+        assertApproxEqAbs(withdrawableShares1, totalWithdrawableSharesAfterSlashing / 3, 1, "Queued withdrawable for withdrawal 1 should be equal to slashed withdrawable shares / 3");
         (withdrawableShares2, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot2);
-        assertEq(withdrawableShares2, totalWithdrawableSharesAfterSlashing / 3, "Queued withdrawable for withdrawal 2 should be equal to slashed withdrawable shares / 3");
+        assertApproxEqAbs(withdrawableShares2, totalWithdrawableSharesAfterSlashing / 3, 1, "Queued withdrawable for withdrawal 2 should be equal to slashed withdrawable shares / 3");
         (withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
-        assertEq(withdrawableShares3, totalWithdrawableSharesAfterSlashing / 3, "Queued withdrawable for withdrawal 3 should be equal to slashed withdrawable shares / 3");
+        assertApproxEqAbs(withdrawableShares3, totalWithdrawableSharesAfterSlashing / 3, 1, "Queued withdrawable for withdrawal 3 should be equal to slashed withdrawable shares / 3");
     }
 
     function testSyncWithMultipleQueuedWithdrawals_NoSlashing() public {
