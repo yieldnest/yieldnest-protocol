@@ -167,7 +167,9 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         assertApproxEqAbs(withdrawableShares1, withdrawableShares - withdrawableShares * slashingPercent / 1e18, 1, "Queued withdrawable shares for withdrawal root should be equal to half of the previous withdrawable shares");
     }
 
-    function testSyncWithMultipleQueuedWithdrawals() public {
+    function testSyncWithMultipleQueuedWithdrawals(uint256 slashingPercent) public {
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
+
         (uint256 withdrawableShares, uint256 depositShares) = _getWithdrawableShares();
 
         uint256 thirdOfDepositShares = depositShares / 3;
@@ -184,17 +186,20 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         (uint256 withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
         assertEq(withdrawableShares3, withdrawableShares / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 3");
 
-        _slash(0.5 ether);
+        _slash(slashingPercent);
 
         tokenStakingNode.synchronize();
 
-        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), withdrawableShares / 2, 2, "Queued shares should be half of the previous withdrawable shares");
+        uint256 totalWithdrawableSharesAfterSlashing = (withdrawableShares - withdrawableShares * slashingPercent / 1e18);
+        assertApproxEqAbs(tokenStakingNode.queuedShares(wstETHStrategy), totalWithdrawableSharesAfterSlashing, 2, "Queued shares should be reduced according to slashing percentage");
         (withdrawableShares1, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot1);
-        assertEq(withdrawableShares1, withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 1 should be equal to withdrawable shares / 2 / 3");
+
+
+        assertEq(withdrawableShares1, totalWithdrawableSharesAfterSlashing / 3, "Queued withdrawable for withdrawal 1 should be equal to slashed withdrawable shares / 3");
         (withdrawableShares2, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot2);
-        assertEq(withdrawableShares2, withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 2 should be equal to withdrawable shares / 2 / 3");
+        assertEq(withdrawableShares2, totalWithdrawableSharesAfterSlashing / 3, "Queued withdrawable for withdrawal 2 should be equal to slashed withdrawable shares / 3");
         (withdrawableShares3, ) = tokenStakingNode.withdrawableShareInfo(queuedWithdrawalRoot3);
-        assertEq(withdrawableShares3, withdrawableShares / 2 / 3, "Queued withdrawable for withdrawal 3 should be equal to withdrawable shares / 2 / 3");
+        assertEq(withdrawableShares3, totalWithdrawableSharesAfterSlashing / 3, "Queued withdrawable for withdrawal 3 should be equal to slashed withdrawable shares / 3");
     }
 
     function testSyncWithMultipleQueuedWithdrawals_NoSlashing() public {
