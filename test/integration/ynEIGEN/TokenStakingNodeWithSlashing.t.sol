@@ -238,14 +238,17 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.synchronize();
     }
 
-    function testQueuedSharesStorageVariablesResetOnComplete() public {
+    function testQueuedSharesStorageVariablesResetOnComplete(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
+
         (,uint256 depositShares) = _getWithdrawableShares();
 
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
 
         (IDelegationManager.Withdrawal[] memory queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
 
-        _slash(0.5 ether);
+        _slash(slashingPercent);
 
         _waitForWithdrawalDelay();
 
