@@ -238,14 +238,17 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         tokenStakingNode.synchronize();
     }
 
-    function testQueuedSharesStorageVariablesResetOnComplete() public {
+    function testQueuedSharesStorageVariablesResetOnComplete(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
+
         (,uint256 depositShares) = _getWithdrawableShares();
 
         bytes32 queuedWithdrawalRoot = _queueWithdrawal(depositShares);
 
         (IDelegationManager.Withdrawal[] memory queuedWithdrawals,) = eigenLayer.delegationManager.getQueuedWithdrawals(address(tokenStakingNode));
 
-        _slash(0.5 ether);
+        _slash(slashingPercent);
 
         _waitForWithdrawalDelay();
 
@@ -438,7 +441,11 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         assertEq(queuedShares, withdrawableShares + preELIP002QueuedSharesAmount, "Queued shares should be equal to the sum of the queued shares and the pre ELIP-002 queued shares");
     }
 
-    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount_WithQueuedWithdrawals_WithHalfSlashing() public {
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount_WithQueuedWithdrawals_WithHalfSlashing(
+         uint64 slashingPercent
+    ) public {
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
+
         tokenStakingNode = ITokenStakingNode(address(new ERC1967Proxy(address(new TokenStakingNode()), "")));
 
         ITokenStakingNode.Init memory init = ITokenStakingNode.Init({
@@ -507,11 +514,11 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
 
         _queueWithdrawal(depositShares);
 
-        _slash(0.5 ether);
+        _slash(slashingPercent);
 
         tokenStakingNode.synchronize();
 
-        uint256 expectedQueuedShares = withdrawableShares / 2;
+        uint256 expectedQueuedShares = withdrawableShares * (1 ether - slashingPercent) / 1 ether;
 
         assertEq(tokenStakingNode.queuedShares(wstETHStrategy), expectedQueuedShares, "Queued shares should be equal to half of the deposit shares");
         assertEq(tokenStakingNode.preELIP002QueuedSharesAmount(wstETHStrategy), preELIP002QueuedSharesAmount, "Pre ELIP-002 queued shares should be equal to the deposit shares");
