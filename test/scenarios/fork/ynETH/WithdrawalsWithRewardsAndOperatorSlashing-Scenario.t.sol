@@ -43,7 +43,7 @@ contract WithdrawalsWithRewardsAndOperatorSlashingTest is WithdrawalsScenarioTes
     address operator2 = address(0x8888);
 
 
-    function setupAVS() internal {
+    function setupAVS(uint256 _nodeId) internal {
        avs = address(new MockAVS());
 
 
@@ -58,14 +58,12 @@ contract WithdrawalsWithRewardsAndOperatorSlashingTest is WithdrawalsScenarioTes
 
         vm.roll(block.number + 2);
 
-        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        stakingNodeInstance = stakingNodesManager.nodes(_nodeId);
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
             operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
-
-
 
 
         allocationManager = IAllocationManager(chainAddresses.eigenlayer.ALLOCATION_MANAGER_ADDRESS);
@@ -133,6 +131,8 @@ contract WithdrawalsWithRewardsAndOperatorSlashingTest is WithdrawalsScenarioTes
 
         // deposit 100 ETH into ynETH
         TestState memory state = registerVerifiedValidators(100 ether);
+
+        setupAVS(nodeId);
 
         uint256 accumulatedRewards;
         {
