@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {Math} from "lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
-
+import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {IAllocationManager, IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
@@ -12,25 +13,116 @@ import {Utils} from "script/Utils.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
-
+import {MockAVS} from "test/mocks/MockAVS.sol";
 import {WithdrawalsScenarioTestBase, IPod, IStakingNodeVars} from "./WithdrawalsScenarioTestBase.sol";
+import {stdStorage, StdStorage} from "forge-std/Test.sol";
+import {BytesLib} from "lib/eigenlayer-contracts/src/test/utils/BytesLib.sol";
+import {SlashingLib} from "lib/eigenlayer-contracts/src/contracts/libraries/SlashingLib.sol";
+import {IAllocationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
+import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
+import {StakingNode} from "src/StakingNode.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
+import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+
 
 contract WithdrawalsWithRewardsAndOperatorSlashingTest is WithdrawalsScenarioTestBase {
+    using stdStorage for StdStorage;
+    using BytesLib for bytes;
+    using SlashingLib for *;
 
     address public user = vm.addr(420);
+    address avs;
 
     uint256 public amount;
     uint40[] validatorIndices;
     uint256 public nodeId;
+    IStakingNode stakingNodeInstance;
+    IAllocationManager allocationManager;
+
+    address operator1 = address(0x9999);
+    address operator2 = address(0x8888);
+
+
+    function setupAVS() internal {
+       avs = address(new MockAVS());
+
+
+        address[] memory operators = new address[](2);
+        operators[0] = operator1;
+        operators[1] = operator2;
+
+        for (uint256 i = 0; i < operators.length; i++) {
+            vm.prank(operators[i]);
+            delegationManager.registerAsOperator(address(0),1, "ipfs://some-ipfs-hash");
+        }
+
+        vm.roll(block.number + 2);
+
+        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+
+        vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+
+
+
+
+        allocationManager = IAllocationManager(chainAddresses.eigenlayer.ALLOCATION_MANAGER_ADDRESS);
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
+        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
+        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({
+            operatorSetId: 1,
+            strategies: strategies
+        });
+    
+        vm.startPrank(avs);
+        allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
+        allocationManager.createOperatorSets(avs, createSetParams);
+        vm.stopPrank();
+
+        uint32 allocationConfigurationDelay = AllocationManagerStorage(address(allocationManager)).ALLOCATION_CONFIGURATION_DELAY();
+
+        uint32[] memory operatorSetIds = new uint32[](1); 
+        operatorSetIds[0] = uint32(1);
+        IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
+            avs: avs,
+            operatorSetIds: operatorSetIds,
+            data: ""
+        });
+        OperatorSet memory operatorSet = OperatorSet({
+            avs: avs,
+            id: 1
+        });
+        uint64[] memory newMagnitudes = new uint64[](1);
+        newMagnitudes[0] = uint64(1 ether);
+        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+            operatorSet: operatorSet,
+            strategies: strategies,
+            newMagnitudes: newMagnitudes
+        });
+    
+        vm.roll(block.number + allocationConfigurationDelay + 2);
+        vm.startPrank(operator1);
+        allocationManager.registerForOperatorSets(operator1, registerParams);
+        allocationManager.modifyAllocations(operator1, allocateParams);
+        vm.stopPrank();
+
+        vm.roll(block.number + allocationConfigurationDelay + 2);
+    }
 
     function setUp() public override {
         super.setUp();
+
+ 
     }
 
     function registerVerifiedValidators(
        uint256 totalDepositAmountInNewNode
     ) private returns (TestState memory state) {
-        (stat   e, nodeId, amount, validatorIndices) = super.registerVerifiedValidators(user, totalDepositAmountInNewNode);
+        (state, nodeId, amount, validatorIndices) = super.registerVerifiedValidators(user, totalDepositAmountInNewNode);
     }
 
     function startAndVerifyCheckpoint(uint256 _nodeId, TestState memory state) private {
