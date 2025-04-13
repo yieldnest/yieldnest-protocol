@@ -13,136 +13,28 @@ import {ContractAddresses} from "script/ContractAddresses.sol";
 import {ActorAddresses} from "script/Actors.sol";
 import {BeaconChainMock} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 
-import {WithdrawalsScenarioTestBase} from "./WithdrawalsScenarioTestBase.sol";
-
-
-interface IPod {
-    function verifyWithdrawalCredentials(uint64 beaconTimestamp, BeaconChainProofs.StateRootProof calldata stateRootProof, uint40[] calldata validatorIndices, bytes[] calldata validatorFieldsProofs, bytes32[][] calldata validatorFields) external;
-    function verifyCheckpointProofs(BeaconChainProofs.BalanceContainerProof calldata balanceContainerProof, BeaconChainProofs.BalanceProof[] calldata proofs) external;
-}
-
-interface IStakingNodeVars {
-    function queuedSharesAmount() external view returns (uint256);
-    function withdrawnETH() external view returns (uint256);
-}
+import {WithdrawalsScenarioTestBase, IPod, IStakingNodeVars} from "./WithdrawalsScenarioTestBase.sol";
 
 contract M3WithdrawalsWithRewardsTest is WithdrawalsScenarioTestBase {
 
-    address public user;
-
-    uint40 public validatorIndex;
-    uint40[] validatorIndices;
-    uint256 public nodeId;
+    address public user = vm.addr(420);
 
     uint256 public amount;
-
-    struct TestState {
-        uint256 totalAssetsBefore;
-        uint256 totalSupplyBefore;
-        uint256[] stakingNodeBalancesBefore;
-        uint256 previousYnETHRedemptionAssetsVaultBalance;
-        uint256 previousYnETHBalance;
-        uint256 validatorCount;
-    }
-
+    uint40[] validatorIndices;
+    uint256 public nodeId;
 
     function setUp() public override {
         super.setUp();
     }
 
-    function registerVerifiedValidators(uint256 totalDepositAmountInNewNode) internal returns (TestState memory state) {
-
-        amount = totalDepositAmountInNewNode;
-        // deposit entire amount
-        {
-            user = vm.addr(420);
-            vm.deal(user, amount);
-            vm.prank(user);
-            yneth.depositETH{value: amount}(user);
-        }
-
-        // Process rewards
-        rewardsDistributor.processRewards();
-
-        // create staking node
-        {
-            vm.prank(actors.ops.STAKING_NODE_CREATOR);
-            stakingNodesManager.createStakingNode();
-            nodeId = stakingNodesManager.nodesLength() - 1;
-        }
-
-        // Calculate validator count based on amount
-        uint256 validatorCount = amount / 32 ether;
-        
-        state = TestState({
-            totalAssetsBefore: yneth.totalAssets(),
-            totalSupplyBefore: yneth.totalSupply(),
-            stakingNodeBalancesBefore: getAllStakingNodeBalances(),
-            previousYnETHRedemptionAssetsVaultBalance: ynETHRedemptionAssetsVaultInstance.availableRedemptionAssets(),
-            previousYnETHBalance: address(yneth).balance,
-            validatorCount: validatorCount
-        });
-
-        // create and register validators validator
-        {
-            // Create an array of nodeIds with length equal to validatorCount
-            uint256[] memory nodeIds = new uint256[](validatorCount);
-            for (uint256 i = 0; i < validatorCount; i++) {
-                nodeIds[i] = nodeId;
-            }
-
-            // Call createValidators with the nodeIds array and validatorCount
-            validatorIndices = createValidators(nodeIds, 1);
-
-            beaconChain.advanceEpoch_NoRewards();
-
-            registerValidators(nodeIds);
-        }
-
-        state.stakingNodeBalancesBefore[nodeId] += validatorCount * 32 ether;
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
-        // verify withdrawal credentials
-        {
-
-            CredentialProofs memory _proofs = beaconChain.getCredentialProofs(validatorIndices);
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            IPod(address(stakingNodesManager.nodes(nodeId))).verifyWithdrawalCredentials({
-                beaconTimestamp: _proofs.beaconTimestamp,
-                stateRootProof: _proofs.stateRootProof,
-                validatorIndices: validatorIndices,
-                validatorFieldsProofs: _proofs.validatorFieldsProofs,
-                validatorFields: _proofs.validatorFields
-            });
-            vm.stopPrank();
-
-            // check that unverifiedStakedETH is 0 and podOwnerShares is 100 ETH (amount)
-            // _testVerifyWithdrawalCredentials();
-        }
-
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
+    function registerVerifiedValidators(
+       uint256 totalDepositAmountInNewNode
+    ) private returns (TestState memory state) {
+        (state, nodeId, amount, validatorIndices) = super.registerVerifiedValidators(user, totalDepositAmountInNewNode);
     }
 
     function startAndVerifyCheckpoint(uint256 _nodeId, TestState memory state) private {
-        // start checkpoint
-        {
-            vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(_nodeId).startCheckpoint(true);
-            vm.stopPrank();
-        }
-
-        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
-        // verify checkpoints
-        {
-            IStakingNode _node = stakingNodesManager.nodes(_nodeId);
-            CheckpointProofs memory _cpProofs = beaconChain.getCheckpointProofs(validatorIndices, _node.eigenPod().currentCheckpointTimestamp());
-            IPod(address(_node.eigenPod())).verifyCheckpointProofs({
-                balanceContainerProof: _cpProofs.balanceContainerProof,
-                proofs: _cpProofs.balanceProofs
-            });
-        }
+        super.startAndVerifyCheckpoint(_nodeId, state, validatorIndices);
     }
 
     function test_userWithdrawalWithRewards_Scenario_1() public {
