@@ -23,7 +23,6 @@ import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/c
 import {StakingNode} from "src/StakingNode.sol";
 import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
-import {console} from "forge-std/console.sol";
 
 
 contract WithdrawalsWithRewardsAndOperatorSlashingTest is WithdrawalsScenarioTestBase {
@@ -192,95 +191,92 @@ contract WithdrawalsWithRewardsAndOperatorSlashingTest is WithdrawalsScenarioTes
             state.stakingNodeBalancesBefore[nodeId] = state.stakingNodeBalancesBefore[nodeId] - totalAssetsSlashed;
         }
 
-        console.log("=== CHECKPOINT 3 ===");
-        console.log("Total Assets:", yneth.totalAssets());
-        console.log("Total Supply:", yneth.totalSupply());
-        console.log("Staking Node Balance:", stakingNodeInstance.getETHBalance());
-        console.log("Validator Count:", validatorIndices.length);
-        console.log("Accumulated Rewards:", accumulatedRewards);
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+        
+        // Calculate the total amount that would be withdrawn if no slashing occurred
+        // This includes the principal amount (32 ETH per validator) plus any accumulated rewards
+        // We need this value to properly queue withdrawals, even though the actual amount
+        // received will be reduced due to the slashing that occurred
+        uint256 unslashedWithdrawalAmount = 32 ether * validatorIndices.length + accumulatedRewards;
+        
+        uint256 withdrawnAmount = unslashedWithdrawalAmount - unslashedWithdrawalAmount * slashingPercent / 1e18;
+        // queue withdrawals
+        {
+            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
+            stakingNodesManager.nodes(nodeId).queueWithdrawals(unslashedWithdrawalAmount);
+            vm.stopPrank();
+        }
+
+        QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
+        withdrawalInfos[0] = QueuedWithdrawalInfo({
+            nodeId: nodeId,
+            withdrawnAmount: unslashedWithdrawalAmount
+        });
+        completeQueuedWithdrawals(nodeId, withdrawalInfos);
 
         runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
+        uint256 userWithdrawalAmount = 30 ether;
+        uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount - accumulatedRewards;
 
-        // uint256 withdrawnAmount = 32 ether * validatorIndices.length + accumulatedRewards;
+        {
+            IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
+            _actions[0] = IStakingNodesManager.WithdrawalAction({
+                nodeId: nodeId,
+                amountToReinvest: amountToReinvest,
+                amountToQueue: userWithdrawalAmount,
+                rewardsAmount: accumulatedRewards
+            });
+            vm.prank(actors.ops.WITHDRAWAL_MANAGER);
+            stakingNodesManager.processPrincipalWithdrawals({
+                actions: _actions
+            });
+        }
 
-        // // queue withdrawals
-        // {
-        //     vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-        //     stakingNodesManager.nodes(nodeId).queueWithdrawals(withdrawnAmount);
-        //     vm.stopPrank();
-        // }
-
-        // QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
-        // withdrawalInfos[0] = QueuedWithdrawalInfo({
-        //     nodeId: nodeId,
-        //     withdrawnAmount: withdrawnAmount
-        // });
-        // completeQueuedWithdrawals(nodeId, withdrawalInfos);
-
-        // runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
-
-        // uint256 userWithdrawalAmount = 90 ether;
-        // uint256 amountToReinvest = withdrawnAmount - userWithdrawalAmount - accumulatedRewards;
-
-        // {
-        //     IStakingNodesManager.WithdrawalAction[] memory _actions = new IStakingNodesManager.WithdrawalAction[](1);
-        //     _actions[0] = IStakingNodesManager.WithdrawalAction({
-        //         nodeId: nodeId,
-        //         amountToReinvest: amountToReinvest,
-        //         amountToQueue: userWithdrawalAmount,
-        //         rewardsAmount: accumulatedRewards
-        //     });
-        //     vm.prank(actors.ops.WITHDRAWAL_MANAGER);
-        //     stakingNodesManager.processPrincipalWithdrawals({
-        //         actions: _actions
-        //     });
-        // }
-
-        // {
-        //     // Calculate fee for accumulated rewards
-        //     uint256 feesBasisPoints = rewardsDistributor.feesBasisPoints();
-        //     uint256 _BASIS_POINTS_DENOMINATOR = 10_000; // Assuming this is the denominator used in RewardsDistributor
-        //     uint256 fees = Math.mulDiv(feesBasisPoints, accumulatedRewards, _BASIS_POINTS_DENOMINATOR);
+        {
+            // Calculate fee for accumulated rewards
+            uint256 feesBasisPoints = rewardsDistributor.feesBasisPoints();
+            uint256 _BASIS_POINTS_DENOMINATOR = 10_000; // Assuming this is the denominator used in RewardsDistributor
+            uint256 fees = Math.mulDiv(feesBasisPoints, accumulatedRewards, _BASIS_POINTS_DENOMINATOR);
             
-        //     // Fees on accumulated rewards are substracted from the totalAssets and set to feeReceiver
-        //     state.totalAssetsBefore -= fees;
-        //     // The Balance of the stakingNode decreases by the total amount withdrawn
-        //     state.stakingNodeBalancesBefore[nodeId] -= (amountToReinvest + userWithdrawalAmount + accumulatedRewards);
-        // }
+            // Fees on accumulated rewards are substracted from the totalAssets and set to feeReceiver
+            state.totalAssetsBefore -= fees;
+            // The Balance of the stakingNode decreases by the total amount withdrawn
+            state.stakingNodeBalancesBefore[nodeId] -= (amountToReinvest + userWithdrawalAmount + accumulatedRewards);
+        }
 
-        // runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
+        runSystemStateInvariants(state.totalAssetsBefore, state.totalSupplyBefore, state.stakingNodeBalancesBefore);
 
-        // // Calculate user ynETH amount to redeem
-        // uint256 userYnETHToRedeem = yneth.previewDeposit(userWithdrawalAmount);
+        // Calculate user ynETH amount to redeem
+        uint256 userYnETHToRedeem = yneth.previewDeposit(userWithdrawalAmount);
         
-        // // Ensure user has enough ynETH balance
-        // require(yneth.balanceOf(user) >= userYnETHToRedeem, "User doesn't have enough ynETH balance");
+        // Ensure user has enough ynETH balance
+        require(yneth.balanceOf(user) >= userYnETHToRedeem, "User doesn't have enough ynETH balance");
 
-        // vm.startPrank(user);
-        // yneth.approve(address(ynETHWithdrawalQueueManager), userYnETHToRedeem);
-        // uint256 _tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userYnETHToRedeem);
-        // vm.stopPrank();
+        vm.startPrank(user);
+        yneth.approve(address(ynETHWithdrawalQueueManager), userYnETHToRedeem);
+        uint256 _tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userYnETHToRedeem);
+        vm.stopPrank();
 
-        // vm.prank(actors.ops.REQUEST_FINALIZER);
-        // uint256 finalizationId = ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        uint256 finalizationId = ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(_tokenId + 1);
 
-        // uint256 userBalanceBefore = user.balance;
-        // vm.prank(user);
+        uint256 userBalanceBefore = user.balance;
+        vm.prank(user);
 
-        // ynETHWithdrawalQueueManager.claimWithdrawal(
-        //     IWithdrawalQueueManager.WithdrawalClaim({
-        //         finalizationId: finalizationId,
-        //         tokenId: _tokenId,
-        //         receiver: user
-        //     })
-        // );
-        // uint256 userBalanceAfter = user.balance;
-        // uint256 actualWithdrawnAmount = userBalanceAfter - userBalanceBefore;
-        // // Calculate expected withdrawal amount after fee
-        // uint256 withdrawalFee = ynETHWithdrawalQueueManager.withdrawalFee();
-        // uint256 expectedWithdrawnAmount = userWithdrawalAmount - (userWithdrawalAmount * withdrawalFee / ynETHWithdrawalQueueManager.FEE_PRECISION());
+        ynETHWithdrawalQueueManager.claimWithdrawal(
+            IWithdrawalQueueManager.WithdrawalClaim({
+                finalizationId: finalizationId,
+                tokenId: _tokenId,
+                receiver: user
+            })
+        );
+        uint256 userBalanceAfter = user.balance;
+        uint256 actualWithdrawnAmount = userBalanceAfter - userBalanceBefore;
+        // Calculate expected withdrawal amount after fee
+        uint256 withdrawalFee = ynETHWithdrawalQueueManager.withdrawalFee();
+        uint256 expectedWithdrawnAmount = userWithdrawalAmount - (userWithdrawalAmount * withdrawalFee / ynETHWithdrawalQueueManager.FEE_PRECISION());
         
-        // assertApproxEqAbs(actualWithdrawnAmount, expectedWithdrawnAmount, 1e9, "User did not receive expected ETH amount after fee");
+        assertApproxEqAbs(actualWithdrawnAmount, expectedWithdrawnAmount, 1e9, "User did not receive expected ETH amount after fee");
     }
 }
