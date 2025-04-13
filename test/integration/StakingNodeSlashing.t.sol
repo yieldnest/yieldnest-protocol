@@ -36,6 +36,7 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
     IAllocationManager allocationManager;
     uint256 validatorCount = 2;
     uint256 totalDepositedAmount;
+    uint256 GWEI_TO_WEI = 1e9;
 
     function setUp() public override {
         super.setUp();
@@ -123,7 +124,9 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         beaconChain.advanceEpoch_NoRewards();
     }
 
-    function testSlashedOperatorBeforeQueuedWithdrawals() public {
+    function testSlashedOperatorBeforeQueuedWithdrawals(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -134,7 +137,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         // Start and verify checkpoint for all validators
         startAndVerifyCheckpoint(nodeId, validatorIndices);
 
-        uint256 slashingPercent = 0.3 ether;
         {
             IStrategy[] memory strategies = new IStrategy[](1);
             strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
@@ -190,7 +192,9 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         }
     }
 
-    function testSlashedOperatorBetweenQueuedAndCompletedWithdrawals() public {
+    function testSlashedOperatorBetweenQueuedAndCompletedWithdrawals(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -215,7 +219,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
             // Start and verify checkpoint for all validators
             startAndVerifyCheckpoint(nodeId, validatorIndices);
 
-            uint256 slashingPercent = 0.3 ether;
             {
                 IStrategy[] memory strategies = new IStrategy[](1);
                 strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
@@ -244,7 +247,7 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
                 _completeQueuedWithdrawals(withdrawalRoots, nodeId, false);
                 uint256 nodeBalanceAfterWithdrawal = address(stakingNodeInstance).balance;
                 nodeBalanceReceived = nodeBalanceAfterWithdrawal - nodeBalanceBeforeWithdrawal;
-                expectedWithdrawalAmount = withdrawalAmount.mulWad(1 ether - slashingPercent);
+                expectedWithdrawalAmount = withdrawalAmount.mulWad(1 ether - slashingPercent) / GWEI_TO_WEI * GWEI_TO_WEI;
                 assertEq(nodeBalanceReceived, expectedWithdrawalAmount, "Node's ETH balance should increase by expected withdrawal amount");
             }
         }
@@ -261,12 +264,13 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
             // Assert
             assertEq(beaconChainSlashingFactorBefore, beaconChainSlashingFactorAfter, "Beacon chain slashing factor should not change");
             assertLt(operatorMaxMagnitudeAfter, operatorMaxMagnitudeBefore, "Operator max magnitude should decrease due to slashing");
-            assertEq(finalState.totalAssets, initialState.totalAssets - slashedAmount, "Total assets should decrease by slashed amount");
+            assertApproxEqAbs(finalState.totalAssets, initialState.totalAssets - slashedAmount, GWEI_TO_WEI, "Total assets should approximately decrease by slashed amount");
             assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
-            assertEq(
+            assertApproxEqAbs(
                 finalState.stakingNodeBalance,
                 initialState.stakingNodeBalance - slashedAmount,
-                "Staking node balance should decrease by slashed amount"
+                GWEI_TO_WEI,
+                "Staking node balance should approximately decrease by slashed amount"
             );
             assertEq(
                 finalState.queuedShares,
@@ -287,7 +291,9 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         }
     }
 
-    function testSlashedOperatorAfterCompletedWithdrawals() public {
+    function testSlashedOperatorAfterCompletedWithdrawals(uint256 slashingPercent) public {
+
+        vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
 
         // Capture initial state
         StateSnapshot memory initialState = takeSnapshot(nodeId);
@@ -314,7 +320,6 @@ contract StakingNodeOperatorSlashing is StakingNodeTestBase {
         }
 
         // Perform slashing after withdrawals
-        uint256 slashingPercent = 0.3 ether;
         {
             IStrategy[] memory strategies = new IStrategy[](1);
             strategies[0] = IStrategy(stakingNodeInstance.beaconChainETHStrategy());
