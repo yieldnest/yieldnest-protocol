@@ -52,7 +52,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         // todo: remove this skip once others are refactored
         // vm.skip(block.chainid == 1);
         // vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
-        assignContracts();
+        assignContracts(true);
 
         withdrawalsProcessor = WithdrawalsProcessor(chainAddresses.ynEigen.WITHDRAWALS_PROCESSOR_ADDRESS);
         user1 = makeAddr("user1");

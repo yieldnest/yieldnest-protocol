@@ -73,11 +73,11 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
     }
 
     function setUp() public virtual {
-        assignContracts();
+        assignContracts(true);
         upgradeTokenStakingNodesManagerAndTokenStakingNode();
     }
 
-    function assignContracts() internal {
+    function assignContracts(bool executeScheduledTransactions) internal {
         uint256 chainId = block.chainid;
 
         contractAddresses = new ContractAddresses();
@@ -108,7 +108,9 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
 
         // execute scheduled transactions for slashing upgrades
-        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        if (executeScheduledTransactions) {
+            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        }
     }
 
     function updateTokenStakingNodesBalancesForAllAssets() internal {
