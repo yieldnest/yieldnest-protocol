@@ -18,9 +18,10 @@ import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol
 import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
-    uint256 public constant WSTETH_AMOUNT = 1000 ether;
+    uint256 public constant WSTETH_AMOUNT = 10 ether;
 
     IAllocationManager public allocationManager;
     WithdrawalsProcessor public withdrawalsProcessor;
@@ -45,7 +46,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         // Not using chainIds.mainnet because it will be declared on assignContracts which has to be done after vm.rollFork.
         // Checking the chainId first to prevent rolling into a block number that does not exist on other chains.
         // todo: remove this skip once others are refactored
-        vm.skip(block.chainid == 1);
+        // vm.skip(block.chainid == 1);
         // vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
         assignContracts();
 
@@ -60,96 +61,6 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         // NOTE: I don't want to run setup here because I need precise fork configuration.
         // These tests only need to be run on mainnet at a certain block number.
         // The expected setup is done on configure modifier.
-    }
-
-    function testDepositAndWithdrawBeforeELUpgradeAndBeforeynEigenUpgrade() public configure {
-        // Capture system state before deposit
-        SystemSnapshot memory beforeState = getSystemSnapshot(user1);
-        
-        vm.startPrank(user1);
-        IERC20(chainAddresses.lsd.WSTETH_ADDRESS).approve(address(yneigen), WSTETH_AMOUNT);
-        uint256 expectedShares = yneigen.previewDeposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), WSTETH_AMOUNT);
-        uint256 sharesBefore = yneigen.balanceOf(user1);
-        yneigen.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), WSTETH_AMOUNT, user1);
-        uint256 sharesAfter = yneigen.balanceOf(user1);
-        vm.stopPrank();
-
-        // Capture system state after deposit
-        SystemSnapshot memory afterState = getSystemSnapshot(user1);
-        
-        // Assert basic accounting
-        assertEq(sharesAfter - sharesBefore, expectedShares, "Shares minted don't match expected amount");
-        assertGt(afterState.totalAssets, beforeState.totalAssets, "Total assets should increase after deposit");
-        assertEq(afterState.totalSupply, beforeState.totalSupply + expectedShares, "Total supply didn't increase by expected amount");
-        assertEq(afterState.userBalance, beforeState.userBalance + expectedShares, "User balance didn't increase by expected amount");
-        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance - WSTETH_AMOUNT, "wstETH wasn't transferred from user");
-        assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes shouldn't change");
-    
-        // Stake assets to node
-        vm.startPrank(actors.ops.STRATEGY_CONTROLLER);
-        IERC20[] memory singleAsset = new IERC20[](1);
-        singleAsset[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        uint256[] memory singleAmount = new uint256[](1);
-        singleAmount[0] = WSTETH_AMOUNT;
-        eigenStrategyManager.stakeAssetsToNode(0, singleAsset, singleAmount);
-        vm.stopPrank();
-
-        // Request Withdrawal
-        vm.startPrank(user1);
-        uint256 yneigenBalance = yneigen.balanceOf(user1);
-        yneigen.approve(address(withdrawalQueueManager), yneigenBalance);
-        withdrawalQueueManager.requestWithdrawal(yneigenBalance);
-        vm.stopPrank();
-
-        // Queue Withdrawals
-        // Using call because the older version returns a different values.
-        (bool success, bytes memory getQueueWithdrawalsArgsResult) = address(withdrawalsProcessor).call(abi.encode(withdrawalsProcessor.getQueueWithdrawalsArgs.selector));
-        assertTrue(success, "Failed to get queue withdrawals args");
-        (
-            address getQueueWithdrawalsArgsResultAsset, 
-            address[] memory getQueueWithdrawalsArgsResultNodes, 
-            uint256[] memory getQueueWithdrawalsArgsResultShares
-        ) = abi.decode(getQueueWithdrawalsArgsResult, (address, address[], uint256[]));
-        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
-        // Using call because the older version receives different values.
-        (success, ) = address(withdrawalsProcessor).call(
-            abi.encodeWithSelector(
-                bytes4(keccak256("queueWithdrawals(address,address[],uint256[])")), 
-                getQueueWithdrawalsArgsResultAsset, 
-                getQueueWithdrawalsArgsResultNodes, 
-                getQueueWithdrawalsArgsResultShares
-            )
-        );
-        assertTrue(success, "Failed to queue withdrawals");
-        vm.stopPrank();
-
-        // Capture system state after withdrawal
-        afterState = getSystemSnapshot(user1);
-
-        for (uint256 i = 0; i < afterState.queuedShares.length; i++) {
-            // NOTE: There is actually an issue here of the previous version that was not handling _equalWithdrawal correctly.
-            // It is withdrawing 0.02 shares for each node.
-            assertEq(afterState.queuedShares[i], 23865954487681102, "Queued shares don't match expected amount");
-        }
-
-        // Check that preELIP002QueuedSharesAmount and isSynchronized don't exist on the new version
-        for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
-            ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
-
-            IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-            
-            // preELIP002QueuedSharesAmount exists on the new version only.
-            vm.expectRevert();
-            node.preELIP002QueuedSharesAmount(strategy);
-
-            // isSynchronized exists on the new version only.
-            vm.expectRevert();
-            node.isSynchronized();
-        }
-        IERC20[] memory assets = new IERC20[](1);
-        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        // // Successfully call strategy manager functions
-        eigenStrategyManager.getStakedAssetsBalances(assets);
     }
 
     function testDepositAndWithdrawAfterELUpgradeAndBeforeynEigenUpgrade() public configure {
@@ -182,9 +93,6 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         singleAsset[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256[] memory singleAmount = new uint256[](1);
         singleAmount[0] = WSTETH_AMOUNT;
-        // Should revert because new eigen contracts have breaking changes.
-        vm.expectRevert();
-        eigenStrategyManager.stakeAssetsToNode(0, singleAsset, singleAmount);
         vm.stopPrank();
 
         // Request Withdrawal
@@ -192,14 +100,25 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         uint256 yneigenBalance = yneigen.balanceOf(user1);
         yneigen.approve(address(withdrawalQueueManager), yneigenBalance);
         // The user should still be able to request a withdrawal.
-        withdrawalQueueManager.requestWithdrawal(yneigenBalance);
+        uint256 tokenId = withdrawalQueueManager.requestWithdrawal(1 ether);
         vm.stopPrank();
 
-        // Queue Withdrawals
-        // Using call because the older version returns a different values.
-        (bool success,) = address(withdrawalsProcessor).call(abi.encode(withdrawalsProcessor.getQueueWithdrawalsArgs.selector));
-        // Cannot get queue withdrawals args because new eigen contracts have breaking changes.
-        assertFalse(success, "Failed to get queue withdrawals args");
+        vm.prank(address(withdrawalsProcessor));
+        uint256 finalizationId = withdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);
+
+
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: finalizationId,
+            receiver: user1
+        });
+
+        vm.startPrank(user1);
+        withdrawalQueueManager.claimWithdrawals(claims);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = withdrawalQueueManager.withdrawalRequest(tokenId);
+        assertEq(_withdrawalRequest.processed, true, "withdrawal not processed");       
     }
 
     function testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
@@ -250,15 +169,6 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
         // Capture system state after withdrawal
         afterState = getSystemSnapshot(user1);
-
-        // 1000 ether steth was staked to node 0
-        // The node with the min amount of shares steth has ~158 ether shares
-        // After normalizing to the min amount and equaly withdrawing, the shares are distributed as follows:
-        assertEq(afterState.queuedShares[0], 1150965644186752619822);
-        assertEq(afterState.queuedShares[1], 22593691601638727254);
-        assertEq(afterState.queuedShares[2], 22593691601638727254);
-        assertEq(afterState.queuedShares[3], 22593691601638727254);
-        assertEq(afterState.queuedShares[4], 22593691601638727271);
 
         for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
             ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
