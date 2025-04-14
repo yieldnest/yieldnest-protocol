@@ -82,11 +82,24 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
         uint256 _amount = 30 ether;
          if (_setup) _setupTokenStakingNode(_amount);
 
+
         _setup = false;
         _queueWithdrawalSTETH(_amount);
 
+        {
+            IERC20[] memory assets = assetRegistry.getAssets();
+            uint256 assetsLength = assets.length;
+            for (uint256 i = 0; i < assetsLength; i++) {
+                eigenStrategyManager.updateTokenStakingNodesBalances(assets[i]);
+            }
+        }
+
+
+        
         TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
         super.upgradeTokenStakingNodesManagerAndTokenStakingNode();
+                // Capture total assets before upgrade
+        uint256 totalAssetsBefore = yneigen.totalAssets();
 
         IStrategy[] memory _strategies = new IStrategy[](1);
         _strategies[0] = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
@@ -112,6 +125,21 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
+
+        // TODO: this reverts
+        // // Synchronize all nodes and update balances
+        // if (true) {
+        //     eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
+        // }
+
+        // Assert total assets remain unchanged after completing withdrawal
+        assertApproxEqAbs(
+            totalAssetsBefore,
+            yneigen.totalAssets(),
+            2,
+            "Total assets should remain roughly equal after completing withdrawal"
+        );
+
 
         uint256 preELIP002QueuedSharesAfter = tokenStakingNode.preELIP002QueuedSharesAmount(_strategy);
         uint256 queuedSharesAfter = tokenStakingNode.queuedShares(_strategy);
