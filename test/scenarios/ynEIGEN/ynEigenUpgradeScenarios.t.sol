@@ -188,8 +188,8 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     function testSynchronizeNodesAndUpdateBalancesAfterELUpgradeAndAfterYnEigenUpgrade() public configure {
         // Update token staking nodes balances before upgrade
         // sync before
+        IERC20[] memory assets = assetRegistry.getAssets();
         {
-            IERC20[] memory assets = assetRegistry.getAssets();
             uint256 assetsLength = assets.length;
             for (uint256 i = 0; i < assetsLength; i++) {
                 eigenStrategyManager.updateTokenStakingNodesBalances(assets[i]);
@@ -199,10 +199,25 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
 
+        // Verify staked assets balances before synchronization
+        uint256[] memory balancesBefore = eigenStrategyManager.getStakedAssetsBalances(assets);
+
         upgradeEigenLayerContracts();
         upgradeynEigenContracts();
 
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
+
+        // Verify staked assets balances after synchronization
+        uint256[] memory balancesAfter = eigenStrategyManager.getStakedAssetsBalances(assets);
+        
+        // Compare balances before and after synchronization
+        for (uint256 i = 0; i < assets.length; i++) {
+            assertEq(
+                balancesBefore[i], 
+                balancesAfter[i], 
+                "Staked asset balances should remain the same after synchronization"
+            );
+        }
 
         // Capture system state after upgrade and synchronization
         SystemSnapshot memory afterState = getSystemSnapshot(user1);
