@@ -153,5 +153,21 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
                 ""
             );
         }
+
+        {
+            // Deploy new AssetRegistry implementation
+            address newAssetRegistryImpl = address(new AssetRegistry());
+            
+            // Get the proxy admin for the AssetRegistry
+            address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(yneigen.assetRegistry()));
+            
+            // Upgrade the AssetRegistry implementation through the proxy admin
+            vm.prank(address(timelockController));
+            ProxyAdmin(proxyAdmin).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(yneigen.assetRegistry())),
+                newAssetRegistryImpl,
+                ""
+            );
+        }
     }
 }
