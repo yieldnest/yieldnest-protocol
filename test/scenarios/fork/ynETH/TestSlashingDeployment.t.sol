@@ -87,7 +87,7 @@ contract SlashingDeploymentTest is Base {
         YnETHStateSnapshot memory ynethStateSnapshotBefore = takeYnETHStateSnapshot();
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();
 
-        uint256 depositAmount = 10 ether;
+        uint256 depositAmount = 1 ether;
         uint256 sharesBefore = yneth.balanceOf(user);
         yneth.depositETH{value: depositAmount}(user);
         uint256 sharesReceived = yneth.balanceOf(user) - sharesBefore;
