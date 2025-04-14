@@ -25,6 +25,8 @@ import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interface
 import {IAllocationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {Base} from "./Base.t.sol";
+import {console} from "forge-std/console.sol";
+
 
 interface IOldEigenPodManager {
 
@@ -74,6 +76,14 @@ contract SlashingDeploymentTest is Base {
     function setUp() public override {
         super.assignContracts();
         deal(address(user), 100 ether);
+    }
+
+    function test_viewsRevert() public skipOnHolesky {
+        IStakingNode[] memory nodes = stakingNodesManager.getAllNodes();
+        for (uint256 i = 0; i < nodes.length; i++) {
+            vm.expectRevert();
+            nodes[i].getETHBalance();
+        }
     }
 
     function test_depositAndRequestAndClaimWithdrawalAfterELSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
@@ -328,12 +338,7 @@ contract SlashingDeploymentTest is Base {
     }
 
     function takeYnETHStateSnapshot() internal view returns (YnETHStateSnapshot memory) {
-        uint256 rate;
-        try yneth.convertToAssets(1 ether) returns (uint256 _rate) {
-            rate = _rate;
-        } catch {
-            rate = 0;
-        }
+        uint256 rate = yneth.convertToAssets(1 ether);
 
         return YnETHStateSnapshot({
             totalAssets: yneth.totalAssets(),
