@@ -235,10 +235,6 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
             ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
             assertTrue(node.isSynchronized(), "Node should be synchronized after upgrade");
-            
-            // IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-            // (uint256 queuedShares, ) = node.getQueuedSharesAndWithdrawn(strategy, IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
-            // assertGt(queuedShares, 0, "Node should have queued shares after upgrade");
         }
     }
 
