@@ -185,6 +185,45 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         eigenStrategyManager.getStakedAssetsBalances(assets);
     }
     
+    function testSynchronizeNodesAndUpdateBalancesAfterELUpgradeAndAfterYnEigenUpgrade() public configure {
+        // Update token staking nodes balances before upgrade
+        // sync before
+        {
+            IERC20[] memory assets = assetRegistry.getAssets();
+            uint256 assetsLength = assets.length;
+            for (uint256 i = 0; i < assetsLength; i++) {
+                eigenStrategyManager.updateTokenStakingNodesBalances(assets[i]);
+            }
+        }
+
+
+        SystemSnapshot memory beforeState = getSystemSnapshot(user1);
+
+        upgradeEigenLayerContracts();
+        upgradeynEigenContracts();
+
+        eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
+
+        // Capture system state after upgrade and synchronization
+        SystemSnapshot memory afterState = getSystemSnapshot(user1);
+        
+        // Compare before and after states to ensure system integrity
+        assertEq(beforeState.totalAssets, afterState.totalAssets, "Total assets should remain the same after upgrade");
+        assertEq(beforeState.totalSupply, afterState.totalSupply, "Total supply should remain the same after upgrade");
+        assertEq(beforeState.userBalance, afterState.userBalance, "User balance should remain the same after upgrade");
+        
+        // Verify nodes are properly synchronized
+        for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+            ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+            assertTrue(node.isSynchronized(), "Node should be synchronized after upgrade");
+            
+            // IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            // (uint256 queuedShares, ) = node.getQueuedSharesAndWithdrawn(strategy, IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            // assertGt(queuedShares, 0, "Node should have queued shares after upgrade");
+        }
+    }
+
+    
     function upgradeEigenLayerContracts() internal {
         allocationManager = new AllocationManager(
             delegationManager, 
