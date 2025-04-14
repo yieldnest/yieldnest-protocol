@@ -77,7 +77,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
     function setUp() public virtual {
-        assignContracts();
+        assignContracts(true);
         
         // Roles are granted here just for testing purposes.
         // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
@@ -100,7 +100,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
         stakingNodesManager.updateTotalETHStaked();
     }
 
-    function assignContracts() internal {
+    function assignContracts(bool executeScheduledTransactions) internal {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         actorAddresses = new ActorAddresses();
@@ -131,7 +131,9 @@ contract Base is Test, Utils, TestUpgradeUtils {
         }
 
         // execute scheduled transactions for slashing upgrades
-        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        if (executeScheduledTransactions) {
+            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        }
 
         // deploy EigenLayer mocks
         {

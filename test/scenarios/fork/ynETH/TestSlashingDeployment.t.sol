@@ -74,7 +74,7 @@ contract SlashingDeploymentTest is Base {
     string public version = "v1.3.0";
 
     function setUp() public override {
-        super.assignContracts();
+        super.assignContracts(true);
         deal(address(user), 100 ether);
     }
 
