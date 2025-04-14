@@ -149,6 +149,27 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
        _completeAllWithdrawals(AMOUNT);
     }
 
+    function testCompleteAllWithdrawalsAndSynchronize(bool _updateTokenStakingNodesBalances) public {
+        vm.skip(_isHolesky());
+
+       _completeAllWithdrawals(AMOUNT);
+
+        // Synchronize the token staking node after queueing withdrawals
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+        
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+        tokenStakingNode.synchronize();
+        
+        if (_updateTokenStakingNodesBalances) {
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+        }
+        
+        // Verify that total assets remain unchanged after synchronization
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalsAndSynchronize: E0");
+    }
+
     //
     // processPrincipalWithdrawals
     //
