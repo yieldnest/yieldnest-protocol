@@ -23,6 +23,7 @@ import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
 import {IAllocationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
+import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
 import {Base} from "./Base.t.sol";
 
 interface IOldEigenPodManager {
@@ -75,7 +76,7 @@ contract SlashingDeploymentTest is Base {
         deal(address(user), 100 ether);
     }
 
-    function test_depositAfterEigenlayerSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
+    function test_depositAndRequestAndClaimWithdrawalAfterELSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
 
         vm.startPrank(user);
 
@@ -87,9 +88,9 @@ contract SlashingDeploymentTest is Base {
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();
 
         uint256 depositAmount = 10 ether;
-        uint256 sharesBefore = yneth.balanceOf(address(this));
-        yneth.depositETH{value: depositAmount}(address(this));
-        uint256 sharesReceived = yneth.balanceOf(address(this)) - sharesBefore;
+        uint256 sharesBefore = yneth.balanceOf(user);
+        yneth.depositETH{value: depositAmount}(user);
+        uint256 sharesReceived = yneth.balanceOf(user) - sharesBefore;
 
         YnETHStateSnapshot memory ynethStateSnapshotAfter = takeYnETHStateSnapshot();
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotAfter = takeStakingNodesStateSnapshot();
@@ -154,9 +155,36 @@ contract SlashingDeploymentTest is Base {
             );
             assertEq(stakingNodesStateSnapshotBefore[i].ethBalance, 0, "ethBalance not reverted for staking node");
         }
+
+        uint256 userYnethBalanceBefore = yneth.balanceOf(user);
+        yneth.approve(address(ynETHWithdrawalQueueManager), userYnethBalanceBefore);
+        uint256 tokenId = ynETHWithdrawalQueueManager.requestWithdrawal(userYnethBalanceBefore);
+
+        assertEq(yneth.balanceOf(user), 0, "user yneth balance not changed correctly");
+        vm.stopPrank();
+
+        vm.prank(actors.ops.REQUEST_FINALIZER);
+        uint256 finalizationId = ynETHWithdrawalQueueManager.finalizeRequestsUpToIndex(tokenId + 1);
+
+
+        IWithdrawalQueueManager.WithdrawalClaim[] memory claims = new IWithdrawalQueueManager.WithdrawalClaim[](1);
+        claims[0] = IWithdrawalQueueManager.WithdrawalClaim({
+            tokenId: tokenId,
+            finalizationId: finalizationId,
+            receiver: user
+        });
+
+        vm.startPrank(user);
+        ynETHWithdrawalQueueManager.claimWithdrawals(claims);
+
+        IWithdrawalQueueManager.WithdrawalRequest memory _withdrawalRequest = ynETHWithdrawalQueueManager.withdrawalRequest(tokenId);
+        assertEq(_withdrawalRequest.processed, true, "withdrawal not processed");
+
+        vm.expectRevert();
+        stakingNodesManager.updateTotalETHStaked();
     }
 
-    function test_depositAfterSlashingDeploymentByEigenlayerAfterUpgradeOfYnETH() public skipOnHolesky {
+    function test_depositAfterSlashingDeploymentByELAfterUpgradeOfYnETH() public skipOnHolesky {
 
         YnETHStateSnapshot memory ynethStateSnapshotBefore = takeYnETHStateSnapshot();
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();
