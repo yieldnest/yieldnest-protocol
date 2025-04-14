@@ -133,8 +133,25 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
             ""
         );
 
+
         // Register new implementation
         vm.prank(address(timelockController));
         tokenStakingNodesManager.upgradeTokenStakingNode(newTokenStakingNodeImpl);
+
+        {
+            // Deploy new EigenStrategyManager implementation
+            address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
+            
+            // Get the proxy admin for the EigenStrategyManager
+            address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
+            
+            // Upgrade the EigenStrategyManager implementation through the proxy admin
+            vm.prank(address(timelockController));
+            ProxyAdmin(proxyAdmin).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(eigenStrategyManager)),
+                newEigenStrategyManagerImpl,
+                ""
+            );
+        }
     }
 }

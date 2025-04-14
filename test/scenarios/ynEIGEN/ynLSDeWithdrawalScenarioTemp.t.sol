@@ -78,7 +78,7 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
         queueBlockNumber = uint32(block.number);
     }
 
-    function testQueueWithdrawalBeforeELUpgradeAndCompletedAfterELAndYnUpgrade() public {
+    function testQueueWithdrawalBeforeELUpgradeAndCompletedAfterELAndYnUpgrade(bool _executeSynchronizeNodesAndUpdateBalances) public {
         uint256 _amount = 30 ether;
          if (_setup) _setupTokenStakingNode(_amount);
 
@@ -95,7 +95,6 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
         }
 
 
-        
         TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
         super.upgradeTokenStakingNodesManagerAndTokenStakingNode();
                 // Capture total assets before upgrade
@@ -126,11 +125,10 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.completeQueuedWithdrawals(withdrawal, true);
 
-        // TODO: this reverts
-        // // Synchronize all nodes and update balances
-        // if (true) {
-        //     eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
-        // }
+
+        if (_executeSynchronizeNodesAndUpdateBalances) {
+            eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
+        }
 
         // Assert total assets remain unchanged after completing withdrawal
         assertApproxEqAbs(
