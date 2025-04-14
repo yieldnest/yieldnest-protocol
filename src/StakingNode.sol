@@ -538,7 +538,7 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
             return totalWithdrawableShare;
         }
 
-
+        // If we are this point, the withdrawal root queued after ELIP-002 slashing upgrade
         (, uint256[] memory _singleWithdrawableShares) = delegationManager.getQueuedWithdrawal(withdrawalRoot);
         uint256 withdrawableShares = _singleWithdrawableShares[0];
 
