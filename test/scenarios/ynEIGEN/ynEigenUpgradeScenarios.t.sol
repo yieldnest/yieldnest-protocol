@@ -19,6 +19,10 @@ import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
+
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     uint256 public constant WSTETH_AMOUNT = 10 ether;
@@ -282,33 +286,73 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     }
 
     function upgradeynEigenContracts() internal {
-        TokenStakingNode newTokenStakingNode = new TokenStakingNode();
 
-        TokenStakingNodesManager newTokenStakingNodesManager = new TokenStakingNodesManager();
-        vm.etch(address(tokenStakingNodesManager), address(newTokenStakingNodesManager).code);
+        {
+            TokenStakingNodesManager newTokenStakingNodesManager = new TokenStakingNodesManager();
+            address tokenStakingNodesManagerImpl = address(newTokenStakingNodesManager);
+            vm.prank(address(timelockController));
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(tokenStakingNodesManager)), 
+                tokenStakingNodesManagerImpl, 
+                ""
+            );
+        }
 
-        vm.prank(address(timelockController));
-        tokenStakingNodesManager.upgradeTokenStakingNode(address(newTokenStakingNode));
-        
-        EigenStrategyManager newEigenStrategyManager = new EigenStrategyManager();
-        vm.etch(address(eigenStrategyManager), address(newEigenStrategyManager).code);
+        {
+            TokenStakingNode newTokenStakingNode = new TokenStakingNode();
+            vm.prank(address(timelockController));
+            tokenStakingNodesManager.upgradeTokenStakingNode(address(newTokenStakingNode));
+        }
 
-        WithdrawalsProcessor newWithdrawalsProcessor = new WithdrawalsProcessor(
-            address(withdrawalsProcessor.withdrawalQueueManager()),
-            address(withdrawalsProcessor.tokenStakingNodesManager()),
-            address(withdrawalsProcessor.assetRegistry()),
-            address(withdrawalsProcessor.ynStrategyManager()),
-            address(withdrawalsProcessor.delegationManager()),
-            address(withdrawalsProcessor.yneigen()),
-            address(withdrawalsProcessor.redemptionAssetsVault()),
-            address(withdrawalsProcessor.wrapper()),
-            address(withdrawalsProcessor.STETH()),
-            address(withdrawalsProcessor.WSTETH()),
-            address(withdrawalsProcessor.OETH()),
-            address(withdrawalsProcessor.WOETH())
-        );
-        vm.etch(address(withdrawalsProcessor), address(newWithdrawalsProcessor).code);
-        withdrawalsProcessor.initializeV2(address(this), 1.1 ether);
+        {
+            // Deploy new EigenStrategyManager implementation
+            address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
+            
+            // Upgrade the proxy to the new implementation
+            vm.prank(address(timelockController));
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(eigenStrategyManager)),
+                newEigenStrategyManagerImpl,
+                ""
+            );
+        }
+
+        {
+            // Deploy new AssetRegistry implementation
+            address newAssetRegistryImpl = address(new AssetRegistry());
+            
+            // Upgrade the proxy to the new implementation
+            vm.prank(address(timelockController));
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(assetRegistry))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(assetRegistry)),
+                newAssetRegistryImpl,
+                ""
+            );
+        }
+
+        {
+            WithdrawalsProcessor newWithdrawalsProcessor = new WithdrawalsProcessor(
+                address(withdrawalsProcessor.withdrawalQueueManager()),
+                address(withdrawalsProcessor.tokenStakingNodesManager()),
+                address(withdrawalsProcessor.assetRegistry()),
+                address(withdrawalsProcessor.ynStrategyManager()),
+                address(withdrawalsProcessor.delegationManager()),
+                address(withdrawalsProcessor.yneigen()),
+                address(withdrawalsProcessor.redemptionAssetsVault()),
+                address(withdrawalsProcessor.wrapper()),
+                address(withdrawalsProcessor.STETH()),
+                address(withdrawalsProcessor.WSTETH()),
+                address(withdrawalsProcessor.OETH()),
+                address(withdrawalsProcessor.WOETH())
+            );
+            vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(withdrawalsProcessor)),
+                address(newWithdrawalsProcessor),
+                ""
+            );
+            withdrawalsProcessor.initializeV2(address(this), 1.1 ether);
+        }
     }
     
     function getSystemSnapshot(address user) internal view returns (SystemSnapshot memory) {
