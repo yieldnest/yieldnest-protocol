@@ -13,8 +13,6 @@ contract DeployTokenStakingNodesManager is BaseYnEigenScript {
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
 
-        address _broadcaster = vm.addr(deployerPrivateKey);
-
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("Current Block Number:", block.number);
@@ -30,5 +28,7 @@ contract DeployTokenStakingNodesManager is BaseYnEigenScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
-//   TokenStakingNodesManager Implementation: 0x29AC770AbfA12B0AB726c5E6EB38124061747b6B
+// Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
+//   Current Block Number: 3595474
+//   Current Chain ID: 17000
+//   TokenStakingNodesManager Implementation: 0xB4EDF422522e6f2ED86CBA8Ff0e80fB308614b7B

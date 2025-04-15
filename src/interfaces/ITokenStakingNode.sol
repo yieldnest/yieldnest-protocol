@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManager.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
 import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
@@ -14,11 +14,19 @@ interface ITokenStakingNode {
         uint256 nodeId;
     }
 
+    /// @notice Information about the withdrawable shares for the withdrawal root.
+    struct WithdrawableShareInfo {
+        uint256 withdrawableShares; // amount of shares that can be withdrawn for the withdrawal root
+        bool postELIP002SlashingUpgrade; // whether the withdrawal root is post ELIP-002 slashing upgrade
+    }
+
     function nodeId() external returns (uint256);
 
     function initialize(Init calldata init) external;
 
     function initializeV2() external;
+
+    function initializeV3() external;
 
     function depositAssetsToEigenlayer(IERC20[] memory assets, uint256[] memory amounts, IStrategy[] memory strategies)
         external;
@@ -29,7 +37,7 @@ interface ITokenStakingNode {
 
     function getInitializedVersion() external view returns (uint64);
 
-    function delegate(address operator, ISignatureUtils.SignatureWithExpiry memory signature, bytes32 approverSalt)
+    function delegate(address operator, ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature, bytes32 approverSalt)
         external;
 
     function undelegate() external returns (bytes32[] memory withdrawalRoots);
@@ -40,31 +48,27 @@ interface ITokenStakingNode {
         returns (bytes32[] memory _fullWithdrawalRoots);
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal calldata withdrawal,
-        uint256 middlewareTimesIndex,
         bool updateTokenStakingNodesBalances
     ) external;
 
     function completeQueuedWithdrawals(
         IDelegationManager.Withdrawal[] memory withdrawals,
-        uint256[] memory middlewareTimesIndexes,
         bool updateTokenStakingNodesBalances
     ) external;
 
     function completeQueuedWithdrawalsAsShares(
-        IDelegationManager.Withdrawal[] calldata withdrawals,
-        uint256[] calldata middlewareTimesIndexes
+        IDelegationManager.Withdrawal[] calldata withdrawals
     ) external;
 
     function deallocateTokens(IERC20 _token, uint256 _amount) external;
 
-    function synchronize(
-        uint256[] calldata queuedSharesAmounts,
-        uint32 lastQueuedWithdrawalBlockNumber,
-        IStrategy[] calldata strategies
-    ) external;
+    function synchronize() external;
 
     function queuedShares(IStrategy _strategy) external view returns (uint256);
     function withdrawn(IERC20 _token) external view returns (uint256);
+    function withdrawableShareInfo(bytes32 _withdrawalRoot) external view returns (uint256, bool);
+    function preELIP002QueuedSharesAmount(IStrategy _strategy) external view returns (uint256);
+    function getWithdrawableShares(IStrategy _strategy) external view returns (uint256);
 
     /**
      * @notice Checks if the StakingNode's delegation state is synced with the DelegationManager.

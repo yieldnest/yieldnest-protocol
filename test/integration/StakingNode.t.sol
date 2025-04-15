@@ -2,36 +2,29 @@
 pragma solidity ^0.8.24;
 
 import {UpgradeableBeacon} from "lib/openzeppelin-contracts/contracts/proxy/beacon/UpgradeableBeacon.sol";
-import {OwnableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/OwnableUpgradeable.sol";
-import {Ownable} from "lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces/IPausable.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
-import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {StakingNode} from "src/StakingNode.sol";
 import {stdStorage, StdStorage} from "forge-std/Test.sol";
-import {ISignatureUtils} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtils.sol";
-import {BytesLib} from "lib/eigenlayer-contracts/src/contracts/libraries/BytesLib.sol";
+import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
+import {BytesLib} from "lib/eigenlayer-contracts/src/test/utils/BytesLib.sol";
 import {EigenPod} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPod.sol";
 import {EigenPodManager} from "lib/eigenlayer-contracts/src/contracts/pods/EigenPodManager.sol";
-import {IETHPOSDeposit} from "lib/eigenlayer-contracts/src/contracts/interfaces/IETHPOSDeposit.sol";
-import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
-import {TransparentUpgradeableProxy} from
-    "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {
-    BeaconChainMock,
-    CheckpointProofs,
-    CredentialProofs
-} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
+import {IEigenPodManager, IEigenPodManagerErrors} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
+import {IEigenPod, IEigenPodErrors} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 import {BeaconChainProofs} from "lib/eigenlayer-contracts/src/contracts/libraries/BeaconChainProofs.sol";
-import {ProofParsingV1} from "test/eigenlayer-utils/ProofParsingV1.sol";
-import {Utils} from "script/Utils.sol";
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {StakingNodeTestBase, IEigenPodSimplified} from "./StakingNodeTestBase.sol";
+import {CheckpointProofs, CredentialProofs} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 import {IRewardsCoordinator} from "lib/eigenlayer-contracts/src/contracts/interfaces/IRewardsCoordinator.sol";
+import {SlashingLib} from "lib/eigenlayer-contracts/src/contracts/libraries/SlashingLib.sol";
+import {IAllocationManager, IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
+import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
+import {MockAVS} from "test/mocks/MockAVS.sol";
 
 contract StakingNodeEigenPod is StakingNodeTestBase {
 
@@ -53,14 +46,16 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         // TODO: double check this is the desired state for a pod.
         // we can't delegate on mainnet at this time so one should be able to farm points without delegating
         assertEq(eigenPodInstance.withdrawableRestakedExecutionLayerGwei(), 0, "Restaked Gwei should be 0");
+        // Rewards given to each validator during epoch processing
         assertEq(address(eigenPodManager), address(eigenPodInstance.eigenPodManager()), "EigenPodManager should match");
         assertEq(eigenPodInstance.podOwner(), address(stakingNodeInstance), "Pod owner address does not match");
-
+ 
         address payable eigenPodAddress = payable(address(eigenPodInstance));
+
         // Get initial pod owner shares
-        int256 initialPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        int256 initialpodOwnerDepositShares = eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance));
         // Assert that initial pod owner shares are 0
-        assertEq(initialPodOwnerShares, 0, "Initial pod owner shares should be 0");
+        assertEq(initialpodOwnerDepositShares, 0, "Initial pod owner shares should be 0");
 
         // simulate ETH entering the pod by direct transfer as non-beacon chain ETH
         uint256 rewardsSweeped = 1 ether;
@@ -69,7 +64,7 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         require(success, "Failed to send rewards to EigenPod");
 
         // Assert that pod owner shares remain the same
-        assertEq(initialPodOwnerShares, 0, "Pod owner shares should not change");
+        assertEq(initialpodOwnerDepositShares, 0, "Pod owner shares should not change");
     }
 
     function testCreateNodeVerifyPodStateAndCheckpoint() public {
@@ -98,9 +93,9 @@ contract StakingNodeEigenPod is StakingNodeTestBase {
         // Checkpoint ends since no active validators are here
 
         // Get final pod owner shares
-        int256 finalPodOwnerShares = eigenPodManager.podOwnerShares(address(stakingNodeInstance));
+        int256 finalpodOwnerDepositShares = eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance));
         // Assert that the increase matches the swept rewards
-        assertEq(uint256(finalPodOwnerShares), rewardsSweeped, "Pod owner shares increase should match swept rewards");
+        assertEq(uint256(finalpodOwnerDepositShares), rewardsSweeped, "Pod owner shares increase should match swept rewards");
     }
 
 }
@@ -117,6 +112,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     address operator2 = address(0x8888);
     uint256 nodeId;
     IStakingNode stakingNodeInstance;
+    IStakingNode stakingNodeInstance2;
 
     function setUp() public override {
         super.setUp();
@@ -127,24 +123,19 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         for (uint256 i = 0; i < operators.length; i++) {
             vm.prank(operators[i]);
-            delegationManager.registerAsOperator(
-                IDelegationManager.OperatorDetails({
-                    __deprecated_earningsReceiver: address(1),
-                    delegationApprover: address(0),
-                    stakerOptOutWindowBlocks: 1
-                }),
-                "ipfs://some-ipfs-hash"
-            );
+            delegationManager.registerAsOperator(address(0),0, "ipfs://some-ipfs-hash");
         }
 
-        nodeId = createStakingNodes(1)[0];
-        stakingNodeInstance = stakingNodesManager.nodes(nodeId);
+        uint256[] memory nodeIds = createStakingNodes(2);
+        nodeId = nodeIds[0];
+        stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
+        stakingNodeInstance2 = stakingNodesManager.nodes(nodeIds[1]);
     }
 
     function testDelegateFailWhenNotAdmin() public {
         vm.expectRevert();
         stakingNodeInstance.delegate(
-            address(this), ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            address(this), ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
     }
 
@@ -156,7 +147,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -173,7 +164,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // // Attempt to undelegate with the wrong role
@@ -193,6 +184,56 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         assertEq(delegatedAddress, address(0), "Delegation should be cleared after undelegation.");
     }
 
+    function testStakingNodeSynchronize() public {
+        IDelegationManager delegationManager = stakingNodesManager.delegationManager();
+
+        vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.delegate(
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+        stakingNodeInstance2.delegate(
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+        );
+        vm.stopPrank();
+
+        // Now operator1 undelegate
+        vm.startPrank(operator1);
+        delegationManager.undelegate(address(stakingNodeInstance));
+        delegationManager.undelegate(address(stakingNodeInstance2));
+        vm.stopPrank();
+
+        // Verify undelegation
+        assertEq(delegationManager.delegatedTo(address(stakingNodeInstance)), address(0), "Delegation should be cleared after undelegation.");
+        assertEq(delegationManager.delegatedTo(address(stakingNodeInstance2)), address(0), "Delegation should be cleared after undelegation.");
+        // Verify delegatedTo is set to operator1 in the StakingNode contract
+        assertEq(
+            stakingNodeInstance.delegatedTo(),
+            operator1,
+            "StakingNode delegatedTo not set to operator1 after undelegation even if state is not synchronized"
+        );
+        assertEq(
+            stakingNodeInstance2.delegatedTo(),
+            operator1,
+            "StakingNode delegatedTo not set to operator1 after undelegation even if state is not synchronized"
+        );
+        
+        vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
+        stakingNodeInstance.synchronize();
+        stakingNodeInstance2.synchronize();
+        vm.stopPrank();
+
+        assertEq(
+            stakingNodeInstance.delegatedTo(),
+            address(0),
+            "StakingNode delegatedTo not correctly set to address(0) after synchronization"
+        );
+        assertEq(
+            stakingNodeInstance2.delegatedTo(),
+            address(0),
+            "StakingNode delegatedTo not correctly set to address(0) after synchronization"
+        );
+    }
+
     function testOperatorUndelegate() public {
         IDelegationManager delegationManager = stakingNodesManager.delegationManager();
         IPausable pauseDelegationManager = IPausable(address(delegationManager));
@@ -203,7 +244,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // // Attempt to undelegate with the wrong role
@@ -239,7 +280,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         vm.expectRevert();
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         vm.expectRevert();
@@ -252,11 +293,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.expectRevert();
         vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.completeQueuedWithdrawals(new IDelegationManager.Withdrawal[](1), new uint256[](1));
+        stakingNodeInstance.completeQueuedWithdrawals(new IDelegationManager.Withdrawal[](1));
 
         vm.expectRevert();
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-        stakingNodeInstance.completeQueuedWithdrawalsAsShares(new IDelegationManager.Withdrawal[](1), new uint256[](1));
+        stakingNodeInstance.completeQueuedWithdrawalsAsShares(new IDelegationManager.Withdrawal[](1));
     }
 
     function testDelegateUndelegateAndDelegateAgain() public {
@@ -265,7 +306,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -281,7 +322,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -305,14 +346,17 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -361,23 +405,23 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
 
         // Get initial total assets
         uint256 initialTotalAssets = yneth.totalAssets();
-
-        // Undelegate
-        uint32 undelegateBlockNumber = uint32(block.number);
 
         {
             // Get initial queued shares
@@ -410,25 +454,22 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // Synchronize
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.synchronize(32 ether * validatorIndices.length, undelegateBlockNumber);
+            stakingNodeInstance.synchronize();
 
             // Verify total assets stayed the same
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
 
             {
-                IStrategy[] memory strategies = new IStrategy[](1);
+                strategies = new IStrategy[](1);
                 strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
             {
-                uint256[] memory middlewareTimesIndexes = new uint256[](calculatedWithdrawals.length);
-                // all is zeroed out by default
-                middlewareTimesIndexes[0] = 0;
                 vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals, middlewareTimesIndexes);
+                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
             }
 
             finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
@@ -459,23 +500,23 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
 
         // Get initial total assets
         uint256 initialTotalAssets = yneth.totalAssets();
-
-        // Undelegate
-        uint32 undelegateBlockNumber = uint32(block.number);
 
         {
             // Get initial queued shares
@@ -508,25 +549,22 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // Synchronize
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.synchronize(32 ether * validatorIndices.length, undelegateBlockNumber);
+            stakingNodeInstance.synchronize();
 
             // Verify total assets stayed the same
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
 
             {
-                IStrategy[] memory strategies = new IStrategy[](1);
+                strategies = new IStrategy[](1);
                 strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
                 // advance time to allow completion
-                vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+                vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             }
 
             // complete queued withdrawals
             {
-                uint256[] memory middlewareTimesIndexes = new uint256[](calculatedWithdrawals.length);
-                // all is zeroed out by default
-                middlewareTimesIndexes[0] = 0;
                 vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals, middlewareTimesIndexes);
+                stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
             }
 
             finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
@@ -541,7 +579,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -572,14 +610,17 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator1
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator1 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator1, operator1, "Delegation is not set to operator1.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator1, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator1, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -587,8 +628,6 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Get initial total assets
         uint256 initialTotalAssets = yneth.totalAssets();
 
-        // Undelegate
-        uint32 undelegateBlockNumber = uint32(block.number);
         IDelegationManager.Withdrawal[] memory calculatedWithdrawals;
 
         {
@@ -621,7 +660,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
             // Synchronize
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.synchronize(32 ether * validatorIndices.length, undelegateBlockNumber);
+            stakingNodeInstance.synchronize();
 
             // Verify total assets stayed the same
             assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after synchronization");
@@ -632,7 +671,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         delegatedAddress = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -643,23 +682,20 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         );
 
         {
-            IStrategy[] memory strategies = new IStrategy[](1);
+            strategies = new IStrategy[](1);
             strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
             // advance time to allow completion
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
         }
 
         // complete queued withdrawals
         {
-            uint256[] memory middlewareTimesIndexes = new uint256[](calculatedWithdrawals.length);
-            // all is zeroed out by default
-            middlewareTimesIndexes[0] = 0;
             vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
-            stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals, middlewareTimesIndexes);
-        }
+            stakingNodeInstance.completeQueuedWithdrawalsAsShares(calculatedWithdrawals);
 
-        uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
-        assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0 after withdrawal");
+            uint256 finalQueuedShares = stakingNodeInstance.getQueuedSharesAmount();
+            assertEq(finalQueuedShares, 0, "Queued shares should decrease to 0 after withdrawal");
+        }
 
         // Verify total assets stayed the same
         assertEq(yneth.totalAssets(), initialTotalAssets, "Total assets should not change after withdrawal");
@@ -686,7 +722,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // Verify total assets stayed the same after delegation to operator2
@@ -697,8 +733,11 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
         assertEq(delegatedOperator2, operator2, "Delegation is not set to operator2.");
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator2, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator2, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
@@ -717,7 +756,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
         // Delegate to operator2
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator2, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator2, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         address delegatedOperator2 = delegationManager.delegatedTo(address(stakingNodeInstance));
@@ -728,7 +767,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             yneth.totalAssets(), initialTotalAssets, "Total assets should not change after delegation to operator2"
         );
 
-        assertEq(eigenPodManager.podOwnerShares(address(stakingNodeInstance)), 0, "Pod owner shares should be 0");
+        assertEq(eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance)), 0, "Pod owner shares should be 0");
 
         _completeQueuedWithdrawalsAsShares(queuedWithdrawals, nodeId, initialOperator);
 
@@ -739,14 +778,17 @@ contract StakingNodeDelegation is StakingNodeTestBase {
             "Total assets should not change after completing queued withdrawals"
         );
 
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = stakingNodeInstance.beaconChainETHStrategy();
+
         assertEq(
-            delegationManager.operatorShares(operator2, stakingNodeInstance.beaconChainETHStrategy()),
+            delegationManager.getOperatorShares(operator2, strategies)[0],
             32 ether * validatorIndices.length,
             "Operator shares should be 32 ETH per validator"
         );
 
         assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodeInstance)),
+            eigenPodManager.podOwnerDepositShares(address(stakingNodeInstance)),
             int256(32 ether * validatorIndices.length),
             "Pod owner shares should be 32 ETH per validator"
         );
@@ -755,7 +797,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
     function testSetClaimer() public {
         vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
         stakingNodeInstance.delegate(
-            operator1, ISignatureUtils.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
+            operator1, ISignatureUtilsMixinTypes.SignatureWithExpiry({signature: "", expiry: 0}), bytes32(0)
         );
 
         // Create a claimer address
@@ -776,7 +818,7 @@ contract StakingNodeDelegation is StakingNodeTestBase {
 
     function testImplementViewFunction() public {
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
-        IStakingNode stakingNodeInstance = stakingNodesManager.createStakingNode();
+        stakingNodeInstance = stakingNodesManager.createStakingNode();
         address expectedImplementation = address(stakingNodesManager.upgradeableBeacon().implementation());
         assertEq(stakingNodeInstance.implementation(), expectedImplementation, "Implementation address mismatch");
     }
@@ -831,7 +873,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         // Additional checks
         assertEq(afterVerification.unverifiedStakedETH, 0, "Unverified staked ETH should be 0 after verification");
         assertEq(
-            uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))),
+            uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))),
             AMOUNT,
             "Pod owner shares should equal AMOUNT"
         );
@@ -856,9 +898,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         CredentialProofs memory _proofs = beaconChain.getCredentialProofs(_validators);
         vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
         IEigenPodSimplified node = IEigenPodSimplified(address(stakingNodesManager.nodes(nodeId)));
-        vm.expectRevert(
-            "EigenPod._verifyWithdrawalCredentials: validator must be inactive to prove withdrawal credentials"
-        );
+        vm.expectRevert(IEigenPodErrors.CredentialsAlreadyVerified.selector);
         node.verifyWithdrawalCredentials({
             beaconTimestamp: _proofs.beaconTimestamp,
             stateRootProof: _proofs.stateRootProof,
@@ -881,10 +921,10 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         {
             _verifyWithdrawalCredentials(nodeId, validatorIndex);
 
-            // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
+            // check that unverifiedStakedETH is 0 and podOwnerDepositShares is 32 ETH (AMOUNT)
             assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
             assertEq(
-                uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))),
+                uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))),
                 AMOUNT,
                 "_testVerifyWithdrawalCredentials: E1"
             );
@@ -902,7 +942,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             // make sure startCheckpoint cant be called again, which means that the checkpoint has started
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
-            vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+            vm.expectRevert(IEigenPodErrors.CheckpointAlreadyActive.selector);
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
             _node.startCheckpoint(true);
         }
@@ -943,20 +983,22 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
             CheckpointProofs memory _cpProofs =
                 beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
+            uint256 _currentCheckpointTimestampBefore = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
             IEigenPodSimplified(address(_node.eigenPod())).verifyCheckpointProofs({
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
-
+            uint256 _currentCheckpointTimestampAfter = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
+            uint256 _lastCheckpointTimestamp = stakingNodesManager.nodes(nodeId).eigenPod().lastCheckpointTimestamp();
             // check that proofsRemaining is 0
-            IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
-            assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+            assertEq(_currentCheckpointTimestampAfter, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+            assertEq(_lastCheckpointTimestamp, _currentCheckpointTimestampBefore, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
 
             stakingNodesManager.updateTotalETHStaked();
 
             // Assert that node balance and shares increased by the amount of rewards
             StateSnapshot memory afterVerification = takeSnapshot(nodeId);
-            uint256 rewardsAmount = uint256(afterVerification.podOwnerShares - initialState.podOwnerShares);
+            uint256 rewardsAmount = uint256(afterVerification.podOwnerDepositShares - initialState.podOwnerDepositShares);
             // Calculate expected rewards for one epoch
             uint256 expectedRewards = 1 * 1 * 1e9; // 1 GWEI per Epoch per Validator;
             assertApproxEqAbs(
@@ -1004,10 +1046,10 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
                 _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
             }
 
-            // check that unverifiedStakedETH is 0 and podOwnerShares is 32 ETH (AMOUNT)
+            // check that unverifiedStakedETH is 0 and podOwnerDepositShares is 32 ETH (AMOUNT)
             assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
             assertEq(
-                uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))),
+                uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))),
                 AMOUNT * validatorCount,
                 "_testVerifyWithdrawalCredentials: E1"
             );
@@ -1035,7 +1077,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
 
             // make sure startCheckpoint cant be called again, which means that the checkpoint has started
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
-            vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+            vm.expectRevert(IEigenPodErrors.CheckpointAlreadyActive.selector);
             vm.prank(actors.ops.STAKING_NODES_OPERATOR);
             _node.startCheckpoint(true);
         }
@@ -1071,8 +1113,8 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             "Unverified staked ETH should not change after starting checkpoint"
         );
         assertEq(
-            afterStart.podOwnerShares,
-            beforeStart.podOwnerShares,
+            afterStart.podOwnerDepositShares,
+            beforeStart.podOwnerDepositShares,
             "Pod owner shares should not change after starting checkpoint"
         );
 
@@ -1082,6 +1124,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
             IStakingNode _node = stakingNodesManager.nodes(nodeId);
             CheckpointProofs memory _cpProofs =
                 beaconChain.getCheckpointProofs(_validators, _node.eigenPod().currentCheckpointTimestamp());
+            uint256 _currentCheckpointTimestampBefore = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
             IEigenPodSimplified(address(_node.eigenPod())).verifyCheckpointProofs({
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
@@ -1122,345 +1165,21 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
                 "Unverified staked ETH should not change after verifying checkpoint"
             );
             assertGe(
-                afterVerify.podOwnerShares,
-                afterStart.podOwnerShares,
+                afterVerify.podOwnerDepositShares,
+                afterStart.podOwnerDepositShares,
                 "Pod owner shares should not decrease after verifying checkpoint"
             );
 
-            IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
-            assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+            uint256 _currentCheckpointTimestampAfter = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
+            uint256 _lastCheckpointTimestamp = stakingNodesManager.nodes(nodeId).eigenPod().lastCheckpointTimestamp();
+            assertEq(_currentCheckpointTimestampAfter, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+            assertEq(_lastCheckpointTimestamp, _currentCheckpointTimestampBefore, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
             assertApproxEqAbs(
-                uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))),
+                uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))),
                 AMOUNT * validatorCount,
                 1_000_000_000,
-                "_testVerifyCheckpointsBeforeWithdrawalRequest: E1"
+                "_testVerifyCheckpointsBeforeWithdrawalRequest: E2"
             );
         }
     }
-
-}
-
-contract StakingNodeWithdrawals is StakingNodeTestBase {
-
-    function testQueueWithdrawals() public {
-        // Setup
-        uint256 depositAmount = 32 ether;
-        address user = vm.addr(156_737);
-        vm.deal(user, 1000 ether);
-        yneth.depositETH{value: depositAmount}(user);
-
-        uint256[] memory nodeIds = createStakingNodes(1);
-        uint256 nodeId = nodeIds[0];
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
-
-        // Create and register a validator
-        uint40[] memory validatorIndices = createValidators(repeat(nodeIds[0], 1), 1);
-
-        registerValidators(repeat(nodeIds[0], 1));
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Verify withdrawal credentials
-        _verifyWithdrawalCredentials(nodeIds[0], validatorIndices[0]);
-
-        // Simulate some rewards
-        beaconChain.advanceEpoch();
-
-        uint40[] memory _validators = new uint40[](1);
-        _validators[0] = validatorIndices[0];
-
-        startAndVerifyCheckpoint(nodeId, _validators);
-
-        // Get initial state
-        StateSnapshot memory initialState = takeSnapshot(nodeIds[0]);
-
-        // Queue withdrawals
-        uint256 withdrawalAmount = 1 ether;
-        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-
-        // Get final state
-        StateSnapshot memory finalState = takeSnapshot(nodeIds[0]);
-
-        // Assert
-        assertEq(finalState.totalAssets, initialState.totalAssets, "Total assets should remain unchanged");
-        assertEq(finalState.totalSupply, initialState.totalSupply, "Total supply should remain unchanged");
-        assertEq(
-            finalState.stakingNodeBalance,
-            initialState.stakingNodeBalance,
-            "Staking node balance should remain unchanged"
-        );
-        assertEq(
-            finalState.queuedShares,
-            initialState.queuedShares + withdrawalAmount,
-            "Queued shares should increase by withdrawal amount"
-        );
-        assertEq(finalState.withdrawnETH, initialState.withdrawnETH, "Withdrawn ETH should remain unchanged");
-        assertEq(
-            finalState.unverifiedStakedETH,
-            initialState.unverifiedStakedETH,
-            "Unverified staked ETH should remain unchanged"
-        );
-        assertEq(
-            finalState.podOwnerShares,
-            initialState.podOwnerShares - int256(withdrawalAmount),
-            "Pod owner shares should decrease by withdrawalAmount"
-        );
-    }
-
-    function testQueueWithdrawalsFailsWhenNotAdmin() public {
-        uint256[] memory nodeIds = createStakingNodes(1);
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
-
-        uint256 withdrawalAmount = 1 ether;
-        vm.prank(address(0x1234567890123456789012345678901234567890));
-        vm.expectRevert(StakingNode.NotStakingNodesWithdrawer.selector);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-    }
-
-    function testQueueWithdrawalsFailsWhenInsufficientBalance() public {
-        uint256[] memory nodeIds = createStakingNodes(1);
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeIds[0]);
-
-        uint256 withdrawalAmount = 100 ether; // Assuming this is more than the node's balance
-        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        vm.expectRevert("EigenPodManager.removeShares: cannot result in pod owner having negative shares");
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-    }
-
-    function testCompleteQueuedWithdrawalsWithMultipleValidators() public {
-        // Setup
-        uint256 validatorCount = 2;
-        uint256 depositAmount = 32 ether;
-        address user = vm.addr(156_737);
-        vm.deal(user, 1000 ether);
-        yneth.depositETH{value: depositAmount * validatorCount}(user); // Deposit for validators
-
-        uint256[] memory nodeIds = createStakingNodes(1);
-        uint256 nodeId = nodeIds[0];
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-
-        // Setup: Create multiple validators and verify withdrawal credentials
-        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
-        beaconChain.advanceEpoch_NoRewards();
-        registerValidators(repeat(nodeId, validatorCount));
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        for (uint256 i = 0; i < validatorCount; i++) {
-            _verifyWithdrawalCredentials(nodeIds[0], validatorIndices[i]);
-        }
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Exit some validators
-        uint256 exitedValidatorCount = 1;
-        for (uint256 i = 0; i < exitedValidatorCount; i++) {
-            beaconChain.exitValidator(validatorIndices[i]);
-        }
-
-        // Advance the beacon chain by one epoch without rewards
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Start and verify checkpoint for all validators
-        startAndVerifyCheckpoint(nodeId, validatorIndices);
-
-        // Queue withdrawals for exited validators
-        uint256 withdrawalAmount = 32 ether * exitedValidatorCount;
-        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-
-        // Capture initial state
-        StateSnapshot memory before = takeSnapshot(nodeIds[0]);
-
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
-        queuedWithdrawals[0] = QueuedWithdrawalInfo({withdrawnAmount: withdrawalAmount});
-        _completeQueuedWithdrawals(queuedWithdrawals, nodeIds[0]);
-
-        // Capture final state
-        StateSnapshot memory afterCompletion = takeSnapshot(nodeIds[0]);
-
-        // Assertions
-        assertEq(afterCompletion.queuedShares, before.queuedShares - withdrawalAmount, "Queued shares should decrease");
-        assertEq(afterCompletion.withdrawnETH, before.withdrawnETH + withdrawalAmount, "Withdrawn ETH should increase");
-        assertEq(afterCompletion.podOwnerShares, before.podOwnerShares, "Pod owner shares should remain unchanged");
-        assertEq(
-            afterCompletion.stakingNodeBalance,
-            before.stakingNodeBalance,
-            "Staking node balance should remain unchanged"
-        );
-    }
-
-    function testCompleteQueuedWithdrawalsWithSlashedValidators() public {
-        uint256 validatorCount = 2;
-
-        {
-            // Setup
-            uint256 depositAmount = 32 ether;
-            address user = vm.addr(156_737);
-            vm.deal(user, 1000 ether);
-            yneth.depositETH{value: depositAmount * validatorCount}(user); // Deposit for validators
-        }
-
-        uint256 nodeId = createStakingNodes(1)[0];
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-
-        // Setup: Create multiple validators and verify withdrawal credentials
-        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
-        beaconChain.advanceEpoch_NoRewards();
-        registerValidators(repeat(nodeId, validatorCount));
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        for (uint256 i = 0; i < validatorCount; i++) {
-            _verifyWithdrawalCredentials(nodeId, validatorIndices[i]);
-        }
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        uint256 slashedValidatorCount = 1;
-        // Slash some validators
-        uint40[] memory slashedValidators = new uint40[](slashedValidatorCount);
-        for (uint256 i = 0; i < slashedValidatorCount; i++) {
-            slashedValidators[i] = validatorIndices[i];
-        }
-        beaconChain.slashValidators(slashedValidators);
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Exit remaining validators
-        uint256 exitedValidatorCount = validatorCount - slashedValidatorCount;
-        for (uint256 i = slashedValidatorCount; i < validatorCount; i++) {
-            beaconChain.exitValidator(validatorIndices[i]);
-        }
-
-        // Advance the beacon chain by one epoch without rewards
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Capture initial state
-        StateSnapshot memory before = takeSnapshot(nodeId);
-
-        // Start and verify checkpoint for all validators
-        startAndVerifyCheckpoint(nodeId, validatorIndices);
-
-        // Calculate expected withdrawal amount (slashed validators lose 1 ETH each)
-        uint256 withdrawalAmount = (32 ether * exitedValidatorCount);
-
-        // Queue withdrawals for all validators
-        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
-        queuedWithdrawals[0] = QueuedWithdrawalInfo({withdrawnAmount: withdrawalAmount});
-        _completeQueuedWithdrawals(queuedWithdrawals, nodeId);
-
-        // Capture final state
-        StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
-
-        uint256 slashedAmount = slashedValidatorCount * (beaconChain.SLASH_AMOUNT_GWEI() * 1e9);
-
-        // Assertions
-        assertEq(
-            afterCompletion.withdrawnETH,
-            before.withdrawnETH + withdrawalAmount,
-            "Withdrawn ETH should increase by the withdrawn amount"
-        );
-        assertEq(
-            afterCompletion.podOwnerShares,
-            before.podOwnerShares - int256(slashedAmount) - int256(withdrawalAmount),
-            "Pod owner shares should decrease by SLASH_AMOUNT_GWEI per slashed validator and by withdrawalAmount"
-        );
-        assertEq(
-            afterCompletion.stakingNodeBalance,
-            before.stakingNodeBalance - slashedAmount,
-            "Staking node balance should remain unchanged"
-        );
-
-        // Verify that the total withdrawn amount matches the expected amount
-        assertEq(
-            afterCompletion.withdrawnETH - before.withdrawnETH,
-            withdrawalAmount,
-            "Total withdrawn amount should match the expected amount"
-        );
-    }
-
-    function testQueueWithdrawalsBeforeExitingAndVerifyingValidator() public {
-        uint256 validatorCount = 1;
-        uint256 depositAmount = 32 ether;
-        address user = vm.addr(156_737);
-        vm.deal(user, 1000 ether);
-        yneth.depositETH{value: depositAmount * validatorCount}(user);
-
-        uint256 nodeId = createStakingNodes(1)[0];
-        IStakingNode stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-
-        // Create and register a validator
-        uint40[] memory validatorIndices = createValidators(repeat(nodeId, validatorCount), validatorCount);
-        beaconChain.advanceEpoch_NoRewards();
-        registerValidators(repeat(nodeId, validatorCount));
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Verify withdrawal credentials
-        _verifyWithdrawalCredentials(nodeId, validatorIndices[0]);
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Capture initial state
-        StateSnapshot memory before = takeSnapshot(nodeId);
-
-        // Queue withdrawals before exiting the validator
-        uint256 withdrawalAmount = 32 ether;
-        vm.prank(actors.ops.STAKING_NODES_WITHDRAWER);
-        stakingNodeInstance.queueWithdrawals(withdrawalAmount);
-
-        // Exit the validator
-        beaconChain.slashValidators(validatorIndices);
-
-        beaconChain.advanceEpoch_NoRewards();
-
-        // Start and verify checkpoint
-        startAndVerifyCheckpoint(nodeId, validatorIndices);
-
-        // Assert that podOwnerShares are equal to negative slashingAmount
-        uint256 slashedAmount = beaconChain.SLASH_AMOUNT_GWEI() * 1e9;
-        assertEq(
-            eigenPodManager.podOwnerShares(address(stakingNodeInstance)),
-            -int256(slashedAmount),
-            "Pod owner shares should be equal to negative slashing amount"
-        );
-
-        // Complete queued withdrawals
-        QueuedWithdrawalInfo[] memory queuedWithdrawals = new QueuedWithdrawalInfo[](1);
-        queuedWithdrawals[0] = QueuedWithdrawalInfo({withdrawnAmount: withdrawalAmount});
-        _completeQueuedWithdrawals(queuedWithdrawals, nodeId);
-
-        // Capture final state
-        StateSnapshot memory afterCompletion = takeSnapshot(nodeId);
-
-        // Assertions
-        assertEq(
-            afterCompletion.withdrawnETH,
-            before.withdrawnETH + withdrawalAmount - slashedAmount,
-            "Withdrawn ETH should increase by the withdrawn amount"
-        );
-        assertEq(
-            afterCompletion.podOwnerShares,
-            before.podOwnerShares - int256(withdrawalAmount),
-            "Pod owner shares should decrease by withdrawalAmount"
-        );
-        assertEq(
-            afterCompletion.queuedShares, before.queuedShares, "Queued shares should decrease back to original value"
-        );
-        assertEq(
-            afterCompletion.stakingNodeBalance,
-            before.stakingNodeBalance - slashedAmount,
-            "Staking node balance should remain unchanged"
-        );
-        assertEq(
-            afterCompletion.withdrawnETH,
-            before.withdrawnETH + withdrawalAmount - slashedAmount,
-            "Total withdrawn amount should match the expected amount"
-        );
-    }
-
 }

@@ -152,4 +152,5 @@ contract DeployWithdrawalsProcessor is YnEigenDeployer {
 
 }
 
-// WithdrawalsProcessor:  0x487D9A14941E34723bde973CaBAe3894BEd7930D
+// == Logs ==
+//   WithdrawalsProcessor:  0x38495e927a9767Feb66634B074905cDe8cd24e01

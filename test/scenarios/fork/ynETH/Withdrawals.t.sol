@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {IEigenPod} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
+import {IEigenPod, IEigenPodErrors} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPod.sol";
 
 import {IStakingNode} from "src/interfaces/IStakingNode.sol";
 import {IStakingNodesManager} from "src/interfaces/IStakingNodesManager.sol";
@@ -159,21 +159,21 @@ contract M3WithdrawalsTest is Base {
         }
 
         // create Withdrawal struct
-        IDelegationManager.Withdrawal[] memory _withdrawals = new IDelegationManager.Withdrawal[](1);
+        IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](1);
         {
             uint256[] memory _shares = new uint256[](1);
             _shares[0] = AMOUNT;
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
             address _stakingNode = address(stakingNodesManager.nodes(nodeId));
-            _withdrawals[0] = IDelegationManager.Withdrawal({
+            _withdrawals[0] = IDelegationManagerTypes.Withdrawal({
                 staker: _stakingNode,
                 delegatedTo: delegationManager.delegatedTo(_stakingNode),
                 withdrawer: _stakingNode,
                 nonce: delegationManager.cumulativeWithdrawalsQueued(_stakingNode) - 1,
                 startBlock: uint32(block.number),
                 strategies: _strategies,
-                shares: _shares
+                scaledShares: _shares
             });   
         }
 
@@ -181,7 +181,7 @@ contract M3WithdrawalsTest is Base {
         {
             IStrategy[] memory _strategies = new IStrategy[](1);
             _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-            vm.roll(block.number + delegationManager.getWithdrawalDelay(_strategies));
+            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
             beaconChain.exitValidator(validatorIndex);
             beaconChain.advanceEpoch_NoRewards();
         }
@@ -213,10 +213,8 @@ contract M3WithdrawalsTest is Base {
 
         // complete queued withdrawals
         {
-            uint256[] memory _middlewareTimesIndexes = new uint256[](1);
-            _middlewareTimesIndexes[0] = 0;
             vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals, _middlewareTimesIndexes);
+            stakingNodesManager.nodes(nodeId).completeQueuedWithdrawals(_withdrawals);
             vm.stopPrank();
 
             // check that queuedSharesAmount is 0, and withdrawnETH is 32 ETH (AMOUNT), and staking pod balance is 32 ETH (AMOUNT)
@@ -316,20 +314,20 @@ contract M3WithdrawalsTest is Base {
 
     function _testVerifyWithdrawalCredentials() internal {
         assertEq(stakingNodesManager.nodes(nodeId).unverifiedStakedETH(), 0, "_testVerifyWithdrawalCredentials: E0");
-        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
+        assertEq(uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, "_testVerifyWithdrawalCredentials: E1");
     }
 
     function _testStartCheckpoint() internal {
         IStakingNode _node = stakingNodesManager.nodes(nodeId);
-        vm.expectRevert("EigenPod._startCheckpoint: must finish previous checkpoint before starting another");
+        vm.expectRevert(IEigenPodErrors.CheckpointAlreadyActive.selector);
         vm.prank(actors.ops.STAKING_NODES_OPERATOR);
         _node.startCheckpoint(true);
     }
 
     function _testVerifyCheckpointsBeforeWithdrawalRequest() internal {
-        IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
-        assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
-        assertApproxEqAbs(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, 1000000000, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
+        uint256 eigenPodCurrentCheckPointTimestamp = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
+        assertEq(eigenPodCurrentCheckPointTimestamp, 0, "_testVerifyCheckpointsBeforeWithdrawalRequest: E0");
+        assertApproxEqAbs(uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))), AMOUNT, 1000000000, "_testVerifyCheckpointsBeforeWithdrawalRequest: E1");
     }
 
     function _testQueueWithdrawals() internal {
@@ -337,9 +335,9 @@ contract M3WithdrawalsTest is Base {
     }
 
     function _testVerifyCheckpointsAfterWithdrawalRequest() internal {
-        IEigenPod.Checkpoint memory _checkpoint = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpoint();
-        assertEq(_checkpoint.proofsRemaining, 0, "_testVerifyCheckpointsAfterWithdrawalRequest: E0");
-        assertEq(uint256(eigenPodManager.podOwnerShares(address(stakingNodesManager.nodes(nodeId)))), 1000000000, "_testVerifyCheckpointsAfterWithdrawalRequest: E1");
+        uint256 eigenPodCurrentCheckPointTimestamp = stakingNodesManager.nodes(nodeId).eigenPod().currentCheckpointTimestamp();
+        assertEq(eigenPodCurrentCheckPointTimestamp, 0, "_testVerifyCheckpointsAfterWithdrawalRequest: E0");
+        assertEq(uint256(eigenPodManager.podOwnerDepositShares(address(stakingNodesManager.nodes(nodeId)))), 1000000000, "_testVerifyCheckpointsAfterWithdrawalRequest: E1");
     }
 
     function _testCompleteQueuedWithdrawals() internal {

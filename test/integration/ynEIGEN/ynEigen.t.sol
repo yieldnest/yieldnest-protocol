@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD 3-Clause License
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import "./ynEigenIntegrationBaseTest.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -80,7 +80,9 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
     function testDepositwstETHSuccessWithOneDepositFuzz(uint256 amount) public {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
-        );        
+        );
+        
+        testAssetUtils.assumeEnoughStakeLimit(amount);
 
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         depositAssetAndVerify(wstETH, amount);
@@ -89,7 +91,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
     function testDepositsfrxETHSuccessWithOneDepositFuzz(uint256 amount) public {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
-        );        
+        );
 
         IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
         depositAssetAndVerify(sfrxETH, amount);
@@ -98,7 +100,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
     function testDepositrETHSuccessWithOneDepositFuzz(uint256 amount) public {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
-        );        
+        );
 
         IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         depositAssetAndVerify(rETH, amount);
@@ -107,40 +109,46 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
     function testDepositmETHSuccessWithOneDepositFuzz(
         uint256 amount
      ) public {
-        
+
         // NOTE: mETH doesn't usually work with 10k amounts at a time to stake ETH and obtain it in 1 tx
         vm.assume(
             amount < 1000 ether && amount >= 2 wei
-        );        
+        );
 
         IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
         depositAssetAndVerify(mETH, amount);
     }
 
     function testMultipleDepositsFuzz(
-        uint8 asset0Index,
-        uint8 asset1Index,
         uint256 asset0Amount,
-        uint256 asset1Amount
+        uint256 asset1Amount,
+        uint256 asset2Amount,
+        uint256 asset3Amount
         ) public {
-
-        vm.assume(asset0Index < 4 && asset1Index < 4);
         vm.assume(
             asset0Amount < 10000 ether && asset0Amount >= 2 wei &&
-            asset1Amount < 10000 ether && asset1Amount >= 2 wei
+            asset1Amount < 10000 ether && asset1Amount >= 2 wei &&
+            asset2Amount < 10000 ether && asset2Amount >= 2 wei &&
+            asset3Amount < 10000 ether && asset3Amount >= 2 wei
         );
 
-        IERC20[] memory assets = new IERC20[](4);
-        assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
-        assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
-        assets[2] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
-        assets[3] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
+        testAssetUtils.assumeEnoughStakeLimit(asset0Amount);
 
-        depositAssetAndVerify(assets[asset0Index], asset0Amount);
-        depositAssetAndVerify(assets[asset1Index], asset1Amount);
+        IERC20[] memory _assets = new IERC20[](4);
+        _assets[0] = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        _assets[1] = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
+        _assets[2] = IERC20(chainAddresses.lsd.RETH_ADDRESS);
+        _assets[3] = IERC20(chainAddresses.lsd.WOETH_ADDRESS);
 
+        depositAssetAndVerify(_assets[0], asset0Amount);
+        depositAssetAndVerify(_assets[1], asset1Amount);
+        depositAssetAndVerify(_assets[2], asset2Amount);
+
+        if (!_isHolesky()) {
+            depositAssetAndVerify(_assets[3], asset3Amount);
+        }
     }
-    
+
     function testDepositwstETHSuccessWithMultipleDeposits() public {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 32 ether;
@@ -167,7 +175,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         assertEq(ynEigenToken.balanceOf(prankedUser), ynEigenToken.totalSupply() - initialSupply, "ynEigen balance does not match total supply");
     }
-    
+
     function testDepositUnsupportedAsset() public {
         IERC20 asset = IERC20(address(1));
         uint256 amount = 1 ether;
@@ -176,7 +184,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, address(asset)));
         ynEigenToken.deposit(asset, amount, receiver);
     }
-    
+
     function testDepositWithZeroAmount() public {
         IERC20 asset = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 amount = 0; // Zero amount for deposit
@@ -204,7 +212,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         uint256 totalAssets = ynEigenToken.totalAssets();
         assertEq(totalAssets, 0, "Total assets should match bootstrap amount in ETH");
     }
-    
+
     function testDepositUnsupportedAssetReverts() public {
         IERC20 asset = IERC20(address(1));
         vm.expectRevert(abi.encodeWithSelector(ynEigen.UnsupportedAsset.selector, asset));
@@ -234,7 +242,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         vm.stopPrank();
 
         uint256 totalAssetsBeforeDeposit = ynEigenToken.totalAssets();
-        
+
         // 1. Obtain wstETH and Deposit assets to ynEigen by User
         uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
         assertEq(balance == amount, true, "Amount not received");
@@ -254,14 +262,14 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
 
         IStrategy strategy = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
         uint256 balanceInStrategyForNode  = strategy.userUnderlyingView((address(tokenStakingNode)));
-        
-        // expectedBalance is the same as in the strategy because 1 stETH = 1 ETH. 
+
+        // expectedBalance is the same as in the strategy because 1 stETH = 1 ETH.
         uint256 expectedBalance = balanceInStrategyForNode;
 
         // Assert that totalAssets reflects the deposit
         assertEq(
             compareWithThreshold(totalAssetsAfterDeposit - totalAssetsBeforeDeposit, expectedBalance, 2),
-            true, 
+            true,
             "Total assets do not reflect the deposit"
         );
     }
@@ -280,7 +288,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(previewDeposit, expectedDepositPreview, "Preview deposit does not match expected value");
     }
 
-    function testPreviewDepositwoETH(uint256 amount) public {
+    function testPreviewDepositwoETH(uint256 amount) public skipOnHolesky{
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
         );
@@ -335,7 +343,7 @@ contract ynEigenTest is ynEigenIntegrationBaseTest {
         assertEq(previewRedeem, expectedRedeemPreview, "testPreviewRedeemWSTETH: E0");
     }
 
-    function testPreviewRedeemWOETH(uint256 amount) public {
+    function testPreviewRedeemWOETH(uint256 amount) public skipOnHolesky {
         vm.assume(
             amount < 10000 ether && amount >= 10 wei
         );
@@ -426,7 +434,7 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
         wstETH.approve(address(ynEigenToken), balance);
-        ynEigenToken.deposit(wstETH, balance, whitelistedAddress); 
+        ynEigenToken.deposit(wstETH, balance, whitelistedAddress);
 
         uint256 transferAmount = ynEigenToken.balanceOf(whitelistedAddress);
 
@@ -503,7 +511,7 @@ contract ynTransferPauseTest is ynEigenIntegrationBaseTest {
         // Act
         vm.prank(actors.admin.UNPAUSE_ADMIN);
         ynEigenToken.unpauseTransfers(); // Unpausing transfers for all
-        
+
         vm.prank(arbitraryAddress);
         ynEigenToken.transfer(recipient, transferAmount);
 
@@ -601,7 +609,7 @@ contract ynEigen_retrieveAssetsTest is ynEigenIntegrationBaseTest {
         // 1. Obtain stETH and Deposit assets to ynEigenToken by User
         uint256 balance = testAssetUtils.get_wstETH(address(this), amount);
         assertEq(compareRebasingTokenBalances(balance, amount), true, "Amount not received");
-       
+
         asset.approve(address(ynEigenToken), balance);
         ynEigenToken.deposit(asset, balance, address(this));
 
@@ -649,10 +657,12 @@ contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
         uint256 bobDepositAmount = INITIAL_AMOUNT / 2;
         // Alice knows that Bob is about to deposit INITIAL_AMOUNT*0.5 wstETH to the Vault by observing the mempool
         vm.startPrank(alice);
-        uint256 aliceDepositAmount = 1;
+        // Depositing 1 wei under certain conditions will cause alice's deposit to fail with ZeroShares().
+        // Using 2 wei instead to avoid this rounding issue
+        uint256 aliceDepositAmount = 2;
         uint256 aliceShares = ynEigenToken.deposit(assetToken, aliceDepositAmount, alice);
         // Since there are bootstrap funds, this has no effect
-        assertEq(compareWithThreshold(aliceShares, 1, 1), true, "Alice's shares should be dust"); 
+        assertEq(compareWithThreshold(aliceShares, 2, 2), true, "Alice's shares should be dust");
         // Try to inflate shares value
         assetToken.transfer(address(ynEigenToken), bobDepositAmount);
         vm.stopPrank();
@@ -662,5 +672,5 @@ contract ynEigenDonationsTest is ynEigenIntegrationBaseTest {
         uint256 bobShares = ynEigenToken.deposit(assetToken, bobDepositAmount, bob);
 
         assertGt(bobShares, 1 wei, "Bob's shares should be greater than 1 wei");
-    }   
+    }
 }

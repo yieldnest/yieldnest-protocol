@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD 3-Clause License
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import {IERC20, IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -84,7 +84,7 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         ynEigenToken.deposit(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), sfrxEthAmount, user);
         ynEigenToken.deposit(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), wstEthAmount, user);
         ynEigenToken.deposit(IERC20(chainAddresses.lsd.RETH_ADDRESS), rEthAmount, user);
-        
+
         // End user context
         vm.stopPrank();
 
@@ -129,9 +129,9 @@ contract ynEigenViewerTest is ynEigenIntegrationBaseTest {
         uint256 sfrxEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS), sfrxEthAmount);
         uint256 wstEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.WSTETH_ADDRESS), wstEthAmount);
         uint256 rEthValueInEth = assetRegistry.convertToUnitOfAccount(IERC20(chainAddresses.lsd.RETH_ADDRESS), rEthAmount);
-        
+
         uint256 totalValueInEth = sfrxEthValueInEth + wstEthValueInEth + rEthValueInEth;
-        
+
         uint256 expectedSfrxEthRatio = (sfrxEthValueInEth * 1e6) / totalValueInEth;
         uint256 expectedWstEthRatio = (wstEthValueInEth * 1e6) / totalValueInEth;
         uint256 expectedREthRatio = (rEthValueInEth * 1e6) / totalValueInEth;

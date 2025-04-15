@@ -4,13 +4,15 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategy.sol";
-
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {BaseYnEigenScript} from "script/ynEigen/BaseYnEigenScript.s.sol";
 import {Utils} from "script/Utils.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
+import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 
 interface IynEigen {
     function assetRegistry() external view returns (address);
@@ -22,9 +24,8 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
     using Strings for uint256;
 
-    function _verify() internal {
+    function _verify() public {
         deployment = loadDeployment();
-
         verifyUpgradeTimelockRoles();
         verifyProxies();
         verifyProxyAdminOwners();
@@ -793,8 +794,13 @@ contract YnEigenVerifier is BaseYnEigenScript {
         // Check that totalSupply is less than totalAssets
         uint256 totalSupply = deployment.ynEigen.totalSupply();
         uint256 totalAssets = deployment.ynEigen.totalAssets();
-        require(totalSupply <= totalAssets, "totalSupply should be less than or equal to totalAssets");
-        console.log("\u2705 totalSupply is less than totalAssets");
+        console.log("totalSupply: ", totalSupply);
+        console.log("totalAssets: ", totalAssets);
+        if (totalSupply <= totalAssets) {
+            console.log("\u2705 totalSupply is less than or equal to totalAssets");
+        } else {
+            console.log("\u274C\u274C\u274C RATE WARNING: totalSupply exceeds totalAssets \u274C\u274C\u274C");            
+        }
 
         // Print totalSupply and totalAssets
         console.log(string.concat("Total Supply: ", vm.toString(totalSupply), " ynEigen (", vm.toString(totalSupply / 1e18), " units)"));

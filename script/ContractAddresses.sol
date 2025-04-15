@@ -15,6 +15,7 @@ contract ContractAddresses {
         address REDEMPTION_ASSETS_VAULT_ADDRESS;
         address WITHDRAWAL_QUEUE_MANAGER_ADDRESS;
         address WRAPPER;
+        address WITHDRAWALS_PROCESSOR_ADDRESS;
     }
 
     struct YieldNestAddresses {
@@ -35,6 +36,7 @@ contract ContractAddresses {
         address STRATEGY_MANAGER_ADDRESS;
         address STRATEGY_MANAGER_PAUSER_ADDRESS;
         address REWARDS_COORDINATOR_ADDRESS;
+        address ALLOCATION_MANAGER_ADDRESS;
     }
 
     struct LSDAddresses {
@@ -97,7 +99,8 @@ contract ContractAddresses {
                 DELEGATION_PAUSER_ADDRESS: 0x369e6F597e22EaB55fFb173C6d9cD234BD699111, // TODO: remove this if unused
                 STRATEGY_MANAGER_ADDRESS: 0x858646372CC42E1A627fcE94aa7A7033e7CF075A,
                 STRATEGY_MANAGER_PAUSER_ADDRESS: 0xBE1685C81aA44FF9FB319dD389addd9374383e90,
-                REWARDS_COORDINATOR_ADDRESS: 0x7750d328b314EfFa365A0402CcfD489B80B0adda
+                REWARDS_COORDINATOR_ADDRESS: 0x7750d328b314EfFa365A0402CcfD489B80B0adda,
+                ALLOCATION_MANAGER_ADDRESS: 0x948a420b8CC1d6BFd0B6087C2E7c344a2CD0bc39 
             }),
             lsd: LSDAddresses({
                 SFRXETH_ADDRESS: 0xac3E018457B222d93114458476f3E3416Abbe38F,
@@ -140,7 +143,8 @@ contract ContractAddresses {
                 TIMELOCK_CONTROLLER_ADDRESS: 0xbB73f8a5B0074b27c6df026c77fA08B0111D017A,
                 REDEMPTION_ASSETS_VAULT_ADDRESS: 0x73bC33999C34a5126CA19dC900F22690C288D55e,
                 WITHDRAWAL_QUEUE_MANAGER_ADDRESS: 0x8Face3283E20b19d98a7a132274B69C1304D60b4,
-                WRAPPER: 0x99dB7619C018D61dBC2822767B63240d311d6992
+                WRAPPER: 0x99dB7619C018D61dBC2822767B63240d311d6992,
+                WITHDRAWALS_PROCESSOR_ADDRESS: 0x57F6991f1205Ba50D0Acc30aF08555721Dc4A117
             })
         });
 
@@ -158,7 +162,8 @@ contract ContractAddresses {
                 DELEGATION_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348, // Placeholder address, replaced with address(1) for holesky
                 STRATEGY_MANAGER_ADDRESS: 0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6, // Placeholder address, replaced with address(1) for holesky
                 STRATEGY_MANAGER_PAUSER_ADDRESS: 0x28Ade60640fdBDb2609D8d8734D1b5cBeFc0C348,
-                REWARDS_COORDINATOR_ADDRESS: 0xAcc1fb458a1317E886dB376Fc8141540537E68fE
+                REWARDS_COORDINATOR_ADDRESS: 0xAcc1fb458a1317E886dB376Fc8141540537E68fE,
+                ALLOCATION_MANAGER_ADDRESS: 0x78469728304326CBc65f8f95FA756B0B73164462
             }),
             lsd: LSDAddresses({
                 SFRXETH_ADDRESS: 0xa63f56985F9C7F3bc9fFc5685535649e0C1a55f3,
@@ -201,13 +206,18 @@ contract ContractAddresses {
                 TIMELOCK_CONTROLLER_ADDRESS: 0x62173555C27C67644C5634e114e42A63A59CD7A5,
                 REDEMPTION_ASSETS_VAULT_ADDRESS: 0xd536087701fFf805d20ee6651E55C90D645fD1a3,
                 WITHDRAWAL_QUEUE_MANAGER_ADDRESS: 0xaF8052DC454318D52A4478a91aCa14305590389f,
-                WRAPPER: 0x8F61bcb28C5b88e5F10ec5bb3C18f231D763A309
+                WRAPPER: 0x8F61bcb28C5b88e5F10ec5bb3C18f231D763A309,
+                WITHDRAWALS_PROCESSOR_ADDRESS: address(0) // TODO: This address is missing from the deployments file at deployments/YnLSDe-17000.json.
             })
         });
     }
 
     function getChainAddresses(uint256 chainId) external view returns (ChainAddresses memory) {
         return addresses[chainId];
+    }
+
+    function getChainIds() external view returns (ChainIds memory) {
+        return chainIds;
     }
 
     function isSupportedChainId(uint256 chainId) external view returns (bool) {

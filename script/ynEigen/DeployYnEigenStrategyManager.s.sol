@@ -13,8 +13,6 @@ contract DeployYnEigenStrategyManager is BaseYnEigenScript {
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
 
-        address _broadcaster = vm.addr(deployerPrivateKey);
-
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("Current Block Number:", block.number);
@@ -30,5 +28,7 @@ contract DeployYnEigenStrategyManager is BaseYnEigenScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
-//   EigenStrategyManager Implementation: 0x9904c5D441947dB77cee7F401Ed76C9fb3754f2C
+//   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
+//   Current Block Number: 3595484
+//   Current Chain ID: 17000
+//   EigenStrategyManager Implementation: 0x22f84aDBDafd2EA54f73bd8E049CBaBcb8a301CF

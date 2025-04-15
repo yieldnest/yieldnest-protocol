@@ -204,6 +204,19 @@ contract EigenStrategyManager is
         }
     }
 
+    function synchronizeNodesAndUpdateBalances(ITokenStakingNode[] calldata nodes) external {
+        uint256 nodesLength = nodes.length;
+        for(uint256 i = 0; i < nodesLength; i++) {
+            nodes[i].synchronize();
+        }
+        
+        IERC20[] memory assets = IynEigenVars(address(ynEigen)).assetRegistry().getAssets();
+        uint256 assetsLength = assets.length;
+        for (uint256 i = 0; i < assetsLength; i++) {
+            _updateTokenStakingNodesBalances(assets[i], IStrategy(address(0)));
+        }
+    }
+    
     //--------------------------------------------------------------------------------------
     //------------------------------------ ACCOUNTING  ----------------------------------------
     //--------------------------------------------------------------------------------------
@@ -214,7 +227,7 @@ contract EigenStrategyManager is
     /// @param asset The ERC20 token for which the balances are to be updated.
     function updateTokenStakingNodesBalances(IERC20 asset) public {
         _updateTokenStakingNodesBalances(asset, strategies[asset]);
-    } 
+    }
 
     /// @notice Updates the staked balances for all nodes for a strategies.
     /// @dev Should be called atomically after any node-balance-changing operation.
@@ -233,7 +246,8 @@ contract EigenStrategyManager is
         for (uint256 i; i < nodesCount; i++ ) {
             ITokenStakingNode node = nodes[i];
 
-            _strategiesBalance += strategy.userUnderlyingView((address(node)));
+            uint256 withdrawableShares = node.getWithdrawableShares(strategy);
+            _strategiesBalance += strategy.sharesToUnderlyingView(withdrawableShares);
 
             if (!node.isSynchronized()) {
                 revert NodeNotSynchronized(i);
@@ -441,57 +455,6 @@ contract EigenStrategyManager is
         }
 
         return stakedBalances;
-    }
-
-    /**
-     * @notice Retrieves the total staked balance of a specific asset across all nodes.
-     * @param asset The ERC20 token for which the staked balance is to be retrieved.
-     * @return stakedBalance The total staked balance of the specified asset.
-     */
-    function getStakedAssetBalance(IERC20 asset) external view returns (uint256 stakedBalance) {
-        if (address(strategies[asset]) == address(0)) {
-            revert NoStrategyDefinedForAsset(address(asset));
-        }
-
-        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
-        uint256 nodesCount = nodes.length;
-        for (uint256 i; i < nodesCount; i++ ) {
-            ITokenStakingNode node = nodes[i];
-            stakedBalance += _getStakedAssetBalanceForNode(asset, node);
-        }
-    }
-
-    /**
-     * @notice Retrieves the staked balance of a specific asset for a given node.
-     * @param asset The ERC20 token for which the staked balance is to be retrieved.
-     * @param nodeId The specific nodeId for which the staked balance is to be retrieved.
-     * @return stakedBalance The staked balance of the specified asset for the given node.
-     */
-    function getStakedAssetBalanceForNode(
-        IERC20 asset,
-        uint256 nodeId
-    ) external view returns (uint256 stakedBalance) {
-        if (address(strategies[asset]) == address(0)) {
-            revert NoStrategyDefinedForAsset(address(asset));
-        }
-
-        ITokenStakingNode node = tokenStakingNodesManager.getNodeById(nodeId);
-        return _getStakedAssetBalanceForNode(asset, node);
-    }
-
-    function _getStakedAssetBalanceForNode(
-        IERC20 asset,
-        ITokenStakingNode node
-    ) internal view returns (uint256 stakedBalance) {
-
-        IStrategy strategy = strategies[asset];
-        (uint256 queuedShares, uint256 strategyWithdrawnBalance) = node.getQueuedSharesAndWithdrawn(strategy, asset);
-        uint256 strategyBalance = wrapper.toUserAssetAmount(
-            asset,
-            strategy.userUnderlyingView((address(node))) + strategy.sharesToUnderlyingView(queuedShares)
-        );
-
-        stakedBalance += strategyBalance + strategyWithdrawnBalance;   
     }
 
     /**
