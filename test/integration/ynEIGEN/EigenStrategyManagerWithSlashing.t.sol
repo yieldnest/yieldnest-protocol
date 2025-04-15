@@ -4,11 +4,13 @@ pragma solidity ^0.8.24;
 import "test/integration/ynEIGEN/WithSlashingBase.t.sol";
 
 contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
-    function testStakeNodesAndSlash() public {
+    function testStakeNodesAndSlash(uint256 slashingPercentage) public {
+        vm.assume(slashingPercentage > 0 && slashingPercentage <= 1e18);
+
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
 
         // slash 50%
-        _slash(0.5 ether);
+        _slash(slashingPercentage);
         
         // update balances after slashing
         ITokenStakingNode[] memory nodes = new ITokenStakingNode[](1);
@@ -17,27 +19,31 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
         
-        assertApproxEqRel(stakeAfter, stakeBefore / 2, 1, "Assets should have been staked by half");
+        assertApproxEqRel(stakeAfter, stakeBefore * (1 ether - slashingPercentage) / 1e18, 1, "Assets should have been staked by half");
     }
     
-    function testStakeNodesAndSlashWithoutSync() public {
+    function testStakeNodesAndSlashWithoutSync(uint256 slashingPercentage) public {
+        vm.assume(slashingPercentage > 0 && slashingPercentage <= 1e18);
+        
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
 
-        // slash 50%
-        _slash(0.5 ether);
+        // slash by slashingPercentage
+        _slash(slashingPercentage);
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
         
         assertApproxEqRel(stakeAfter, stakeBefore, 1, "Assets should have been stay unchanged without sync");
     }
     
-    function testQueuedDepositsAndSlash() public {
+    function testQueuedDepositsAndSlash(uint256 slashingPercentage) public {
+        vm.assume(slashingPercentage > 0 && slashingPercentage <= 1e18);
+        
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
         (, uint256 depositShares) = _getWithdrawableShares();
 
         _queueWithdrawal(depositShares);
 
-        _slash(0.5 ether);
+        _slash(slashingPercentage);
 
         // update balances after slashing
         ITokenStakingNode[] memory nodes = new ITokenStakingNode[](1);
@@ -46,6 +52,6 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
         
-        assertApproxEqRel(stakeAfter, stakeBefore / 2, 1, "Assets should have been staked by half");
+        assertApproxEqRel(stakeAfter, stakeBefore * (1 ether - slashingPercentage) / 1e18, 1, "Assets should have been reduced according to slashing percentage");
     }
 }
