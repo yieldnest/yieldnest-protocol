@@ -54,6 +54,7 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         vm.assume(slashingPercentage > 0 && slashingPercentage <= 1e18);
         
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+        uint256 totalAssetsBefore = ynEigenToken.totalAssets();
         (, uint256 depositShares) = _getWithdrawableShares();
 
         _queueWithdrawal(depositShares);
@@ -66,32 +67,34 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
         
         assertApproxEqRel(stakeAfter, stakeBefore * (1 ether - slashingPercentage) / 1e18, 1, "Assets should have been reduced according to slashing percentage");
+        assertApproxEqRel(totalAssetsAfter, totalAssetsBefore * (1 ether - slashingPercentage) / 1e18, 1, "Total assets should have been reduced according to slashing percentage");
     }
 
 
 
     function testStakeMultipleAssetsAndSlash(
-        // uint256 wstethAmount,
-        // uint256 woethAmount,
-        // uint256 rethAmount,
-        // uint256 sfrxethAmount
+        uint256 wstethAmount,
+        uint256 woethAmount,
+        uint256 rethAmount,
+        uint256 sfrxethAmount
     ) public {
 
         // cannot call stakeAssetsToNode with any amount == 0. all must be non-zero.
-        // vm.assume(
-        //     wstethAmount < 100 ether && wstethAmount >= 2 wei &&
-        //     woethAmount < 100 ether && woethAmount >= 2 wei &&
-        //     rethAmount < 100 ether && rethAmount >= 2 wei &&
-        //     sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
-        // );
+        vm.assume(
+            wstethAmount < 100 ether && wstethAmount >= 2 wei &&
+            woethAmount < 100 ether && woethAmount >= 2 wei &&
+            rethAmount < 100 ether && rethAmount >= 2 wei &&
+            sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
+        );
 
         // Declare new fixed amounts for consistent testing
-        uint256 wstethAmount = 100 ether;
-        uint256 woethAmount = 100 ether;
-        uint256 rethAmount = 100 ether;
-        uint256 sfrxethAmount = 100 ether;
+        // uint256 wstethAmount = 100 ether;
+        // uint256 woethAmount = 100 ether;
+        // uint256 rethAmount = 100 ether;
+        // uint256 sfrxethAmount = 100 ether;
 
         // Setup: Create a token staking node and prepare assetsToDeposit
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
