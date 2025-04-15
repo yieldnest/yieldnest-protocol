@@ -17,8 +17,9 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         vm.assume(slashingPercentage > 0 && slashingPercentage <= 1e18);
 
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+        uint256 totalAssetsBefore = ynEigenToken.totalAssets();
 
-        // slash 50%
+        // slash by slashingPercentage
         _slash(slashingPercentage);
         
         // update balances after slashing
@@ -27,21 +28,26 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
         
-        assertApproxEqRel(stakeAfter, stakeBefore * (1 ether - slashingPercentage) / 1e18, 1, "Assets should have been staked by half");
+        assertApproxEqRel(stakeAfter, stakeBefore * (1 ether - slashingPercentage) / 1e18, 1, "Assets should have been reduced according to slashing percentage");
+        assertApproxEqRel(totalAssetsAfter, totalAssetsBefore * (1 ether - slashingPercentage) / 1e18, 1, "Total assets should have been reduced according to slashing percentage");
     }
     
     function testStakeNodesAndSlashWithoutSync(uint256 slashingPercentage) public {
         vm.assume(slashingPercentage > 0 && slashingPercentage <= 1e18);
         
         (uint256 stakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+        uint256 totalAssetsBefore = ynEigenToken.totalAssets();
 
         // slash by slashingPercentage
         _slash(slashingPercentage);
         
         (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
         
         assertApproxEqRel(stakeAfter, stakeBefore, 1, "Assets should have been stay unchanged without sync");
+        assertApproxEqRel(totalAssetsAfter, totalAssetsBefore, 1, "Total assets should remain unchanged without sync");
     }
     
     function testQueuedDepositsAndSlash(uint256 slashingPercentage) public {
