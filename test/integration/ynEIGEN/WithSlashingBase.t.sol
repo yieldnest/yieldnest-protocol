@@ -67,13 +67,13 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
 
         wstETHStrategy = eigenStrategyManager.strategies(wstETH);
 
-        // Create operator set
         IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
         createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
             operatorSetId: 1, 
             strategies: new IStrategy[](1) 
         });
-        createSetParams[0].strategies[0] = wstETHStrategy;
+        createSetParams[0].strategies[0] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        
         vm.prank(avs);
         eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
 
