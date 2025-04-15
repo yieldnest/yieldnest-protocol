@@ -531,6 +531,14 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         bytes32 withdrawalRoot = delegationManager.calculateWithdrawalRoot(withdrawal);
         WithdrawableShareInfo storage _withdrawableShareInfo = withdrawableShareInfo[withdrawalRoot];
 
+        if (!_withdrawableShareInfo.postELIP002SlashingUpgrade) {
+            // If the withdrawal root queued was before ELIP-002 slashing upgrade, we need to subtract the shares from preELIP002QueuedSharesAmount 
+            totalWithdrawableShare = withdrawal.scaledShares[0];
+            preELIP002QueuedSharesAmount -= totalWithdrawableShare;
+            return totalWithdrawableShare;
+        }
+
+        // If we are this point, the withdrawal root queued after ELIP-002 slashing upgrade
         (, uint256[] memory _singleWithdrawableShares) = delegationManager.getQueuedWithdrawal(withdrawalRoot);
         uint256 withdrawableShares = _singleWithdrawableShares[0];
 
@@ -539,18 +547,12 @@ contract StakingNode is IStakingNode, StakingNodeEvents, ReentrancyGuardUpgradea
         if (_withdrawableShareInfo.withdrawableShares != withdrawableShares) {
             revert NotSyncedAfterSlashing();
         }
-
-        if (_withdrawableShareInfo.postELIP002SlashingUpgrade) {
-            // If the withdrawal root queued after ELIP-002 slashing upgrade, we need to subtract the shares from queuedSharesAmount 
-            // and set the withdrawableShares to 0 for the withdrawal root
-            totalWithdrawableShare = _withdrawableShareInfo.withdrawableShares;
-            queuedSharesAmount -= totalWithdrawableShare;
-            _withdrawableShareInfo.withdrawableShares = 0;
-        } else {
-            // If the withdrawal root queued was before ELIP-002 slashing upgrade, we need to subtract the shares from preELIP002QueuedSharesAmount 
-            totalWithdrawableShare = withdrawal.scaledShares[0];
-            preELIP002QueuedSharesAmount -= totalWithdrawableShare;
-        }
+        
+        // If the withdrawal root queued after ELIP-002 slashing upgrade, we need to subtract the shares from queuedSharesAmount 
+        // and set the withdrawableShares to 0 for the withdrawal root
+        totalWithdrawableShare = _withdrawableShareInfo.withdrawableShares;
+        queuedSharesAmount -= totalWithdrawableShare;
+        _withdrawableShareInfo.withdrawableShares = 0;
     }
 
     //--------------------------------------------------------------------------------------

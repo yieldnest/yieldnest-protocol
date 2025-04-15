@@ -73,11 +73,11 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
     }
 
     function setUp() public virtual {
-        assignContracts();
-        upgradeTokenStakingNodesManagerAndTokenStakingNode();
+        assignContracts(true);
+        upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry();
     }
 
-    function assignContracts() internal {
+    function assignContracts(bool executeScheduledTransactions) internal {
         uint256 chainId = block.chainid;
 
         contractAddresses = new ContractAddresses();
@@ -108,7 +108,9 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
 
         // execute scheduled transactions for slashing upgrades
-        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        if (executeScheduledTransactions) {
+            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        }
     }
 
     function updateTokenStakingNodesBalancesForAllAssets() internal {
@@ -119,7 +121,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         }
     }
 
-    function upgradeTokenStakingNodesManagerAndTokenStakingNode() internal {
+    function upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry() internal {
         // Deploy new TokenStakingNode implementation
         address newTokenStakingNodeImpl = address(new TokenStakingNode());
         address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
@@ -131,8 +133,41 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
             ""
         );
 
+
         // Register new implementation
         vm.prank(address(timelockController));
         tokenStakingNodesManager.upgradeTokenStakingNode(newTokenStakingNodeImpl);
+
+        {
+            // Deploy new EigenStrategyManager implementation
+            address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
+            
+            // Get the proxy admin for the EigenStrategyManager
+            address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
+            
+            // Upgrade the EigenStrategyManager implementation through the proxy admin
+            vm.prank(address(timelockController));
+            ProxyAdmin(proxyAdmin).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(eigenStrategyManager)),
+                newEigenStrategyManagerImpl,
+                ""
+            );
+        }
+
+        {
+            // Deploy new AssetRegistry implementation
+            address newAssetRegistryImpl = address(new AssetRegistry());
+            
+            // Get the proxy admin for the AssetRegistry
+            address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(assetRegistry));
+            
+            // Upgrade the AssetRegistry implementation through the proxy admin
+            vm.prank(address(timelockController));
+            ProxyAdmin(proxyAdmin).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(assetRegistry)),
+                newAssetRegistryImpl,
+                ""
+            );
+        }
     }
 }
