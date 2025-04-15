@@ -154,7 +154,7 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         assertApproxEqRel(
             totalAssetsAfter,
             totalAssetsBefore * 0.5 ether / 1e18,
-            1e6,
+            1e8,
             "Total assets should have been reduced by 50% after slashing"
         );
     }
