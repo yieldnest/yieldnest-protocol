@@ -441,7 +441,7 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
         assertEq(queuedShares, withdrawableShares + preELIP002QueuedSharesAmount, "Queued shares should be equal to the sum of the queued shares and the pre ELIP-002 queued shares");
     }
 
-    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount_WithQueuedWithdrawals_WithHalfSlashing(
+    function testGetQueuedSharesAndWithdrawnReturnsSumOfQueuedSharesAndPreELIP002QueuedSharesAmount_WithQueuedWithdrawals_WithSlashing(
          uint64 slashingPercent
     ) public {
         vm.assume(slashingPercent > 0 && slashingPercent <= 1 ether);
@@ -520,7 +520,7 @@ contract TokenStakingNodeWithSlashingTest is WithSlashingBase {
 
         uint256 expectedQueuedShares = withdrawableShares * (1 ether - slashingPercent) / 1 ether;
 
-        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), expectedQueuedShares, "Queued shares should be equal to half of the deposit shares");
+        assertEq(tokenStakingNode.queuedShares(wstETHStrategy), expectedQueuedShares, "Queued shares should be equal to (1 - slashingPercent) * deposit shares");
         assertEq(tokenStakingNode.preELIP002QueuedSharesAmount(wstETHStrategy), preELIP002QueuedSharesAmount, "Pre ELIP-002 queued shares should be equal to the deposit shares");
 
         (uint256 queuedShares,) = tokenStakingNode.getQueuedSharesAndWithdrawn(wstETHStrategy, wstETH);

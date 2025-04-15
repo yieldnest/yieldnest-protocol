@@ -67,13 +67,13 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
 
         wstETHStrategy = eigenStrategyManager.strategies(wstETH);
 
-        // Create operator set
         IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
         createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
             operatorSetId: 1, 
             strategies: new IStrategy[](1) 
         });
-        createSetParams[0].strategies[0] = wstETHStrategy;
+        createSetParams[0].strategies[0] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        
         vm.prank(avs);
         eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
 
@@ -132,6 +132,11 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
     }
 
     function _slash(uint256 _wadsToSlash) internal {
+        // DEFAULT to slashing wstETHStrategy
+        _slash(_wadsToSlash, wstETHStrategy);
+    }
+
+    function _slash(uint256 _wadsToSlash, IStrategy _strategy) internal {
         IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
             operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
             operatorSetId: 1,
@@ -139,11 +144,12 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
             wadsToSlash: new uint256[](1),
             description: "test"
         });
-        slashingParams.strategies[0] = wstETHStrategy;
+        slashingParams.strategies[0] = _strategy;
         slashingParams.wadsToSlash[0] = _wadsToSlash;
         vm.prank(avs);
         eigenLayer.allocationManager.slashOperator(avs, slashingParams);
     }
+
 
     function _getWithdrawableShares() internal view returns (uint256, uint256) {
         IStrategy[] memory strategies = new IStrategy[](1);
