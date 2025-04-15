@@ -19,7 +19,6 @@ contract TestAVSUtils  {
 
 
     struct AVSSetupParams {
-        address avs;
         address operator;
         address delegator;
         ITokenStakingNode tokenStakingNode;
@@ -48,12 +47,12 @@ contract TestAVSUtils  {
         IDelegationManager delegationManager,
         IAllocationManager allocationManager,
         AVSSetupParams memory params
-    ) public {
+    ) public returns (address avs) {
         // Create AVS
-        address avs = address(new MockAVSRegistrar());
+        avs = address(new MockAVSRegistrar());
         // Update metadata URI for the AVS
-        vm.prank(params.avs);
-        allocationManager.updateAVSMetadataURI(params.avs, params.metadataURI);
+        vm.prank(avs);
+        allocationManager.updateAVSMetadataURI(avs, params.metadataURI);
 
         // Register operator if not already registered
         if (!delegationManager.isOperator(params.operator)) {
@@ -77,7 +76,7 @@ contract TestAVSUtils  {
         });
         
         vm.prank(avs);
-        allocationManager.createOperatorSets(params.avs, createSetParams);
+        allocationManager.createOperatorSets(avs, createSetParams);
 
         // Register for operator set
         IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
