@@ -144,7 +144,11 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         }
         
         // Perform slashing
-        _slash(0.5 ether);
+        // Slash all 4 strategies
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
+            _slash(0.5 ether, strategy);
+        }
         
         // Update balances after slashing
         ITokenStakingNode[] memory nodes = new ITokenStakingNode[](1);
