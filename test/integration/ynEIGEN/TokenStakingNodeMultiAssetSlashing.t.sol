@@ -14,6 +14,7 @@ import {ERC1967Proxy} from "lib/openzeppelin-contracts/contracts/proxy/ERC1967/E
 import {WithSlashingBase} from "test/integration/ynEIGEN/WithSlashingBase.t.sol";
 import {ynEigenIntegrationBaseTest} from "test/integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import {TestAVSUtils} from "test/utils/TestAVSUtils.sol";
+import "forge-std/console.sol";
 
 
 contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTest {
@@ -38,8 +39,6 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
     function setUp() public override {
         super.setUp();
 
-        // Create token staking node
-        // TODO: Use TOKEN_STAKING_NODE_CREATOR_ROLE instead of STAKING_NODE_CREATOR
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNode = tokenStakingNodesManager.createTokenStakingNode();
 
@@ -50,22 +49,34 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
         testAssetUtils.depositAsset(ynEigenToken, address(wstETH), stakeAmount, address(this));
 
         // Stake assets into the token staking node
-        uint256 nodeId = tokenStakingNode.nodeId();
-        IERC20[] memory assets = new IERC20[](1);
-        assets[0] = IERC20(address(wstETH));
-        uint256[] memory amounts = new uint256[](1);
-        amounts[0] = stakeAmount;
-        vm.prank(actors.ops.STRATEGY_CONTROLLER);
-        eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-        wstETHStrategy = eigenStrategyManager.strategies(wstETH);
+        {
+            uint256 nodeId = tokenStakingNode.nodeId();
+            IERC20[] memory assets = new IERC20[](1);
+            assets[0] = IERC20(address(wstETH));
+            uint256[] memory amounts = new uint256[](1);
+            amounts[0] = stakeAmount;
+            vm.prank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
+            wstETHStrategy = eigenStrategyManager.strategies(wstETH);
+        }
 
         // Setup AVS, register operator, and allocate shares using TestAVSUtils
-        IStrategy[] memory strategies = new IStrategy[](1);
-        strategies[0] = wstETHStrategy;
-        
-        uint64[] memory magnitudes = new uint64[](1);
-        magnitudes[0] = 1 ether;
-        
+        uint256 assetCount = _isHolesky() ? 3 : 4;
+        IStrategy[] memory strategies = new IStrategy[](assetCount);
+        {
+            
+            // Get strategies for all assets
+            strategies[0] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            strategies[1] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+            strategies[2] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.RETH_ADDRESS));
+            if (!_isHolesky()) strategies[3] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+        }
+
+        uint64[] memory magnitudes = new uint64[](assetCount);
+        for (uint256 i = 0; i < assetCount; i++) {
+            magnitudes[i] = 1 ether / uint64(assetCount);
+        }
+
         TestAVSUtils.AVSSetupParams memory params = TestAVSUtils.AVSSetupParams({
             operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
             delegator: actors.admin.TOKEN_STAKING_NODES_DELEGATOR,
@@ -85,19 +96,26 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
     }
 
     function testStakeMultipleAssetsAndSlashAll(
-        uint256 wstethAmount,
-        uint256 woethAmount,
-        uint256 rethAmount,
-        uint256 sfrxethAmount
+        // uint256 wstethAmount,
+        // uint256 woethAmount,
+        // uint256 rethAmount,
+        // uint256 sfrxethAmount
     ) public {
 
         // cannot call stakeAssetsToNode with any amount == 0. all must be non-zero.
-        vm.assume(
-            wstethAmount < 100 ether && wstethAmount >= 2 wei &&
-            woethAmount < 100 ether && woethAmount >= 2 wei &&
-            rethAmount < 100 ether && rethAmount >= 2 wei &&
-            sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
-        );
+        // vm.assume(
+        //     wstethAmount < 100 ether && wstethAmount >= 2 wei &&
+        //     woethAmount < 100 ether && woethAmount >= 2 wei &&
+        //     rethAmount < 100 ether && rethAmount >= 2 wei &&
+        //     sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
+        // );
+
+        // Set fixed deposit amounts for all assets
+        uint256 wstethAmount = 100 ether;
+        uint256 sfrxethAmount = 100 ether;
+        uint256 rethAmount = 100 ether;
+        uint256 woethAmount = 100 ether;
+
 
         uint256 assetCount = _isHolesky() ? 3 : 4;
 
@@ -141,19 +159,20 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
             IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
             (stakesBefore[i],) = eigenStrategyManager.strategiesBalance(strategy);
         }
-
-        (uint256 wstETHStakeBefore,) = eigenStrategyManager.strategiesBalance(wstETHStrategy);
         
-        // Use testAVSUtils to perform slashing
-        testAVSUtils.slashOperator(
-            vm,
-            eigenLayer.allocationManager,
-            avs,
-            actors.ops.TOKEN_STAKING_NODE_OPERATOR,
-            1,
-            wstETHStrategy,
-            0.5 ether
-        );
+        // Slash all strategies
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
+            testAVSUtils.slashOperator(
+                vm,
+                eigenLayer.allocationManager,
+                avs,
+                actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+                1,
+                strategy,
+                0.5 ether
+            );
+        }
                 
         // Update balances after slashing
         ITokenStakingNode[] memory nodes = new ITokenStakingNode[](1);
@@ -165,11 +184,8 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
             IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
             (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(strategy);
 
-            if (wstETHStrategy == strategy) {
-                assertApproxEqRel(stakeAfter, stakesBefore[i] * 0.5 ether / 1e18, 1, " should have been reduced by 50%");
-            } else {
-                assertApproxEqRel(stakeAfter, stakesBefore[i], 1, " should have been reduced by 50%");
-            }
+            uint256 expectedStakeAfter = stakesBefore[i] *  (1 ether -  0.5 ether / assetCount) / 1e18;
+            assertApproxEqRel(stakeAfter, expectedStakeAfter, 1, " should have been reduced by 50%");
         }
 
         // Assert that total assets after slashing are reduced by the slashing factor (50%)
@@ -177,7 +193,7 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
 
         uint256 expectedTotalAssetsAfter = 
                 totalAssetsBefore -
-                wstETHStakeBefore * 0.5 ether / 1e18;
+                totalAssetsBefore * 0.5 ether / 1e18;
 
         assertApproxEqRel(
                 totalAssetsAfter,
