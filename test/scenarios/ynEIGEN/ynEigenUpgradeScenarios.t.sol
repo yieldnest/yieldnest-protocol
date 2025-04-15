@@ -19,6 +19,10 @@ import {TokenStakingNode} from "src/ynEIGEN/TokenStakingNode.sol";
 import {EigenStrategyManager} from "src/ynEIGEN/EigenStrategyManager.sol";
 import {WithdrawalsProcessor} from "src/ynEIGEN/WithdrawalsProcessor.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
+
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     uint256 public constant WSTETH_AMOUNT = 10 ether;
@@ -185,6 +189,56 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         eigenStrategyManager.getStakedAssetsBalances(assets);
     }
     
+    function testSynchronizeNodesAndUpdateBalancesAfterELUpgradeAndAfterYnEigenUpgrade() public configure {
+        // Update token staking nodes balances before upgrade
+        // sync before
+        IERC20[] memory assets = assetRegistry.getAssets();
+        {
+            uint256 assetsLength = assets.length;
+            for (uint256 i = 0; i < assetsLength; i++) {
+                eigenStrategyManager.updateTokenStakingNodesBalances(assets[i]);
+            }
+        }
+
+
+        SystemSnapshot memory beforeState = getSystemSnapshot(user1);
+
+        // Verify staked assets balances before synchronization
+        uint256[] memory balancesBefore = eigenStrategyManager.getStakedAssetsBalances(assets);
+
+        upgradeEigenLayerContracts();
+        upgradeynEigenContracts();
+
+        eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
+
+        // Verify staked assets balances after synchronization
+        uint256[] memory balancesAfter = eigenStrategyManager.getStakedAssetsBalances(assets);
+        
+        // Compare balances before and after synchronization
+        for (uint256 i = 0; i < assets.length; i++) {
+            assertEq(
+                balancesBefore[i], 
+                balancesAfter[i], 
+                "Staked asset balances should remain the same after synchronization"
+            );
+        }
+
+        // Capture system state after upgrade and synchronization
+        SystemSnapshot memory afterState = getSystemSnapshot(user1);
+        
+        // Compare before and after states to ensure system integrity
+        assertEq(beforeState.totalAssets, afterState.totalAssets, "Total assets should remain the same after upgrade");
+        assertEq(beforeState.totalSupply, afterState.totalSupply, "Total supply should remain the same after upgrade");
+        assertEq(beforeState.userBalance, afterState.userBalance, "User balance should remain the same after upgrade");
+        
+        // Verify nodes are properly synchronized
+        for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+            ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+            assertTrue(node.isSynchronized(), "Node should be synchronized after upgrade");
+        }
+    }
+
+    
     function upgradeEigenLayerContracts() internal {
         allocationManager = new AllocationManager(
             delegationManager, 
@@ -228,33 +282,73 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     }
 
     function upgradeynEigenContracts() internal {
-        TokenStakingNode newTokenStakingNode = new TokenStakingNode();
 
-        TokenStakingNodesManager newTokenStakingNodesManager = new TokenStakingNodesManager();
-        vm.etch(address(tokenStakingNodesManager), address(newTokenStakingNodesManager).code);
+        {
+            TokenStakingNodesManager newTokenStakingNodesManager = new TokenStakingNodesManager();
+            address tokenStakingNodesManagerImpl = address(newTokenStakingNodesManager);
+            vm.prank(address(timelockController));
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(tokenStakingNodesManager)), 
+                tokenStakingNodesManagerImpl, 
+                ""
+            );
+        }
 
-        vm.prank(address(timelockController));
-        tokenStakingNodesManager.upgradeTokenStakingNode(address(newTokenStakingNode));
-        
-        EigenStrategyManager newEigenStrategyManager = new EigenStrategyManager();
-        vm.etch(address(eigenStrategyManager), address(newEigenStrategyManager).code);
+        {
+            TokenStakingNode newTokenStakingNode = new TokenStakingNode();
+            vm.prank(address(timelockController));
+            tokenStakingNodesManager.upgradeTokenStakingNode(address(newTokenStakingNode));
+        }
 
-        WithdrawalsProcessor newWithdrawalsProcessor = new WithdrawalsProcessor(
-            address(withdrawalsProcessor.withdrawalQueueManager()),
-            address(withdrawalsProcessor.tokenStakingNodesManager()),
-            address(withdrawalsProcessor.assetRegistry()),
-            address(withdrawalsProcessor.ynStrategyManager()),
-            address(withdrawalsProcessor.delegationManager()),
-            address(withdrawalsProcessor.yneigen()),
-            address(withdrawalsProcessor.redemptionAssetsVault()),
-            address(withdrawalsProcessor.wrapper()),
-            address(withdrawalsProcessor.STETH()),
-            address(withdrawalsProcessor.WSTETH()),
-            address(withdrawalsProcessor.OETH()),
-            address(withdrawalsProcessor.WOETH())
-        );
-        vm.etch(address(withdrawalsProcessor), address(newWithdrawalsProcessor).code);
-        withdrawalsProcessor.initializeV2(address(this), 1.1 ether);
+        {
+            // Deploy new EigenStrategyManager implementation
+            address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
+            
+            // Upgrade the proxy to the new implementation
+            vm.prank(address(timelockController));
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(eigenStrategyManager)),
+                newEigenStrategyManagerImpl,
+                ""
+            );
+        }
+
+        {
+            // Deploy new AssetRegistry implementation
+            address newAssetRegistryImpl = address(new AssetRegistry());
+            
+            // Upgrade the proxy to the new implementation
+            vm.prank(address(timelockController));
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(assetRegistry))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(assetRegistry)),
+                newAssetRegistryImpl,
+                ""
+            );
+        }
+
+        {
+            WithdrawalsProcessor newWithdrawalsProcessor = new WithdrawalsProcessor(
+                address(withdrawalsProcessor.withdrawalQueueManager()),
+                address(withdrawalsProcessor.tokenStakingNodesManager()),
+                address(withdrawalsProcessor.assetRegistry()),
+                address(withdrawalsProcessor.ynStrategyManager()),
+                address(withdrawalsProcessor.delegationManager()),
+                address(withdrawalsProcessor.yneigen()),
+                address(withdrawalsProcessor.redemptionAssetsVault()),
+                address(withdrawalsProcessor.wrapper()),
+                address(withdrawalsProcessor.STETH()),
+                address(withdrawalsProcessor.WSTETH()),
+                address(withdrawalsProcessor.OETH()),
+                address(withdrawalsProcessor.WOETH())
+            );
+            vm.prank(actors.admin.PROXY_ADMIN_OWNER);
+            ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(
+                ITransparentUpgradeableProxy(address(withdrawalsProcessor)),
+                address(newWithdrawalsProcessor),
+                ""
+            );
+            withdrawalsProcessor.initializeV2(address(this), 1.1 ether);
+        }
     }
     
     function getSystemSnapshot(address user) internal view returns (SystemSnapshot memory) {

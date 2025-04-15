@@ -85,18 +85,43 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // queueWithdrawals
     //
 
-    function testQueueWithdrawalSTETH() public {
-        _queueWithdrawalSTETH(AMOUNT);
+    function testQueueWithdrawalSTETH(bool _updateTokenStakingNodesBalances) public {
+        _queueWithdrawalSTETH(AMOUNT, _updateTokenStakingNodesBalances);
     }
 
-    function testQueueWithdrawalSFRXETH() public {
-        _queueWithdrawalSFRXETH(AMOUNT);
+    function testQueueWithdrawalSFRXETH(bool _updateTokenStakingNodesBalances) public {
+        _queueWithdrawalSFRXETH(AMOUNT, _updateTokenStakingNodesBalances);
     }
 
-    function testQueueWithdrawalOETH() public {
+    function testQueueWithdrawalOETH(bool _updateTokenStakingNodesBalances) public {
         vm.skip(_isHolesky());
-        _queueWithdrawalOETH(AMOUNT);
+        _queueWithdrawalOETH(AMOUNT, _updateTokenStakingNodesBalances);
     }
+
+
+    function testQueueWithdrawalsAndSynchronize(bool _updateTokenStakingNodesBalances) public {
+        vm.skip(_isHolesky());
+
+        _queueWithdrawalSTETH(AMOUNT, _updateTokenStakingNodesBalances);
+        _queueWithdrawalSFRXETH(AMOUNT, _updateTokenStakingNodesBalances);
+        _queueWithdrawalOETH(AMOUNT, _updateTokenStakingNodesBalances);
+
+        // Synchronize the token staking node after queueing withdrawals
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+        
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+        tokenStakingNode.synchronize();
+        
+        if (_updateTokenStakingNodesBalances) {
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+        }
+        
+        // Verify that total assets remain unchanged after synchronization
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalsAndSynchronize: E0");
+    }
+
 
     function testQueueWithdrawalsWrongCaller() public {
         _queueWithdrawalsWrongCaller();
@@ -122,6 +147,27 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
     function testCompleteAllWithdrawals() public {
        _completeAllWithdrawals(AMOUNT);
+    }
+
+    function testCompleteAllWithdrawalsAndSynchronize(bool _updateTokenStakingNodesBalances) public {
+        vm.skip(_isHolesky());
+
+       _completeAllWithdrawals(AMOUNT);
+
+        // Synchronize the token staking node after queueing withdrawals
+        uint256 _totalAssetsBefore = yneigen.totalAssets();
+        
+        vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
+        tokenStakingNode.synchronize();
+        
+        if (_updateTokenStakingNodesBalances) {
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+        }
+        
+        // Verify that total assets remain unchanged after synchronization
+        assertEq(yneigen.totalAssets(), _totalAssetsBefore, "testQueueWithdrawalsAndSynchronize: E0");
     }
 
     //
@@ -158,7 +204,12 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
     // internal helpers
     //
 
+
     function _queueWithdrawalSTETH(uint256 _amount) internal {
+        _queueWithdrawalSTETH(_amount, false);
+    }
+
+    function _queueWithdrawalSTETH(uint256 _amount, bool _updateTokenStakingNodesBalances) internal {
         if (_setup) _setupTokenStakingNode(_amount);
 
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.STETH_STRATEGY_ADDRESS);
@@ -169,11 +220,19 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
+        if (_updateTokenStakingNodesBalances) {
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        }
+
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "queueWithdrawalSTETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "queueWithdrawalSTETH: E1");
     }
 
     function _queueWithdrawalSFRXETH(uint256 _amount) internal {
+        _queueWithdrawalSFRXETH(_amount, false);
+    }
+
+    function _queueWithdrawalSFRXETH(uint256 _amount, bool _updateTokenStakingNodesBalances) internal {
         if (_setup) _setupTokenStakingNode(_amount);
 
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.SFRXETH_STRATEGY_ADDRESS);
@@ -184,11 +243,18 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
 
+        if (_updateTokenStakingNodesBalances) {
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.SFRXETH_ADDRESS));
+        }
+
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "queueWithdrawalSFRXETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "queueWithdrawalSFRXETH: E1");
     }
-
     function _queueWithdrawalOETH(uint256 _amount) internal {
+        _queueWithdrawalOETH(_amount, false);
+    }
+
+    function _queueWithdrawalOETH(uint256 _amount, bool _updateTokenStakingNodesBalances) internal {
         if (_setup) _setupTokenStakingNode(_amount);
 
         IStrategy _strategy = IStrategy(chainAddresses.lsdStrategies.OETH_STRATEGY_ADDRESS);
@@ -198,6 +264,10 @@ contract ynLSDeWithdrawalsTest is ynLSDeScenarioBaseTest {
 
         vm.prank(actors.ops.YNEIGEN_WITHDRAWAL_MANAGER);
         tokenStakingNode.queueWithdrawals(_strategy, _shares);
+
+        if (_updateTokenStakingNodesBalances) {
+            eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WOETH_ADDRESS));
+        }
 
         assertEq(yneigen.totalAssets(), _totalAssetsBefore, "queueWithdrawalOETH: E0");
         assertEq(tokenStakingNode.queuedShares(_strategy), _shares, "queueWithdrawalOETH: E1");
