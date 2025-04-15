@@ -74,7 +74,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
     function setUp() public virtual {
         assignContracts(true);
-        upgradeTokenStakingNodesManagerAndTokenStakingNode();
+        upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry();
     }
 
     function assignContracts(bool executeScheduledTransactions) internal {
@@ -121,7 +121,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         }
     }
 
-    function upgradeTokenStakingNodesManagerAndTokenStakingNode() internal {
+    function upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry() internal {
         // Deploy new TokenStakingNode implementation
         address newTokenStakingNodeImpl = address(new TokenStakingNode());
         address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());

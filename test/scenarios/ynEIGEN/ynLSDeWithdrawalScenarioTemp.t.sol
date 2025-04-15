@@ -96,7 +96,7 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
 
 
         TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
-        super.upgradeTokenStakingNodesManagerAndTokenStakingNode();
+        super.upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry();
                 // Capture total assets before upgrade
         uint256 totalAssetsBefore = yneigen.totalAssets();
 
