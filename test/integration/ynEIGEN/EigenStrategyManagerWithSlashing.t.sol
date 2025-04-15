@@ -90,12 +90,6 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
             sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
         );
 
-        // Declare new fixed amounts for consistent testing
-        // uint256 wstethAmount = 100 ether;
-        // uint256 woethAmount = 100 ether;
-        // uint256 rethAmount = 100 ether;
-        // uint256 sfrxethAmount = 100 ether;
-
         // Setup: Create a token staking node and prepare assetsToDeposit
         vm.prank(actors.ops.STAKING_NODE_CREATOR);
         tokenStakingNodesManager.createTokenStakingNode();
@@ -154,5 +148,14 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
             
             assertApproxEqRel(stakeAfter, stakesBefore[i] * 0.5 ether / 1e18, 1, "Assets should have been reduced by 50%");
         }
+
+        // Assert that total assets after slashing are reduced by the slashing factor (50%)
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
+        assertApproxEqRel(
+            totalAssetsAfter,
+            totalAssetsBefore * 0.5 ether / 1e18,
+            1e6,
+            "Total assets should have been reduced by 50% after slashing"
+        );
     }
 }
