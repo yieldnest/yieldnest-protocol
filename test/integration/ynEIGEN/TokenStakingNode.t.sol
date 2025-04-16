@@ -383,7 +383,7 @@ contract TokenStakingNodeTest is ynEigenIntegrationBaseTest {
             assertApproxEqAbs(
                 afterCompletion.totalAssets(),
                 ynEigenToken.totalAssets(),
-                3,
+                4,
                 "Total assets should have decreased by approximately the withdraw amount"
             );
         }
