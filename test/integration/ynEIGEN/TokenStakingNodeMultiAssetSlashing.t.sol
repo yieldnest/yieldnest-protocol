@@ -125,26 +125,19 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
     }
 
     function testStakeMultipleAssetsAndSlashAll(
-        // uint256 wstethAmount,
-        // uint256 woethAmount,
-        // uint256 rethAmount,
-        // uint256 sfrxethAmount
+        uint256 wstethAmount,
+        uint256 woethAmount,
+        uint256 rethAmount,
+        uint256 sfrxethAmount
     ) public {
 
-        // cannot call stakeAssetsToNode with any amount == 0. all must be non-zero.
-        // vm.assume(
-        //     wstethAmount < 100 ether && wstethAmount >= 2 wei &&
-        //     woethAmount < 100 ether && woethAmount >= 2 wei &&
-        //     rethAmount < 100 ether && rethAmount >= 2 wei &&
-        //     sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
-        // );
-
-        // Set fixed deposit amounts for all assets
-        uint256 wstethAmount = 100 ether;
-        uint256 sfrxethAmount = 100 ether;
-        uint256 rethAmount = 100 ether;
-        uint256 woethAmount = 100 ether;
-
+        //cannot call stakeAssetsToNode with any amount == 0. all must be non-zero.
+        vm.assume(
+            wstethAmount < 100 ether && wstethAmount >= 2 wei &&
+            woethAmount < 100 ether && woethAmount >= 2 wei &&
+            rethAmount < 100 ether && rethAmount >= 2 wei &&
+            sfrxethAmount < 100 ether && sfrxethAmount >= 2 wei
+        );
 
         // Get strategies for all assets
         {
@@ -212,14 +205,12 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
         }
 
         assertApproxEqRel(
-                ynEigenToken.totalAssets(),
+                totalAssetsBefore,
                 calculateExpectedTotalAssetsAfter(assetsToDeposit, stakesBefore),
                 1,
                 "Total assets should have been reduced by 50% after slashing"
         );
 
-        
-        
         uint256 slashingFactor = 0.5 ether;
         // Slash all strategies
         for (uint256 i = 0; i < assetsToDeposit.length; i++) {
@@ -251,7 +242,7 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
             IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
             (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(strategy);
 
-            assertApproxEqRel(stakeAfter, expectedStakesAfter[i], 1, " should have been reduced by 50%");
+            assertApproxEqAbs(stakeAfter, expectedStakesAfter[i], 1, " should have been reduced by 50%");
         }
 
         // Assert that total assets after slashing are reduced by the slashing factor (50%)
