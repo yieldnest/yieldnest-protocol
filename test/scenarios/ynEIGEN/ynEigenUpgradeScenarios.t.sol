@@ -22,7 +22,7 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
-
+import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     uint256 public constant WSTETH_AMOUNT = 10 ether;
@@ -52,7 +52,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         // todo: remove this skip once others are refactored
         // vm.skip(block.chainid == 1);
         // vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
-        assignContracts(true);
+        assignContracts(false);
 
         withdrawalsProcessor = WithdrawalsProcessor(chainAddresses.ynEigen.WITHDRAWALS_PROCESSOR_ADDRESS);
         user1 = makeAddr("user1");
@@ -240,45 +240,8 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
     
     function upgradeEigenLayerContracts() internal {
-        allocationManager = new AllocationManager(
-            delegationManager, 
-            pauserRegistry, 
-            IPermissionController(address(2)), 
-            1, 
-            1,
-            // This version is just the version of the EL contracts, however, I don't know the real version used for this.
-            // Doesn't seem to be relevant and it works as it is.
-            "1.3.0" 
-        );
 
-        DelegationManager newDelegationManager = new DelegationManager(
-            strategyManager, 
-            eigenPodManager, 
-            allocationManager, 
-            pauserRegistry, 
-            IPermissionController(address(2)), 
-            1,
-            "1.3.0"
-        );
-        
-        vm.etch(address(delegationManager), address(newDelegationManager).code);
-
-        EigenPodManager newEigenPodManager = new EigenPodManager(
-            ethposDeposit, 
-            eigenPodBeacon, 
-            delegationManager, 
-            pauserRegistry,
-            "1.3.0"
-        );
-        
-        vm.etch(address(eigenPodManager), address(newEigenPodManager).code);
-
-        StrategyManager newStrategyManager = new StrategyManager(
-            strategyManager.delegation(), 
-            strategyManager.pauserRegistry(),
-            "1.3.0"
-        );
-        vm.etch(address(strategyManager), address(newStrategyManager).code);
+        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
     }
 
     function upgradeynEigenContracts() internal {
