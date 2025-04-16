@@ -14,6 +14,7 @@ import {ERC1967Proxy} from "lib/openzeppelin-contracts/contracts/proxy/ERC1967/E
 import {WithSlashingBase} from "test/integration/ynEIGEN/WithSlashingBase.t.sol";
 import {ynEigenIntegrationBaseTest} from "test/integration/ynEIGEN/ynEigenIntegrationBaseTest.sol";
 import {TestAVSUtils} from "test/utils/TestAVSUtils.sol";
+import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import "forge-std/console.sol";
 
 
@@ -202,28 +203,46 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
         ITokenStakingNode[] memory nodes = new ITokenStakingNode[](1);
         nodes[0] = tokenStakingNode;
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
+
+        // Create array of expected stakes after slashing
+        uint256[] memory expectedStakesAfter = new uint256[](assetsToDeposit.length);
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            expectedStakesAfter[i] = stakesBefore[i] * (1 ether - slashingFactor) / 1e18;
+        }
         
         // Assert balances were reduced by 50%
         for (uint256 i = 0; i < assetsToDeposit.length; i++) {
             IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
             (uint256 stakeAfter,) = eigenStrategyManager.strategiesBalance(strategy);
 
-            uint256 expectedStakeAfter = stakesBefore[i] *  (1 ether -  slashingFactor) / 1e18;
-            assertApproxEqRel(stakeAfter, expectedStakeAfter, 1, " should have been reduced by 50%");
+            assertApproxEqRel(stakeAfter, expectedStakesAfter[i], 1, " should have been reduced by 50%");
         }
 
         // Assert that total assets after slashing are reduced by the slashing factor (50%)
-        // uint256 totalAssetsAfter = ynEigenToken.totalAssets();
+        uint256 totalAssetsAfter = ynEigenToken.totalAssets();
 
-        // uint256 expectedTotalAssetsAfter = 
-        //         totalAssetsBefore -
-        //         totalAssetsBefore * 0.5 ether / 1e18;
+        // Calculate expected total assets by summing up all expected stakes after slashing
+        // and converting each to ETH based on the strategy's rate provider
+        uint256 expectedTotalAssetsAfter = 0;
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
+            uint256 assetValueInETH;
+            if (address(strategy.underlyingToken()) == chainAddresses.lsd.STETH_ADDRESS || 
+                address(strategy.underlyingToken()) == chainAddresses.lsd.OETH_ADDRESS) {
+                assetValueInETH = expectedStakesAfter[i];
+            } else {
+                assetValueInETH = assetRegistry.convertToUnitOfAccount(
+                    IERC20(address(strategy.underlyingToken())), expectedStakesAfter[i]
+                );
+            }
+            expectedTotalAssetsAfter += assetValueInETH;
+        }
 
-        // assertApproxEqRel(
-        //         totalAssetsAfter,
-        //         expectedTotalAssetsAfter,
-        //         1,
-        //         "Total assets should have been reduced by 50% after slashing"
-        // );
+        assertApproxEqRel(
+                totalAssetsAfter,
+                expectedTotalAssetsAfter,
+                1,
+                "Total assets should have been reduced by 50% after slashing"
+        );
     }
 }
