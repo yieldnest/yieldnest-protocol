@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {BaseYnETHScript} from "script/ynETH/BaseYnETHScript.s.sol";
 import {StakingNodesManager} from "src/StakingNodesManager.sol";
 import {console} from "lib/forge-std/src/console.sol";
-import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 
 contract DeployStakingNodesManager is BaseYnETHScript {
 
@@ -19,9 +18,9 @@ contract DeployStakingNodesManager is BaseYnETHScript {
         console.log("Current Block Number:", block.number);
         console.log("Current Chain ID:", block.chainid);
 
-        HoleskyStakingNodesManager holeSkyStakingNodesManagerImplementation = new HoleskyStakingNodesManager();
+        StakingNodesManager stakingNodesManagerImplementation = new StakingNodesManager();
 
-        console.log("HoleskyStakingNodesManager Implementation:", address(holeSkyStakingNodesManagerImplementation));
+        console.log("StakingNodesManager Implementation:", address(stakingNodesManagerImplementation));
 
         vm.stopBroadcast();
     }
@@ -29,8 +28,8 @@ contract DeployStakingNodesManager is BaseYnETHScript {
 }
 
 // == Logs ==
-// Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
-//   Current Block Number: 3595151
-//   Current Chain ID: 17000
-//   HoleskyStakingNodesManager Implementation: 0x9b51f1b677F5670ED375b824f769a1db3ea783f5
+//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
+//   Current Block Number: 22279717
+//   Current Chain ID: 1
+//   StakingNodesManager Implementation: 0xf1EB27d5800f16be1B48D7f35c731554e055a7Ce
 
