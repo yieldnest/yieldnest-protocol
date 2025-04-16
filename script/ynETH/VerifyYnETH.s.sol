@@ -612,6 +612,12 @@ contract Verify is BaseYnETHScript {
             address(deployment.stakingNodesManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
             "StakingNodesManager: redemptionAssetsVault dependency mismatch"
         );
+
+        require(
+            address(deployment.stakingNodesManager.rewardsCoordinator()) == chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS,
+            "StakingNodesManager: rewardsCoordinator dependency mismatch"
+        );
+
         console.log("\u2705 StakingNodesManager: redemptionAssetsVault dependency verified");
         
         console.log("\u2705 StakingNodesManager dependencies verified");
