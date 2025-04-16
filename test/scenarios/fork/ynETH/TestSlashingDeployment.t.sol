@@ -322,19 +322,26 @@ contract SlashingDeploymentTest is Base {
     }
 
     function upgradeStakingNodesManagerAndStakingNode() internal override {
-        address newStakingNodesManagerImpl = address(new StakingNodesManager());
-
+        // address newStakingNodesManagerImpl = address(new StakingNodesManager());
+        address newStakingNodesManagerImpl = 0xf1EB27d5800f16be1B48D7f35c731554e055a7Ce;
+        
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingNodesManager)), newStakingNodesManagerImpl, ""
         );
 
         // Upgrade StakingNode implementation
-        address newStakingNodeImpl = address(new StakingNode());
-
+        // address newStakingNodeImpl = address(new StakingNode());
+        address newStakingNodeImpl = 0x56D43f8C6c3891d081AD93B27419c37394857117;
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
+
+        IStakingNode[] memory stakingNodes = stakingNodesManager.getAllNodes();
+
+        for(uint256 i = 0; i < stakingNodes.length; i++) {
+            stakingNodes[i].synchronize();
+        }
     }
 
     function takeYnETHStateSnapshot() internal view returns (YnETHStateSnapshot memory) {

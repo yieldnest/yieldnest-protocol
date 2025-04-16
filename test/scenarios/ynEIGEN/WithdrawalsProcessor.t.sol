@@ -42,20 +42,22 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
 
         // deploy withdrawalsProcessor
         {
-            withdrawalsProcessor = new WithdrawalsProcessor(
-                address(withdrawalQueueManager),
-                address(tokenStakingNodesManager),
-                address(assetRegistry),
-                address(eigenStrategyManager),
-                address(delegationManager),
-                address(yneigen),
-                address(redemptionAssetsVault),
-                address(wrapper),
-                chainAddresses.lsd.STETH_ADDRESS,
-                chainAddresses.lsd.WSTETH_ADDRESS,
-                chainAddresses.lsd.OETH_ADDRESS,
-                chainAddresses.lsd.WOETH_ADDRESS
-            );
+            // withdrawalsProcessor = new WithdrawalsProcessor(
+            //     address(withdrawalQueueManager),
+            //     address(tokenStakingNodesManager),
+            //     address(assetRegistry),
+            //     address(eigenStrategyManager),
+            //     address(delegationManager),
+            //     address(yneigen),
+            //     address(redemptionAssetsVault),
+            //     address(wrapper),
+            //     chainAddresses.lsd.STETH_ADDRESS,
+            //     chainAddresses.lsd.WSTETH_ADDRESS,
+            //     chainAddresses.lsd.OETH_ADDRESS,
+            //     chainAddresses.lsd.WOETH_ADDRESS
+            // );
+
+            withdrawalsProcessor = IWithdrawalsProcessor(0xd1Cc0F09Bcc5695810C44F4d34BDcf28eD3a3fa7);
 
             withdrawalsProcessor = WithdrawalsProcessor(
                 address(

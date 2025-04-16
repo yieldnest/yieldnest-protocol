@@ -146,8 +146,12 @@ contract Base is Test, Utils, TestUpgradeUtils {
 
     function upgradeStakingNodesManagerAndStakingNode() internal virtual {
 
-        address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
+        // Upgrade StakingNodesManager
+        // bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+
+        // address newStakingNodesManagerImpl = address(new StakingNodesManager());
+        address newStakingNodesManagerImpl = 0xf1EB27d5800f16be1B48D7f35c731554e055a7Ce;
         uint256 totalAssetsBefore = yneth.totalAssets();
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
@@ -158,27 +162,26 @@ contract Base is Test, Utils, TestUpgradeUtils {
         );
 
         // Upgrade StakingNode implementation
-        address newStakingNodeImpl = address(new StakingNode());
+        // address newStakingNodeImpl = address(new StakingNode());
+        address newStakingNodeImpl = 0x56D43f8C6c3891d081AD93B27419c37394857117;
 
 
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
-        // Synchronize all nodes after upgrade
-        IStakingNode[] memory allNodes = stakingNodesManager.getAllNodes();
-        for (uint256 i = 0; i < allNodes.length; i++) {
-            allNodes[i].synchronize();
+        IStakingNode[] memory stakingNodes = stakingNodesManager.getAllNodes();
+
+        for(uint256 i = 0; i < stakingNodes.length; i++) {
+            stakingNodes[i].synchronize();
         }
-
-        stakingNodesManager.updateTotalETHStaked();
-
         assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
     }
 
     function upgradeWithdrawalsProcessor() internal {
 
-        address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
+        // address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
+        address newWithdrawalsProcessorImpl = 0x4B2552e5b1cC75d5f499DD76b0317aAf0Ad5620F;
 
         vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(

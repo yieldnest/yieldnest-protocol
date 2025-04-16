@@ -130,8 +130,10 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         uint256 totalAssetsBefore = yneigen.totalAssets();
         // Deploy new TokenStakingNode implementation
-        address newTokenStakingNodeImpl = address(new TokenStakingNode());
-        address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
+        // address newTokenStakingNodeImpl = address(new TokenStakingNode());
+        // address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
+        address newTokenStakingNodeImpl = 0x74ff5C9F93080d20D505ffa3cc291f5bFaD43655;
+        address newTokenStakingNodesManagerImpl = 0x6Fbd79BbF9dA002c33F94D0a372F9756756adb2c;
 
         vm.prank(address(timelockController));
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager))).upgradeAndCall(
@@ -147,7 +149,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         {
             // Deploy new EigenStrategyManager implementation
-            address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
+            // address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
+            address newEigenStrategyManagerImpl = 0xAB0153A53Db6e12c0A86D1404B509BC647333E79;
             
             // Get the proxy admin for the EigenStrategyManager
             address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
@@ -163,8 +166,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         {
             // Deploy new AssetRegistry implementation
-            address newAssetRegistryImpl = address(new AssetRegistry());
-            
+            // address newAssetRegistryImpl = address(new AssetRegistry());
+            address newAssetRegistryImpl = 0x031AE4a8a09b1779DBF69828356945fdf59D6879;
             // Get the proxy admin for the AssetRegistry
             address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(assetRegistry));
             
