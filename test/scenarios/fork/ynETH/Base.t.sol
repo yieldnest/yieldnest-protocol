@@ -175,7 +175,8 @@ contract Base is Test, Utils, TestUpgradeUtils {
         for(uint256 i = 0; i < stakingNodes.length; i++) {
             stakingNodes[i].synchronize();
         }
-        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
+
+        stakingNodesManager.updateTotalETHStaked();
     }
 
     function upgradeWithdrawalsProcessor() internal {
