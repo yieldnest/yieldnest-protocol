@@ -11,7 +11,9 @@ import {Utils} from "../../../script/Utils.sol";
 import {ActorAddresses} from "../../../script/Actors.sol";
 import {ContractAddresses} from "../../../script/ContractAddresses.sol";
 
-import {TokenStakingNodesManager} from "../../../src/ynEIGEN/TokenStakingNodesManager.sol";
+import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
+import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
+
 import {TokenStakingNode} from "../../../src/ynEIGEN/TokenStakingNode.sol";
 import {ynEigen} from "../../../src/ynEIGEN/ynEigen.sol";
 import {AssetRegistry} from "../../../src/ynEIGEN/AssetRegistry.sol";
@@ -109,6 +111,9 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         // execute scheduled transactions for slashing upgrades
         if (executeScheduledTransactions) {
+            // Update token staking nodes balances for all assets before slashing upgrade when its possible
+            updateTokenStakingNodesBalancesForAllAssets();
+
             TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
         }
     }
@@ -122,6 +127,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
     }
 
     function upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry() internal {
+
+        uint256 totalAssetsBefore = yneigen.totalAssets();
         // Deploy new TokenStakingNode implementation
         address newTokenStakingNodeImpl = address(new TokenStakingNode());
         address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
@@ -169,5 +176,16 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
                 ""
             );
         }
+
+        {
+            // Synchronize all token staking nodes and update their balances
+            ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+            
+            // Call synchronizeNodesAndUpdateBalances with the array of all nodes
+            vm.prank(actors.ops.STRATEGY_CONTROLLER);
+            eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
+        }
+
+        assertEq(yneigen.totalAssets(), totalAssetsBefore, "Total assets changed after upgrade");
     }
 }

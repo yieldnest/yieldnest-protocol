@@ -131,7 +131,6 @@ contract Base is Test, Utils, TestUpgradeUtils {
         if (executeScheduledTransactions) {
 
 
-            // TODO: remove this once the eigenlayer upgrade completes.
             // this is necessary to ensure that the totalETHStaked is updated to the most recent value.
             StakingNodesManager(payable(chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS)).updateTotalETHStaked();
 
