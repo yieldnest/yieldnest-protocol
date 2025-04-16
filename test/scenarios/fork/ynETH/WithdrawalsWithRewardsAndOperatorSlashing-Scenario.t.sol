@@ -413,7 +413,7 @@ contract WithdrawalsWithQueuedBeforeELIP002SlashingUpgradeTest is WithdrawalsSce
             // upgrade YN contracts
             upgradeStakingNodesManagerAndStakingNode();
             upgradeWithdrawalsProcessor();
-            stakingNodesManager.updateTotalETHStaked();
+
             
             vm.warp(GENESIS_TIME_LOCAL);
         }

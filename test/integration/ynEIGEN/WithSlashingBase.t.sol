@@ -11,6 +11,8 @@ import {MockAVSRegistrar} from "lib/eigenlayer-contracts/src/test/mocks/MockAVSR
 import {IAllocationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IAllocationManager.sol";
 import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/core/AllocationManagerStorage.sol";
 import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
+import {TestAVSUtils} from "test/utils/TestAVSUtils.sol";
+
 
 contract WithSlashingBase is ynEigenIntegrationBaseTest {
     TestAssetUtils internal testAssetUtils;
@@ -18,11 +20,13 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
     address internal avs;
     IERC20 internal wstETH;
     IStrategy internal wstETHStrategy;
+    TestAVSUtils internal testAVSUtils;
 
     event QueuedSharesSynced();
 
     constructor() {
         testAssetUtils = new TestAssetUtils();
+        testAVSUtils = new TestAVSUtils();
     }
 
     function setUp() public override {
@@ -47,50 +51,31 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
         amounts[0] = stakeAmount;
         vm.prank(actors.ops.STRATEGY_CONTROLLER);
         eigenStrategyManager.stakeAssetsToNode(nodeId, assets, amounts);
-
-        // Register operator
-        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
-        eigenLayer.delegationManager.registerAsOperator(address(0), 0, "ipfs://some-ipfs-hash");
-
-        // Delegate to operator
-        ISignatureUtilsMixinTypes.SignatureWithExpiry memory signature;
-        bytes32 approverSalt;
-        vm.prank(actors.admin.TOKEN_STAKING_NODES_DELEGATOR);
-        tokenStakingNode.delegate(actors.ops.TOKEN_STAKING_NODE_OPERATOR, signature, approverSalt);
-
-        // Create AVS
-        avs = address(new MockAVSRegistrar());
-
-        // Update metadata URI
-        vm.prank(avs);
-        eigenLayer.allocationManager.updateAVSMetadataURI(avs, "ipfs://some-metadata-uri");
-
         wstETHStrategy = eigenStrategyManager.strategies(wstETH);
 
-        IAllocationManagerTypes.CreateSetParams[] memory createSetParams = new IAllocationManagerTypes.CreateSetParams[](1);
-        createSetParams[0] = IAllocationManagerTypes.CreateSetParams({ 
-            operatorSetId: 1, 
-            strategies: new IStrategy[](1) 
-        });
-        createSetParams[0].strategies[0] = eigenStrategyManager.strategies(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        // Setup AVS, register operator, and allocate shares using TestAVSUtils
+        IStrategy[] memory strategies = new IStrategy[](1);
+        strategies[0] = wstETHStrategy;
         
-        vm.prank(avs);
-        eigenLayer.allocationManager.createOperatorSets(avs, createSetParams);
-
-        // Register for operator set
-        IAllocationManagerTypes.RegisterParams memory registerParams = IAllocationManagerTypes.RegisterParams({
-            avs: avs,
-            operatorSetIds: new uint32[](1),
-            data: new bytes(0)
+        uint64[] memory magnitudes = new uint64[](1);
+        magnitudes[0] = 1 ether;
+        
+        TestAVSUtils.AVSSetupParams memory params = TestAVSUtils.AVSSetupParams({
+            operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+            delegator: actors.admin.TOKEN_STAKING_NODES_DELEGATOR,
+            tokenStakingNode: tokenStakingNode,
+            strategies: strategies,
+            operatorSetId: 1,
+            metadataURI: "ipfs://some-metadata-uri",
+            magnitudes: magnitudes
         });
-        registerParams.operatorSetIds[0] = 1;
-        vm.prank(actors.ops.TOKEN_STAKING_NODE_OPERATOR);
-        eigenLayer.allocationManager.registerForOperatorSets(actors.ops.TOKEN_STAKING_NODE_OPERATOR, registerParams);
-
-        _waitForAllocationDelay();
-
-        // Make all delegated shares slashable
-        _allocate();
+        
+        avs = testAVSUtils.setupAVSAndRegisterOperator(
+            vm,
+            eigenLayer.delegationManager,
+            eigenLayer.allocationManager,
+            params
+        );
     }
 
     function _waitForAllocationDelay() internal {
@@ -137,17 +122,15 @@ contract WithSlashingBase is ynEigenIntegrationBaseTest {
     }
 
     function _slash(uint256 _wadsToSlash, IStrategy _strategy) internal {
-        IAllocationManagerTypes.SlashingParams memory slashingParams = IAllocationManagerTypes.SlashingParams({
-            operator: actors.ops.TOKEN_STAKING_NODE_OPERATOR,
-            operatorSetId: 1,
-            strategies: new IStrategy[](1),
-            wadsToSlash: new uint256[](1),
-            description: "test"
-        });
-        slashingParams.strategies[0] = _strategy;
-        slashingParams.wadsToSlash[0] = _wadsToSlash;
-        vm.prank(avs);
-        eigenLayer.allocationManager.slashOperator(avs, slashingParams);
+        testAVSUtils.slashOperator(
+            vm,
+            eigenLayer.allocationManager,
+            avs,
+            actors.ops.TOKEN_STAKING_NODE_OPERATOR,
+            1,
+            _strategy,
+            _wadsToSlash
+        );
     }
 
 

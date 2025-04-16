@@ -75,9 +75,7 @@ contract EigenStrategyManagerWithSlashingTest is WithSlashingBase {
         assertApproxEqRel(totalAssetsAfter, totalAssetsBefore * (1 ether - slashingPercentage) / 1e18, 1, "Total assets should have been reduced according to slashing percentage");
     }
 
-
-
-    function testStakeMultipleAssetsAndSlash(
+    function testStakeMultipleAssetsAndSlashOne(
         uint256 wstethAmount,
         uint256 woethAmount,
         uint256 rethAmount,

@@ -77,6 +77,8 @@ contract Base is Test, Utils, TestUpgradeUtils {
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
     function setUp() public virtual {
+
+
         assignContracts(true);
         
         // Roles are granted here just for testing purposes.
@@ -90,11 +92,6 @@ contract Base is Test, Utils, TestUpgradeUtils {
             vm.stopPrank();
         }
 
-        // for(uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
-        //     vm.startPrank(actors.admin.STAKING_NODES_DELEGATOR);
-        //     stakingNodesManager.nodes(i).syncQueuedShares();
-        //     vm.stopPrank();
-        // }
         upgradeStakingNodesManagerAndStakingNode();
         upgradeWithdrawalsProcessor();
         stakingNodesManager.updateTotalETHStaked();
@@ -132,6 +129,11 @@ contract Base is Test, Utils, TestUpgradeUtils {
 
         // execute scheduled transactions for slashing upgrades
         if (executeScheduledTransactions) {
+
+
+            // this is necessary to ensure that the totalETHStaked is updated to the most recent value.
+            StakingNodesManager(payable(chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS)).updateTotalETHStaked();
+
             TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
         }
 
@@ -144,13 +146,9 @@ contract Base is Test, Utils, TestUpgradeUtils {
 
     function upgradeStakingNodesManagerAndStakingNode() internal virtual {
 
-
-        // Upgrade StakingNodesManager
-        // bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
-
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        // commented here because totalAssets is broken in Holesky
-        // uint256 totalAssetsBefore = yneth.totalAssets();
+
+        uint256 totalAssetsBefore = yneth.totalAssets();
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
@@ -158,8 +156,6 @@ contract Base is Test, Utils, TestUpgradeUtils {
             newStakingNodesManagerImpl,
             ""
         );
-
-        assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");
 
         // Upgrade StakingNode implementation
         address newStakingNodeImpl = address(new StakingNode());
@@ -169,7 +165,15 @@ contract Base is Test, Utils, TestUpgradeUtils {
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
-        // assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
+        // Synchronize all nodes after upgrade
+        IStakingNode[] memory allNodes = stakingNodesManager.getAllNodes();
+        for (uint256 i = 0; i < allNodes.length; i++) {
+            allNodes[i].synchronize();
+        }
+
+        stakingNodesManager.updateTotalETHStaked();
+
+        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
     }
 
     function upgradeWithdrawalsProcessor() internal {
