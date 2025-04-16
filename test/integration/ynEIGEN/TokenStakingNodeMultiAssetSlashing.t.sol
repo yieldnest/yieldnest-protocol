@@ -97,6 +97,33 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
         );
     }
 
+    /**
+     * @notice Calculates the expected total assets after slashing
+     * @param assetsToDeposit Array of assets that were deposited
+     * @param expectedStakesAfter Array of expected stakes after slashing
+     * @return expectedTotalAssetsAfter The total value of assets in ETH after slashing
+     */
+    function calculateExpectedTotalAssetsAfter(
+        IERC20[] memory assetsToDeposit,
+        uint256[] memory expectedStakesAfter
+    ) internal view returns (uint256 expectedTotalAssetsAfter) {
+        expectedTotalAssetsAfter = 0;
+        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
+            uint256 assetValueInETH;
+            if (address(strategy.underlyingToken()) == chainAddresses.lsd.STETH_ADDRESS || 
+                address(strategy.underlyingToken()) == chainAddresses.lsd.OETH_ADDRESS) {
+                assetValueInETH = expectedStakesAfter[i];
+            } else {
+                assetValueInETH = assetRegistry.convertToUnitOfAccount(
+                    IERC20(address(strategy.underlyingToken())), expectedStakesAfter[i]
+                );
+            }
+            expectedTotalAssetsAfter += assetValueInETH;
+        }
+        return expectedTotalAssetsAfter;
+    }
+
     function testStakeMultipleAssetsAndSlashAll(
         // uint256 wstethAmount,
         // uint256 woethAmount,
@@ -183,6 +210,15 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
             IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
             (stakesBefore[i],) = eigenStrategyManager.strategiesBalance(strategy);
         }
+
+        assertApproxEqRel(
+                ynEigenToken.totalAssets(),
+                calculateExpectedTotalAssetsAfter(assetsToDeposit, stakesBefore),
+                1,
+                "Total assets should have been reduced by 50% after slashing"
+        );
+
+        
         
         uint256 slashingFactor = 0.5 ether;
         // Slash all strategies
@@ -223,20 +259,7 @@ contract TokenStakingNodeWithMultiAssetSlashingTest is ynEigenIntegrationBaseTes
 
         // Calculate expected total assets by summing up all expected stakes after slashing
         // and converting each to ETH based on the strategy's rate provider
-        uint256 expectedTotalAssetsAfter = 0;
-        for (uint256 i = 0; i < assetsToDeposit.length; i++) {
-            IStrategy strategy = eigenStrategyManager.strategies(assetsToDeposit[i]);
-            uint256 assetValueInETH;
-            if (address(strategy.underlyingToken()) == chainAddresses.lsd.STETH_ADDRESS || 
-                address(strategy.underlyingToken()) == chainAddresses.lsd.OETH_ADDRESS) {
-                assetValueInETH = expectedStakesAfter[i];
-            } else {
-                assetValueInETH = assetRegistry.convertToUnitOfAccount(
-                    IERC20(address(strategy.underlyingToken())), expectedStakesAfter[i]
-                );
-            }
-            expectedTotalAssetsAfter += assetValueInETH;
-        }
+        uint256 expectedTotalAssetsAfter = calculateExpectedTotalAssetsAfter(assetsToDeposit, expectedStakesAfter);
 
         assertApproxEqRel(
                 totalAssetsAfter,
