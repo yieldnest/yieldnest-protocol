@@ -138,4 +138,37 @@ contract TestAVSUtils  {
         vm.prank(avs);
         allocationManager.slashOperator(avs, slashingParams);
     }
+
+    /**
+     * @notice Modifies allocations for an operator
+     * @param vm The forge VM instance
+     * @param allocationManager The AllocationManager instance
+     * @param avs The AVS address
+     * @param operator The operator address
+     * @param operatorSetId The operator set ID
+     * @param strategies The strategies to allocate
+     * @param magnitudes The magnitudes to allocate for each strategy
+     */
+    function modifyAllocations(
+        Vm vm,
+        IAllocationManager allocationManager,
+        address avs,
+        address operator,
+        uint32 operatorSetId,
+        IStrategy[] memory strategies,
+        uint64[] memory magnitudes
+    ) public {
+        IAllocationManagerTypes.AllocateParams[] memory allocateParams = new IAllocationManagerTypes.AllocateParams[](1);
+        allocateParams[0] = IAllocationManagerTypes.AllocateParams({
+            operatorSet: OperatorSet({
+                avs: avs,
+                id: operatorSetId
+            }),
+            strategies: strategies,
+            newMagnitudes: magnitudes
+        });
+        
+        vm.prank(operator);
+        allocationManager.modifyAllocations(operator, allocateParams);
+    }
 }
