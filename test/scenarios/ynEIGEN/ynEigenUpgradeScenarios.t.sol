@@ -23,7 +23,6 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
-import {console} from "forge-std/console.sol";
 
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
@@ -310,12 +309,6 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             }
         }
         
-        // Compare before and after states to ensure system integrity
-        // assertEq(beforeState.totalAssets, afterState.totalAssets, "Total assets should remain the same after upgrade");
-        // Log total assets before and after upgrade for comparison
-        console.log("Total Assets Before Upgrade:", beforeState.totalAssets);
-        console.log("Total Assets After Upgrade:", afterState.totalAssets);
-        console.log("Difference:", int256(afterState.totalAssets) - int256(beforeState.totalAssets));
         // Assert that total assets are the same with a relative error tolerance of 1e12
         assertApproxEqRel(
             beforeState.totalAssets,
