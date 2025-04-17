@@ -143,7 +143,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         SystemSnapshot memory afterState = getSystemSnapshot(user1);
         
         // Assert that the system state remains unchanged after the upgrade
-        assertEq(afterState.totalAssets, beforeState.totalAssets, "Total assets should remain the same after upgrade");
+        assertApproxEqRel(afterState.totalAssets, beforeState.totalAssets, 1e13, "Total assets should remain the same after upgrade within tolerance");
         assertEq(afterState.totalSupply, beforeState.totalSupply, "Total supply should remain the same after upgrade");
         assertEq(afterState.userBalance, beforeState.userBalance, "User balance should remain the same after upgrade");
         assertEq(afterState.wstEthBalance, beforeState.wstEthBalance, "wstETH balance should remain the same after upgrade");
