@@ -23,7 +23,7 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
 import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
-
+import {IDelegationManager} from "@eigenlayer/src/contracts/interfaces/IDelegationManager.sol";
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
     uint256 public constant WSTETH_AMOUNT = 10 ether;
@@ -148,6 +148,51 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertEq(afterState.userBalance, beforeState.userBalance, "User balance should remain the same after upgrade");
         assertEq(afterState.wstEthBalance, beforeState.wstEthBalance, "wstETH balance should remain the same after upgrade");
         assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes should remain the same after upgrade");
+    }
+
+    function test_sharesViewsAreTheSameBeforeSlashing() public configure {
+
+        upgradeEigenLayerContracts();
+
+        // Get all assets and nodes
+        IERC20[] memory assets = assetRegistry.getAssets();
+        ITokenStakingNode[] memory nodes = tokenStakingNodesManager.getAllNodes();
+        
+        // For each asset and node, verify that userUnderlyingView and sharesToUnderlyingView(withdrawableShares) are equal
+        for (uint256 i = 0; i < assets.length; i++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[i]);
+            
+            for (uint256 j = 0; j < nodes.length; j++) {
+                ITokenStakingNode node = nodes[j];
+                
+                // Calculate balance using userUnderlyingView
+                uint256 userUnderlyingBalance = strategy.userUnderlyingView(address(node));
+
+                // Calculate balance using withdrawableShares and sharesToUnderlyingView
+                uint256 withdrawableShares;
+                {
+                    IDelegationManager delegationManager =  tokenStakingNodesManager.delegationManager();
+                    IStrategy[] memory singleStrategy = new IStrategy[](1);
+                    singleStrategy[0] = strategy;
+                    (uint256[] memory withdrawableSharesArray,) = delegationManager.getWithdrawableShares(address(node), singleStrategy);
+                    withdrawableShares = withdrawableSharesArray[0];
+                }
+                
+                uint256 sharesToUnderlyingBalance = strategy.sharesToUnderlyingView(withdrawableShares);
+                
+                // Assert that both methods yield the same result
+                assertEq(
+                    userUnderlyingBalance,
+                    sharesToUnderlyingBalance,
+                    string(abi.encodePacked(
+                        "Balance mismatch for asset ", 
+                        i, 
+                        " and node ", 
+                        j
+                    ))
+                );
+            }
+        }
     }
 
     function testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
