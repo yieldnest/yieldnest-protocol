@@ -205,38 +205,18 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         // Log system snapshot before upgrades
-        console.log("--- System Snapshot Before Upgrades ---");
-        console.log("Total Assets:", beforeState.totalAssets);
-        console.log("Total Supply:", beforeState.totalSupply);
-        console.log("User Balance:", beforeState.userBalance);
-        console.log("wstETH Balance:", beforeState.wstEthBalance);
-        console.log("Token Staking Nodes Count:", beforeState.tokenStakingNodesCount);
-        console.log("Queued Shares:");
-        for (uint256 i = 0; i < beforeState.queuedShares.length; i++) {
-            console.log("  Node", i, ":", beforeState.queuedShares[i]);
-        }
-        console.log("-----------------------------------");
-
-        // Log strategy shares for each node
-        console.log("--- Strategy Shares Before Upgrades ---");
+        // Initialize nodeShares array to store strategy shares for each node
         uint256[][] memory nodeShares = new uint256[][](assets.length);
         
         for (uint256 j = 0; j < assets.length; j++) {
             IStrategy strategy = eigenStrategyManager.strategies(assets[j]);
-            console.log("Asset:", address(assets[j]));
             
             nodeShares[j] = new uint256[](tokenStakingNodesManager.nodesLength());
             
             for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
                 ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
                 nodeShares[j][i] = strategy.shares(address(node));
-                console.log("Node", i, "Withdrawable Shares:", nodeShares[j][i]);
-
-                (, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
-                // strategy.userUnderlyingView((address(node)));
-                console.log("Node", i, "Withdrawn Balance:", withdrawn);
             }
-            console.log("-----------------------------------");
         }
 
         // Verify staked assets balances before synchronization
@@ -261,32 +241,15 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
         // Capture system state after upgrade and synchronization
         SystemSnapshot memory afterState = getSystemSnapshot(user1);
-        // Log system snapshot after upgrades
-        console.log("--- System Snapshot After Upgrades ---");
-        console.log("Total Assets:", afterState.totalAssets);
-        console.log("Total Supply:", afterState.totalSupply);
-        console.log("User Balance:", afterState.userBalance);
-        console.log("wstETH Balance:", afterState.wstEthBalance);
-        console.log("Token Staking Nodes Count:", afterState.tokenStakingNodesCount);
-        console.log("Queued Shares:");
-        for (uint256 i = 0; i < afterState.queuedShares.length; i++) {
-            console.log("  Node", i, ":", afterState.queuedShares[i]);
-            // Log preELIP002QueuedSharesAmount for each node
-            console.log("Pre-ELIP-002 Queued Shares:");
-            ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
-            IStrategy strategy = IStrategy(eigenStrategyManager.strategies(assets[0])); // Using first asset's strategy
-            uint256 preELIP002Shares = node.preELIP002QueuedSharesAmount(strategy);
-            console.log("  Node", i, ":", preELIP002Shares);
-        }
-        console.log("-----------------------------------");
+        
         for (uint256 j = 0; j < assets.length; j++) {
             IStrategy strategy = eigenStrategyManager.strategies(assets[j]);
-            console.log("Asset:", address(assets[j]));
+            
             for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
                 ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
-                console.log("Node", i, "Withdrawable Shares:", strategy.shares(address(node)));
+                
                 (, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
-                console.log("Node", i, "Withdrawn Balance:", withdrawn);
+                
                 // Get node shares from strategy directly
                 uint256 nodeShares = strategy.shares(address(node));
                 
@@ -303,11 +266,9 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
                 assertEq(
                     nodeShares,
                     withdrawableShares,
-
                     " shares should match withdrawable shares for strategy "
-                    );
+                );
             }
-            console.log("-----------------------------------");
         }
         
         // Compare before and after states to ensure system integrity
