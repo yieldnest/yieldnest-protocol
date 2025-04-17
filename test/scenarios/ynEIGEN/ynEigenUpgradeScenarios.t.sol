@@ -126,6 +126,17 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertEq(_withdrawalRequest.processed, true, "withdrawal not processed");       
     }
 
+    function testUpdateFunctionsRevert() public configure {
+
+        SystemSnapshot memory beforeState = getSystemSnapshot(user1);
+        
+        upgradeEigenLayerContracts();
+
+
+        // vm.expectRevert();
+        eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+    }
+
     function testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         
