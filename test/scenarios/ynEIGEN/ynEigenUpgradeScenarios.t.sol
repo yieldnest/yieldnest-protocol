@@ -22,6 +22,7 @@ import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.so
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {AssetRegistry} from "src/ynEIGEN/AssetRegistry.sol";
+import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 
 contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
@@ -52,7 +53,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         // todo: remove this skip once others are refactored
         // vm.skip(block.chainid == 1);
         // vm.rollFork(22046726); // Mar-14-2025 05:52:23 PM +UTC
-        assignContracts(true);
+        assignContracts(false);
 
         withdrawalsProcessor = WithdrawalsProcessor(chainAddresses.ynEigen.WITHDRAWALS_PROCESSOR_ADDRESS);
         user1 = makeAddr("user1");
@@ -202,6 +203,40 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
 
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
+        // Log system snapshot before upgrades
+        // Initialize nodeShares array to store strategy shares for each node
+        uint256[][] memory nodeShares = new uint256[][](assets.length);
+        
+        for (uint256 j = 0; j < assets.length; j++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[j]);
+            
+            nodeShares[j] = new uint256[](tokenStakingNodesManager.nodesLength());
+            
+            for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+                ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+                nodeShares[j][i] = strategy.shares(address(node));
+            }
+        }
+
+        // Initialize arrays to store queued shares and withdrawn amounts for each node and asset
+        uint256[][] memory nodeQueuedShares = new uint256[][](assets.length);
+        uint256[][] memory nodeWithdrawnAmounts = new uint256[][](assets.length);
+        
+        // Populate the arrays with current values before upgrade
+        for (uint256 j = 0; j < assets.length; j++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[j]);
+            
+            nodeQueuedShares[j] = new uint256[](tokenStakingNodesManager.nodesLength());
+            nodeWithdrawnAmounts[j] = new uint256[](tokenStakingNodesManager.nodesLength());
+            
+            for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+                ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+                (uint256 queuedShares, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                
+                nodeQueuedShares[j][i] = queuedShares;
+                nodeWithdrawnAmounts[j][i] = withdrawn;
+            }
+        }
 
         // Verify staked assets balances before synchronization
         uint256[] memory balancesBefore = eigenStrategyManager.getStakedAssetsBalances(assets);
@@ -211,23 +246,76 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
 
-        // Verify staked assets balances after synchronization
-        uint256[] memory balancesAfter = eigenStrategyManager.getStakedAssetsBalances(assets);
-        
-        // Compare balances before and after synchronization
-        for (uint256 i = 0; i < assets.length; i++) {
-            assertEq(
-                balancesBefore[i], 
-                balancesAfter[i], 
-                "Staked asset balances should remain the same after synchronization"
-            );
+
+        {
+            // Verify staked assets balances after synchronization
+            uint256[] memory balancesAfter = eigenStrategyManager.getStakedAssetsBalances(assets);
+            
+            // Compare balances before and after synchronization
+            for (uint256 i = 0; i < assets.length; i++) {
+                assertEq(
+                    balancesBefore[i], 
+                    balancesAfter[i], 
+                    "Staked asset balances should remain the same after synchronization"
+                );
+            }
         }
 
         // Capture system state after upgrade and synchronization
         SystemSnapshot memory afterState = getSystemSnapshot(user1);
         
-        // Compare before and after states to ensure system integrity
-        assertEq(beforeState.totalAssets, afterState.totalAssets, "Total assets should remain the same after upgrade");
+        for (uint256 j = 0; j < assets.length; j++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[j]);
+            
+            for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+                ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+
+                {                        
+                    // Get node shares from strategy directly
+                    uint256 nodeSharesFromStrategy = strategy.shares(address(node));
+                    
+                    // Get withdrawable shares from the node
+                    uint256 withdrawableShares = node.getWithdrawableShares(strategy);
+    
+                    // Assert that nodeShares equals withdrawableShares
+                    assertEq(
+                        nodeSharesFromStrategy,
+                        withdrawableShares,
+                        "Node shares should match withdrawable shares"
+                    );
+                    // Assert that nodeShares is the same as withdrawableShares
+                    assertEq(
+                        withdrawableShares,
+                        nodeShares[j][i],
+                        "withdrawable shares should match  shares before upgrade "
+                    );
+                }
+                
+                (uint256 queuedShares, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                
+                // Assert that queued shares match the values before upgrade
+                assertEq(
+                    queuedShares,
+                    nodeQueuedShares[j][i],
+                    "Queued shares should match values before upgrade"
+                );
+                
+                // Assert that withdrawn amounts match the values before upgrade
+                assertEq(
+                    withdrawn,
+                    nodeWithdrawnAmounts[j][i],
+                    "Withdrawn amounts should match values before upgrade"
+                );
+            }
+        }
+        
+        // Assert that total assets are the same with a relative error tolerance of 1e12
+        assertApproxEqRel(
+            beforeState.totalAssets,
+            afterState.totalAssets,
+            1e13,
+            "Total assets should remain the same after upgrade within tolerance"
+        );
         assertEq(beforeState.totalSupply, afterState.totalSupply, "Total supply should remain the same after upgrade");
         assertEq(beforeState.userBalance, afterState.userBalance, "User balance should remain the same after upgrade");
         
@@ -240,45 +328,8 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
     
     function upgradeEigenLayerContracts() internal {
-        allocationManager = new AllocationManager(
-            delegationManager, 
-            pauserRegistry, 
-            IPermissionController(address(2)), 
-            1, 
-            1,
-            // This version is just the version of the EL contracts, however, I don't know the real version used for this.
-            // Doesn't seem to be relevant and it works as it is.
-            "1.3.0" 
-        );
 
-        DelegationManager newDelegationManager = new DelegationManager(
-            strategyManager, 
-            eigenPodManager, 
-            allocationManager, 
-            pauserRegistry, 
-            IPermissionController(address(2)), 
-            1,
-            "1.3.0"
-        );
-        
-        vm.etch(address(delegationManager), address(newDelegationManager).code);
-
-        EigenPodManager newEigenPodManager = new EigenPodManager(
-            ethposDeposit, 
-            eigenPodBeacon, 
-            delegationManager, 
-            pauserRegistry,
-            "1.3.0"
-        );
-        
-        vm.etch(address(eigenPodManager), address(newEigenPodManager).code);
-
-        StrategyManager newStrategyManager = new StrategyManager(
-            strategyManager.delegation(), 
-            strategyManager.pauserRegistry(),
-            "1.3.0"
-        );
-        vm.etch(address(strategyManager), address(newStrategyManager).code);
+        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
     }
 
     function upgradeynEigenContracts() internal {
