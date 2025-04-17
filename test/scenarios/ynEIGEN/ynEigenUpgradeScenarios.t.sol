@@ -231,6 +231,10 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
                 ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
                 nodeShares[j][i] = strategy.shares(address(node));
                 console.log("Node", i, "Withdrawable Shares:", nodeShares[j][i]);
+
+                (, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                // strategy.userUnderlyingView((address(node)));
+                console.log("Node", i, "Withdrawn Balance:", withdrawn);
             }
             console.log("-----------------------------------");
         }
@@ -281,6 +285,8 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
                 ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
                 console.log("Node", i, "Withdrawable Shares:", strategy.shares(address(node)));
+                (, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                console.log("Node", i, "Withdrawn Balance:", withdrawn);
                 // Get node shares from strategy directly
                 uint256 nodeShares = strategy.shares(address(node));
                 
@@ -300,14 +306,16 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
                     " shares should match withdrawable shares for strategy "
                     );
-                
-                console.log("  Verified: nodeShares == withdrawableShares ==", nodeShares);
             }
             console.log("-----------------------------------");
         }
         
         // Compare before and after states to ensure system integrity
         // assertEq(beforeState.totalAssets, afterState.totalAssets, "Total assets should remain the same after upgrade");
+        // Log total assets before and after upgrade for comparison
+        console.log("Total Assets Before Upgrade:", beforeState.totalAssets);
+        console.log("Total Assets After Upgrade:", afterState.totalAssets);
+        console.log("Difference:", int256(afterState.totalAssets) - int256(beforeState.totalAssets));
         assertEq(beforeState.totalSupply, afterState.totalSupply, "Total supply should remain the same after upgrade");
         assertEq(beforeState.userBalance, afterState.userBalance, "User balance should remain the same after upgrade");
         
