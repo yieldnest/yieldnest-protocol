@@ -251,22 +251,22 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
                 (, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
                 
                 // Get node shares from strategy directly
-                uint256 nodeShares = strategy.shares(address(node));
+                uint256 nodeSharesFromStrategy = strategy.shares(address(node));
                 
                 // Get withdrawable shares from the node
                 uint256 withdrawableShares = node.getWithdrawableShares(strategy);
    
                 // Assert that nodeShares equals withdrawableShares
                 assertEq(
-                    nodeShares,
+                    nodeSharesFromStrategy,
                     withdrawableShares,
                     "Node shares should match withdrawable shares"
                 );
                 // Assert that nodeShares is the same as withdrawableShares
                 assertEq(
-                    nodeShares,
                     withdrawableShares,
-                    " shares should match withdrawable shares for strategy "
+                    nodeShares[j][i],
+                    "withdrawable shares should match  shares before upgrade "
                 );
             }
         }
