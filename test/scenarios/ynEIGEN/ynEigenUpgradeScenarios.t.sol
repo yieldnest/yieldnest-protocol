@@ -126,15 +126,28 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertEq(_withdrawalRequest.processed, true, "withdrawal not processed");       
     }
 
-    function testUpdateFunctionsRevert() public configure {
+    function test_updateTokenStakingNodesBalancesForAllAssets_Is_a_NoOp() public configure {
+
+         updateTokenStakingNodesBalancesForAllAssets();
 
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
+
         
         upgradeEigenLayerContracts();
 
+        // IMPORTANT this is a no-op only under the assumption that there is no slashing and 
+        // depositShares = withdrawableShares
+        updateTokenStakingNodesBalancesForAllAssets();
 
-        // vm.expectRevert();
-        eigenStrategyManager.updateTokenStakingNodesBalances(IERC20(chainAddresses.lsd.WSTETH_ADDRESS));
+        // Capture system state after EigenLayer upgrade
+        SystemSnapshot memory afterState = getSystemSnapshot(user1);
+        
+        // Assert that the system state remains unchanged after the upgrade
+        assertEq(afterState.totalAssets, beforeState.totalAssets, "Total assets should remain the same after upgrade");
+        assertEq(afterState.totalSupply, beforeState.totalSupply, "Total supply should remain the same after upgrade");
+        assertEq(afterState.userBalance, beforeState.userBalance, "User balance should remain the same after upgrade");
+        assertEq(afterState.wstEthBalance, beforeState.wstEthBalance, "wstETH balance should remain the same after upgrade");
+        assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes should remain the same after upgrade");
     }
 
     function testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
