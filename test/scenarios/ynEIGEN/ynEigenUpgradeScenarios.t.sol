@@ -316,6 +316,13 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         console.log("Total Assets Before Upgrade:", beforeState.totalAssets);
         console.log("Total Assets After Upgrade:", afterState.totalAssets);
         console.log("Difference:", int256(afterState.totalAssets) - int256(beforeState.totalAssets));
+        // Assert that total assets are the same with a relative error tolerance of 1e12
+        assertApproxEqRel(
+            beforeState.totalAssets,
+            afterState.totalAssets,
+            1e12,
+            "Total assets should remain the same after upgrade within tolerance"
+        );
         assertEq(beforeState.totalSupply, afterState.totalSupply, "Total supply should remain the same after upgrade");
         assertEq(beforeState.userBalance, afterState.userBalance, "User balance should remain the same after upgrade");
         
