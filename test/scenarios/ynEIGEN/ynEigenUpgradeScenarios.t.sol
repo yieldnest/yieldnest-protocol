@@ -219,6 +219,26 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             }
         }
 
+        // Initialize arrays to store queued shares and withdrawn amounts for each node and asset
+        uint256[][] memory nodeQueuedShares = new uint256[][](assets.length);
+        uint256[][] memory nodeWithdrawnAmounts = new uint256[][](assets.length);
+        
+        // Populate the arrays with current values before upgrade
+        for (uint256 j = 0; j < assets.length; j++) {
+            IStrategy strategy = eigenStrategyManager.strategies(assets[j]);
+            
+            nodeQueuedShares[j] = new uint256[](tokenStakingNodesManager.nodesLength());
+            nodeWithdrawnAmounts[j] = new uint256[](tokenStakingNodesManager.nodesLength());
+            
+            for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
+                ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+                (uint256 queuedShares, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                
+                nodeQueuedShares[j][i] = queuedShares;
+                nodeWithdrawnAmounts[j][i] = withdrawn;
+            }
+        }
+
         // Verify staked assets balances before synchronization
         uint256[] memory balancesBefore = eigenStrategyManager.getStakedAssetsBalances(assets);
 
@@ -227,16 +247,19 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
 
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
 
-        // Verify staked assets balances after synchronization
-        uint256[] memory balancesAfter = eigenStrategyManager.getStakedAssetsBalances(assets);
-        
-        // Compare balances before and after synchronization
-        for (uint256 i = 0; i < assets.length; i++) {
-            assertEq(
-                balancesBefore[i], 
-                balancesAfter[i], 
-                "Staked asset balances should remain the same after synchronization"
-            );
+
+        {
+            // Verify staked assets balances after synchronization
+            uint256[] memory balancesAfter = eigenStrategyManager.getStakedAssetsBalances(assets);
+            
+            // Compare balances before and after synchronization
+            for (uint256 i = 0; i < assets.length; i++) {
+                assertEq(
+                    balancesBefore[i], 
+                    balancesAfter[i], 
+                    "Staked asset balances should remain the same after synchronization"
+                );
+            }
         }
 
         // Capture system state after upgrade and synchronization
@@ -247,26 +270,42 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
             
             for (uint256 i = 0; i < tokenStakingNodesManager.nodesLength(); i++) {
                 ITokenStakingNode node = tokenStakingNodesManager.getNodeById(i);
+
+                {                        
+                    // Get node shares from strategy directly
+                    uint256 nodeSharesFromStrategy = strategy.shares(address(node));
+                    
+                    // Get withdrawable shares from the node
+                    uint256 withdrawableShares = node.getWithdrawableShares(strategy);
+    
+                    // Assert that nodeShares equals withdrawableShares
+                    assertEq(
+                        nodeSharesFromStrategy,
+                        withdrawableShares,
+                        "Node shares should match withdrawable shares"
+                    );
+                    // Assert that nodeShares is the same as withdrawableShares
+                    assertEq(
+                        withdrawableShares,
+                        nodeShares[j][i],
+                        "withdrawable shares should match  shares before upgrade "
+                    );
+                }
                 
-                (, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                (uint256 queuedShares, uint256 withdrawn) = node.getQueuedSharesAndWithdrawn(strategy, assets[j]);
                 
-                // Get node shares from strategy directly
-                uint256 nodeSharesFromStrategy = strategy.shares(address(node));
-                
-                // Get withdrawable shares from the node
-                uint256 withdrawableShares = node.getWithdrawableShares(strategy);
-   
-                // Assert that nodeShares equals withdrawableShares
+                // Assert that queued shares match the values before upgrade
                 assertEq(
-                    nodeSharesFromStrategy,
-                    withdrawableShares,
-                    "Node shares should match withdrawable shares"
+                    queuedShares,
+                    nodeQueuedShares[j][i],
+                    "Queued shares should match values before upgrade"
                 );
-                // Assert that nodeShares is the same as withdrawableShares
+                
+                // Assert that withdrawn amounts match the values before upgrade
                 assertEq(
-                    withdrawableShares,
-                    nodeShares[j][i],
-                    "withdrawable shares should match  shares before upgrade "
+                    withdrawn,
+                    nodeWithdrawnAmounts[j][i],
+                    "Withdrawn amounts should match values before upgrade"
                 );
             }
         }
