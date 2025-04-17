@@ -16,6 +16,9 @@ import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IYieldNestStrategyManager} from "src/interfaces/IYieldNestStrategyManager.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import "./ynLSDeScenarioBaseTest.sol";
+import {IRateProvider} from "src/interfaces/IRateProvider.sol";
+import {console} from "forge-std/console.sol";
+
 
 contract ynEigenRewardsTest is ynLSDeScenarioBaseTest {
     bool private _setup = true;
@@ -42,14 +45,34 @@ contract ynEigenRewardsTest is ynLSDeScenarioBaseTest {
 
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
         
-        // Measure initial total assets
+        {
+            // Get the rate provider from the system
+            IRateProvider rateProvider = assetRegistry.rateProvider();
+            
+            // Print the sfrxETH rate
+            uint256 sfrxEthRate = rateProvider.rate(chainAddresses.lsd.SFRXETH_ADDRESS);
+            console.log("sfrxETH Rate:", sfrxEthRate);
+            // Measure initial total assets
+        }
+
         uint256 initialTotalAssets = yneigen.totalAssets();
-        
+
+
         // Advance time by 1 month (30 days)
         vm.warp(block.timestamp + 30 days);
 
-
         eigenStrategyManager.synchronizeNodesAndUpdateBalances(tokenStakingNodesManager.getAllNodes());
+
+        {
+            // Get the rate provider from the system
+            IRateProvider rateProvider = assetRegistry.rateProvider();
+            
+            // Print the sfrxETH rate
+            uint256 sfrxEthRate = rateProvider.rate(chainAddresses.lsd.SFRXETH_ADDRESS);
+            console.log("sfrxETH Rate:", sfrxEthRate);
+            // Measure initial total assets
+        }
+
 
         // Assert that assets have grown (rewards accrued)
         assertEq(yneigen.totalAssets(), initialTotalAssets, "Assets should grow over time due to rewards");
