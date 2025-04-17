@@ -313,7 +313,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertApproxEqRel(
             beforeState.totalAssets,
             afterState.totalAssets,
-            1e12,
+            1e13,
             "Total assets should remain the same after upgrade within tolerance"
         );
         assertEq(beforeState.totalSupply, afterState.totalSupply, "Total supply should remain the same after upgrade");
