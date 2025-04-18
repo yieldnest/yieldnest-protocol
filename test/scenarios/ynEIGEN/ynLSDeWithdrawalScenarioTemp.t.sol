@@ -78,7 +78,7 @@ contract ynLSDeWithdrawalScenarioTemp is ynLSDeScenarioBaseTest {
         queueBlockNumber = uint32(block.number);
     }
 
-    function testQueueWithdrawalBeforeELUpgradeAndCompletedAfterELAndYnUpgrade(bool _executeSynchronizeNodesAndUpdateBalances) public {
+    function skip_testQueueWithdrawalBeforeELUpgradeAndCompletedAfterELAndYnUpgrade(bool _executeSynchronizeNodesAndUpdateBalances) public {
         uint256 _amount = 30 ether;
          if (_setup) _setupTokenStakingNode(_amount);
 

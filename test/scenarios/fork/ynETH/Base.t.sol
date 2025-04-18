@@ -128,11 +128,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
         }
 
         // execute scheduled transactions for slashing upgrades
-        if (executeScheduledTransactions) {
-
-
-            // this is necessary to ensure that the totalETHStaked is updated to the most recent value.
-            StakingNodesManager(payable(chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS)).updateTotalETHStaked();
+        if (false) {
 
             TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
         }

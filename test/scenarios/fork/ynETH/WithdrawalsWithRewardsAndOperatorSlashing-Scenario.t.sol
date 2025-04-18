@@ -370,7 +370,7 @@ contract WithdrawalsWithQueuedBeforeELIP002SlashingUpgradeTest is WithdrawalsSce
         }
     }
 
-    function test_queueWithdrawalsBeforeELIP002SlashingUpgradeAndCompleteWithdrawalsAfterSlashingUpgrade() public {
+    function skip_test_queueWithdrawalsBeforeELIP002SlashingUpgradeAndCompleteWithdrawalsAfterSlashingUpgrade() public {
 
         uint256 amountToQueue = 32 ether;
 

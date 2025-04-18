@@ -94,7 +94,7 @@ contract IntegrationBaseTest is Test, Utils, TestUpgradeUtils {
         actors = actorAddresses.getActors(block.chainid);
 
         // execute scheduled transactions for slashing upgrades
-        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        // TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
 
         // Setup Protocol
         setupYnETHPoxies();

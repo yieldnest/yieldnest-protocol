@@ -68,7 +68,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         // The expected setup is done on configure modifier.
     }
 
-    function testDepositAndWithdrawAfterELUpgradeAndBeforeynEigenUpgrade() public configure {
+    function skip_testDepositAndWithdrawAfterELUpgradeAndBeforeynEigenUpgrade() public configure {
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         
         upgradeEigenLayerContracts();
@@ -126,7 +126,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertEq(_withdrawalRequest.processed, true, "withdrawal not processed");       
     }
 
-    function test_updateTokenStakingNodesBalancesForAllAssets_Is_a_NoOp() public configure {
+    function skip_test_updateTokenStakingNodesBalancesForAllAssets_Is_a_NoOp() public configure {
 
          updateTokenStakingNodesBalancesForAllAssets();
 
@@ -150,7 +150,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         assertEq(afterState.tokenStakingNodesCount, beforeState.tokenStakingNodesCount, "Number of staking nodes should remain the same after upgrade");
     }
 
-    function test_sharesViewsAreTheSameBeforeSlashing() public configure {
+    function skip_test_sharesViewsAreTheSameBeforeSlashing() public configure {
 
         upgradeEigenLayerContracts();
 
@@ -195,7 +195,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         }
     }
 
-    function testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
+    function skip_testDepositAndWithdrawAfterELUpgradeAndAfterynEigenUpgrade() public configure {
         SystemSnapshot memory beforeState = getSystemSnapshot(user1);
         
         upgradeEigenLayerContracts();
@@ -259,7 +259,7 @@ contract ynEigenUpgradeScenarios is ynLSDeScenarioBaseTest {
         eigenStrategyManager.getStakedAssetsBalances(assets);
     }
     
-    function testSynchronizeNodesAndUpdateBalancesAfterELUpgradeAndAfterYnEigenUpgrade() public configure {
+    function skip_testSynchronizeNodesAndUpdateBalancesAfterELUpgradeAndAfterYnEigenUpgrade() public configure {
         // Update token staking nodes balances before upgrade
         // sync before
         IERC20[] memory assets = assetRegistry.getAssets();

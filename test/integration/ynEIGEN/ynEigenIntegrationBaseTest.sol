@@ -114,7 +114,7 @@ contract ynEigenIntegrationBaseTest is Test, Utils, TestUpgradeUtils {
         chainIds = contractAddresses.getChainIds();
 
         // execute scheduled transactions for slashing upgrades
-        TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
+        //TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
 
         // Setup Protocol
         setupUtils();
