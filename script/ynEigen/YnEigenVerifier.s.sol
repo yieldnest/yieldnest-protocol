@@ -76,7 +76,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         );
 
         // Verify delay
-        uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 3 days;
+        uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 5 minutes;
         require(deployment.upgradeTimelock.getMinDelay() == expectedDelay, "upgradeTimelock: DELAY INVALID");
         console.log("\u2705 upgradeTimelock: DELAY - ", deployment.upgradeTimelock.getMinDelay());
     }
