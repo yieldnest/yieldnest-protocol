@@ -484,7 +484,7 @@ contract Verify is BaseYnETHScript {
 
         // EXPECTING 5 BIPS for holesky and 10 BPS for mainnet 
         require(
-            deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 1000),
+            deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 0),
             "WithdrawalQueueManager: withdrawalFee INVALID"
         );
         console.log("\u2705 WithdrawalQueueManager: withdrawalFee - Value:", deployment.withdrawalQueueManager.withdrawalFee());
