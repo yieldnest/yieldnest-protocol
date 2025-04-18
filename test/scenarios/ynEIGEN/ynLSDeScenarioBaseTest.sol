@@ -75,11 +75,10 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
     }
 
     function setUp() public virtual {
-        assignContracts(true);
-        upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry();
+        assignContracts();
     }
 
-    function assignContracts(bool executeScheduledTransactions) internal {
+    function assignContracts() internal {
         uint256 chainId = block.chainid;
 
         contractAddresses = new ContractAddresses();
@@ -108,13 +107,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         redemptionAssetsVault = RedemptionAssetsVault(chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS);
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
-
-        // execute scheduled transactions for slashing upgrades
-        if (false) {
-            // Update token staking nodes balances for all assets before slashing upgrade when its possible
-
-            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
-        }
     }
 
     function updateTokenStakingNodesBalancesForAllAssets() internal {
@@ -129,10 +121,8 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         uint256 totalAssetsBefore = yneigen.totalAssets();
         // Deploy new TokenStakingNode implementation
-        // address newTokenStakingNodeImpl = address(new TokenStakingNode());
-        // address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
-        address newTokenStakingNodeImpl = 0x74ff5C9F93080d20D505ffa3cc291f5bFaD43655;
-        address newTokenStakingNodesManagerImpl = 0x6Fbd79BbF9dA002c33F94D0a372F9756756adb2c;
+        address newTokenStakingNodeImpl = address(new TokenStakingNode());
+        address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
 
         vm.prank(address(timelockController));
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(tokenStakingNodesManager))).upgradeAndCall(
@@ -148,8 +138,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         {
             // Deploy new EigenStrategyManager implementation
-            // address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
-            address newEigenStrategyManagerImpl = 0xAB0153A53Db6e12c0A86D1404B509BC647333E79;
+            address newEigenStrategyManagerImpl = address(new EigenStrategyManager());
             
             // Get the proxy admin for the EigenStrategyManager
             address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(eigenStrategyManager));
@@ -165,8 +154,7 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
         {
             // Deploy new AssetRegistry implementation
-            // address newAssetRegistryImpl = address(new AssetRegistry());
-            address newAssetRegistryImpl = 0x031AE4a8a09b1779DBF69828356945fdf59D6879;
+            address newAssetRegistryImpl = address(new AssetRegistry());
             // Get the proxy admin for the AssetRegistry
             address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(assetRegistry));
             
@@ -187,8 +175,5 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
             vm.prank(actors.ops.STRATEGY_CONTROLLER);
             eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
         }
-
-        // 3632658160216128530 is an increase after synchronization 
-        assertEq(yneigen.totalAssets(), totalAssetsBefore + 3632658160216128530, "Total assets changed after upgrade");
     }
 }

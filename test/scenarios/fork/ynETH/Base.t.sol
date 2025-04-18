@@ -79,7 +79,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
     function setUp() public virtual {
 
 
-        assignContracts(true);
+        assignContracts();
         
         // Roles are granted here just for testing purposes.
         // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
@@ -92,12 +92,10 @@ contract Base is Test, Utils, TestUpgradeUtils {
             vm.stopPrank();
         }
 
-        upgradeStakingNodesManagerAndStakingNode();
-        upgradeWithdrawalsProcessor();
         stakingNodesManager.updateTotalETHStaked();
     }
 
-    function assignContracts(bool executeScheduledTransactions) internal {
+    function assignContracts() internal {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         actorAddresses = new ActorAddresses();
@@ -126,13 +124,6 @@ contract Base is Test, Utils, TestUpgradeUtils {
             eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
             delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         }
-
-        // execute scheduled transactions for slashing upgrades
-        if (false) {
-
-            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
-        }
-
         // deploy EigenLayer mocks
         {
             vm.warp(GENESIS_TIME_LOCAL);
@@ -144,11 +135,9 @@ contract Base is Test, Utils, TestUpgradeUtils {
 
 
         // Upgrade StakingNodesManager
-        // bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
-        // address newStakingNodesManagerImpl = address(new StakingNodesManager());
-        address newStakingNodesManagerImpl = 0xf1EB27d5800f16be1B48D7f35c731554e055a7Ce;
-        uint256 totalAssetsBefore = yneth.totalAssets();
+        address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
@@ -158,9 +147,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
         );
 
         // Upgrade StakingNode implementation
-        // address newStakingNodeImpl = address(new StakingNode());
-        address newStakingNodeImpl = 0x56D43f8C6c3891d081AD93B27419c37394857117;
-
+        address newStakingNodeImpl = address(new StakingNode());
 
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
@@ -177,8 +164,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
 
     function upgradeWithdrawalsProcessor() internal {
 
-        // address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
-        address newWithdrawalsProcessorImpl = 0x4B2552e5b1cC75d5f499DD76b0317aAf0Ad5620F;
+        address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
 
         vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(

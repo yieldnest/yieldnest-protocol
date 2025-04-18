@@ -296,7 +296,7 @@ contract WithdrawalsWithQueuedBeforeELIP002SlashingUpgradeTest is WithdrawalsSce
 
     function setUp() public override {
         setUpBlockTimestamp = block.timestamp;
-        super.assignContracts(false);
+        super.assignContracts();
         nodeId = stakingNodesManager.nodesLength();
     }
 
