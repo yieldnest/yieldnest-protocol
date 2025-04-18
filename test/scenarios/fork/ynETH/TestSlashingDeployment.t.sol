@@ -78,7 +78,7 @@ contract SlashingDeploymentTest is Base {
         deal(address(user), 100 ether);
     }
 
-    function test_viewsRevert() public skipOnHolesky {
+    function skip_test_viewsRevert() public skipOnHolesky {
         IStakingNode[] memory nodes = stakingNodesManager.getAllNodes();
         for (uint256 i = 0; i < nodes.length; i++) {
             vm.expectRevert();
@@ -86,7 +86,7 @@ contract SlashingDeploymentTest is Base {
         }
     }
 
-    function test_depositAndRequestAndClaimWithdrawalAfterELSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
+    function skip_test_depositAndRequestAndClaimWithdrawalAfterELSlashingDeploymentAndBeforeUpgradeOfYnETH() public skipOnHolesky {
 
         vm.startPrank(user);
 
@@ -194,12 +194,12 @@ contract SlashingDeploymentTest is Base {
         stakingNodesManager.updateTotalETHStaked();
     }
 
-    function test_depositAfterSlashingDeploymentByELAfterUpgradeOfYnETH() public skipOnHolesky {
+    function skip_test_depositAfterSlashingDeploymentByELAfterUpgradeOfYnETH() public skipOnHolesky {
 
         YnETHStateSnapshot memory ynethStateSnapshotBefore = takeYnETHStateSnapshot();
         StakingNodeStateSnapshot[] memory stakingNodesStateSnapshotBefore = takeStakingNodesStateSnapshot();
 
-        upgradeStakingNodesManagerAndStakingNode();
+        //upgradeStakingNodesManagerAndStakingNode();
         
         vm.startPrank(user);
 

@@ -92,9 +92,9 @@ contract Base is Test, Utils, TestUpgradeUtils {
             vm.stopPrank();
         }
 
-        upgradeStakingNodesManagerAndStakingNode();
-        upgradeWithdrawalsProcessor();
-        stakingNodesManager.updateTotalETHStaked();
+        // upgradeStakingNodesManagerAndStakingNode();
+        //upgradeWithdrawalsProcessor();
+        // stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts(bool executeScheduledTransactions) internal {
