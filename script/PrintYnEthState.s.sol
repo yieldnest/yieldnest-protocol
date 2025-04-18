@@ -64,7 +64,14 @@ contract PrintYnEthState is BaseYnETHScript {
             console.log("ETH Balance:", node.getETHBalance());
             console.log("Unverified Staked ETH:", node.getUnverifiedStakedETH());
             console.log("Queued Shares Amount:", node.getQueuedSharesAmount());
-            // console.log("Pre-ELIP002 Queued Shares:", node.preELIP002QueuedSharesAmount());
+
+
+            try node.preELIP002QueuedSharesAmount() returns (uint256 shares) {
+                console.log("Pre-ELIP002 Queued Shares:", shares);
+            } catch {
+                console.log("Pre-ELIP002 Queued Shares: Not available");
+            }
+
             console.log("Withdrawn ETH:", node.getWithdrawnETH());
             console.log("Is Synchronized:", node.isSynchronized());
             console.log("EigenPod:", address(node.eigenPod()));
