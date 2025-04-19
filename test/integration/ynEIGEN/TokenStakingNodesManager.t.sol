@@ -100,38 +100,38 @@ contract TokenStakingNodesManagerAdminTest is ynEigenIntegrationBaseTest {
         assertEq(tokenStakingNodesManager.maxNodeCount(), maxNodeCount, "Max node count does not match expected value");
     }
 
-    // function testPauseDepositsFunctionality() public {
-    //     IERC20 stETH = IERC20(chainAddresses.lsd.STETH_ADDRESS);
+    function testPauseDepositsFunctionality() public {
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
 
-    //     uint256 depositAmount = 0.1 ether;
+        uint256 depositAmount = 0.1 ether;
 
-	// 	// 1. Obtain stETH and Deposit assets to ynLSD by User
-    //     TestAssetUtils testAssetUtils = new TestAssetUtils();
-    //     uint256 balance = testAssetUtils.get_stETH(address(this), depositAmount);
-    //     stETH.approve(address(ynlsd), balance);
+		// 1. Obtain wstETH and Deposit assets to ynEigen by User
+        TestAssetUtils testAssetUtils = new TestAssetUtils();
+        uint256 balance = testAssetUtils.get_wstETH(address(this), depositAmount);
+        wstETH.approve(address(ynEigenToken), balance);
 
-    //     // Arrange
-    //     vm.prank(actors.ops.PAUSE_ADMIN);
-    //     ynlsd.pauseDeposits();
+        // Arrange
+        vm.prank(actors.ops.PAUSE_ADMIN);
+        ynEigenToken.pauseDeposits();
 
-    //     // Act & Assert
-    //     bool pauseState = ynlsd.depositsPaused();
-    //     assertTrue(pauseState, "Deposit ETH should be paused after setting pause state to true");
+        // Act & Assert
+        bool pauseState = ynEigenToken.depositsPaused();
+        assertTrue(pauseState, "Deposit ETH should be paused after setting pause state to true");
 
-    //     // Trying to deposit ETH while pause
-    //     vm.expectRevert(ynLSD.Paused.selector);
-    //     ynlsd.deposit(stETH, balance, address(this));
+        // Trying to deposit ETH while pause
+        vm.expectRevert(ynEigen.Paused.selector);
+        ynEigenToken.deposit(wstETH, balance, address(this));
 
-    //     // Unpause and try depositing again
-    //     vm.prank(actors.admin.UNPAUSE_ADMIN);
-    //     ynlsd.unpauseDeposits();
-    //     pauseState = ynlsd.depositsPaused();
+        // Unpause and try depositing again
+        vm.prank(actors.admin.UNPAUSE_ADMIN);
+        ynEigenToken.unpauseDeposits();
+        pauseState = ynEigenToken.depositsPaused();
 
-    //     assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
+        assertFalse(pauseState, "Deposit ETH should be unpaused after setting pause state to false");
 
-    //     // Deposit should succeed now
-    //     ynlsd.deposit(stETH, balance, address(this));
-    //     assertGt(ynlsd.totalAssets(), 0, "ynLSD balance should be greater than 0 after deposit");
-    // }
+        // Deposit should succeed now
+        ynEigenToken.deposit(wstETH, balance, address(this));
+        assertGt(ynEigenToken.totalAssets(), 0, "ynEigenToken balance should be greater than 0 after deposit");
+    }
 
 }

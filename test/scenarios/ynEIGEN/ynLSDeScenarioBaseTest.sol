@@ -24,14 +24,13 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {Test} from "forge-std/Test.sol";
 
-contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
+contract ynLSDeScenarioBaseTest is Test, Utils {
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -119,7 +118,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
     function upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry() internal {
 
-        uint256 totalAssetsBefore = yneigen.totalAssets();
         // Deploy new TokenStakingNode implementation
         address newTokenStakingNodeImpl = address(new TokenStakingNode());
         address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());

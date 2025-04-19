@@ -27,8 +27,7 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
 
     address public constant user = address(0x42069);
     address public constant owner = address(0x42069420);
-    address public constant keeper = address(0x4206942069);
-    address public constant bufferSetter = address(0x420694206942);
+    address public  keeper;
 
     function setUp() public virtual override {
         super.setUp();
@@ -40,35 +39,8 @@ contract WithdrawalsProcessorForkTest is ynLSDeScenarioBaseTest {
             deal({token: chainAddresses.lsd.SFRXETH_ADDRESS, to: user, give: 1000 ether});
         }
 
-        // deploy withdrawalsProcessor
-        {
-            // withdrawalsProcessor = new WithdrawalsProcessor(
-            //     address(withdrawalQueueManager),
-            //     address(tokenStakingNodesManager),
-            //     address(assetRegistry),
-            //     address(eigenStrategyManager),
-            //     address(delegationManager),
-            //     address(yneigen),
-            //     address(redemptionAssetsVault),
-            //     address(wrapper),
-            //     chainAddresses.lsd.STETH_ADDRESS,
-            //     chainAddresses.lsd.WSTETH_ADDRESS,
-            //     chainAddresses.lsd.OETH_ADDRESS,
-            //     chainAddresses.lsd.WOETH_ADDRESS
-            // );
-
-            withdrawalsProcessor = IWithdrawalsProcessor(0xd1Cc0F09Bcc5695810C44F4d34BDcf28eD3a3fa7);
-
-            withdrawalsProcessor = WithdrawalsProcessor(
-                address(
-                    new TransparentUpgradeableProxy(address(withdrawalsProcessor), actors.admin.PROXY_ADMIN_OWNER, "")
-                )
-            );
-
-            WithdrawalsProcessor(address(withdrawalsProcessor)).initialize(owner, keeper);
-
-            WithdrawalsProcessor(address(withdrawalsProcessor)).initializeV2(bufferSetter, 1 ether);
-        }
+        keeper = actors.ops.YNEIGEN_WITHDRAWAL_MANAGER;
+        withdrawalsProcessor = IWithdrawalsProcessor(chainAddresses.ynEigen.WITHDRAWALS_PROCESSOR_ADDRESS);
 
         // grant roles to withdrawalsProcessor
         {

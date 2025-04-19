@@ -30,12 +30,11 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 
-contract Base is Test, Utils, TestUpgradeUtils {
+contract Base is Test, Utils {
 
     bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -126,7 +125,6 @@ contract Base is Test, Utils, TestUpgradeUtils {
         }
         // deploy EigenLayer mocks
         {
-            vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
     }

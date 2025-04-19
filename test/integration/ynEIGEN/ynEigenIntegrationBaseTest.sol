@@ -45,10 +45,8 @@ import {ITokenStakingNodesManager} from "src/interfaces/ITokenStakingNodesManage
 import {ynEigenDepositAdapter} from "src/ynEIGEN/ynEigenDepositAdapter.sol";
 import {IwstETH} from "src/external/lido/IwstETH.sol";
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
-
-contract ynEigenIntegrationBaseTest is Test, Utils, TestUpgradeUtils {
+contract ynEigenIntegrationBaseTest is Test, Utils {
 
     // State
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -112,9 +110,6 @@ contract ynEigenIntegrationBaseTest is Test, Utils, TestUpgradeUtils {
         actorAddresses = new ActorAddresses();
 
         chainIds = contractAddresses.getChainIds();
-
-        // execute scheduled transactions for slashing upgrades
-        //TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
 
         // Setup Protocol
         setupUtils();

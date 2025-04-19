@@ -35,9 +35,8 @@ import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
-contract IntegrationBaseTest is Test, Utils, TestUpgradeUtils {
+contract IntegrationBaseTest is Test, Utils {
 
     // State
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -92,9 +91,6 @@ contract IntegrationBaseTest is Test, Utils, TestUpgradeUtils {
         actorAddresses = new ActorAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         actors = actorAddresses.getActors(block.chainid);
-
-        // execute scheduled transactions for slashing upgrades
-        // TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
 
         // Setup Protocol
         setupYnETHPoxies();
@@ -170,7 +166,6 @@ contract IntegrationBaseTest is Test, Utils, TestUpgradeUtils {
 
     function setupEthereum() public {
         depositContractEth2 = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
-        vm.warp(GENESIS_TIME_LOCAL);
         beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
     }
 
