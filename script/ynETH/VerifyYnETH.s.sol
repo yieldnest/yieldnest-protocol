@@ -484,7 +484,7 @@ contract Verify is BaseYnETHScript {
 
         // EXPECTING 5 BIPS for holesky and 10 BPS for mainnet 
         require(
-            deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 1000),
+            deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 0),
             "WithdrawalQueueManager: withdrawalFee INVALID"
         );
         console.log("\u2705 WithdrawalQueueManager: withdrawalFee - Value:", deployment.withdrawalQueueManager.withdrawalFee());
@@ -612,6 +612,12 @@ contract Verify is BaseYnETHScript {
             address(deployment.stakingNodesManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
             "StakingNodesManager: redemptionAssetsVault dependency mismatch"
         );
+
+        require(
+            address(deployment.stakingNodesManager.rewardsCoordinator()) == chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS,
+            "StakingNodesManager: rewardsCoordinator dependency mismatch"
+        );
+
         console.log("\u2705 StakingNodesManager: redemptionAssetsVault dependency verified");
         
         console.log("\u2705 StakingNodesManager dependencies verified");

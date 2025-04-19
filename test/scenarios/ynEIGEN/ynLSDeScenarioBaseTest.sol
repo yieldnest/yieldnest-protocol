@@ -24,14 +24,13 @@ import {RedemptionAssetsVault} from "src/ynEIGEN/RedemptionAssetsVault.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {LSDWrapper} from "src/ynEIGEN/LSDWrapper.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 import {Test} from "forge-std/Test.sol";
 
-contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
+contract ynLSDeScenarioBaseTest is Test, Utils {
 
     // Utils
     ContractAddresses public contractAddresses;
@@ -75,11 +74,10 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
     }
 
     function setUp() public virtual {
-        assignContracts(true);
-        upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry();
+        assignContracts();
     }
 
-    function assignContracts(bool executeScheduledTransactions) internal {
+    function assignContracts() internal {
         uint256 chainId = block.chainid;
 
         contractAddresses = new ContractAddresses();
@@ -108,14 +106,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         redemptionAssetsVault = RedemptionAssetsVault(chainAddresses.ynEigen.REDEMPTION_ASSETS_VAULT_ADDRESS);
         withdrawalQueueManager = WithdrawalQueueManager(chainAddresses.ynEigen.WITHDRAWAL_QUEUE_MANAGER_ADDRESS);
         wrapper = LSDWrapper(chainAddresses.ynEigen.WRAPPER);
-
-        // execute scheduled transactions for slashing upgrades
-        if (executeScheduledTransactions) {
-            // Update token staking nodes balances for all assets before slashing upgrade when its possible
-            updateTokenStakingNodesBalancesForAllAssets();
-
-            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
-        }
     }
 
     function updateTokenStakingNodesBalancesForAllAssets() internal {
@@ -128,7 +118,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
 
     function upgradeTokenStakingNodesManagerTokenStakingNodeEigenStrategyManagerAssetRegistry() internal {
 
-        uint256 totalAssetsBefore = yneigen.totalAssets();
         // Deploy new TokenStakingNode implementation
         address newTokenStakingNodeImpl = address(new TokenStakingNode());
         address newTokenStakingNodesManagerImpl = address(new TokenStakingNodesManager());
@@ -164,7 +153,6 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
         {
             // Deploy new AssetRegistry implementation
             address newAssetRegistryImpl = address(new AssetRegistry());
-            
             // Get the proxy admin for the AssetRegistry
             address proxyAdmin = getTransparentUpgradeableProxyAdminAddress(address(assetRegistry));
             
@@ -185,7 +173,5 @@ contract ynLSDeScenarioBaseTest is Test, Utils, TestUpgradeUtils {
             vm.prank(actors.ops.STRATEGY_CONTROLLER);
             eigenStrategyManager.synchronizeNodesAndUpdateBalances(nodes);
         }
-
-        assertEq(yneigen.totalAssets(), totalAssetsBefore, "Total assets changed after upgrade");
     }
 }

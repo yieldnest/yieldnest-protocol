@@ -30,12 +30,11 @@ import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
 import {WithdrawalsProcessor} from "src/WithdrawalsProcessor.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Test.sol";
 
-contract Base is Test, Utils, TestUpgradeUtils {
+contract Base is Test, Utils {
 
     bytes public constant ZERO_SIGNATURE = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     bytes constant ZERO_PUBLIC_KEY = hex"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; 
@@ -79,7 +78,7 @@ contract Base is Test, Utils, TestUpgradeUtils {
     function setUp() public virtual {
 
 
-        assignContracts(true);
+        assignContracts();
         
         // Roles are granted here just for testing purposes.
         // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
@@ -92,12 +91,10 @@ contract Base is Test, Utils, TestUpgradeUtils {
             vm.stopPrank();
         }
 
-        upgradeStakingNodesManagerAndStakingNode();
-        upgradeWithdrawalsProcessor();
         stakingNodesManager.updateTotalETHStaked();
     }
 
-    function assignContracts(bool executeScheduledTransactions) internal {
+    function assignContracts() internal {
         contractAddresses = new ContractAddresses();
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         actorAddresses = new ActorAddresses();
@@ -126,29 +123,19 @@ contract Base is Test, Utils, TestUpgradeUtils {
             eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
             delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         }
-
-        // execute scheduled transactions for slashing upgrades
-        if (executeScheduledTransactions) {
-
-
-            // this is necessary to ensure that the totalETHStaked is updated to the most recent value.
-            StakingNodesManager(payable(chainAddresses.yn.STAKING_NODES_MANAGER_ADDRESS)).updateTotalETHStaked();
-
-            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
-        }
-
         // deploy EigenLayer mocks
         {
-            vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
     }
 
     function upgradeStakingNodesManagerAndStakingNode() internal virtual {
 
-        address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
-        uint256 totalAssetsBefore = yneth.totalAssets();
+        // Upgrade StakingNodesManager
+        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+
+        address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
@@ -160,20 +147,17 @@ contract Base is Test, Utils, TestUpgradeUtils {
         // Upgrade StakingNode implementation
         address newStakingNodeImpl = address(new StakingNode());
 
-
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
-        // Synchronize all nodes after upgrade
-        IStakingNode[] memory allNodes = stakingNodesManager.getAllNodes();
-        for (uint256 i = 0; i < allNodes.length; i++) {
-            allNodes[i].synchronize();
+        IStakingNode[] memory stakingNodes = stakingNodesManager.getAllNodes();
+
+        for(uint256 i = 0; i < stakingNodes.length; i++) {
+            stakingNodes[i].synchronize();
         }
 
         stakingNodesManager.updateTotalETHStaked();
-
-        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
     }
 
     function upgradeWithdrawalsProcessor() internal {

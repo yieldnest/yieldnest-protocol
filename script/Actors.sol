@@ -19,6 +19,7 @@ contract ActorAddresses {
         address UNPAUSE_ADMIN;
         address ASSET_MANAGER;
         address EIGEN_STRATEGY_ADMIN;
+        address BUFFER_MULTIPLIER_SETTER_ROLE;
     }
 
     struct OpsActors {
@@ -92,7 +93,8 @@ contract ActorAddresses {
                     TOKEN_STAKING_NODES_DELEGATOR: holeskyWallets.YNDelegator,
                     UNPAUSE_ADMIN: holeskyWallets.YNSecurityCouncil,
                     ASSET_MANAGER: holeskyWallets.YNSecurityCouncil,
-                    EIGEN_STRATEGY_ADMIN: holeskyWallets.YNSecurityCouncil
+                    EIGEN_STRATEGY_ADMIN: holeskyWallets.YNSecurityCouncil,
+                    BUFFER_MULTIPLIER_SETTER_ROLE: holeskyWallets.YNSecurityCouncil
                 }),
                 ops: OpsActors({
                     STAKING_NODES_OPERATOR: holeskyWallets.YnOperator,
@@ -145,7 +147,8 @@ contract ActorAddresses {
                 TOKEN_STAKING_NODES_DELEGATOR: mainnetWallets.YNDelegator,
                 UNPAUSE_ADMIN: mainnetWallets.YNSecurityCouncil,
                 ASSET_MANAGER: mainnetWallets.YNSecurityCouncil,
-                EIGEN_STRATEGY_ADMIN: mainnetWallets.YNSecurityCouncil
+                EIGEN_STRATEGY_ADMIN: mainnetWallets.YNSecurityCouncil,
+                BUFFER_MULTIPLIER_SETTER_ROLE: mainnetWallets.YNSecurityCouncil
             }),
             ops: OpsActors({
                 STAKING_NODES_OPERATOR:mainnetWallets.YnOperator,

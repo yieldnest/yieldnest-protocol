@@ -11,8 +11,8 @@ contract DeployYnViewer is BaseYnETHScript {
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         // TODO: Get these from the deployment json file
-        address ynETHProxy = 0xd9029669BC74878BCB5BE58c259ed0A277C5c16E;
-        address stakingNodesManagerProxy = 0xc2387EBb4Ea66627E3543a771e260Bd84218d6a1;
+        address ynETHProxy = 0x09db87A538BD693E9d08544577d5cCfAA6373A48;
+        address stakingNodesManagerProxy = 0x8C33A1d6d062dB7b51f79702355771d44359cD7d;
 
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
@@ -32,7 +32,7 @@ contract DeployYnViewer is BaseYnETHScript {
 }
 
 // == Logs ==
-//   Deployer Public Key: 0x8bA7eF4EA0C986E729AB0d12462345eF53b0521d
-//   Current Block Number: 3595197
-//   Current Chain ID: 17000
-//   YnViewer Implementation: 0xE0442dA2f5B5Ca3603B55274165cCA4226FbdE76
+//   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
+//   Current Block Number: 22279751
+//   Current Chain ID: 1
+//   YnViewer Implementation: 0xb088Fe2ec4DE9711390Da7ca5a4BfD664b08519d

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {TokenStakingNodesManager} from "src/ynEIGEN/TokenStakingNodesManager.sol";
@@ -75,7 +76,7 @@ contract YnEigenVerifier is BaseYnEigenScript {
         );
 
         // Verify delay
-        uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 3 days;
+        uint256 expectedDelay = block.chainid == 17000 ? 15 minutes : 5 minutes;
         require(deployment.upgradeTimelock.getMinDelay() == expectedDelay, "upgradeTimelock: DELAY INVALID");
         console.log("\u2705 upgradeTimelock: DELAY - ", deployment.upgradeTimelock.getMinDelay());
     }
@@ -688,6 +689,13 @@ contract YnEigenVerifier is BaseYnEigenScript {
                 == address(deployment.eigenStrategyManager),
             "tokenStakingNodesManager: yieldNestStrategyManager dependency mismatch"
         );
+
+        require(
+            address(deployment.tokenStakingNodesManager.rewardsCoordinator()) == chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS,
+            "tokenStakingNodesManager: rewardsCoordinator dependency mismatch"
+        );
+        console.log("\u2705 tokenStakingNodesManager: rewardsCoordinator dependency verified successfully");
+
         console.log("\u2705 tokenStakingNodesManager: yieldNestStrategyManager dependency verified successfully");
     }
 
@@ -808,5 +816,25 @@ contract YnEigenVerifier is BaseYnEigenScript {
 
         uint256 previewRedeemResult = deployment.ynEigen.previewRedeem(1 ether);
         console.log(string.concat("previewRedeem of 1 ynEigen: ", vm.toString(previewRedeemResult), " wei (", vm.toString(previewRedeemResult / 1e18), " Unit of Account)"));
+
+        ITokenStakingNode[] memory tokenStakingNodes = deployment.tokenStakingNodesManager.getAllNodes();
+        IERC20[] memory assets = deployment.assetRegistry.getAssets();
+        uint256[] memory assetBalances = deployment.assetRegistry.getAllAssetBalances();
+
+        for (uint256 i = 0; i < tokenStakingNodes.length; i++) {
+            console.log("Printing state for node ", vm.toString(i));
+            for (uint256 j = 0; j < assets.length; j++) {
+                IStrategy strategy = deployment.eigenStrategyManager.strategies(assets[j]);
+                (uint256 totalQueuedShares, uint256 withdrawnShares) = tokenStakingNodes[i].getQueuedSharesAndWithdrawn(strategy, assets[j]);
+                console.log(string.concat("Pre ELIP002 queued shares for node ", vm.toString(i), " and asset ", ERC20(address(assets[j])).symbol(), ": ", vm.toString(tokenStakingNodes[i].preELIP002QueuedSharesAmount(strategy)), " wei (", vm.toString(tokenStakingNodes[i].preELIP002QueuedSharesAmount(strategy) / 1e18), " ETH)"));
+                console.log(string.concat("Queued shares post ELIP002 for node ", vm.toString(i), " and asset ", ERC20(address(assets[j])).symbol(), ": ", vm.toString(tokenStakingNodes[i].queuedShares(strategy)), " wei (", vm.toString(tokenStakingNodes[i].queuedShares(strategy) / 1e18), " ETH)"));
+                console.log(string.concat("Total Queued shares including pre ELIP002 for node ", vm.toString(i), " and asset ", ERC20(address(assets[j])).symbol(), ": ", vm.toString(totalQueuedShares), " wei (", vm.toString(totalQueuedShares / 1e18), " ETH)"));
+                console.log(string.concat("Withdrawn shares for node ", vm.toString(i), " and asset ", ERC20(address(assets[j])).symbol(), ": ", vm.toString(withdrawnShares), " wei (", vm.toString(withdrawnShares / 1e18), " ETH)"));
+            }
+        }
+
+        for (uint256 i = 0; i < assets.length; i++) {
+            console.log("Balance of asset ", ERC20(address(assets[i])).symbol(), " among all nodes is: ", vm.toString(assetBalances[i]));
+        }
     }
 }

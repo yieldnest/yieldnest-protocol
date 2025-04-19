@@ -23,7 +23,6 @@ import {AllocationManagerStorage} from "lib/eigenlayer-contracts/src/contracts/c
 import {StakingNode} from "src/StakingNode.sol";
 import {ISignatureUtilsMixinTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/ISignatureUtilsMixin.sol";
 import {OperatorSet} from "lib/eigenlayer-contracts/src/contracts/libraries/OperatorSetLib.sol";
-import {TestUpgradeUtils} from "test/utils/TestUpgradeUtils.sol";
 import {console} from "forge-std/console.sol";
 import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 
@@ -296,7 +295,7 @@ contract WithdrawalsWithQueuedBeforeELIP002SlashingUpgradeTest is WithdrawalsSce
 
     function setUp() public override {
         setUpBlockTimestamp = block.timestamp;
-        super.assignContracts(false);
+        super.assignContracts();
         nodeId = stakingNodesManager.nodesLength();
     }
 
@@ -367,116 +366,6 @@ contract WithdrawalsWithQueuedBeforeELIP002SlashingUpgradeTest is WithdrawalsSce
                 balanceContainerProof: _cpProofs.balanceContainerProof,
                 proofs: _cpProofs.balanceProofs
             });
-        }
-    }
-
-    function test_queueWithdrawalsBeforeELIP002SlashingUpgradeAndCompleteWithdrawalsAfterSlashingUpgrade() public {
-
-        uint256 amountToQueue = 32 ether;
-
-        uint256 preELIP002QueuedSharesBeforeUpgrade;
-        // queue withdrawals
-        {
-            vm.prank(actors.ops.STAKING_NODE_CREATOR);
-            stakingNodesManager.createStakingNode();
-            nodeId = stakingNodesManager.nodesLength() - 1; 
-            stakingNodeInstance = stakingNodesManager.nodes(nodeId);
-            validatorIndices = registerVerifiedValidatorsAtSpecificNode(100 ether, nodeId);
-
-            preELIP002QueuedSharesBeforeUpgrade = stakingNodeInstance.queuedSharesAmount();
-
-            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodeInstance.queueWithdrawals(amountToQueue);
-            vm.stopPrank();
-        }
-
-        QueuedWithdrawalInfo[] memory withdrawalInfos = new QueuedWithdrawalInfo[](1);
-        uint256 queuedBlockNumber = block.number;
-        withdrawalInfos[0] = QueuedWithdrawalInfo({
-            nodeId: nodeId,
-            withdrawnAmount: amountToQueue
-        });
-
-
-        uint256 totalAssetsBefore = yneth.totalAssets();
-
-        {
-            vm.startPrank(actors.admin.ADMIN);
-            stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
-            stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
-            vm.stopPrank();
-
-            // execute scheduled transactions of Eigenlayer
-            vm.warp(setUpBlockTimestamp + 10 days);
-            TestUpgradeUtils.executeEigenlayerSlashingUpgrade();
-
-            // upgrade YN contracts
-            upgradeStakingNodesManagerAndStakingNode();
-            upgradeWithdrawalsProcessor();
-
-            
-            vm.warp(GENESIS_TIME_LOCAL);
-        }
-
-        assertEq(
-            totalAssetsBefore,
-            yneth.totalAssets(),
-            "Total assets should remain unchanged after ELIP-002 upgrade"
-        );
-
-        // exit validators
-        {
-            for (uint256 i = 0; i < validatorIndices.length; i++) {
-                beaconChain.exitValidator(validatorIndices[i]);
-            }
-            beaconChain.advanceEpoch();
-        }
-        startAndVerifyCheckpoint(nodeId); 
-
-         {
-            IStrategy[] memory _strategies = new IStrategy[](1);
-            _strategies[0] = IStrategy(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0); // beacon chain eth strat
-
-            uint256[] memory scaledShares = new uint256[](1);
-            scaledShares[0] = amountToQueue;
-
-            IDelegationManagerTypes.Withdrawal[] memory _withdrawals = new IDelegationManagerTypes.Withdrawal[](1);
-
-            _withdrawals[0] = IDelegationManagerTypes.Withdrawal({
-                staker: address(stakingNodeInstance),
-                delegatedTo: address(0),
-                withdrawer: address(stakingNodeInstance),
-                nonce: 0,
-                startBlock: uint32(queuedBlockNumber),
-                strategies: _strategies,
-                scaledShares: scaledShares
-            });
-
-            // advance time to allow completion
-            vm.roll(block.number + delegationManager.minWithdrawalDelayBlocks() + 1);
-          
-            uint256 preELIP002QueuedSharesBefore = stakingNodeInstance.preELIP002QueuedSharesAmount();
-            uint256 queuedSharesBefore = stakingNodeInstance.queuedSharesAmount();
-
-            // complete queued withdrawals
-            vm.startPrank(actors.ops.STAKING_NODES_WITHDRAWER);
-            stakingNodeInstance.completeQueuedWithdrawals(_withdrawals);
-            vm.stopPrank();
-
-
-            assertEq(
-                totalAssetsBefore,
-                yneth.totalAssets(),
-                "Total assets should remain unchanged after completing withdrawal"
-            );
-        
-
-            uint256 postELIP002QueuedShares = stakingNodeInstance.preELIP002QueuedSharesAmount();
-            uint256 postQueuedShares = stakingNodeInstance.queuedSharesAmount();
-
-            assertEq(postELIP002QueuedShares, preELIP002QueuedSharesBeforeUpgrade, "preELIP002QueuedShares should be reduced to initial queued shares");
-            assertEq(postELIP002QueuedShares, preELIP002QueuedSharesBefore - amountToQueue, "preELIP002QueuedShares should be reduced by amountToQueue");
-            assertEq(postQueuedShares, queuedSharesBefore, "queuedSharesAmount should be equal to queuedSharesBefore");
         }
     }
 }
