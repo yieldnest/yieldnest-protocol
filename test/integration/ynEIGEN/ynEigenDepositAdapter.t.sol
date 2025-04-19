@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD 3-Clause License
-pragma solidity 0.8.24;
+pragma solidity ^0.8.24;
 
 import "./ynEigenIntegrationBaseTest.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -24,7 +24,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         vm.assume(
             depositAmount < 10000 ether && depositAmount >= 2 wei
-        );  
+        );
         address depositor = address(0x123);
         address receiver = address(0x456);
 
@@ -40,7 +40,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         // Preview deposit to get expected shares
         uint256 expectedShares = ynEigenDepositAdapterInstance.previewDeposit(stETH, depositAmount);
-    
+
         vm.prank(depositor);
         stETH.approve(address(ynEigenDepositAdapterInstance), depositAmount);
         // Act: Perform the deposit operation using the ynEigenDepositAdapter
@@ -49,7 +49,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         // Assert that the actual shares match the expected shares
         assertEq(shares, expectedShares, "Actual shares do not match expected shares");
-        
+
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
         uint256 treshold = depositAmount / 1e17 + 3;
         assertTrue(
@@ -68,7 +68,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
     function testDepositOETHSuccessWithOneDeposit(
        uint256 depositAmount
-    ) public {
+    ) public skipOnHolesky {
 
         vm.assume(
             depositAmount < 10000 ether && depositAmount >= 2 wei
@@ -96,7 +96,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         // Assert that the actual shares match the expected shares
         assertEq(shares, expectedShares, "Actual shares do not match expected shares");
-        
+
         uint256 receiverBalance = ynEigenToken.balanceOf(receiver);
         uint256 treshold = depositAmount / 1e17 + 3;
         assertTrue(
@@ -121,7 +121,9 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
     ) public {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
-        );        
+        );
+
+        testAssetUtils.assumeEnoughStakeLimit(amount);
 
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         depositAssetAndVerify(wstETH, amount);
@@ -132,7 +134,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
     ) public {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
-        );        
+        );
 
         IERC20 sfrxETH = IERC20(chainAddresses.lsd.SFRXETH_ADDRESS);
         depositAssetAndVerify(sfrxETH, amount);
@@ -143,7 +145,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
     ) public {
         vm.assume(
             amount < 10000 ether && amount >= 2 wei
-        );        
+        );
 
         IERC20 rETH = IERC20(chainAddresses.lsd.RETH_ADDRESS);
         depositAssetAndVerify(rETH, amount);
@@ -155,7 +157,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         // NOTE: mETH doesn't usually work with 10k amounts at a time to stake ETH and obtain it in 1 tx
         vm.assume(
             amount < 1000 ether && amount >= 2 wei
-        );        
+        );
 
         IERC20 mETH = IERC20(chainAddresses.lsd.METH_ADDRESS);
         depositAssetAndVerify(mETH, amount);
@@ -194,14 +196,16 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
         // Verify receiver balance increased
         assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
     }
-    
+
     function testDepositWithReferralWstETHFuzz(
         uint256 amount,
         address receiver,
         address referrer
     ) public {
-
         vm.assume(amount >= 2 wei && amount < 10000 ether);
+
+        testAssetUtils.assumeEnoughStakeLimit(amount);
+
         vm.assume(receiver != address(0) && referrer != address(0) && receiver != referrer);
 
         address prankedUser = address(0x1234543210);
@@ -216,7 +220,7 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         vm.startPrank(prankedUser);
         wstETH.approve(address(ynEigenDepositAdapterInstance), balance);
-        
+
         uint256 shares = ynEigenDepositAdapterInstance.depositWithReferral(wstETH, balance, receiver, referrer);
         vm.stopPrank();
 
@@ -226,10 +230,10 @@ contract ynEigenDepositAdapterTest is ynEigenIntegrationBaseTest {
 
         // Verify wstETH balance of ynEigenToken increased
         assertEq(finalAssetBalance, initialAssetBalance + balance, "wstETH balance did not increase correctly");
-        
+
         // Verify total supply increased
         assertEq(finalSupply, initialSupply + shares, "Total supply did not increase correctly");
-        
+
         // Verify receiver balance increased
         assertEq(finalReceiverBalance, initialReceiverBalance + shares, "Receiver balance did not increase correctly");
 

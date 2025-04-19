@@ -70,7 +70,7 @@ contract StakingNodesManager is
     error InvalidRewardsType(RewardsType rewardsType);
     error ValidatorUnused(bytes publicKey);
     error ValidatorNotWithdrawn(bytes publicKey, IEigenPod.VALIDATOR_STATUS status);
-    error NodeNotSynchronized();
+    error NodeNotSynchronized(address );
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ROLES  -------------------------------------------
@@ -247,9 +247,10 @@ contract StakingNodesManager is
 
     function initializeV3(
         IRewardsCoordinator _rewardsCoordinator
-    ) external reinitializer(3) {
+    ) external virtual reinitializer(3) {
         if (address(_rewardsCoordinator) == address(0)) revert ZeroAddress();
         rewardsCoordinator = _rewardsCoordinator;
+        
         uint256 updatedTotalETHStaked = 0;
         IStakingNode[] memory _nodes = getAllNodes();
         for (uint256 i = 0; i < _nodes.length; i++) {
@@ -458,7 +459,6 @@ contract StakingNodesManager is
 
             // Update to the newly upgraded version.
             initializedVersion = node.getInitializedVersion();
-            emit NodeInitialized(address(node), initializedVersion);
         }
 
         if (initializedVersion == 1) {
@@ -470,6 +470,13 @@ contract StakingNodesManager is
             node.initializeV3();
             initializedVersion = node.getInitializedVersion();
         }
+
+        if (initializedVersion == 3) {
+            node.initializeV4();
+            initializedVersion = node.getInitializedVersion();
+        }
+
+        emit NodeInitialized(address(node), initializedVersion);
 
         // NOTE: For future versions, add additional if clauses that initialize the node 
         // for the next version while keeping the previous initializers.
@@ -666,9 +673,8 @@ contract StakingNodesManager is
         IStakingNode[] memory allNodes = getAllNodes();
         for (uint256 i = 0; i < allNodes.length; i++) {
             if (!allNodes[i].isSynchronized()) {
-                revert NodeNotSynchronized();
-            } 
-
+                revert NodeNotSynchronized(address(allNodes[i]));
+            }
             updatedTotalETHStaked += allNodes[i].getETHBalance();
         }
 

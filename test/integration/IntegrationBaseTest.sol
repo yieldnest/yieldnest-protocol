@@ -5,6 +5,7 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IERC4626} from "lib/openzeppelin-contracts/contracts/interfaces/IERC4626.sol";
 import {TransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IStrategyManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 // import {IDelayedWithdrawalRouter} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelayedWithdrawalRouter.sol";
 import {IDepositContract} from "src/external/ethereum/IDepositContract.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
@@ -84,7 +85,6 @@ contract IntegrationBaseTest is Test, Utils {
     BeaconChainMock public beaconChain;
 
     function setUp() public virtual {
-
 
         // Setup Addresses
         contractAddresses = new ContractAddresses();
@@ -166,7 +166,6 @@ contract IntegrationBaseTest is Test, Utils {
 
     function setupEthereum() public {
         depositContractEth2 = IDepositContract(chainAddresses.ethereum.DEPOSIT_2_ADDRESS);
-        vm.warp(GENESIS_TIME_LOCAL);
         beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
     }
 

@@ -114,13 +114,13 @@ contract BaseYnEigenScript is BaseScript {
     }
 
     function tokenName() internal virtual view returns (string memory) {
-        return inputs.symbol;
+        return "ynLSDe";
     }
 
     function getDeploymentFile() internal view virtual returns (string memory) {
         string memory root = vm.projectRoot();
 
-        return string.concat(root, "/deployments/", tokenName(), "-", vm.toString(block.chainid), ".json");
+        return string.concat(root, "/deployments/", "ynLSDe", "-", vm.toString(block.chainid), ".json");
         // return string.concat(root, "/deployments/", tokenName(), "-", vm.toString(block.chainid), "-ynFoo", ".json");
     }
 
@@ -128,7 +128,7 @@ contract BaseYnEigenScript is BaseScript {
         string memory json = "deployment";
 
         // contract addresses
-        serializeProxyElements(json, tokenName(), address(deployment.ynEigen));
+        serializeProxyElements(json, "ynLSDe", address(deployment.ynEigen));
         serializeProxyElements(json, "assetRegistry", address(deployment.assetRegistry));
         serializeProxyElements(json, "eigenStrategyManager", address(deployment.eigenStrategyManager));
         serializeProxyElements(json, "tokenStakingNodesManager", address(deployment.tokenStakingNodesManager));

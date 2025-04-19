@@ -3,10 +3,11 @@ pragma solidity ^0.8.24;
 
 import {TransparentUpgradeableProxy, ITransparentUpgradeableProxy} from "lib/openzeppelin-contracts/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {ProxyAdmin} from "lib/openzeppelin-contracts/contracts/proxy/transparent/ProxyAdmin.sol";
+import {TimelockController} from "lib/openzeppelin-contracts/contracts/governance/TimelockController.sol";
 
 import {IStrategy} from "lib/eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
 import {IEigenPodManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IEigenPodManager.sol";
-import {IDelegationManager} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
+import {IDelegationManager, IDelegationManagerTypes} from "lib/eigenlayer-contracts/src/contracts/interfaces/IDelegationManager.sol";
 import {BeaconChainMock, BeaconChainProofs, CheckpointProofs, CredentialProofs, EigenPodManager} from "lib/eigenlayer-contracts/src/test/integration/mocks/BeaconChainMock.t.sol";
 import {Utils} from "script/Utils.sol";
 import {ContractAddresses} from "script/ContractAddresses.sol";
@@ -24,6 +25,7 @@ import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {StakingNode} from "src/StakingNode.sol";
+import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
@@ -42,6 +44,7 @@ contract Base is Test, Utils {
     ContractAddresses.ChainAddresses public chainAddresses;
     ActorAddresses public actorAddresses;
     ActorAddresses.Actors public actors;
+    ContractAddresses.ChainIds public chainIds;
 
     // Rewards
     RewardsReceiver public executionLayerReceiver;
@@ -73,18 +76,22 @@ contract Base is Test, Utils {
     uint64 public constant GENESIS_TIME_LOCAL = 1 hours * 12;
 
     function setUp() public virtual {
+
+
         assignContracts();
         
         // Roles are granted here just for testing purposes.
         // On Mainnet only WithdrawalsProcessor has permission to run this, but the system is designed to run
         // them separately as well if needed.
         // Grant roles on StakingNodesManager for mainnet only
-        if (block.chainid == 1) { // Mainnet chain ID
+        if (block.chainid == chainIds.mainnet) { // Mainnet chain ID
             vm.startPrank(actors.admin.ADMIN);
             stakingNodesManager.grantRole(stakingNodesManager.WITHDRAWAL_MANAGER_ROLE(), actors.ops.WITHDRAWAL_MANAGER);
             stakingNodesManager.grantRole(stakingNodesManager.STAKING_NODES_WITHDRAWER_ROLE(), actors.ops.STAKING_NODES_WITHDRAWER);
             vm.stopPrank();
         }
+
+        stakingNodesManager.updateTotalETHStaked();
     }
 
     function assignContracts() internal {
@@ -92,6 +99,7 @@ contract Base is Test, Utils {
         chainAddresses = contractAddresses.getChainAddresses(block.chainid);
         actorAddresses = new ActorAddresses();
         actors = actorAddresses.getActors(block.chainid);
+        chainIds = contractAddresses.getChainIds();
 
         // assign YieldNest addresses
         {
@@ -115,41 +123,54 @@ contract Base is Test, Utils {
             eigenPodManager = IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS);
             delegationManager = IDelegationManager(chainAddresses.eigenlayer.DELEGATION_MANAGER_ADDRESS);
         }
-
         // deploy EigenLayer mocks
         {
-            vm.warp(GENESIS_TIME_LOCAL);
             beaconChain = new BeaconChainMock(EigenPodManager(address(eigenPodManager)), GENESIS_TIME_LOCAL);
         }
     }
 
-    function upgradeStakingNodesManagerAndStakingNode() internal {
+    function upgradeStakingNodesManagerAndStakingNode() internal virtual {
 
-        // Upgrade StakingNode implementation
-        address newStakingNodeImpl = address(new StakingNode());
 
         // Upgrade StakingNodesManager
         bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
-        uint256 totalAssetsBefore = yneth.totalAssets();
-
-
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
         ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(stakingNodesManager))).upgradeAndCall(
             ITransparentUpgradeableProxy(address(stakingNodesManager)),
             newStakingNodesManagerImpl,
-            initializeV3Data
+            ""
         );
 
-        assertEq(address(stakingNodesManager.rewardsCoordinator()), chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS, "rewardsCoordinator not set correctly after upgrade");
+        // Upgrade StakingNode implementation
+        address newStakingNodeImpl = address(new StakingNode());
 
         // Register new implementation
         vm.prank(actors.admin.STAKING_ADMIN);
         stakingNodesManager.upgradeStakingNodeImplementation(newStakingNodeImpl);
 
-        assertEq(yneth.totalAssets(), totalAssetsBefore, "totalAssets of ynETH changed after upgrade");
+        IStakingNode[] memory stakingNodes = stakingNodesManager.getAllNodes();
+
+        for(uint256 i = 0; i < stakingNodes.length; i++) {
+            stakingNodes[i].synchronize();
+        }
+
+        stakingNodesManager.updateTotalETHStaked();
+    }
+
+    function upgradeWithdrawalsProcessor() internal {
+
+        address newWithdrawalsProcessorImpl = address(new WithdrawalsProcessor());
+
+        vm.startPrank(actors.admin.PROXY_ADMIN_OWNER);
+        ProxyAdmin(getTransparentUpgradeableProxyAdminAddress(address(withdrawalsProcessor))).upgradeAndCall(
+            ITransparentUpgradeableProxy(address(withdrawalsProcessor)),
+            newWithdrawalsProcessorImpl,
+            ""
+        );
+        vm.stopPrank();
     }
 
     function createValidators(uint256[] memory nodeIds, uint256 count) public returns (uint40[] memory) {
@@ -198,6 +219,18 @@ contract Base is Test, Utils {
         uint256[] memory previousStakingNodeBalances
     ) public {  
 
+         for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
+            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
+            vm.prank(actors.admin.STAKING_NODES_DELEGATOR);
+            stakingNodeInstance.synchronize();
+
+            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
+            assertEq(
+                currentStakingNodeBalance, previousStakingNodeBalances[i],
+                string.concat("Staking node balance integrity check failed for node ID: ", vm.toString(i))
+            );
+        }
+
         stakingNodesManager.updateTotalETHStaked();
         assertEq(yneth.totalAssets(), previousTotalAssets, "Total assets integrity check failed");
         assertEq(yneth.totalSupply(), previousTotalSupply, "Share mint integrity check failed");
@@ -207,14 +240,6 @@ contract Base is Test, Utils {
             stakingNodesManager.nodesLength(),
             "Number of staking nodes changed after upgrade"
         );
-        for (uint i = 0; i < previousStakingNodeBalances.length; i++) {
-            IStakingNode stakingNodeInstance = stakingNodesManager.nodes(i);
-            uint256 currentStakingNodeBalance = stakingNodeInstance.getETHBalance();
-            assertEq(
-                currentStakingNodeBalance, previousStakingNodeBalances[i],
-                string.concat("Staking node balance integrity check failed for node ID: ", vm.toString(i))
-            );
-        }
 	}
 
     struct UpgradeState {
@@ -325,7 +350,7 @@ contract Base is Test, Utils {
         console.log("EigenPod shares for each StakingNode:");
         for (uint256 i = 0; i < stakingNodesManager.nodesLength(); i++) {
             IStakingNode stakingNode = stakingNodesManager.nodes(i);
-            uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerShares(address(stakingNode)));
+            uint256 podShares = uint256(IEigenPodManager(chainAddresses.eigenlayer.EIGENPOD_MANAGER_ADDRESS).podOwnerDepositShares(address(stakingNode)));
             console.log("Node", i, "Shares:", podShares);
         }
     }

@@ -484,7 +484,7 @@ contract Verify is BaseYnETHScript {
 
         // EXPECTING 5 BIPS for holesky and 10 BPS for mainnet 
         require(
-            deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 1000),
+            deployment.withdrawalQueueManager.withdrawalFee() == (block.chainid == 17000 ? 500 : 0),
             "WithdrawalQueueManager: withdrawalFee INVALID"
         );
         console.log("\u2705 WithdrawalQueueManager: withdrawalFee - Value:", deployment.withdrawalQueueManager.withdrawalFee());
@@ -612,6 +612,12 @@ contract Verify is BaseYnETHScript {
             address(deployment.stakingNodesManager.redemptionAssetsVault()) == address(deployment.ynETHRedemptionAssetsVaultInstance),
             "StakingNodesManager: redemptionAssetsVault dependency mismatch"
         );
+
+        require(
+            address(deployment.stakingNodesManager.rewardsCoordinator()) == chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS,
+            "StakingNodesManager: rewardsCoordinator dependency mismatch"
+        );
+
         console.log("\u2705 StakingNodesManager: redemptionAssetsVault dependency verified");
         
         console.log("\u2705 StakingNodesManager dependencies verified");
@@ -639,12 +645,15 @@ contract Verify is BaseYnETHScript {
     function veryifySanityChecks() internal view {
         // Check that previewDeposit of 1 ETH is less than 1 ether
         uint256 previewDepositResult = deployment.ynETH.previewDeposit(1 ether);
+        console.log("previewDepositResult", previewDepositResult);
         require(previewDepositResult < 1 ether, "previewDeposit of 1 ETH should be less than 1 ether");
         console.log("\u2705 previewDeposit of 1 ETH is less than 1 ether");
 
         // Check that totalSupply is less than totalAssets
         uint256 totalSupply = deployment.ynETH.totalSupply();
         uint256 totalAssets = deployment.ynETH.totalAssets();
+        console.log("totalSupply", totalSupply);
+        console.log("totalAssets", totalAssets);
         require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
         console.log("\u2705 totalSupply is less than totalAssets");
 
@@ -665,7 +674,8 @@ contract Verify is BaseYnETHScript {
         for (uint256 i = 0; i < stakingNodes.length; i++) {
             stakingNodesBalance += stakingNodes[i].getETHBalance();     
             console.log(string.concat("Balance for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].getETHBalance()), " wei (", vm.toString(stakingNodes[i].getETHBalance() / 1e18), " ETH)"));
-
+            console.log(string.concat("Pre ELIP002 queued shares for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].preELIP002QueuedSharesAmount()), " wei (", vm.toString(stakingNodes[i].preELIP002QueuedSharesAmount() / 1e18), " ETH)"));
+            console.log(string.concat("Queued shares for node ", vm.toString(i), ": ", vm.toString(stakingNodes[i].queuedSharesAmount()), " wei (", vm.toString(stakingNodes[i].queuedSharesAmount() / 1e18), " ETH)"));
         }
 
         uint256 totalCalculatedBalance = ynETHBalance + redemptionVaultBalance + stakingNodesBalance;

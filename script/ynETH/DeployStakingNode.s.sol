@@ -13,8 +13,6 @@ contract DeployStakingNode is BaseYnETHScript {
         address publicKey = vm.addr(deployerPrivateKey);
         console.log("Deployer Public Key:", publicKey);
 
-        address _broadcaster = vm.addr(deployerPrivateKey);
-
         vm.startBroadcast(deployerPrivateKey);
 
         console.log("Current Block Number:", block.number);
@@ -31,5 +29,7 @@ contract DeployStakingNode is BaseYnETHScript {
 
 // == Logs ==
 //   Deployer Public Key: 0x445b64828683ae4B6D5f0542f9E97707d631A847
-//   Staking Node Implementation: 0x79388c8cc46069c0e3f285f053692D7397e65e1e
-//   Deployment JSON file written successfully: /Users/parth/Desktop/coding/yieldnest/prod-code-repos/yieldnest-protocol-private/deployments/ynETH-1.json
+//   Current Block Number: 22279725
+//   Current Chain ID: 1
+//   Staking Node Implementation: 0x56D43f8C6c3891d081AD93B27419c37394857117
+

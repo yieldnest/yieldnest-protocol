@@ -38,11 +38,9 @@ contract ynViewer is IynViewer {
     }
 
     /// @inheritdoc IynViewer
-    function withdrawalDelayBlocks(address _strategy) external view returns (uint256) {
+    function withdrawalDelayBlocks(address) external view returns (uint256) {
         IDelegationManager _delegationManager = stakingNodesManager.delegationManager();
-        uint256 _minDelay = _delegationManager.minWithdrawalDelayBlocks();
-        uint256 _strategyDelay = _delegationManager.strategyWithdrawalDelayBlocks(IStrategy(_strategy));
-        return _minDelay > _strategyDelay ? _minDelay : _strategyDelay;
+        return _delegationManager.minWithdrawalDelayBlocks();
     }
 
     /// @inheritdoc IynViewer
@@ -60,7 +58,7 @@ contract ynViewer is IynViewer {
                 nodeId: _node.nodeId(),
                 ethBalance: _node.getETHBalance(),
                 eigenPodEthBalance: _eigenPod.balance,
-                podOwnerShares: _eigenPodManager.podOwnerShares(address(_node)),
+                podOwnerShares: _eigenPodManager.podOwnerDepositShares(address(_node)),
                 stakingNode: address(_node),
                 eigenPod: _eigenPod,
                 delegatedTo: stakingNodesManager.delegationManager().delegatedTo(address(_node))
