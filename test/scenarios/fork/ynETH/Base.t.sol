@@ -129,11 +129,6 @@ contract Base is Test, Utils {
     }
 
     function upgradeStakingNodesManagerAndStakingNode() internal virtual {
-
-
-        // Upgrade StakingNodesManager
-        // bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
-
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
         vm.prank(actors.admin.PROXY_ADMIN_OWNER);
