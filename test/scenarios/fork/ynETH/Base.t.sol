@@ -25,7 +25,6 @@ import {StakingNode} from "src/StakingNode.sol";
 import {RewardsReceiver} from "src/RewardsReceiver.sol";
 import {RewardsDistributor} from "src/RewardsDistributor.sol";
 import {StakingNode} from "src/StakingNode.sol";
-import {HoleskyStakingNodesManager} from "src/HoleskyStakingNodesManager.sol";
 import {WithdrawalQueueManager} from "src/WithdrawalQueueManager.sol";
 import {ynETHRedemptionAssetsVault} from "src/ynETHRedemptionAssetsVault.sol";
 import {IStakingNode} from "src/interfaces/IStakingNodesManager.sol";
@@ -133,7 +132,7 @@ contract Base is Test, Utils {
 
 
         // Upgrade StakingNodesManager
-        bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
+        // bytes memory initializeV3Data = abi.encodeWithSelector(stakingNodesManager.initializeV3.selector, chainAddresses.eigenlayer.REWARDS_COORDINATOR_ADDRESS);
 
         address newStakingNodesManagerImpl = address(new StakingNodesManager());
 
