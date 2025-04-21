@@ -646,7 +646,7 @@ contract Verify is BaseYnETHScript {
         // Check that previewDeposit of 1 ETH is less than 1 ether
         uint256 previewDepositResult = deployment.ynETH.previewDeposit(1 ether);
         console.log("previewDepositResult", previewDepositResult);
-        // require(previewDepositResult < 1 ether, "previewDeposit of 1 ETH should be less than 1 ether");
+        require(previewDepositResult < 1 ether, "previewDeposit of 1 ETH should be less than 1 ether");
         console.log("\u2705 previewDeposit of 1 ETH is less than 1 ether");
 
         // Check that totalSupply is less than totalAssets
@@ -654,7 +654,7 @@ contract Verify is BaseYnETHScript {
         uint256 totalAssets = deployment.ynETH.totalAssets();
         console.log("totalSupply", totalSupply);
         console.log("totalAssets", totalAssets);
-        // require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
+        require(totalSupply < totalAssets, "totalSupply should be less than totalAssets");
         console.log("\u2705 totalSupply is less than totalAssets");
 
         // Print totalSupply and totalAssets
@@ -703,7 +703,7 @@ contract Verify is BaseYnETHScript {
 
         // Check ynViewer getRate is greater than 1 ether
         uint256 ynETHRate = deployment.ynViewer.getRate();
-        // require(ynETHRate > 1 ether, "ynETH rate should be greater than 1 ether");
+        require(ynETHRate > 1 ether, "ynETH rate should be greater than 1 ether");
         console.log(string.concat("\u2705 ynETH rate is greater than 1 ether: ", vm.toString(ynETHRate), " wei (", vm.toString(ynETHRate / 1e18), " ETH)"));
     }
 }
