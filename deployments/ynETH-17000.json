@@ -11,7 +11,7 @@
   "STAKING_NODES_OPERATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
   "STAKING_NODE_CREATOR": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
   "VALIDATOR_MANAGER": "0x9Dd8F69b62ddFd990241530F47dcEd0Dad7f7d39",
-  "implementation-stakingNodesManager": "0x9b51f1b677F5670ED375b824f769a1db3ea783f5",
+  "implementation-stakingNodesManager": "0xe693035a8DBA98c28adc1c0c9d82e0F7e9fd93Ed",
   "implementation-ynETH": "0x090D67d3C97712f6C17a037515CbB8502561EE57",
   "implementation-executionLayerReceiver": "0x1fbedf3773418f20b9dfeafcd9d263030eb0e42f",
   "implementation-consensusLayerReceiver": "0xe7acc0533c650ad0cc11f57f81c38fa19634b1d7",
@@ -38,5 +38,5 @@
   "proxyAdmin-withdrawalQueueManager": "0x26425968beb4bD9c09b02C433996Cd05B1Fd4f07",
   "proxyAdmin-ynETHRedemptionAssetsVault": "0xd4d8E80d1c959CdC4601Cc6A0cc1EC18aBeB1888",
   "proxyAdmin-ynViewer": "0x3ffa0c3fba4adfe2b6e4d7e2f8e6e6324be5305b",
-  "stakingNodeImplementation": "0x5139ad0AcA1B303ed488f2715d4B6ADA4ce69d2C"
+  "stakingNodeImplementation": "0x69C43c9C220eAB6118bC2064bb8B7953bC79f1B0"
 }
