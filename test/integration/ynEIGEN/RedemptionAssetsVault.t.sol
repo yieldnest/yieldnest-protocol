@@ -9,10 +9,8 @@ import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.so
 import {IPausable} from "lib/eigenlayer-contracts/src/contracts/interfaces//IPausable.sol";
 import {ITokenStakingNode} from "src/interfaces/ITokenStakingNode.sol";
 import {ynBase} from "src/ynBase.sol";
-import {console} from "forge-std/console.sol";
 
-
-contract ynEigenRewardsTest is ynEigenIntegrationBaseTest {
+contract RedemptionAssetsVaultTest is ynEigenIntegrationBaseTest {
 
 
     TestAssetUtils testAssetUtils;
@@ -40,15 +38,15 @@ contract ynEigenRewardsTest is ynEigenIntegrationBaseTest {
 
             
             // Define deposit amount
-            uint256 depositAmount = 100 ether;
+            uint256 userDepositAmount = 100 ether;
             
             // Obtain wstETH for depositor
-            testAssetUtils.get_wstETH(user, depositAmount);
+            testAssetUtils.get_wstETH(user, userDepositAmount);
             
             // Deposit wstETH into ynEigenToken
             vm.startPrank(user);
-            wstETH.approve(address(ynEigenToken), depositAmount);
-            ynEigenToken.deposit(wstETH, depositAmount, user);
+            wstETH.approve(address(ynEigenToken), userDepositAmount);
+            ynEigenToken.deposit(wstETH, userDepositAmount, user);
             vm.stopPrank();
         }
 
