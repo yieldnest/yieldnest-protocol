@@ -21,12 +21,12 @@ contract ynEigenRewardsTest is ynEigenIntegrationBaseTest {
     }
 
     function testRewardDonationsThroughRedemptionAssetsVault(
-       // uint256 depositAmount
+       uint256 depositAmount
     ) public {
 
-        // vm.assume(
-        //     depositAmount < 10000 ether && depositAmount >= 2 wei
-        // );
+        vm.assume(
+            depositAmount < 100_000 ether && depositAmount >= 2 wei
+        );
 
         // This test verifies that rewards can be donated through the RedemptionAssetsVault
         // and that the redemption rate increases as a result
@@ -48,54 +48,46 @@ contract ynEigenRewardsTest is ynEigenIntegrationBaseTest {
             // Deposit wstETH into ynEigenToken
             vm.startPrank(user);
             wstETH.approve(address(ynEigenToken), depositAmount);
-            uint256 shares = ynEigenToken.deposit(wstETH, depositAmount, user);
+            ynEigenToken.deposit(wstETH, depositAmount, user);
             vm.stopPrank();
         }
 
+        uint256 rewardsAmount = 100 ether;
 
-        uint256 depositAmount = 100 ether;
-
-        address depositor = address(0x123);
-        address receiver = address(0x456);
-        
         // Get initial rate
         uint256 initialRate = ynEigenToken.previewRedeem(1e18);
-
         // Read initial total assets in ynEigen
         uint256 initialTotalAssets = ynEigenToken.totalAssets();
-        
-        // 1. Obtain wstETH for depositor
-        testAssetUtils.get_wstETH(depositor, depositAmount);
-        
-        // 2. Deposit assets to ynEigen by User
-        vm.startPrank(depositor);
-        wstETH.approve(address(ynEigenToken), depositAmount);
-        ynEigenToken.deposit(wstETH, depositAmount, receiver);
-        vm.stopPrank();
-        
-        testAssetUtils.get_wstETH(address(this), depositAmount);
-        // Get initial available redemption assets
-        uint256 initialAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
+        // Read initial total supply of ynEigenToken
+        uint256 initialTotalSupply = ynEigenToken.totalSupply();
+        {
+            address depositor = address(0x123);
+            
+            testAssetUtils.get_wstETH(depositor, rewardsAmount);
+            // Get initial available redemption assets
+            uint256 initialAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
 
 
-        
-        vm.startPrank(address(this));
-        // Approve wstETH for redemption assets vault deposit
-        wstETH.approve(address(redemptionAssetsVault), depositAmount);
-        redemptionAssetsVault.deposit(depositAmount, address(wstETH));
-        vm.stopPrank();
+            vm.startPrank(depositor);
+            // Approve wstETH for redemption assets vault deposit
+            wstETH.approve(address(redemptionAssetsVault), rewardsAmount);
+            redemptionAssetsVault.deposit(rewardsAmount, address(wstETH));
+            vm.stopPrank();
+
+                        
+            // Verify redemption assets increased
+            uint256 newAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
+            assertGt(newAvailableAssets, initialAvailableAssets, "Redemption assets should increase after donation");
+        }
 
         assertEq(
             wstETH.balanceOf(address(redemptionAssetsVault)), 
-            depositAmount, 
+            rewardsAmount, 
             "Redemption vault should have the correct wstETH balance after deposit"
         );
 
-        uint256 depositAmountInEth = assetRegistry.convertToUnitOfAccount(wstETH, depositAmount);
-        
-        // Verify redemption assets increased
-        uint256 newAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
-        assertGt(newAvailableAssets, initialAvailableAssets, "Redemption assets should increase after donation");
+        uint256 depositAmountInEth = assetRegistry.convertToUnitOfAccount(wstETH, rewardsAmount);
+
         
         // 4. Call withdrawSurplus to process the rewards
         vm.prank(actors.ops.REDEMPTION_ASSET_WITHDRAWER);
@@ -121,6 +113,19 @@ contract ynEigenRewardsTest is ynEigenIntegrationBaseTest {
             ynEigenToken.totalAssets(),
             initialTotalAssets + depositAmountInEth,
             "Total assets should increase by the deposited amount after processing rewards"
+        );
+
+        // Verify that the total supply remains unchanged after processing rewards
+        assertEq(
+            ynEigenToken.totalSupply(),
+            initialTotalSupply,
+            "Total supply should remain unchanged after processing rewards"
+        );
+
+        assertGt(
+            ynEigenToken.previewRedeem(1e18),
+            initialRate,
+            "Exchange rate should increase after processing rewards"
         );
     
     }
