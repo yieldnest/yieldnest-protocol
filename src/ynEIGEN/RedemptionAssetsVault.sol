@@ -27,6 +27,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     error AssetNotSupported();
     event Paused();
     event Unpaused();
+    error WithdrawnAmountMismatch(uint256 actualAmount, uint256 expectedAmount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
@@ -204,12 +205,15 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
                 uint256 assetBalanceInUnit = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
                 if (assetBalanceInUnit >= amount) {
                     uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
-                    ynEigen.processWithdrawn(reqAmountInAsset, address(asset));
+                    
+                    processWithdrawn(reqAmountInAsset, address(asset));
+
                     balances[address(asset)] -= reqAmountInAsset;
                     emit AssetWithdrawn(address(asset), msg.sender, address(ynEigen), reqAmountInAsset);
                     break;
                 } else {
-                    ynEigen.processWithdrawn(assetBalance, address(asset));
+                    processWithdrawn(assetBalance, address(asset));
+
                     balances[address(asset)] = 0;
                     amount -= assetBalanceInUnit;
                     emit AssetWithdrawn(address(asset), msg.sender, address(ynEigen), assetBalance);
@@ -217,6 +221,16 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
             }
         }
         emit TotalAssetsTransferred(ETH_ASSET, msg.sender, address(ynEigen), amount);
+    }
+
+    function processWithdrawn(uint256 amount, address asset) internal {
+
+        uint256 balanceBefore = IERC20(asset).balanceOf(address(this));
+        // Approve ynEigen to take the tokens from this contract
+        IERC20(asset).forceApprove(address(ynEigen), amount);
+        ynEigen.processWithdrawn(amount, asset);
+        uint256 balanceAfter = IERC20(asset).balanceOf(address(this));
+        if (balanceBefore != balanceAfter + amount) revert WithdrawnAmountMismatch(balanceBefore - balanceAfter, amount);
     }
 
     //--------------------------------------------------------------------------------------
