@@ -27,6 +27,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     error AssetNotSupported();
     event Paused();
     event Unpaused();
+    error WithdrawnAmountMismatch(uint256 actualAmount, uint256 expectedAmount);
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  EVENTS  ------------------------------------------
@@ -163,6 +164,19 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
      * @dev Iterates over the supported assets, transferring each asset's balance to the user until fully depleted.
      */
     function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */) public onlyRedeemer whenNotPaused nonReentrant {
+        processRedemptionAssets(to, amount, processTransfer);
+    }
+
+    /** 
+     * @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
+     * @param amount The amount of ETH to withdraw and process.
+     * @dev Requires the caller to be the redeemer and the contract to not be paused.
+     */
+    function withdrawRedemptionAssets(uint256 amount) public onlyRedeemer whenNotPaused nonReentrant {
+        processRedemptionAssets(address(ynEigen), amount, processWithdrawn);
+    }
+
+    function processRedemptionAssets(address to, uint256 amount, function(uint256, address, address) internal process) internal {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
 
@@ -175,12 +189,12 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
                 uint256 assetBalanceInUnit = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
                 if (assetBalanceInUnit >= amount) {
                     uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
-                    IERC20(asset).safeTransfer(to, reqAmountInAsset);
+                    process(reqAmountInAsset, address(asset), to);
                     balances[address(asset)] -= reqAmountInAsset;
                     emit AssetTransferred(address(asset), msg.sender, to, reqAmountInAsset);
                     break;
                 } else {
-                    IERC20(asset).safeTransfer(to, assetBalance);
+                    process(assetBalance, address(asset), to);
                     balances[address(asset)] = 0;
                     amount -= assetBalanceInUnit;
                     emit AssetTransferred(address(asset), msg.sender, to, assetBalance);
@@ -190,33 +204,18 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         emit TotalAssetsTransferred(ETH_ASSET, msg.sender, to, amountTransferred);
     }
 
-    /** 
-     * @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
-     * @param amount The amount of ETH to withdraw and process.
-     * @dev Requires the caller to be the redeemer and the contract to not be paused.
-     */
-    function withdrawRedemptionAssets(uint256 amount) public onlyRedeemer whenNotPaused nonReentrant {
-        IERC20[] memory assets = assetRegistry.getAssets();
-        for (uint256 i = 0; i < assets.length; ++i) {
-            IERC20 asset = assets[i];
-            uint256 assetBalance = balances[address(asset)];
-            if (assetBalance > 0) {
-                uint256 assetBalanceInUnit = assetRegistry.convertToUnitOfAccount(asset, assetBalance);
-                if (assetBalanceInUnit >= amount) {
-                    uint256 reqAmountInAsset = assetRegistry.convertFromUnitOfAccount(asset, amount);
-                    ynEigen.processWithdrawn(reqAmountInAsset, address(asset));
-                    balances[address(asset)] -= reqAmountInAsset;
-                    emit AssetWithdrawn(address(asset), msg.sender, address(ynEigen), reqAmountInAsset);
-                    break;
-                } else {
-                    ynEigen.processWithdrawn(assetBalance, address(asset));
-                    balances[address(asset)] = 0;
-                    amount -= assetBalanceInUnit;
-                    emit AssetWithdrawn(address(asset), msg.sender, address(ynEigen), assetBalance);
-                }
-            }
-        }
-        emit TotalAssetsTransferred(ETH_ASSET, msg.sender, address(ynEigen), amount);
+    function processWithdrawn(uint256 amount, address asset, address /* to */) internal {
+
+        uint256 balanceBefore = IERC20(asset).balanceOf(address(this));
+        // Approve ynEigen to take the tokens from this contract
+        IERC20(asset).forceApprove(address(ynEigen), amount);
+        ynEigen.processWithdrawn(amount, asset);
+        uint256 balanceAfter = IERC20(asset).balanceOf(address(this));
+        if (balanceBefore != balanceAfter + amount) revert WithdrawnAmountMismatch(balanceBefore - balanceAfter, amount);
+    }
+
+    function processTransfer(uint256 amount, address asset, address to) internal {
+        IERC20(asset).safeTransfer(to, amount);
     }
 
     //--------------------------------------------------------------------------------------
