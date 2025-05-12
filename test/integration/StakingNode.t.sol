@@ -937,7 +937,7 @@ contract StakingNodeVerifyWithdrawalCredentials is StakingNodeTestBase {
         // start checkpoint
         {
             vm.startPrank(actors.ops.STAKING_NODES_OPERATOR);
-            stakingNodesManager.nodes(nodeId).startCheckpoint(true);
+            stakingNodesManager.nodes(nodeId).startCheckpoint(false);
             vm.stopPrank();
 
             // make sure startCheckpoint cant be called again, which means that the checkpoint has started
