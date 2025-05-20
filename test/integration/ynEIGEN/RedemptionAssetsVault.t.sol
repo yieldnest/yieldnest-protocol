@@ -21,6 +21,8 @@ contract RedemptionAssetsVaultTest is ynEigenIntegrationBaseTest {
     function testDepositAndVerifyAssetBalances(uint256 depositAmount) public {
         vm.assume(depositAmount > 1 ether && depositAmount < 100 ether);
 
+        
+
         // Get wstETH token from chainAddresses
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         address user = address(0xABCD);
@@ -47,8 +49,9 @@ contract RedemptionAssetsVaultTest is ynEigenIntegrationBaseTest {
         // Assert that the vault's balance increased by the deposit amount
         assertEq(finalVaultBalance, initialVaultBalance + depositAmount, "Vault balance should increase by deposit amount");
         
-        // Assert that the available redemption assets increased by the deposit amount
-        assertEq(finalAvailableAssets, initialAvailableAssets + depositAmount, "Available redemption assets should increase by deposit amount");
+        // Assert that the available redemption assets increased by the deposit amount converted to ETH
+        uint256 depositAmountInEth =  assetRegistry.convertToUnitOfAccount(wstETH, depositAmount);
+        assertEq(finalAvailableAssets, initialAvailableAssets + depositAmountInEth, "Available redemption assets should increase by deposit amount in ETH");
         
         // Assert that the user's balance decreased by the deposit amount
         assertEq(finalUserBalance, initialUserBalance - depositAmount, "User balance should decrease by deposit amount");
@@ -71,41 +74,48 @@ contract RedemptionAssetsVaultTest is ynEigenIntegrationBaseTest {
         testAssetUtils.get_wstETH(user, wstETHAmount);
         testAssetUtils.get_rETH(user, rETHAmount);
         testAssetUtils.get_sfrxETH(user, sfrxETHAmount);
-        
-        // Record initial balances
-        uint256 initialWstETHVaultBalance = wstETH.balanceOf(address(redemptionAssetsVault));
-        uint256 initialRETHVaultBalance = rETH.balanceOf(address(redemptionAssetsVault));
-        uint256 initialSfrxETHVaultBalance = sfrxETH.balanceOf(address(redemptionAssetsVault));
+
         uint256 initialAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
+        {      
+            // Record initial balances
+            uint256 initialWstETHVaultBalance = wstETH.balanceOf(address(redemptionAssetsVault));
+            uint256 initialRETHVaultBalance = rETH.balanceOf(address(redemptionAssetsVault));
+            uint256 initialSfrxETHVaultBalance = sfrxETH.balanceOf(address(redemptionAssetsVault));
+
+            
+            // User deposits multiple assets
+            vm.startPrank(user);
+            
+            wstETH.approve(address(redemptionAssetsVault), wstETHAmount);
+            redemptionAssetsVault.deposit(wstETHAmount, address(wstETH));
+            
+            rETH.approve(address(redemptionAssetsVault), rETHAmount);
+            redemptionAssetsVault.deposit(rETHAmount, address(rETH));
+            
+            sfrxETH.approve(address(redemptionAssetsVault), sfrxETHAmount);
+            redemptionAssetsVault.deposit(sfrxETHAmount, address(sfrxETH));
+            
+            vm.stopPrank();
         
-        // User deposits multiple assets
-        vm.startPrank(user);
-        
-        wstETH.approve(address(redemptionAssetsVault), wstETHAmount);
-        redemptionAssetsVault.deposit(wstETHAmount, address(wstETH));
-        
-        rETH.approve(address(redemptionAssetsVault), rETHAmount);
-        redemptionAssetsVault.deposit(rETHAmount, address(rETH));
-        
-        sfrxETH.approve(address(redemptionAssetsVault), sfrxETHAmount);
-        redemptionAssetsVault.deposit(sfrxETHAmount, address(sfrxETH));
-        
-        vm.stopPrank();
-        
-        // Verify final balances
-        uint256 finalWstETHVaultBalance = wstETH.balanceOf(address(redemptionAssetsVault));
-        uint256 finalRETHVaultBalance = rETH.balanceOf(address(redemptionAssetsVault));
-        uint256 finalSfrxETHVaultBalance = sfrxETH.balanceOf(address(redemptionAssetsVault));
-        uint256 finalAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
-        
-        // Assert that each asset's balance increased correctly
-        assertEq(finalWstETHVaultBalance, initialWstETHVaultBalance + wstETHAmount, "wstETH vault balance should increase by deposit amount");
-        assertEq(finalRETHVaultBalance, initialRETHVaultBalance + rETHAmount, "rETH vault balance should increase by deposit amount");
-        assertEq(finalSfrxETHVaultBalance, initialSfrxETHVaultBalance + sfrxETHAmount, "sfrxETH vault balance should increase by deposit amount");
-        
+
+            // Verify final balances
+            uint256 finalWstETHVaultBalance = wstETH.balanceOf(address(redemptionAssetsVault));
+            uint256 finalRETHVaultBalance = rETH.balanceOf(address(redemptionAssetsVault));
+            uint256 finalSfrxETHVaultBalance = sfrxETH.balanceOf(address(redemptionAssetsVault));
+
+            
+            // Assert that each asset's balance increased correctly
+            assertEq(finalWstETHVaultBalance, initialWstETHVaultBalance + wstETHAmount, "wstETH vault balance should increase by deposit amount");
+            assertEq(finalRETHVaultBalance, initialRETHVaultBalance + rETHAmount, "rETH vault balance should increase by deposit amount");
+            assertEq(finalSfrxETHVaultBalance, initialSfrxETHVaultBalance + sfrxETHAmount, "sfrxETH vault balance should increase by deposit amount");
+        }
+
         // Assert that the total available redemption assets increased by the sum of all deposits
-        uint256 totalDeposited = wstETHAmount + rETHAmount + sfrxETHAmount;
-        assertEq(finalAvailableAssets, initialAvailableAssets + totalDeposited, "Available redemption assets should increase by total deposit amount");
+        IAssetRegistry assetRegistry = redemptionAssetsVault.assetRegistry();
+        uint256 totalDeposited = assetRegistry.convertToUnitOfAccount(wstETH, wstETHAmount) +
+                                 assetRegistry.convertToUnitOfAccount(rETH, rETHAmount) +
+                                 assetRegistry.convertToUnitOfAccount(sfrxETH, sfrxETHAmount);
+        assertEq(redemptionAssetsVault.availableRedemptionAssets(), initialAvailableAssets + totalDeposited, "Available redemption assets should increase by total deposit amount");
     }
 
     function testRewardDonationsThroughRedemptionAssetsVault(
@@ -118,8 +128,7 @@ contract RedemptionAssetsVaultTest is ynEigenIntegrationBaseTest {
 
         // This test verifies that rewards can be donated through the RedemptionAssetsVault
         // and that the redemption rate increases as a result
-        
-                    
+                      
         // Get wstETH token from chainAddresses
         IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
         {
