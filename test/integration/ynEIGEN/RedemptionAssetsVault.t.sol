@@ -226,4 +226,127 @@ contract RedemptionAssetsVaultTest is ynEigenIntegrationBaseTest {
         );
     
     }
+
+    function test_transferRedemptionAssets_impersonating_withdrawal_queue_manager(
+       uint256 depositAmount
+    ) public {
+
+        vm.assume(
+            depositAmount < 100_000 ether && depositAmount >= 2 wei
+        );
+
+        // This test verifies that rewards can be donated through the RedemptionAssetsVault
+        // and that the redemption rate increases as a result
+                      
+        // Get wstETH token from chainAddresses
+        IERC20 wstETH = IERC20(chainAddresses.lsd.WSTETH_ADDRESS);
+        {
+            // Setup test addresses
+            address user = address(0x123456);
+
+            
+            // Define deposit amount
+            uint256 userDepositAmount = 100 ether;
+            
+            // Obtain wstETH for depositor
+            testAssetUtils.get_wstETH(user, userDepositAmount);
+            
+            // Deposit wstETH into ynEigenToken
+            vm.startPrank(user);
+            wstETH.approve(address(ynEigenToken), userDepositAmount);
+            ynEigenToken.deposit(wstETH, userDepositAmount, user);
+            vm.stopPrank();
+        }
+
+        uint256 rewardsAmount = 100 ether;
+
+        // Get initial rate
+        uint256 initialRate = ynEigenToken.previewRedeem(1e18);
+        // Read initial total assets in ynEigen
+        uint256 initialTotalAssets = ynEigenToken.totalAssets();
+        // Read initial total supply of ynEigenToken
+        uint256 initialTotalSupply = ynEigenToken.totalSupply();
+        {
+            address depositor = address(0x123);
+            
+            testAssetUtils.get_wstETH(depositor, rewardsAmount);
+            // Get initial available redemption assets
+            uint256 initialAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
+
+
+            vm.startPrank(depositor);
+            // Approve wstETH for redemption assets vault deposit
+            wstETH.approve(address(redemptionAssetsVault), rewardsAmount);
+            redemptionAssetsVault.deposit(rewardsAmount, address(wstETH));
+            vm.stopPrank();
+
+                        
+            // Verify redemption assets increased
+            uint256 newAvailableAssets = redemptionAssetsVault.availableRedemptionAssets();
+            assertGt(newAvailableAssets, initialAvailableAssets, "Redemption assets should increase after donation");
+        }
+
+        assertEq(
+            wstETH.balanceOf(address(redemptionAssetsVault)), 
+            rewardsAmount, 
+            "Redemption vault should have the correct wstETH balance after deposit"
+        );
+
+        uint256 depositAmountInEth = assetRegistry.convertToUnitOfAccount(wstETH, rewardsAmount);
+
+        address receiver = address(0x1234567890);
+        {
+            // Verify the initial surplus redemption assets
+            uint256 initialSurplus = withdrawalQueueManager.surplusRedemptionAssets();
+            assertEq(initialSurplus, depositAmountInEth, "Initial surplus should match the deposit amount");
+
+
+            vm.startPrank(address(withdrawalQueueManager));
+             
+            // Transfer all redemption assets to the ynEigen token
+            redemptionAssetsVault.transferRedemptionAssets(receiver, depositAmountInEth, "");
+            
+            vm.stopPrank();
+            
+            // Verify the surplus is now zero
+            uint256 finalSurplus = withdrawalQueueManager.surplusRedemptionAssets();
+            assertEq(finalSurplus, 0, "Surplus should be zero after transfer");
+        }
+
+
+        // Verify that the redemption assets vault has no more wstETH after withdrawal
+        assertEq(
+            wstETH.balanceOf(address(redemptionAssetsVault)),
+            0,
+            "Redemption vault should have 0 wstETH balance after withdrawal"
+        );
+        
+        assertEq(
+            redemptionAssetsVault.availableRedemptionAssets(),
+            0,
+            "Available redemption assets should be back to initial value after withdrawal"
+        );
+
+        assertEq(redemptionAssetsVault.balances(address(wstETH)), 0, "Redemption vault should have 0 wstETH balance after withdrawal");
+        
+        assertEq(
+            ynEigenToken.totalAssets(),
+            initialTotalAssets,
+            "Total assets should increase by the deposited amount after processing rewards"
+        );
+
+        // Verify that the total supply remains unchanged after processing rewards
+        assertEq(
+            ynEigenToken.totalSupply(),
+            initialTotalSupply,
+            "Total supply should remain unchanged after processing rewards"
+        );
+
+        assertEq(
+            ynEigenToken.previewRedeem(1e18),
+            initialRate,
+            "Exchange rate should stay the s ame after withdrawing funds"
+        );
+    
+    }
 }
