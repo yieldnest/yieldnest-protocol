@@ -18,7 +18,7 @@
   "implementation-tokenStakingNodesManager": "0x6Fbd79BbF9dA002c33F94D0a372F9756756adb2c",
   "implementation-ynEigenDepositAdapter": "0x8Ef7a066bf2Cf76baD826C1De8D314badF057b52",
   "implementation-ynEigenViewer": "0x95046553147036dA98Aecc02B2526FCBc36F4306",
-  "implementation-redemptionAssetsVault": "0x9892A40FE6e17d4C88a92b2e37c12981bAA6F14A",
+  "implementation-redemptionAssetsVault": "0x493dd4b87f106Ce1e1c9a399fE01d596A44840B1",
   "implementation-withdrawalQueueManager": "0xaac93A4ddE34CE9ad9dD8556B9faDd83380a5D64",
   "implementation-wrapper": "0x7C31a924B01a20642aF2460d7Fe24A2FEf89074d",
   "implementation-withdrawalsProcessor": "0xd1Cc0F09Bcc5695810C44F4d34BDcf28eD3a3fa7",
