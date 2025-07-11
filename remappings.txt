@@ -1,3 +1,3 @@
+@eigenlayer/=lib/eigenlayer-contracts/
 @openzeppelin-upgrades/=lib/openzeppelin-contracts-upgradeable/
 @openzeppelin/=lib/openzeppelin-contracts/
-@eigenlayer/=lib/eigenlayer-contracts/

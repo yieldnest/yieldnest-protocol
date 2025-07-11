@@ -9,7 +9,7 @@
 [submodule "lib/safe-smart-account"]
 	path = lib/safe-smart-account
 	url = https://github.com/safe-global/safe-smart-account
-	branch = v1.4.1
+	branch = release/v1.4.1
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/openzeppelin/openzeppelin-contracts
@@ -17,4 +17,4 @@
 [submodule "lib/eigenlayer-contracts"]
 	path = lib/eigenlayer-contracts
 	url = https://github.com/yieldnest/eigenlayer-contracts
-	branch = v1.3.0-mainnet-deployment
+	branch = v1.4.1-mainnet-deployment
